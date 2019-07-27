@@ -22,26 +22,19 @@ struct FileList
 end
 
 """
-read_data Read data from BATSRUS output files
-   Read the npict-th snapshot from an ascii | binary data file into
-   the x [coordinates] & w [data] arrays.
+   read_data(filenames,(, dir=".", npict=1, verbose=true))
 
-   filehead = read_data(filename)
+Read data from BATSRUS output files. Stores the npict-th snapshot from an ascii
+or binary data file into the x [coordinates] and w [data] arrays.
+Filenames can be provided with wildcards. You are also allowed to pass multiple
+filenames as a single string.
+`fileheads, data, filelist = read_data(filename, "npict", 2, "verbose", false)`
 
-   [filehead, data] = read_data(filename,"npict",10)
-
-   [filehead, data, filelist] = read_data(filename, "npict", 2,
-      "verbose", false)
-
-
-   The "x" and "w" arrays & the header info will be read from the file.
-
-   The same npict-th snapshot can be read from up to 10 files by e.g.
-   setting
-   filename="data/file1.ini data/file2.out"
-
-   In this case the data is read into x0;w0 & x1;w1 for the two files
-
+# Examples
+```jldoctest
+filenames = "1d__raw*"
+fileheads, data, filelist = BATSRUS.read_data(filenames)
+```
 """
 function read_data( filenamesIn::String; dir::String=".", npict::Int=1,
    verbose::Bool=true )
@@ -127,15 +120,13 @@ function read_data( filenamesIn::String; dir::String=".", npict::Int=1,
 end
 
 """
-get_file_types Get the type of output files.
-
-INPUTS:
- nfile: number of files
- filelist: struct of files that need to be fulfilled.
-OUTPUTS:
- filelist: completed file structs
- fileID: file # for accessing data
- pictsize: size (in bytes) of one snapshot
+   get_file_types(nfile, filenames, dir)
+Get the type of files.
+...
+# Output arguments
+- `filelist::FileList`: fulfilled file structs.
+- `fileID::Vector{IOStream}`: file IOStream for accessing data.
+- `pictsize::Int`: size (in bytes) of one snapshot.
 """
 function get_file_types(nfile::Int,filenames::Array{String,1},dir::String)
 
@@ -309,7 +300,8 @@ end
 import Base: read!
 
 """
-For reading slices of arrays using subarrays.
+   read!(s,a)
+Read slices of arrays using subarrays, in addition to the built-in methods.
 """
 function read!(s::IO, a::SubArray{T}) where T
 
@@ -320,6 +312,7 @@ function read!(s::IO, a::SubArray{T}) where T
 end
 
 """
+   get_pict_asc(fileID, filehead)
 Read ascii format data.
 """
 function get_pict_asc(fileID::IOStream, filehead::Dict)
@@ -365,7 +358,8 @@ function get_pict_asc(fileID::IOStream, filehead::Dict)
 end
 
 """
-get_pict_bin Read binary format data.
+   get_pict_bin(fileID, filehead)
+Read binary format data.
 """
 function get_pict_bin(fileID::IOStream, filehead::Dict)
 
@@ -415,9 +409,8 @@ function get_pict_bin(fileID::IOStream, filehead::Dict)
 end
 
 """
-get_pict_real Read real4 format data
-   Note that most Matlab function accept double but not single; so we
-   automatically transit all the single precisions to double precisions.
+   get_pict_real(fileID, filehead)
+Read real4 format data.
 """
 function get_pict_real(fileID::IOStream, filehead::Dict)
 
@@ -469,20 +462,17 @@ function get_pict_real(fileID::IOStream, filehead::Dict)
 end
 
 """
-set_units Set the units for the output files。
-   If type is given as "SI'; 'CGS'; 'NORMALIZED'; 'PIC'; 'PLANETARY'; | 'SOLAR";
-   set typeunit = type otherwise try to guess from the fileheader.
+   set_units(filehead, type, (distunit, Mion, Melectron))
+Set the units for the output files。
+If type is given as "SI", "CGS", "NORMALIZED", "PIC", "PLANETARY", "SOLAR", set
+typeunit = type otherwise try to guess from the fileheader.
+Based on typeunit set units for distance [xSI], time [tSI], density [rhoSI],
+pressure [pSI], magnetic field [bSI] and current density [jSI] in SI units.
+Distance unit [rplanet | rstar], ion & electron mass in amu can be set with
+optional distunit, Mion and Melectron.
 
-   Based on typeunit set units for distance [xSI], time [tSI],
-   density [rhoSI], pressure [pSI], magnetic field [bSI]
-   & current density [jSI] in SI units.
-   Distance unit [rplanet | rstar], ion & electron mass in amu
-   can be set with optional distunit; Mion & Melectron.
-
-   Also calculate convenient constants ti0; cs0 ... for typical formulas.
-   See file "defaults" for definitions & usage.
-
-   This function is not finished! It must be improved!
+Also calculate convenient constants ti0, cs0 ... for typical formulas.
+This function needs to be improved!
 """
 function set_units( filehead::Dict,type::String; distunit::Float64=1.0,
    Mion::Float64=1.0, Melectron::Float64=1.0)
@@ -681,7 +671,8 @@ function set_units( filehead::Dict,type::String; distunit::Float64=1.0,
 end
 
 """
-show_head Displaying header information of ifile.
+   show_head(file, ifile,filehead)
+Displaying file header information.
 """
 function show_head(file::FileList,ifile::Int,filehead::Dict)
 
@@ -1223,9 +1214,4 @@ end
 end
 end
 
-=#
-
-#=
-filenames = "1d__raw*"
-fileheads, data, filelist = BATSRUS.read_data(filenames)
 =#
