@@ -3,7 +3,7 @@ module BATSRUS
 #
 # Hongyang Zhou, hyzhou@umich.edu 07/24/2019
 
-export read_data
+export readdata
 
 using Glob
 using MATLAB
@@ -22,21 +22,21 @@ struct FileList
 end
 
 """
-   read_data(filenames,(, dir=".", npict=1, verbose=true))
+   readdata(filenames,(, dir=".", npict=1, verbose=true))
 
 Read data from BATSRUS output files. Stores the npict-th snapshot from an ascii
 or binary data file into the x [coordinates] and w [data] arrays.
 Filenames can be provided with wildcards. You are also allowed to pass multiple
 filenames as a single string.
-`fileheads, data, filelist = read_data(filename, "npict", 2, "verbose", false)`
+`fileheads, data, filelist = readdata(filename, "npict", 2, "verbose", false)`
 
 # Examples
 ```jldoctest
 filenames = "1d__raw*"
-fileheads, data, filelist = BATSRUS.read_data(filenames)
+fileheads, data, filelist = BATSRUS.readdata(filenames)
 ```
 """
-function read_data( filenamesIn::String; dir::String=".", npict::Int=1,
+function readdata( filenamesIn::String; dir::String=".", npict::Int=1,
    verbose::Bool=true )
 
    ## Check the existence of files
@@ -45,7 +45,7 @@ function read_data( filenamesIn::String; dir::String=".", npict::Int=1,
    for filename in filenamesSplit
       filesfound = glob(filename)
       if isempty(filesfound)
-         error("Error in read_data: no matching filename was found for
+         error("Error in readdata: no matching filename was found for
          $(filename)")
       end
       filenames = vcat(filenames, filesfound)
@@ -73,33 +73,33 @@ function read_data( filenamesIn::String; dir::String=".", npict::Int=1,
    ## Read data from files
    for ifile=1:nfile
       if occursin("log",filelist[ifile].type)
-         filehead,data = read_log_data(joinpath(dir,filelist[ifile].name))
+         filehead,data = readlogdata(joinpath(dir,filelist[ifile].name))
          return
       else
          # Skip npict-1 snapshots (because we only want npict snapshot)
          skip(fileID[ifile], pictsize[ifile]*(npict-1))
 
-         filehead = get_file_head(fileID[ifile], filelist[ifile].type, 2)
+         filehead = getfilehead(fileID[ifile], filelist[ifile].type, 2)
          push!(fileheads, filehead)
 
          # Read data
          fileType = lowercase(filelist[ifile].type)
          if fileType == "ascii"
-            x,w = get_pict_asc(fileID[ifile], fileheads[ifile])
+            x,w = getpictascii(fileID[ifile], fileheads[ifile])
          elseif fileType == "binary"
-            x,w = get_pict_bin(fileID[ifile], fileheads[ifile])
+            x,w = getpictbinary(fileID[ifile], fileheads[ifile])
          elseif fileType == "real4"
-            x,w = get_pict_real(fileID[ifile], fileheads[ifile])
+            x,w = getpictreal(fileID[ifile], fileheads[ifile])
          elseif fileType == "log"
 
          else
             error("get_pict: unknown filetype: $(filelist[ifile].type)")
          end
 
-         set_units(fileheads[ifile],"")
+         setunits(fileheads[ifile],"")
 
          if verbose
-            show_head(filelist[ifile], ifile, fileheads[ifile])
+            showhead(filelist[ifile], ifile, fileheads[ifile])
          end
 
          # Produce a wnames from the last file
@@ -120,6 +120,39 @@ function read_data( filenamesIn::String; dir::String=".", npict::Int=1,
 end
 
 """
+   read_log_data(filename)
+Read information from log file.
+"""
+function read_log_data( filename )
+
+# This part can be achieved using some packages.
+
+#=
+data = importdata(filename)
+
+head = Dict(:ndim => 3, :headline => "", :it => Int32(-1.0),
+   :time => Float32(-1.0), :gencoord => false, :neqpar => Int32(0), :nw => 1,
+   :nx => [Int32(0)], :variables => Array{String,1}(undef,1))
+
+if isstruct(data)
+   head[:headline]  = data.textdata{1}
+   head[:variables] = data.colheaders
+   head[:ndim]      = 1
+   head[:it]        = 0
+   head[:time]      = 0.0
+   head[:gencoord]  = false
+   head[:nx]        = 1
+   head[:nw]        = numel(data.colheaders)
+   head[:variables] = split(data.textdata)
+
+   data = []
+end
+
+return head, data
+=#
+end
+
+"""
    get_file_types(nfile, filenames, dir)
 Get the type of files.
 ...
@@ -127,6 +160,7 @@ Get the type of files.
 - `filelist::FileList`: fulfilled file structs.
 - `fileID::Vector{IOStream}`: file IOStream for accessing data.
 - `pictsize::Int`: size (in bytes) of one snapshot.
+...
 """
 function get_file_types(nfile::Int,filenames::Array{String,1},dir::String)
 
@@ -178,7 +212,7 @@ function get_file_types(nfile::Int,filenames::Array{String,1},dir::String)
 
       # Obtain file size & number of snapshots
       seekstart(fileID[ifile])
-      pictsize[ifile] = get_file_head(fileID[ifile], type)
+      pictsize[ifile] = getfilehead(fileID[ifile], type)
       npictinfiles = floor(Int, bytes / pictsize[ifile])
 
       filelist[ifile] = FileList(filenames[ifile], type, bytes, npictinfiles)
@@ -189,19 +223,19 @@ function get_file_types(nfile::Int,filenames::Array{String,1},dir::String)
 end
 
 """
-get_file_head Obtain the header information from BATSRUS output files.
- INPUT:
-   fileID: integer number allocated to file
-   type:   file type ("ascii', 'real4', 'binary', 'log")
- OUTPUT:
-   pictsize: size of a single snapshot in bytes
-   filehead: file header info()
-
-NOTE: An unformatted FORTRAN binary file contains record length()
- information along with each record. A record is a WRITE statement. That's
- why I need to skip these records!
+   getfilehead(fileID, type, iargout=1)
+Obtain the header information from BATSRUS output files.
+...
+# Input arguments
+- `fileID::IOStream`: file identifier.
+- `type::String`: file type in ["ascii", "real4", "binary", "log"].
+- `iargout::Int`: 1 for output pictsize, 2 for output filehead.
+# Output arguments
+- `pictsize::Int`: size of a single snapshot in bytes.
+- `filehead::Dict`: file header info.
+...
 """
-function get_file_head(fileID::IOStream, type::String, iargout::Int=1)
+function getfilehead(fileID::IOStream, type::String, iargout::Int=1)
 
    pictsize = 0
 
@@ -224,9 +258,8 @@ function get_file_head(fileID::IOStream, type::String, iargout::Int=1)
    pointer0 = position(fileID)
 
    if ftype == "log"
-      # This part is done in the main read_data function.
+      # This part is done in the main readdata function.
    elseif ftype == "ascii"
-      # This part needs to be tested! I think it is not usable now!
       head[:headline] = readline(fileID)
       line = readline(fileID)
       line = split(line)
@@ -312,10 +345,10 @@ function read!(s::IO, a::SubArray{T}) where T
 end
 
 """
-   get_pict_asc(fileID, filehead)
+   getpictascii(fileID, filehead)
 Read ascii format data.
 """
-function get_pict_asc(fileID::IOStream, filehead::Dict)
+function getpictascii(fileID::IOStream, filehead::Dict)
 
    ndim = filehead[:ndim]
    nw   = filehead[:nw]
@@ -351,17 +384,16 @@ function get_pict_asc(fileID::IOStream, filehead::Dict)
          x[ix1,ix2,ix3,:] .= temp[1]
          w[ix1,ix2,ix3,:] .= temp[2:end]
       end
-
    end
 
    return x, w
 end
 
 """
-   get_pict_bin(fileID, filehead)
+   getpictbinary(fileID, filehead)
 Read binary format data.
 """
-function get_pict_bin(fileID::IOStream, filehead::Dict)
+function getpictbinary(fileID::IOStream, filehead::Dict)
 
    ndim = filehead[:ndim]
    nw   = filehead[:nw]
@@ -409,15 +441,13 @@ function get_pict_bin(fileID::IOStream, filehead::Dict)
 end
 
 """
-   get_pict_real(fileID, filehead)
+   getpictreal(fileID, filehead)
 Read real4 format data.
 """
-function get_pict_real(fileID::IOStream, filehead::Dict)
+function getpictreal(fileID::IOStream, filehead::Dict)
 
    ndim = filehead[:ndim]
    nw   = filehead[:nw]
-
-   # For some reason, Julia read! does not support slices of array.
 
    # Read coordinates & values
    if filehead[:ndim] == 1 # 1D
@@ -462,7 +492,7 @@ function get_pict_real(fileID::IOStream, filehead::Dict)
 end
 
 """
-   set_units(filehead, type, (distunit, Mion, Melectron))
+   setunits(filehead, type, (distunit, Mion, Melectron))
 Set the units for the output files。
 If type is given as "SI", "CGS", "NORMALIZED", "PIC", "PLANETARY", "SOLAR", set
 typeunit = type otherwise try to guess from the fileheader.
@@ -474,8 +504,11 @@ optional distunit, Mion and Melectron.
 Also calculate convenient constants ti0, cs0 ... for typical formulas.
 This function needs to be improved!
 """
-function set_units( filehead::Dict,type::String; distunit::Float64=1.0,
+function setunits( filehead::Dict,type::String; distunit::Float64=1.0,
    Mion::Float64=1.0, Melectron::Float64=1.0)
+
+   # This is currently not used, so return here
+   return
 
    ndim      = filehead[:ndim]
    headline  = filehead[:headline]
@@ -623,9 +656,7 @@ function set_units( filehead::Dict,type::String; distunit::Float64=1.0,
    end
 
    # Overwrite distance unit if given as an argument
-   if !isempty(distunit)
-      xSI = distunit
-   end
+   if !isempty(distunit) xSI = distunit end
 
    # Overwrite ion & electron masses if given as an argument
    if !isempty(Mion)      Mi = Mion end
@@ -671,10 +702,10 @@ function set_units( filehead::Dict,type::String; distunit::Float64=1.0,
 end
 
 """
-   show_head(file, ifile,filehead)
+   showhead(file, ifile, filehead)
 Displaying file header information.
 """
-function show_head(file::FileList,ifile::Int,filehead::Dict)
+function showhead(file::FileList, ifile::Int, filehead::Dict)
 
    println("----------------------")
    println("ifile     = $(ifile)")
@@ -700,518 +731,408 @@ function show_head(file::FileList,ifile::Int,filehead::Dict)
 
 end
 
-end
-
-#=
 """
-plot_log_data Plot the information from log file.
-  INPUT
-data: original variable data
-filehead: header information
-vars: variable[s] for plotting
-plotmode:  (optional) type of plotting ("line','scatter")
-plotrange: (optional) range of plotting
+   plot_log_data(data, filehead, vars, (plotmode="line", plotrange=[-Inf,Inf]))
+Plot information from log file.
+...
+# Input arguments
+- `data::Data`: original variable data.
+- `filehead::Dict`: header information.
+- `vars::String`: variables for plotting.
+- `plotmode::String`: (optional) type of plotting ["line","scatter"].
+- `plotrange::Vector`: (optional) range of plotting.
+...
 """
-function plot_log_data( varargin )
+function plot_log_data(data::Data, filehead::Dict, vars::String;
+   plotmode::String="line", plotrange::Vector=[-Inf,Inf] )
 
-# Input parameters parser
-p = inputParser
-defaultplotmode = "line"
-defaultplotrange = []
+   vars     = split(vars)
+   plotmode = split(plotmode)
 
-addRequired[p,"data",@isnumeric]
-addRequired[p,"filehead",@isstruct]
-addRequired[p,"func",@ischar]
-addParameter[p,"plotrange",defaultplotrange,@isnumeric]
-addParameter[p,"plotmode",defaultplotmode,@ischar]
+   for (ivar, var) in enumerate(vars)
+      # find the index for var in filehead.variables
+      VarIndex_ = findfirst(x->x==var, filehead[:variables])
 
-parse[p,varargin[:]]
-
-func      = strsplit[p.Results.func]
-plotmode  = strsplit[p.Results.plotmode]
-plotrange = p.Results.plotrange
-filehead  = p.Results.filehead
-data      = p.Results.data
-
-
-for ivar = 1:numel(func)
-   switch string[plotmode[ivar]]
-      case "line"
-         # find the index for var in filehead.variables
-         VarIndex = strcmpi(func[ivar],filehead.variables)
-
-         if all(VarIndex==0)
-            error("unknown plotting variable.")
-         end
-
-         figure()
-
-         plot(data[:,1],data[:,VarIndex])
-
-         xlabel(filehead.variables[1])
-         ylabel(filehead.variables[VarIndex])
-         title("log file data")
-         set(gca,"FontSize",14)
-      case "scatter"
-         # find the index for var in filehead.variables
-         VarIndex = strcmpi(func[ivar],filehead.variables)
-
-         if all(VarIndex==0)
-            error("unknown plotting variable.")
-         end
-
-         figure()
-
-         scatter(data[:,1],data[:,VarIndex])
-
-         xlabel(filehead.variables[1])
-         ylabel(filehead.variables[VarIndex])
-         title("log file data")
-         set(gca,"FontSize",14)
-
-      otherwise()
+      isnothing(VarIndex) &&
+      error("unknown plotting variable $(func[ivar])!")
+      figure()
+      if plotmode[ivar] == "line"
+         plot(data[:,1],data[:,VarIndex_])
+      elseif plotmode[ivar] == "scatter"
+         scatter(data[:,1],data[:,VarIndex_])
+      else
          error("unknown plot mode for plot_log_data!")
+      end
+      xlabel(filehead[:variables][1])
+      ylabel(filehead[:variables][VarIndex_])
+      title("log file data")
+      #set(gca,"FontSize",14)
    end
 
 end
 
-end
-end
-
-
-
-
 
 """
-PLOT_DATA Plot the variable from SWMF output.
+   plot_data(data, filehead, (var="rho", plotmode="contbar",
+      plotrange=[-Inf Inf -Inf Inf],
+      plotinterval=0.1))
+Plot the variable from SWMF output.
 
- plot_data(data.file1,filehead,"p','plotmode','contbar")
+`plot_data(data, filehead, var="p", plotmode="contbar")`
 
- plot_data(data.file1,filehead[1],"p','plotmode','grid")
+`plot_data(data, filehead, var="p", plotmode=grid)`
 
- plot_data(data.file1,filehead[1],func...
-    ,"plotmode','trimesh','plotrange',plotrange,'plotinterval",0.2)
+`plot_data(data, filehead, var, plotmode="trimesh",plotrange=plotrange,
+   plotinterval=0.2)`
 
-INPUTS:
-data:         original variable data
-filehead:     header information
-vars:         variable[s] for plotting
-plotmode:     (optional) type of plotting
-plotrange:    (optional) range of plotting, [xmin xmax ymin ymax]
-plotinterval: (optional) interval for interpolation
-multifigure:  logical value, 1 [default]for multifigure display()
-               0 for subplot()
-
-Right now this can only deal with 2D plots. 3D streamline plots
-are demonstrated with fieldline.m & streamlinec.m
-Hongyang Zhou; hyzhou@umich.edu ver1.0 06/14/2017
+...
+# Input arguments
+- `data::Data`: original variable data.
+- `filehead::Dict`: header information.
+- `vars::String`: variables for plotting.
+- `plotmode::String`: (optional) type of plotting ["cont","contbar"]...
+- `plotrange::Vector`: (optional) range of plotting.
+- `plotinterval`: (optional) interval for interpolation.
+- `cut`: (optional) select 2D cut plane from 3D outputs ["x","y","z"].
+- `CutPlaneIndex`: (optional)
+- `streamdensity`: (optional) streamline density.
+- `multifigure`: (optional) 1 for multifigure display, 0 for subplots.
+- `verbose`: (optional) display additional information.
+...
+Right now this can only deal with 2D plots or 3D cuts. Full 3D plots may be
+supported in the future.
+I want to make this function more powerful to include plotting derived
+variables, but it may not seem to be easy!
 """
-function plot_data( varargin )
+function plot_data(data::Data, filehead::Dict, vars::String; cut::String,
+   plotmode::String="contbar", plotrange::Vector{Float64}=[-Inf,Inf,-Inf,Inf],
+   plotinterval::Float64=0.1, multifigure::Bool=true, verbose::Bool=true)
 
+   x,w = data.x, data.w
+   plotmode = split(plotmode)
+   vars     = split(vars)
 
-## Input parameters parser
-p = inputParser
-defaultplotmode = "contbar"
-defaultplotrange = []
-defaultplotinterval = 1
-defaultmultifigure = 1
-defaultcut = ''
-defaultstreamdensity = 1
+   # I should check the size info of x to determine the type of plot!
+   Is3D = false
+   if Is3D && isempty(cut)
 
-addRequired[p,"data",@isstruct]
-addRequired[p,"filehead",@isstruct]
-addRequired[p,"func",@ischar]
-addParameter[p,"plotrange",defaultplotrange,@isnumeric]
-addParameter[p,"plotinterval",defaultplotinterval,@isnumeric]
-addParameter[p,"plotmode",defaultplotmode,@ischar]
-addParameter[p,"multifigure",defaultmultifigure,@islogical]
-addParameter[p,"cut",defaultcut,@ischar]
-addParameter[p,"CutPlaneIndex",[],@isnumeric]
-addParameter[p,"streamdensity",defaultstreamdensity,@isnumeric]
+   end
 
-parse[p,varargin[:]]
+   if verbose
+      println("============ PLOTTING PARAMETERS ===============")
+      println("wnames = $(filehead[:wnames])")
+      println("================================================")
+      # Display min & max for each variable
+      for var in vars
+         VarIndex_ = findfirst(x->x==var,filehead[:wnames])
+         println("Min & Max value for $(var) :$(minimum(w[:,1,VarIndex_])),
+         $(maximum(w[:,1,VarIndex_]))")
+      end
+   end
 
-# I need to choose which variables to plot; as well as
-# which plotmode to use. Think about it.
-# func = strsplit[p.Results.func]; # returns a cell array
-# plotmode = strsplit[p.Results.plotmode]; # returns a cell array
-func          = split[p.Results.func]
-plotmode      = split[p.Results.plotmode]
-plotrange     = p.Results.plotrange
-plotinterval  = p.Results.plotinterval
-multifigure   = p.Results.multifigure
-cut           = p.Results.cut;
-CutPlaneIndex = p.Results.CutPlaneIndex
-streamdensity = p.Results.streamdensity
-filehead      = p.Results.filehead
-data          = p.Results.data
-x = data.x; w = data.w
+   ## plot multiple variables with same plotmode
+   if length(plotmode) < length(vars)
+      [push!(plotmode, plotmode[i]) for i = 1:length(vars)-length(plotmode)]
+   end
 
-#if isempty(plotmode)
-#   plotmode = defaultplotmode
-#end
-
-if isempty(plotinterval)
-   plotinterval = defaultplotinterval
-end
-
-## Display parameters
-disp("======= CURRENT PLOTTING PARAMETERS =======")
-
-disp("======= PLOTTING PARAMETERS ===============")
-@sprintf("wnames =\n")
-@sprintf("%s ",filehead.wnames[:])
-@sprintf("\n======================================\n")
-
-# Gabor uses this to do the plotting interactively
-#read_plot_param
-
-# Get transformation parameters & calculate grid()
-# Matlab cannot do contour plots in generalized coordinates; at least
-# I don`t know how to do it. So I need a grid transformation whenever
-# the data is in non-Cartesian coordinates. Just for now I use a if
-# statement in the Plot loop to replace this.
-#read_transform_param[filehead.gencoord]
-
-# do_transform
-
-## Display min & max for each variable
-funcs = strsplit[p.Results.func,(", ',';")]
-for ifunc = 1:numel(funcs)
-   VarIndex_ = strcmpi(funcs[ifunc],filehead.wnames)
-   fprintf("Min & Max value for #s :#f, #f\n",funcs[ifunc]...
-      ,min(w[:,1,VarIndex_]),max(w[:,1,VarIndex_]))
-end
-
-## plot multiple variables with same plotmode
-if numel(plotmode) .< numel(func)
-   plotmode[end+1:numel(func)] = plotmode[1]
-end
-
-## Plot
-if isempty(cut)
-for ivar = 1:numel(func)
-   # I need to think of a better way to check. now this cannot identify the
-   # vars for streamline | quiver plotting!!!
-   #validatestring[func[ivar],filehead.wnames]
-   switch plotmode[ivar]
-      case {"mesh','meshbar','meshbarlog','cont','contf','contbar",...
-,            "contlog','contbarlog"}
-         # find the index for var in filehead.wnames
-         # I want to make this function more powerful to include
-         # plotting derived variables; but it may not seem to be easy!
-         VarIndex_ = strcmpi(func[ivar],filehead.wnames)
-         if VarIndex_==0
-            error("#s not found in output variables!",func[ivar])
-         end
-
-         if multifigure; figure; end
-
-         if filehead.gencoord # Generalized coordinates
-            # Reorganize & pick data in plot region only
-            # only for generalized coordinates
-            W = reshape(w[:,:,VarIndex_],[],1)
-            X = reshape(x[:,:,1],[],1)
-            Y = reshape(x[:,:,2],[],1)
-
-            if ~isempty(plotrange)
-               axis(plotrange)
-            else()
-               plotrange[1] = minimum(X)
-               plotrange[2] = maximum(X)
-               plotrange[3] = minimum(Y)
-               plotrange[4] = maximum(Y)
+   ## Plot
+   if !Is3D
+      for ivar = 1:length(vars)
+         # I need to think of a better way to check. now this cannot identify the
+         # vars for streamline | quiver plotting!!!
+         if plotmode[ivar] ∈ ("mesh","meshbar","meshbarlog","cont","contf",
+            "contbar","contlog","contbarlog")
+            # find the index for var in filehead.wnames
+            VarIndex_ = findfirst(x->x==vars[ivar],filehead[:wnames])
+            if VarIndex_ == 0
+               error("#s not found in output variables!",func[ivar])
             end
 
-            xyIndex = X .> plotrange[1] & X .< plotrange[2] & ...
-               Y .> plotrange[3] & Y .< plotrange[4]
-            X = X[xyIndex]
-            Y = Y[xyIndex]
-            W = W[xyIndex]
-            # Default is linear interpolation
-            F = scatteredInterpolant[X,Y,W]
-            [xq,yq] = meshgrid(plotrange[1]:plotinterval:plotrange[2]...
-               ,plotrange[3]:plotinterval:plotrange[4])
-            vq = F[xq,yq]
+            if multifigure figure end
 
-         else # Cartesian coordinates
-            if isempty(plotrange)
-               xq = x[:,:,1]
-               yq = x[:,:,2]
-               vq = w[:,:,VarIndex_]
-            else()
-               # Note: the number of points in each dimension can be
-               # changed to the proper number you like. Here I use the
-               # number of points in each dimension from filehead.
-               xlin = range(plotrange[1],plotrange[2],length=filehead.nx[1])
-               ylin = range(plotrange[3],plotrange[4],length=filehead.nx[2])
-               [xq,yq] = meshgrid(xlin,ylin)
-               # 3D? 2D? My understanding is that as long as the last index
-               # is 1; it is fine.
-               X = x[:,:,:,1]
-               Y = x[:,:,:,2]
-               # From ndgrid to meshgrid format()
-               X  = permute(X,[2 1 3])
-               Y  = permute(Y,[2 1 3])
-               W  = permute(w[:,:,VarIndex_],[2 1 3])
-               vq = interp2(X,Y,W,xq,yq)
+            if filehead[:gencoord] # Generalized coordinates
+               # Reorganize & pick data in plot region only
+               W = reshape(w[:,:,VarIndex_],:,1)
+               X = reshape(x[:,:,1],:,1)
+               Y = reshape(x[:,:,2],:,1)
+
+               if all(abs.(plotrange) .!== Inf)
+                  axis(plotrange)
+               else
+                  plotrange[1] = minimum(X)
+                  plotrange[2] = maximum(X)
+                  plotrange[3] = minimum(Y)
+                  plotrange[4] = maximum(Y)
+               end
+
+               xyIndex = X .> plotrange[1] & X .< plotrange[2] & Y .> plotrange[3] & Y .< plotrange[4]
+               X = X[xyIndex]
+               Y = Y[xyIndex]
+               W = W[xyIndex]
+               # Default is linear interpolation
+               F = scatteredInterpolant[X,Y,W]
+               xq, yq = meshgrid(plotrange[1]:plotinterval:plotrange[2],plotrange[3]:plotinterval:plotrange[4])
+               vq = F(xq,yq)
+
+            else # Cartesian coordinates
+               if all(abs.(plotrange) .== Inf)
+                  xq = x[:,:,1]
+                  yq = x[:,:,2]
+                  vq = w[:,:,VarIndex_]
+               else
+                  # Note: the number of points in each dimension can be
+                  # changed to the proper number you like. Here I use the
+                  # number of points in each dimension from filehead.
+                  xlin = range(plotrange[1],plotrange[2],length=filehead.nx[1])
+                  ylin = range(plotrange[3],plotrange[4],length=filehead.nx[2])
+                  xq, yq = meshgrid(xlin,ylin)
+                  # 3D? 2D? My understanding is that as long as the last index
+                  # is 1; it is fine.
+                  X = x[:,:,:,1]
+                  Y = x[:,:,:,2]
+                  # From ndgrid to meshgrid format()
+                  X  = permute(X,[2 1 3])
+                  Y  = permute(Y,[2 1 3])
+                  W  = permute(w[:,:,VarIndex_],[2 1 3])
+                  vq = interp2(X,Y,W,xq,yq)
+               end
             end
-         end
 
-         switch string[plotmode[ivar]]
-            case "contbar"
+            if plotmode[ivar] == "contbar"
                contourf(xq,yq,vq,20,"Edgecolor','none"); c = colorbar()
-               #c.Label.String = "[nPa]"
-               #ylabel(c,"$\mu A/m^2$','Interpreter','LateX")
-            case "cont"
+            elseif plotmode[ivar] == "cont"
                contour(xq,yq,vq,20)
-            case "contf"
+            elseif plotmode[ivar] == "contf"
                contourf(xq,yq,vq,20,"Edgecolor','none")
-            case "contlog"
+            elseif plotmode[ivar] == "contlog"
                contourf(xq,yq,log10(vq),20,"Edgecolor','none")
-            case "contbarlog"
+            elseif plotmode[ivar] == "contbarlog"
                contourf(xq,yq,log10(vq),20,"Edgecolor','none")
                c = colorbar()
-               c.Label.String = "log10"
-            case "meshbar"
+               #c.Label.String = "log10"
+            elseif plotmode[ivar] == "meshbar"
                mesh(xq,yq,vq); colorbar()
-            case "mesh"
+            elseif plotmode[ivar] == "mesh"
                mesh(xq,yq,vq)
-            case "meshbarlog"
-               mesh(xq,yq,log10(vq)); c= colorbar()
-               c.Label.String = "log10"
+            elseif plotmode[ivar] == "meshbarlog"
+               mesh(xq,yq,log10(vq)); c = colorbar()
+               #c.Label.String = "log10"
+            end
+
+            xlabel(filehead[:variables][1]); ylabel(filehead[:variables][2])
+            title(filehead[:wnames][VarIndex_])
+            dim = [0.125, 0.013, 0.2, 0.045]
+            #str = sprintf("it=$(filehead[:it]), time=$(filehead[:time])")
+            #annotation["textbox',dim,'String',str,'FitBoxToText','on","FontWeight','bold"]
+
+         elseif plotmode[ivar] ∈ ("trimesh","trisurf","tricont","tristream")
+            # triangular mesh()
+            figure()
+            # find the index for var in filehead.wnames
+            VarIndex_ = findfirst(x->x==vars[ivar],filehead[:wnames])
+            X = reshape(x[:,:,1],[],1)
+            Y = reshape(x[:,:,2],[],1)
+            W = reshape(w[:,:,VarIndex_],[],1)
+            if !isempty(plotrange)
+               xyIndex = X .> plotrange[1] & X .< plotrange[2] & Y .> plotrange[3] & Y .< plotrange[4];
+               X = X[xyIndex]
+               Y = Y[xyIndex]
+               W = W[xyIndex]
+
+               #             #tristream test
+               #             u = reshape(w[:,:,2],1,[])
+               #             v = reshape(w[:,:,4],1,[])
+               #             u = u[xyIndex]
+               #             v = v[xyIndex]
+            end
+            t = delaunayn([X, Y])
+            if plotmode[ivar] == "trimesh"
+               trimesh(t,X,Y,W)
+            elseif plotmode[ivar] == "trisurf"
+               trisurf(t,X,Y,W,EdgeColor="none")
+            elseif plotmode[ivar] == "tristream"
+               #             x0 = ones(7,1)*-3
+               #             y0 = [ -3 -2 -1 0 1 2 3]'
+               #             T = triangulation[t,x,y]
+               #             #triplot(T)
+               #             #FlowP=TriStream[T,u,v,x0,y0,1,2e3]
+               #             FlowP=TriStream[T,u,v,x0,y0]
+               #             PlotTriStream[FlowP,'r']
+            else
+               # I need to use patch to write my own tricont function!
+               #tricont[t,x,y,w]
+            end
+
+         elseif plotmode[ivar] ∈ ("stream","streamover")
+            if plotmode[ivar] == "streamover"
+               # Overplotting with more variables; keyword "over"
+            else
+               if multifigure figure() end
+            end
+
+            # find the index for var in filehead.wnames
+            VarStream  = split[func[ivar],';']
+            VarIndexS1 = strcmpi(VarStream[1],filehead.wnames)
+            VarIndexS2 = strcmpi(VarStream[2],filehead.wnames)
+
+            if filehead.gencoord # Generalized coordinates
+               F1 = scatteredInterpolant(x[:,1,1],x[:,1,2],w[:,1,VarIndexS1])
+               v1 = F1(xq,yq)
+               F2 = scatteredInterpolant(x[:,1,1],x[:,1,2],w[:,1,VarIndexS2])
+               v2 = F2(xq,yq)
+            else # Cartesian coordinates
+               # 3D? 2D?
+               X = x[:,:,:,1]
+               Y = x[:,:,:,2]
+               F1 = griddedInterpolant(X,Y,w[:,:,1,VarIndexS1])
+               v1 = F1(xq,yq)
+               F2 = griddedInterpolant(X,Y,w[:,:,1,VarIndexS2])
+               v2 = F2(xq,yq)
+            end
+
+            # Modify the density of streamlines if needed
+            s = streamslice(xq,yq,v1,v2,streamdensity,"linear")
+
+            for is=1:length(s)
+               s[is].Color = "w"; # Change streamline color to white
+               s[is].LineWidth = 1.5
+            end
+
+            if !any(abs.(plotrange) .== Inf) axis(plotrange) end
+
+         elseif plotmode[ivar] ∈ ("quiver","quiverover")
+            if plotmode[ivar] == "quiverover"
+               # Overplotting with more variables; keyword "over"
+            else
+               if multifigure figure end
+            end
+
+            # find the index for var in filehead.wnames
+            VarQuiver  = split(func[ivar],';')
+            VarIndexS1 = findfirst(x->x==VarQuiver[1], filehead[:wnames])
+            VarIndexS2 = findfirst(x->x==VarQuiver[2], filehead[:wnames])
+
+            q = quiver(x[:,1,1],x[:,1,2],w[:,1,VarIndexS1],w[:,1,VarIndexS2])
+            #q.Color = 'w'
+            q.AutoScaleFactor = 0.5
+            if !any(abs.(plotrange) .== Inf) axis(plotrange) end
+
+         elseif plotmode[ivar] == "grid"    # Grid plot()
+            figure()
+            scatter(x[:,1,1],x[:,1,2],".",LineWidth=0.1)
+
+            if !any(abs.(plotrange) .== Inf) axis(plotrange) end
+
+            xlabel(filehead.variables[1]); ylabel(filehead.variables[2])
+            title("Grid illustration")
+            dim = [0.125, 0.013, 0.1, 0.046]
+            #str = sprintf("it=$(filehead[:it])")
+            #annotation["textbox',dim,'String',str,'FitBoxToText','on"]
+         else
+            error("unknown plot mode: $(plotmode[ivar])")
          end
 
-         xlabel(filehead.variables[1]); ylabel(filehead.variables[2])
-         title(filehead.wnames[VarIndex_])
-         dim = [0.125 0.013 0.2 0.045]
-         str = sprintf("it=$(filehead[:it]), time=%(filehead[:time])")
-         annotation["textbox',dim,'String',str,'FitBoxToText','on",...
-            "FontWeight','bold"]
-
-      case ("trimesh','trisurf','tricont','tristream") # triangular mesh()
-         figure()
-         # find the index for var in filehead.wnames
-         VarIndex_ = strcmpi(func[ivar],filehead.wnames)
-         X = reshape(x[:,:,1],[],1)
-         Y = reshape(x[:,:,2],[],1)
-         W = reshape(w[:,:,VarIndex_],[],1)
-         if ~isempty(plotrange)
-            xyIndex = X .> plotrange[1] & X .< plotrange[2] ...
-                    & Y .> plotrange[3] & Y .< plotrange[4];
-            X = X[xyIndex]
-            Y = Y[xyIndex]
-            W = W[xyIndex]
-
-#             #tristream test
-#             u = reshape(w[:,:,2],1,[])
-#             v = reshape(w[:,:,4],1,[])
-#             u = u[xyIndex]
-#             v = v[xyIndex]
-         end
-         t = delaunayn([X, Y])
-         if string[plotmode[ivar]] .== "trimesh"
-            trimesh(t,X,Y,W)
-         elseif string[plotmode[ivar]] .== "trisurf"
-            trisurf(t,X,Y,W,"EdgeColor','none")
-         elseif string[plotmode[ivar]] .== "tristream"
-#             x0 = ones(7,1)*-3
-#             y0 = [ -3 -2 -1 0 1 2 3]'
-#             T = triangulation[t,x,y]
-#             #triplot(T)
-#             #FlowP=TriStream[T,u,v,x0,y0,1,2e3]
-#             FlowP=TriStream[T,u,v,x0,y0]
-#             PlotTriStream[FlowP,'r']
-         else()
-            # I need to use patch to write my own tricont function!
-            #tricont[t,x,y,w]
-         end
-
-      case ("stream','streamover")
-         # stream is not working!!! Fix it!
-         if strcmp(plotmode[ivar],"streamover")
-            # Overplotting with more variables; keyword "over"
-            hold on
-         else()
-            if multifigure; figure; end
-         end
-
-         # find the index for var in filehead.wnames
-         VarStream  = split[func[ivar],';']
-         VarIndexS1 = strcmpi(VarStream[1],filehead.wnames)
-         VarIndexS2 = strcmpi(VarStream[2],filehead.wnames)
-
-         if filehead.gencoord # Generalized coordinates
-            F1 = scatteredInterpolant[x[:,1,1],x[:,1,2],w[:,1,VarIndexS1]]
-            v1 = F1[xq,yq]
-            F2 = scatteredInterpolant[x[:,1,1],x[:,1,2],w[:,1,VarIndexS2]]
-            v2 = F2[xq,yq]
-         else # Cartesian coordinates
-            # 3D? 2D?
-            X = x[:,:,:,1]
-            Y = x[:,:,:,2]
-            F1 = griddedInterpolant[X,Y,w[:,:,1,VarIndexS1]]
-            v1 = F1[xq,yq]
-            F2 = griddedInterpolant[X,Y,w[:,:,1,VarIndexS2]]
-            v2 = F2[xq,yq];
-         end
-
-         # Modify the density of streamlines if needed
-         s = streamslice(xq,yq,v1,v2,streamdensity,"linear")
-
-         for is=1:numel(s)
-            s[is].Color = 'w'; # Change streamline color to white
-            s[is].LineWidth = 1.5
-         end
-
-         if ~isempty(plotrange) ;axis(plotrange); end
-
-      case ("quiver','quiverover")
-         if strcmp(plotmode[ivar],"quiverover")
-            # Overplotting with more variables; keyword "over"
-            hold on
-         else()
-            if multifigure; figure; end
-         end
-
-         # find the index for var in filehead.wnames
-         VarQuiver  = split[func[ivar],';']
-         VarIndexS1 = strcmpi(VarQuiver[1],filehead.wnames)
-         VarIndexS2 = strcmpi(VarQuiver[2],filehead.wnames)
-
-         q = quiver(x[:,1,1],x[:,1,2],w[:,1,VarIndexS1],w[:,1,VarIndexS2])
-         #q.Color = 'w'
-         q.AutoScaleFactor = 0.5
-         if ~isempty(plotrange); axis(plotrange); end
-
-      case "grid"    # Grid plot()
-         figure()
-         scatter(x[:,1,1],x[:,1,2],".','LineWidth",0.1)
-
-         if ~isempty(plotrange)
-            axis(plotrange)
-         end
-
-         xlabel(filehead.variables[1]); ylabel(filehead.variables[2])
-         title("Grid illustration")
-         dim = [0.125 0.013 0.1 0.046]
-         str = sprintf("it=$(filehead[:it]")
-         annotation["textbox',dim,'String',str,'FitBoxToText','on"]
-         #drawnow()
-      otherwise()
-         error("unknown plot mode: #s",plotmode[ivar])
-   end
-
-   # There`s a problem with this two lines: if there are several figures;
-   # then only the last one has the expected font size! Originally this was
-   # at the bottom for loop end; but I moved it upward inside the inner
-   # loop.
-   ax = gca()
-   ax.FontSize = 14; ax.LineWidth = 1.2
-end
-
-else # 2D cut from 3D output; now only for Cartesian output
-   for ivar = 1:numel(func)
-      X = permute(x[:,:,:,1],[2 1 3])
-      Y = permute(x[:,:,:,2],[2 1 3])
-      Z = permute(x[:,:,:,3],[2 1 3])
-
-      VarIndex_ = strcmpi(func[ivar],filehead.wnames)
-      if VarIndex_==0
-         error("#s not found in output variables!",func[ivar])
       end
 
-      W  = permute(w[:,:,:,VarIndex_],[2 1 3])
+   else # 2D cut from 3D output; now only for Cartesian output
+      for ivar = 1:length(vars)
+         X = permute(x[:,:,:,1],[2 1 3])
+         Y = permute(x[:,:,:,2],[2 1 3])
+         Z = permute(x[:,:,:,3],[2 1 3])
 
-      if multifigure; figure; end
+         VarIndex_ = findfirst(x->x==vars[ivar],filehead[:wnames])
+         if VarIndex_ == 0
+            error("$(func[ivar]) not found in output variables!")
+         end
 
-      switch cut
-         case 'x'
+         W  = permute(w[:,:,:,VarIndex_],[2 1 3])
+
+         if multifigure figure() end
+
+         if cut == "x"
             cut1 = squeeze(X[:,CutPlaneIndex,:])
             cut2 = squeeze(Z[:,CutPlaneIndex,:])
             W    = squeeze(W[:,CutPlaneIndex,:])
-         case 'y'
+         elseif cut ==  "y"
             cut1 = squeeze(X[CutPlaneIndex,:,:])
             cut2 = squeeze(Z[CutPlaneIndex,:,:])
             W    = squeeze(W[CutPlaneIndex,:,:])
-         case 'z'
+         elseif cut == "z"
             cut1 = squeeze(X[:,:,CutPlaneIndex])
             cut2 = squeeze(Y[:,:,CutPlaneIndex])
             W    = squeeze(W[:,:,CutPlaneIndex])
+         end
       end
+
+      cut1, cut2, W = subsurface(cut1, cut2, W, plotrange)
+
+      contourf(cut1,cut2,W)
+      colorbar;# axis equal
+
+      if cut == "x"
+         xlabel("y"); ylabel("z")
+      elseif cut == "y"
+         xlabel("x"); ylabel("z")
+      elseif cut =="z"
+         xlabel("x"); ylabel("y")
+      end
+
    end
 
-   [cut1, cut2, W] = subsurface(cut1, cut2, W, plotrange)
+end
 
-   contourf(cut1,cut2,W)
-   colorbar; axis equal
+"""
+   subsurface(x, y, data, limits)
+Extract subset of surface dataset.
+This is a simplified version of subvolume.
+"""
+function subsurface(x, y, data::Data, limits)
 
-   switch cut
-      case 'x'
-            xlabel("y'); ylabel('z")
-      case 'y'
-            xlabel("x'); ylabel('z")
-      case 'z'
-            xlabel("x'); ylabel('y")
+   if length(limits)!=4
+      error("Reduction must be [xmin xmax ymin ymax]")
    end
 
-   ax = gca()
-   ax.FontSize = 14; ax.LineWidth = 1.2
+   if limits[1] > limits[2]
+      error("subvolume:InvalidReductionXRange")
+   end
+   if limits[3] > limits[4]
+      error("subvolume:InvalidReductionYRange")
+   end
+
+   sz = size(data)
+
+   hx = x[:,1]
+   hy = y[1,:]
+
+   if isnan(limits[1])  limits[1] = minimum(hx) end
+   if isnan(limits[3])  limits[3] = minimum(hy) end
+   if isnan(limits[2])  limits[2] = maximum(hx) end
+   if isnan(limits[4])  limits[4] = maximum(hy) end
+
+   xind = findfirst(limits[1]<=hx & hx<=limits[2])
+   yind = findfirst(limits[3]<=hy & hy<=limits[4])
+
+   newdata = subdata(data, xind, yind, sz)
+
+   newx = x[xind, yind]
+   newy = y[xind, yind]
+
+   return  newx, newy, newdata
+end
+
+"""
+   subdata(data, xind, yind, sz)
+"""
+function subdata(data, xind, yind, sz)
+
+   newdata = data[xind, yind]
+   newsz = size(newdata)
+
+   if length(sz) > 2
+      newdata = reshape(newdata, [newsz[1:3] sz[4:end]])
+   end
+
+   return newdata
 end
 
 end
-
-#####################################################
-function [newx, newy, newdata] = subsurface(varargin)
-#SUBSURFACE Extract subset of surface dataset.
-#  This is a simplified version of subvolume.
-
-x      = varargin[1]
-y      = varargin[2]
-data   = varargin[3]
-limits = varargin[4]
-
-if numel(limits)~=4
-  error("Reduction must be [xmin xmax ymin ymax]")
-end
-
-if limits[1] .> limits[2]
-  error(message["MATLAB:subvolume:InvalidReductionXRange"])
-end
-if limits[3] .> limits[4]
-  error(message["MATLAB:subvolume:InvalidReductionYRange"])
-end
-
-sz = size(data)
-
-hx = x[:,1]
-hy = y[1,:]
-
-if isnan(limits[1]),  limits[1] = minimum(hx); end
-if isnan(limits[3]),  limits[3] = minimum(hy); end
-if isnan(limits[2]),  limits[2] = maximum(hx); end
-if isnan(limits[4]),  limits[4] = maximum(hy); end
-
-xind = find(limits[1]<=hx & hx<=limits[2])
-yind = find(limits[3]<=hy & hy<=limits[4])
-
-newdata = subdata(data, xind, yind, sz)
-
-newx = x[xind, yind]
-newy = y[xind, yind]
-
-
-######################################################
-function newdata = subdata(data, xind, yind, sz)
-newdata = data[xind, yind]
-newsz = size(newdata)
-if length(sz)>2
-  newdata = reshape(newdata, [newsz[1:3] sz[4:end]])
-end
-
-end
-
-end
-end
-
-=#
