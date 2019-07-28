@@ -6,7 +6,6 @@ module BATSRUS
 export readdata, plotdata, plotlogdata
 
 using Glob
-using MATLAB
 using PyPlot
 
 struct Data
@@ -268,7 +267,7 @@ function getfilehead(fileID::IOStream, type::String, iargout::Int=1)
       head[:ndim] = parse(Int8,line[3])
       head[:neqpar] = parse(Int32,line[4])
       head[:nw] = parse(Int8,line[5])
-      head[:gencoord] = head[:ndim] .< 0
+      head[:gencoord] = head[:ndim] < 0
       head[:ndim] = abs(head[:ndim])
       line = parse(Int64, readline(fileID))
       head[:nx] = line
@@ -1134,5 +1133,14 @@ function subdata(data, xind, yind, sz)
 
    return newdata
 end
+
+"""
+   animatedata(data, filehead)
+Generate animations from data.
+"""
+function animatedata(data, filehead)
+
+end
+
 
 end
