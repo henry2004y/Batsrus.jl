@@ -3,7 +3,7 @@ module BATSRUS
 #
 # Hongyang Zhou, hyzhou@umich.edu 07/24/2019
 
-export readdata
+export readdata, plotdata, plotlogdata
 
 using Glob
 using MATLAB
@@ -732,7 +732,7 @@ function showhead(file::FileList, ifile::Int, filehead::Dict)
 end
 
 """
-   plot_log_data(data, filehead, vars, (plotmode="line", plotrange=[-Inf,Inf]))
+   plotlogdata(data, filehead, vars, (plotmode="line", plotrange=[-Inf,Inf]))
 Plot information from log file.
 ...
 # Input arguments
@@ -743,7 +743,7 @@ Plot information from log file.
 - `plotrange::Vector`: (optional) range of plotting.
 ...
 """
-function plot_log_data(data::Data, filehead::Dict, vars::String;
+function plotlogdata(data::Data, filehead::Dict, vars::String;
    plotmode::String="line", plotrange::Vector=[-Inf,Inf] )
 
    vars     = split(vars)
@@ -761,7 +761,7 @@ function plot_log_data(data::Data, filehead::Dict, vars::String;
       elseif plotmode[ivar] == "scatter"
          scatter(data[:,1],data[:,VarIndex_])
       else
-         error("unknown plot mode for plot_log_data!")
+         error("unknown plot mode for plotlogdata!")
       end
       xlabel(filehead[:variables][1])
       ylabel(filehead[:variables][VarIndex_])
@@ -773,16 +773,16 @@ end
 
 
 """
-   plot_data(data, filehead, (var="rho", plotmode="contbar",
+   plotdata(data, filehead, (var="rho", plotmode="contbar",
       plotrange=[-Inf Inf -Inf Inf],
       plotinterval=0.1))
 Plot the variable from SWMF output.
 
-`plot_data(data, filehead, var="p", plotmode="contbar")`
+`plotdata(data, filehead, var="p", plotmode="contbar")`
 
-`plot_data(data, filehead, var="p", plotmode=grid)`
+`plotdata(data, filehead, var="p", plotmode=grid)`
 
-`plot_data(data, filehead, var, plotmode="trimesh",plotrange=plotrange,
+`plotdata(data, filehead, var, plotmode="trimesh",plotrange=plotrange,
    plotinterval=0.2)`
 
 ...
@@ -804,7 +804,7 @@ supported in the future.
 I want to make this function more powerful to include plotting derived
 variables, but it may not seem to be easy!
 """
-function plot_data(data::Data, filehead::Dict, vars::String; cut::String,
+function plotdata(data::Data, filehead::Dict, vars::String; cut::String,
    plotmode::String="contbar", plotrange::Vector{Float64}=[-Inf,Inf,-Inf,Inf],
    plotinterval::Float64=0.1, multifigure::Bool=true, verbose::Bool=true)
 
