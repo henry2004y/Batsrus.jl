@@ -1,4 +1,4 @@
-module BATSRUS
+module VisAna
 # Reimplementation of BATSRUS data reader in Julia
 #
 # Hongyang Zhou, hyzhou@umich.edu 07/24/2019
@@ -742,17 +742,19 @@ Plot information from log file.
 - `plotrange::Vector`: (optional) range of plotting.
 ...
 """
-function plotlogdata(data::Data, filehead::Dict, vars::String;
+function plotlogdata(data::Data, filehead::Dict, func::String;
    plotmode::String="line", plotrange::Vector=[-Inf,Inf] )
 
-   vars     = split(vars)
+   # This is intended for plotting log data, not data!
+
+   vars     = split(func)
    plotmode = split(plotmode)
 
    for (ivar, var) in enumerate(vars)
       # find the index for var in filehead.variables
       VarIndex_ = findfirst(x->x==var, filehead[:variables])
 
-      isnothing(VarIndex) &&
+      isnothing(VarIndex_) &&
       error("unknown plotting variable $(func[ivar])!")
       figure()
       if plotmode[ivar] == "line"
@@ -765,23 +767,22 @@ function plotlogdata(data::Data, filehead::Dict, vars::String;
       xlabel(filehead[:variables][1])
       ylabel(filehead[:variables][VarIndex_])
       title("log file data")
-      #set(gca,"FontSize",14)
    end
 
 end
 
 
 """
-   plotdata(data, filehead, (var="rho", plotmode="contbar",
+   plotdata(data, filehead, (func="rho", plotmode="contbar",
       plotrange=[-Inf Inf -Inf Inf],
       plotinterval=0.1))
 Plot the variable from SWMF output.
 
-`plotdata(data, filehead, var="p", plotmode="contbar")`
+`plotdata(data, filehead, "p", plotmode="contbar")`
 
-`plotdata(data, filehead, var="p", plotmode=grid)`
+`plotdata(data, filehead, "p", plotmode=grid)`
 
-`plotdata(data, filehead, var, plotmode="trimesh",plotrange=plotrange,
+`plotdata(data, filehead, func, plotmode="trimesh",plotrange=plotrange,
    plotinterval=0.2)`
 
 ...
@@ -803,17 +804,17 @@ supported in the future.
 I want to make this function more powerful to include plotting derived
 variables, but it may not seem to be easy!
 """
-function plotdata(data::Data, filehead::Dict, vars::String; cut::String,
+function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
    plotmode::String="contbar", plotrange::Vector{Float64}=[-Inf,Inf,-Inf,Inf],
    plotinterval::Float64=0.1, multifigure::Bool=true, verbose::Bool=true)
 
    x,w = data.x, data.w
    plotmode = split(plotmode)
-   vars     = split(vars)
+   vars     = split(func)
+   ndim     = filehead[:ndim]
 
    # I should check the size info of x to determine the type of plot!
-   Is3D = false
-   if Is3D && isempty(cut)
+   if ndim == 3 && isempty(cut)
 
    end
 
@@ -824,8 +825,13 @@ function plotdata(data::Data, filehead::Dict, vars::String; cut::String,
       # Display min & max for each variable
       for var in vars
          VarIndex_ = findfirst(x->x==var,filehead[:wnames])
-         println("Min & Max value for $(var) :$(minimum(w[:,1,VarIndex_])),
-         $(maximum(w[:,1,VarIndex_]))")
+         if ndim == 1
+            println("Min & Max value for $(var) :$(minimum(w[:,VarIndex_]))",
+               ", $(maximum(w[:,VarIndex_]))")
+         elseif ndim == 2
+            println("Min & Max value for $(var) :$(minimum(w[:,:,VarIndex_]))",
+               ", $(maximum(w[:,:,VarIndex_]))")
+         end
       end
    end
 
@@ -835,19 +841,29 @@ function plotdata(data::Data, filehead::Dict, vars::String; cut::String,
    end
 
    ## Plot
-   if !Is3D
-      for ivar = 1:length(vars)
+   if ndim == 1
+      for (ivar,var) in enumerate(vars)
+         VarIndex_ = findfirst(x->x==var,filehead[:wnames])
+         multifigure && figure()
+         if plotmode[ivar] !== "scatter"
+            plot(x,w[:,VarIndex_])
+         else
+            scatter(x,w[:,VarIndex_])
+         end
+         xlabel("x")
+         ylabel("$(var)")
+      end
+   elseif ndim == 2
+      for (ivar,var) in enumerate(vars)
          # I need to think of a better way to check. now this cannot identify the
          # vars for streamline | quiver plotting!!!
          if plotmode[ivar] ∈ ("mesh","meshbar","meshbarlog","cont","contf",
             "contbar","contlog","contbarlog")
-            # find the index for var in filehead.wnames
-            VarIndex_ = findfirst(x->x==vars[ivar],filehead[:wnames])
-            if VarIndex_ == 0
-               error("#s not found in output variables!",func[ivar])
-            end
 
-            if multifigure figure end
+            VarIndex_ = findfirst(x->x==var,filehead[:wnames])
+            isempty(VarIndex_) && error("$(var) not found in header variables!")
+
+            if multifigure figure() end
 
             if filehead[:gencoord] # Generalized coordinates
                # Reorganize & pick data in plot region only
@@ -1003,7 +1019,7 @@ function plotdata(data::Data, filehead::Dict, vars::String; cut::String,
             if plotmode[ivar] == "quiverover"
                # Overplotting with more variables; keyword "over"
             else
-               if multifigure figure end
+               if multifigure figure() end
             end
 
             # find the index for var in filehead.wnames
