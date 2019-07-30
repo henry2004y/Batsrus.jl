@@ -7,6 +7,7 @@ export readdata, plotdata, plotlogdata
 
 using Glob
 using PyPlot
+using Printf
 
 struct Data
    x::Array{Float64}
@@ -844,26 +845,28 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
    if ndim == 1
       for (ivar,var) in enumerate(vars)
          VarIndex_ = findfirst(x->x==var,filehead[:wnames])
-         multifigure && figure()
-         if plotmode[ivar] !== "scatter"
+         if multifigure fig, ax = subplots() end
+         if !occursin("scatter",plotmode[ivar])
             plot(x,w[:,VarIndex_])
          else
             scatter(x,w[:,VarIndex_])
+         end
+         if occursin("grid",plotmode[ivar])
+            grid(true)
          end
          xlabel("x")
          ylabel("$(var)")
       end
    elseif ndim == 2
       for (ivar,var) in enumerate(vars)
+         if multifigure fig, ax = subplots() end
          # I need to think of a better way to check. now this cannot identify the
          # vars for streamline | quiver plotting!!!
-         if plotmode[ivar] ∈ ("mesh","meshbar","meshbarlog","cont","contf",
-            "contbar","contlog","contbarlog")
+         if plotmode[ivar] ∈ ("surf","surfbar","surfbarlog","cont","contbar",
+            "contlog","contbarlog")
 
             VarIndex_ = findfirst(x->x==var,filehead[:wnames])
             isempty(VarIndex_) && error("$(var) not found in header variables!")
-
-            if multifigure figure() end
 
             if filehead[:gencoord] # Generalized coordinates
                # Reorganize & pick data in plot region only
@@ -913,36 +916,38 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
                end
             end
 
+            # I may need to use pattern match instead for a more robust method!
             if plotmode[ivar] == "contbar"
-               contourf(xq,yq,vq,20,"Edgecolor','none"); c = colorbar()
+               contourf(xq,yq,vq)
             elseif plotmode[ivar] == "cont"
-               contour(xq,yq,vq,20)
-            elseif plotmode[ivar] == "contf"
-               contourf(xq,yq,vq,20,"Edgecolor','none")
+               contour(xq,yq,vq)
             elseif plotmode[ivar] == "contlog"
-               contourf(xq,yq,log10(vq),20,"Edgecolor','none")
+               contour(xq,yq,vq,locator=matplotlib.ticker.LogLocator())
             elseif plotmode[ivar] == "contbarlog"
-               contourf(xq,yq,log10(vq),20,"Edgecolor','none")
-               c = colorbar()
-               #c.Label.String = "log10"
-            elseif plotmode[ivar] == "meshbar"
-               mesh(xq,yq,vq); colorbar()
-            elseif plotmode[ivar] == "mesh"
-               mesh(xq,yq,vq)
-            elseif plotmode[ivar] == "meshbarlog"
-               mesh(xq,yq,log10(vq)); c = colorbar()
-               #c.Label.String = "log10"
+               contourf(xq,yq,vq,locator=matplotlib.ticker.LogLocator())
+            elseif plotmode[ivar] == "surfbar"
+               plot_surface(xq,yq,vq)
+            elseif plotmode[ivar] == "surfbarlog"
+               plot_surface(xq,yq,vq,locator=matplotlib.ticker.LogLocator())
             end
+
+            occursin("bar", plotmode[ivar]) && colorbar()
+            #occursin("log", plotmode[ivar]) && colorbar()
 
             xlabel(filehead[:variables][1]); ylabel(filehead[:variables][2])
             title(filehead[:wnames][VarIndex_])
             dim = [0.125, 0.013, 0.2, 0.045]
-            #str = sprintf("it=$(filehead[:it]), time=$(filehead[:time])")
-            #annotation["textbox',dim,'String',str,'FitBoxToText','on","FontWeight','bold"]
+            str = @sprintf "it=%d, time=%4.2f" filehead[:it] filehead[:time]
+            at = matplotlib.offsetbox.AnchoredText(str,
+                       loc="lower left", prop=Dict("size"=>8), frameon=true,
+                       bbox_to_anchor=(0., 1.),
+                       bbox_transform=ax.transAxes)
+            at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
+            ax.add_artist(at)
 
          elseif plotmode[ivar] ∈ ("trimesh","trisurf","tricont","tristream")
             # triangular mesh()
-            figure()
+            if multifigure fig, ax = subplots() end
             # find the index for var in filehead.wnames
             VarIndex_ = findfirst(x->x==vars[ivar],filehead[:wnames])
             X = reshape(x[:,:,1],[],1)
@@ -982,7 +987,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
             if plotmode[ivar] == "streamover"
                # Overplotting with more variables; keyword "over"
             else
-               if multifigure figure() end
+               if multifigure fig, ax = subplots() end
             end
 
             # find the index for var in filehead.wnames
@@ -1019,7 +1024,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
             if plotmode[ivar] == "quiverover"
                # Overplotting with more variables; keyword "over"
             else
-               if multifigure figure() end
+               if multifigure fig, ax = subplots() end
             end
 
             # find the index for var in filehead.wnames
@@ -1033,7 +1038,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
             if !any(abs.(plotrange) .== Inf) axis(plotrange) end
 
          elseif plotmode[ivar] == "grid"    # Grid plot()
-            figure()
+            if multifigure fig, ax = subplots() end
             scatter(x[:,1,1],x[:,1,2],".",LineWidth=0.1)
 
             if !any(abs.(plotrange) .== Inf) axis(plotrange) end
@@ -1041,8 +1046,13 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
             xlabel(filehead.variables[1]); ylabel(filehead.variables[2])
             title("Grid illustration")
             dim = [0.125, 0.013, 0.1, 0.046]
-            #str = sprintf("it=$(filehead[:it])")
-            #annotation["textbox',dim,'String',str,'FitBoxToText','on"]
+            str = @sprintf "it=%d, time=%4.2f" filehead[:it] filehead[:time]
+            at = matplotlib.offsetbox.AnchoredText(str,
+                       loc="lower left", prop=Dict("size"=>8), frameon=true,
+                       bbox_to_anchor=(0., 1.),
+                       bbox_transform=ax.transAxes)
+            at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
+            ax.add_artist(at)
          else
             error("unknown plot mode: $(plotmode[ivar])")
          end
@@ -1050,19 +1060,19 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
       end
 
    else # 2D cut from 3D output; now only for Cartesian output
-      for ivar = 1:length(vars)
+      for (ivar,var) in enumerate(vars)
          X = permute(x[:,:,:,1],[2 1 3])
          Y = permute(x[:,:,:,2],[2 1 3])
          Z = permute(x[:,:,:,3],[2 1 3])
 
-         VarIndex_ = findfirst(x->x==vars[ivar],filehead[:wnames])
+         VarIndex_ = findfirst(x->x==var,filehead[:wnames])
          if VarIndex_ == 0
             error("$(func[ivar]) not found in output variables!")
          end
 
          W  = permute(w[:,:,:,VarIndex_],[2 1 3])
 
-         if multifigure figure() end
+         if multifigure fig, ax = subplots() end
 
          if cut == "x"
             cut1 = squeeze(X[:,CutPlaneIndex,:])
