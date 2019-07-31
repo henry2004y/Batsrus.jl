@@ -8,6 +8,7 @@ export readdata, plotdata, plotlogdata
 using Glob
 using PyPlot
 using Printf
+using PyCall
 
 struct Data
    x::Array{Float64}
@@ -774,14 +775,14 @@ end
 
 
 """
-   plotdata(data, filehead, (func="rho", plotmode="contbar",
+   plotdata(data, filehead, func, (plotmode="contbar",
       plotrange=[-Inf Inf -Inf Inf],
       plotinterval=0.1))
 Plot the variable from SWMF output.
 
 `plotdata(data, filehead, "p", plotmode="contbar")`
 
-`plotdata(data, filehead, "p", plotmode=grid)`
+`plotdata(data, filehead, "p", plotmode="grid")`
 
 `plotdata(data, filehead, func, plotmode="trimesh",plotrange=plotrange,
    plotinterval=0.2)`
@@ -877,11 +878,12 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
             "contlog","contbarlog")
 
             if filehead[:gencoord] # Generalized coordinates
-               # Reorganize & pick data in plot region only
-               W = reshape(w[:,:,VarIndex_],:,1)
-               X = reshape(x[:,:,1],:,1)
-               Y = reshape(x[:,:,2],:,1)
+               # Use Interpolations package instead!!!
 
+
+               X = vec(x[:,:,1])
+               Y = vec(x[:,:,2])
+               W = vec(w[:,:,VarIndex_])
                if all(abs.(plotrange) .!== Inf)
                   axis(plotrange)
                else
@@ -890,88 +892,82 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
                   plotrange[3] = minimum(Y)
                   plotrange[4] = maximum(Y)
                end
-
-               xyIndex = X .> plotrange[1] & X .< plotrange[2] & Y .> plotrange[3] & Y .< plotrange[4]
-               X = X[xyIndex]
-               Y = Y[xyIndex]
-               W = W[xyIndex]
-               # Default is linear interpolation
-               F = scatteredInterpolant(X,Y,W)
-               xq, yq = meshgrid(plotrange[1]:plotinterval:plotrange[2],plotrange[3]:plotinterval:plotrange[4])
-               vq = F(xq,yq)
-
+               # Create grid values first.
+               xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
+               yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
+               # Perform linear interpolation of the data (x,y)
+               # on a grid defined by (xi,yi)
+               triang = matplotlib.tri.Triangulation(X,Y)
+               interpolator = matplotlib.tri.LinearTriInterpolator(triang, W)
+               np = pyimport("numpy")
+               Xi, Yi = np.meshgrid(xi, yi)
+               wi = interpolator(Xi, Yi)
             else # Cartesian coordinates
                if all(abs.(plotrange) .== Inf)
-                  xq = x[:,:,1]
-                  yq = x[:,:,2]
-                  vq = w[:,:,VarIndex_]
+                  xi = x[:,:,1]
+                  yi = x[:,:,2]
+                  wi = w[:,:,VarIndex_]
                else
-                  # Note: the number of points in each dimension can be
-                  # changed to the proper number you like. Here I use the
-                  # number of points in each dimension from filehead.
-                  xlin = range(plotrange[1],plotrange[2],length=filehead.nx[1])
-                  ylin = range(plotrange[3],plotrange[4],length=filehead.nx[2])
-                  xq, yq = meshgrid(xlin,ylin)
-                  # 3D? 2D? My understanding is that as long as the last index
-                  # is 1; it is fine.
-                  X = x[:,:,:,1]
-                  Y = x[:,:,:,2]
-                  # From ndgrid to meshgrid format()
-                  X  = permute(X,[2 1 3])
-                  Y  = permute(Y,[2 1 3])
-                  W  = permute(w[:,:,VarIndex_],[2 1 3])
-                  vq = interp2(X,Y,W,xq,yq)
+                  X = vec(x[:,:,1])
+                  Y = vec(x[:,:,2])
+                  W = vec(w[:,:,VarIndex_])
+                  plotrange[1] = minimum(X)
+                  plotrange[2] = maximum(X)
+                  plotrange[3] = minimum(Y)
+                  plotrange[4] = maximum(Y)
+                  xi = range(plotrange[1],plotrange[2],length=filehead.nx[1])
+                  yi = range(plotrange[3],plotrange[4],length=filehead.nx[2])
+
+                  triang = matplotlib.tri.Triangulation(X, Y)
+                  interpolator = matplotlib.tri.LinearTriInterpolator(triang, W)
+                  np = pyimport("numpy")
+                  Xi, Yi = np.meshgrid(xi, yi)
+                  wi = interpolator(Xi, Yi)
                end
             end
 
             # I may need to use pattern match instead for a more robust method!
             if plotmode[ivar] == "contbar"
-               contourf(xq,yq,vq)
+               contourf(xi,yi,wi)
             elseif plotmode[ivar] == "cont"
-               contour(xq,yq,vq)
+               contour(xi,yi,wi)
             elseif plotmode[ivar] == "contlog"
-               contour(xq,yq,vq,locator=matplotlib.ticker.LogLocator())
+               contour(xi,yi,wi,locator=matplotlib.ticker.LogLocator())
             elseif plotmode[ivar] == "contbarlog"
-               contourf(xq,yq,vq,locator=matplotlib.ticker.LogLocator())
+               contourf(xi,yi,wi,locator=matplotlib.ticker.LogLocator())
             elseif plotmode[ivar] == "surfbar"
-               plot_surface(xq,yq,vq)
+               plot_surface(xi,yi,wi)
             elseif plotmode[ivar] == "surfbarlog"
-               plot_surface(xq,yq,vq,locator=matplotlib.ticker.LogLocator())
+               plot_surface(xi,yi,wi,locator=matplotlib.ticker.LogLocator())
             end
 
             occursin("bar", plotmode[ivar]) && colorbar()
-            #occursin("log", plotmode[ivar]) && colorbar()
             title(filehead[:wnames][VarIndex_])
 
          elseif plotmode[ivar] ∈ ("trimesh","trisurf","tricont","tristream")
-            # triangular mesh()
-            #X = reshape(x[:,:,1],[],1)
             X = vec(x[:,:,1])
             Y = vec(x[:,:,2])
             W = vec(w[:,:,VarIndex_])
-            #Y = reshape(x[:,:,2],[],1)
-            #W = reshape(w[:,:,VarIndex_],[],1)
+
             # This needs to be modified!!!
             if !all(abs.(plotrange) .== Inf)
-               xyIndex = X .> plotrange[1] .& X .< plotrange[2] .& Y .> plotrange[3] .& Y .< plotrange[4]
+               xyIndex = X .> plotrange[1] .& X .< plotrange[2] .&
+                  Y .> plotrange[3] .& Y .< plotrange[4]
                X = X[xyIndex]
                Y = Y[xyIndex]
                W = W[xyIndex]
             end
 
             if plotmode[ivar] == "trimesh"
-               #triang = matplotlib.tri.Triangulation(x, y)
+               triang = matplotlib.tri.Triangulation(X, Y)
                ax.triplot(triang)
             elseif plotmode[ivar] == "trisurf"
-               ax.trisurf(X, Y, W)
-               colorbar()
+               ax.plot_trisurf(X, Y, W)
             elseif plotmode[ivar] == "tricont"
                c = ax.tricontourf(X, Y, W)
                fig.colorbar(c,ax=ax)
             elseif plotmode[ivar] == "tristream"
-
-            else
-
+               error("not yet implemented!")
             end
 
             title(filehead[:wnames][VarIndex_])
@@ -981,30 +977,32 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
 
             # find the index for var in filehead.wnames
             VarStream  = split(var,";")
-            VarIndexS1 = findfirst(x->x==VarStream[1],filehead[:wnames])
-            VarIndexS2 = findfirst(x->x==VarStream[2],filehead[:wnames])
+            VarIndex1_ = findfirst(x->x==lowercase(VarStream[1]),
+               lowercase.(filehead[:wnames]))
+            VarIndex2_ = findfirst(x->x==lowercase(VarStream[2]),
+               lowercase.(filehead[:wnames]))
 
             if filehead[:gencoord] # Generalized coordinates
                # I found this scatteredInterpolation package for Julia
                # Another one: Dierckx.jl Interpolation.jl
-               F1 = scatteredInterpolant(x[:,1,1],x[:,1,2],w[:,1,VarIndexS1])
+               F1 = scatteredInterpolant(x[:,1,1],x[:,1,2],w[:,1,VarIndex1_])
                v1 = F1(xq,yq)
-               F2 = scatteredInterpolant(x[:,1,1],x[:,1,2],w[:,1,VarIndexS2])
+               F2 = scatteredInterpolant(x[:,1,1],x[:,1,2],w[:,1,VarIndex2_])
                v2 = F2(xq,yq)
             else # Cartesian coordinates
                X = x[:,:,1]
                Y = x[:,:,2]
-               F1 = griddedInterpolant(X,Y,w[:,:,1,VarIndexS1])
+               F1 = griddedInterpolant(X,Y,w[:,:,1,VarIndex1_])
                v1 = F1(xq,yq)
-               F2 = griddedInterpolant(X,Y,w[:,:,1,VarIndexS2])
+               F2 = griddedInterpolant(X,Y,w[:,:,1,VarIndex2_])
                v2 = F2(xq,yq)
             end
 
             # Modify the density of streamlines if needed
-            s = streamslice(xq,yq,v1,v2,streamdensity,"linear")
+            s = streamslice(xq,yq,v1,v2,streamdensity)
 
             for is=1:length(s)
-               s[is].Color = "w"; # Change streamline color to white
+               s[is].Color = "w" # Change streamline color to white
                s[is].LineWidth = 1.5
             end
 
@@ -1015,11 +1013,13 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
 
             # find the index for var in filehead.wnames
             VarQuiver  = split(var,";")
-            VarIndexS1 = findfirst(x->x==VarQuiver[1],filehead[:wnames])
-            VarIndexS2 = findfirst(x->x==VarQuiver[2],filehead[:wnames])
+            VarIndex1_ = findfirst(x->x==lowercase(VarQuiver[1]),
+               lowercase.(filehead[:wnames]))
+            VarIndex2_ = findfirst(x->x==lowercase(VarQuiver[2]),
+               lowercase.(filehead[:wnames]))
 
-            q = quiver(x[:,1,1],x[:,1,2],w[:,1,VarIndexS1],w[:,1,VarIndexS2])
-            #q.Color = 'w'
+            q = quiver(x[:,1,1],x[:,1,2],w[:,1,VarIndex1_],w[:,1,VarIndex2_])
+
             if !any(abs.(plotrange) .== Inf) axis(plotrange) end
 
          elseif plotmode[ivar] == "grid"    # Grid plot()
@@ -1045,31 +1045,32 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
 
    else # 2D cut from 3D output; now only for Cartesian output
       for (ivar,var) in enumerate(vars)
-         X = permute(x[:,:,:,1],[2 1 3])
-         Y = permute(x[:,:,:,2],[2 1 3])
-         Z = permute(x[:,:,:,3],[2 1 3])
+         X = permutedims(x[:,:,:,1],[2, 1, 3])
+         Y = permutedims(x[:,:,:,2],[2, 1, 3])
+         Z = permutedims(x[:,:,:,3],[2, 1, 3])
 
-         VarIndex_ = findfirst(x->x==var,filehead[:wnames])
+         VarIndex_ = findfirst(x->x==lowecase(var),
+            lowercase.(filehead[:wnames]))
          if VarIndex_ == 0
             error("$(func[ivar]) not found in output variables!")
          end
 
-         W  = permute(w[:,:,:,VarIndex_],[2 1 3])
+         W  = permutedims(w[:,:,:,VarIndex_],[2, 1, 3])
 
          if multifigure fig, ax = subplots() end
 
          if cut == "x"
-            cut1 = squeeze(X[:,CutPlaneIndex,:])
-            cut2 = squeeze(Z[:,CutPlaneIndex,:])
-            W    = squeeze(W[:,CutPlaneIndex,:])
+            cut1 = dropdims(X[:,CutPlaneIndex,:]; dims=2)
+            cut2 = dropdims(Z[:,CutPlaneIndex,:]; dims=2)
+            W    = dropdims(W[:,CutPlaneIndex,:]; dims=2)
          elseif cut ==  "y"
-            cut1 = squeeze(X[CutPlaneIndex,:,:])
-            cut2 = squeeze(Z[CutPlaneIndex,:,:])
-            W    = squeeze(W[CutPlaneIndex,:,:])
+            cut1 = dropdims(X[CutPlaneIndex,:,:]; dims=1)
+            cut2 = dropdims(Z[CutPlaneIndex,:,:]; dims=1)
+            W    = dropdims(W[CutPlaneIndex,:,:]; dims=1)
          elseif cut == "z"
-            cut1 = squeeze(X[:,:,CutPlaneIndex])
-            cut2 = squeeze(Y[:,:,CutPlaneIndex])
-            W    = squeeze(W[:,:,CutPlaneIndex])
+            cut1 = dropdims(X[:,:,CutPlaneIndex]; dims=3)
+            cut2 = dropdims(Y[:,:,CutPlaneIndex]; dims=3)
+            W    = dropdims(W[:,:,CutPlaneIndex]; dims=3)
          end
       end
 
@@ -1146,10 +1147,16 @@ function subdata(data, xind, yind, sz)
 end
 
 """
-   animatedata(data, filehead)
-Generate animations from data.
+   animatedata(data, filehead, func, (plotmode="contbar",
+      plotrange=[-Inf Inf -Inf Inf],
+      plotinterval=0.1))
+Generate animations from data. This is basically calling plotdata function for
+multiple snapshots. The main issue here is to determine the colorbar/axis range
+in advance to avoid any jump in the movie.
 """
-function animatedata(data, filehead)
+function animatedata(data::Data, filehead::Dict, func::String; cut::String="",
+   plotmode::String="contbar", plotrange::Vector{Float64}=[-Inf,Inf,-Inf,Inf],
+   plotinterval::Float64=0.1, verbose::Bool=true)
 
 end
 
