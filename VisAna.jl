@@ -825,7 +825,8 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
       println("================================================")
       # Display min & max for each variable
       for var in vars
-         VarIndex_ = findfirst(x->x==var,filehead[:wnames])
+         VarIndex_ = findfirst(x->x==lowercase(var),
+            lowercase.(filehead[:wnames]))
          if ndim == 1
             println("Min & Max value for $(var) :$(minimum(w[:,VarIndex_]))",
                ", $(maximum(w[:,VarIndex_]))")
@@ -854,19 +855,26 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
          if occursin("grid",plotmode[ivar])
             grid(true)
          end
-         xlabel("x")
-         ylabel("$(var)")
+         xlabel("x"); ylabel("$(var)")
+         dim = [0.125, 0.013, 0.2, 0.045]
+         str = @sprintf "it=%d, time=%4.2f" filehead[:it] filehead[:time]
+         at = matplotlib.offsetbox.AnchoredText(str,
+                    loc="lower left", prop=Dict("size"=>8), frameon=true,
+                    bbox_to_anchor=(0., 1.),
+                    bbox_transform=ax.transAxes)
+         at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
+         ax.add_artist(at)
       end
    elseif ndim == 2
       for (ivar,var) in enumerate(vars)
          if multifigure fig, ax = subplots() end
+         VarIndex_ = findfirst(x->x==lowercase(var),
+            lowercase.(filehead[:wnames]))
+         isempty(VarIndex_) && error("$(var) not found in header variables!")
          # I need to think of a better way to check. now this cannot identify the
          # vars for streamline | quiver plotting!!!
          if plotmode[ivar] ∈ ("surf","surfbar","surfbarlog","cont","contbar",
             "contlog","contbarlog")
-
-            VarIndex_ = findfirst(x->x==var,filehead[:wnames])
-            isempty(VarIndex_) && error("$(var) not found in header variables!")
 
             if filehead[:gencoord] # Generalized coordinates
                # Reorganize & pick data in plot region only
@@ -888,7 +896,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
                Y = Y[xyIndex]
                W = W[xyIndex]
                # Default is linear interpolation
-               F = scatteredInterpolant[X,Y,W]
+               F = scatteredInterpolant(X,Y,W)
                xq, yq = meshgrid(plotrange[1]:plotinterval:plotrange[2],plotrange[3]:plotinterval:plotrange[4])
                vq = F(xq,yq)
 
@@ -933,77 +941,59 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
 
             occursin("bar", plotmode[ivar]) && colorbar()
             #occursin("log", plotmode[ivar]) && colorbar()
-
-            xlabel(filehead[:variables][1]); ylabel(filehead[:variables][2])
             title(filehead[:wnames][VarIndex_])
-            dim = [0.125, 0.013, 0.2, 0.045]
-            str = @sprintf "it=%d, time=%4.2f" filehead[:it] filehead[:time]
-            at = matplotlib.offsetbox.AnchoredText(str,
-                       loc="lower left", prop=Dict("size"=>8), frameon=true,
-                       bbox_to_anchor=(0., 1.),
-                       bbox_transform=ax.transAxes)
-            at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
-            ax.add_artist(at)
 
          elseif plotmode[ivar] ∈ ("trimesh","trisurf","tricont","tristream")
             # triangular mesh()
-            if multifigure fig, ax = subplots() end
-            # find the index for var in filehead.wnames
-            VarIndex_ = findfirst(x->x==vars[ivar],filehead[:wnames])
-            X = reshape(x[:,:,1],[],1)
-            Y = reshape(x[:,:,2],[],1)
-            W = reshape(w[:,:,VarIndex_],[],1)
-            if !isempty(plotrange)
-               xyIndex = X .> plotrange[1] & X .< plotrange[2] & Y .> plotrange[3] & Y .< plotrange[4];
+            #X = reshape(x[:,:,1],[],1)
+            X = vec(x[:,:,1])
+            Y = vec(x[:,:,2])
+            W = vec(w[:,:,VarIndex_])
+            #Y = reshape(x[:,:,2],[],1)
+            #W = reshape(w[:,:,VarIndex_],[],1)
+            # This needs to be modified!!!
+            if !all(abs.(plotrange) .== Inf)
+               xyIndex = X .> plotrange[1] .& X .< plotrange[2] .& Y .> plotrange[3] .& Y .< plotrange[4]
                X = X[xyIndex]
                Y = Y[xyIndex]
                W = W[xyIndex]
+            end
 
-               #             #tristream test
-               #             u = reshape(w[:,:,2],1,[])
-               #             v = reshape(w[:,:,4],1,[])
-               #             u = u[xyIndex]
-               #             v = v[xyIndex]
-            end
-            t = delaunayn([X, Y])
             if plotmode[ivar] == "trimesh"
-               trimesh(t,X,Y,W)
+               #triang = matplotlib.tri.Triangulation(x, y)
+               ax.triplot(triang)
             elseif plotmode[ivar] == "trisurf"
-               trisurf(t,X,Y,W,EdgeColor="none")
+               ax.trisurf(X, Y, W)
+               colorbar()
+            elseif plotmode[ivar] == "tricont"
+               c = ax.tricontourf(X, Y, W)
+               fig.colorbar(c,ax=ax)
             elseif plotmode[ivar] == "tristream"
-               #             x0 = ones(7,1)*-3
-               #             y0 = [ -3 -2 -1 0 1 2 3]'
-               #             T = triangulation[t,x,y]
-               #             #triplot(T)
-               #             #FlowP=TriStream[T,u,v,x0,y0,1,2e3]
-               #             FlowP=TriStream[T,u,v,x0,y0]
-               #             PlotTriStream[FlowP,'r']
+
             else
-               # I need to use patch to write my own tricont function!
-               #tricont[t,x,y,w]
+
             end
+
+            title(filehead[:wnames][VarIndex_])
 
          elseif plotmode[ivar] ∈ ("stream","streamover")
-            if plotmode[ivar] == "streamover"
-               # Overplotting with more variables; keyword "over"
-            else
-               if multifigure fig, ax = subplots() end
-            end
+            # handle the "over"case!!!
 
             # find the index for var in filehead.wnames
-            VarStream  = split[func[ivar],';']
-            VarIndexS1 = strcmpi(VarStream[1],filehead.wnames)
-            VarIndexS2 = strcmpi(VarStream[2],filehead.wnames)
+            VarStream  = split(var,";")
+            VarIndexS1 = findfirst(x->x==VarStream[1],filehead[:wnames])
+            VarIndexS2 = findfirst(x->x==VarStream[2],filehead[:wnames])
 
-            if filehead.gencoord # Generalized coordinates
+            if filehead[:gencoord] # Generalized coordinates
+               # I found this scatteredInterpolation package for Julia
+               # Another one: Dierckx.jl Interpolation.jl
                F1 = scatteredInterpolant(x[:,1,1],x[:,1,2],w[:,1,VarIndexS1])
                v1 = F1(xq,yq)
                F2 = scatteredInterpolant(x[:,1,1],x[:,1,2],w[:,1,VarIndexS2])
                v2 = F2(xq,yq)
             else # Cartesian coordinates
-               # 3D? 2D?
-               X = x[:,:,:,1]
-               Y = x[:,:,:,2]
+               X = x[:,:,1]
+               Y = x[:,:,2]
                F1 = griddedInterpolant(X,Y,w[:,:,1,VarIndexS1])
                v1 = F1(xq,yq)
                F2 = griddedInterpolant(X,Y,w[:,:,1,VarIndexS2])
@@ -1021,42 +1011,36 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
             if !any(abs.(plotrange) .== Inf) axis(plotrange) end
 
          elseif plotmode[ivar] ∈ ("quiver","quiverover")
-            if plotmode[ivar] == "quiverover"
-               # Overplotting with more variables; keyword "over"
-            else
-               if multifigure fig, ax = subplots() end
-            end
+            # Overplotting with more variables; keyword "over"
 
             # find the index for var in filehead.wnames
-            VarQuiver  = split(func[ivar],';')
-            VarIndexS1 = findfirst(x->x==VarQuiver[1], filehead[:wnames])
-            VarIndexS2 = findfirst(x->x==VarQuiver[2], filehead[:wnames])
+            VarQuiver  = split(var,";")
+            VarIndexS1 = findfirst(x->x==VarQuiver[1],filehead[:wnames])
+            VarIndexS2 = findfirst(x->x==VarQuiver[2],filehead[:wnames])
 
             q = quiver(x[:,1,1],x[:,1,2],w[:,1,VarIndexS1],w[:,1,VarIndexS2])
             #q.Color = 'w'
-            q.AutoScaleFactor = 0.5
             if !any(abs.(plotrange) .== Inf) axis(plotrange) end
 
          elseif plotmode[ivar] == "grid"    # Grid plot()
-            if multifigure fig, ax = subplots() end
             scatter(x[:,1,1],x[:,1,2],".",LineWidth=0.1)
 
             if !any(abs.(plotrange) .== Inf) axis(plotrange) end
 
-            xlabel(filehead.variables[1]); ylabel(filehead.variables[2])
             title("Grid illustration")
-            dim = [0.125, 0.013, 0.1, 0.046]
-            str = @sprintf "it=%d, time=%4.2f" filehead[:it] filehead[:time]
-            at = matplotlib.offsetbox.AnchoredText(str,
-                       loc="lower left", prop=Dict("size"=>8), frameon=true,
-                       bbox_to_anchor=(0., 1.),
-                       bbox_transform=ax.transAxes)
-            at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
-            ax.add_artist(at)
          else
             error("unknown plot mode: $(plotmode[ivar])")
          end
 
+         xlabel(filehead[:variables][1]); ylabel(filehead[:variables][2])
+         dim = [0.125, 0.013, 0.2, 0.045]
+         str = @sprintf "it=%d, time=%4.2f" filehead[:it] filehead[:time]
+         at = matplotlib.offsetbox.AnchoredText(str,
+                    loc="lower left", prop=Dict("size"=>8), frameon=true,
+                    bbox_to_anchor=(0., 1.),
+                    bbox_transform=ax.transAxes)
+         at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
+         ax.add_artist(at)
       end
 
    else # 2D cut from 3D output; now only for Cartesian output
@@ -1091,8 +1075,9 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
 
       cut1, cut2, W = subsurface(cut1, cut2, W, plotrange)
 
-      contourf(cut1,cut2,W)
-      colorbar;# axis equal
+      c = ax.contourf(cut1,cut2,W)
+      fig.colorbar(c,ax=ax)
+      ax.axis("equal")
 
       if cut == "x"
          xlabel("y"); ylabel("z")
