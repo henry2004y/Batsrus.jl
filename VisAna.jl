@@ -827,6 +827,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
       println("================================================")
       # Display min & max for each variable
       for var in vars
+         if occursin(";",var) continue end # skip the vars for streamline
          VarIndex_ = findfirst(x->x==lowercase(var),
             lowercase.(filehead[:wnames]))
          if ndim == 1
@@ -869,16 +870,17 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
       end
    elseif ndim == 2
       for (ivar,var) in enumerate(vars)
-         if multifigure fig, ax = subplots() end
-         VarIndex_ = findfirst(x->x==lowercase(var),
-            lowercase.(filehead[:wnames]))
-         isempty(VarIndex_) && error("$(var) not found in header variables!")
+         if ivar == 1 || multifigure fig, ax = subplots() end
+         if !occursin(";",var)
+            VarIndex_ = findfirst(x->x==lowercase(var),
+               lowercase.(filehead[:wnames]))
+               isempty(VarIndex_) &&
+                  error("$(var) not found in header variables!")
+         end
          # I need to think of a better way to check. now this cannot identify the
          # vars for streamline | quiver plotting!!!
          if plotmode[ivar] ∈ ("surf","surfbar","surfbarlog","cont","contbar",
             "contlog","contbarlog")
-
-
 
             if filehead[:gencoord] # Generalized coordinates
                # Use Interpolations package instead!!!
@@ -886,7 +888,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
                   if plotrange[1] == -Inf plotrange[1] = minimum(X) end
                   if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
                   if plotrange[3] == -Inf plotrange[3] = minimum(Y) end
-                  if plotrange[4] ==  Inf plotrange[4] = maximum(Y)
+                  if plotrange[4] ==  Inf plotrange[4] = maximum(Y) end
                end
 
                X = vec(x[:,:,1])
@@ -978,7 +980,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
          elseif plotmode[ivar] ∈ ("stream","streamover")
             # handle the "over"case!!!
 
-            # find the index for var in filehead.wnames
+            # find the index for var in filehead
             VarStream  = split(var,";")
             VarIndex1_ = findfirst(x->x==lowercase(VarStream[1]),
                lowercase.(filehead[:wnames]))
@@ -993,19 +995,13 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
                F2 = scatteredInterpolant(x[:,1,1],x[:,1,2],w[:,1,VarIndex2_])
                v2 = F2(xq,yq)
             else # Cartesian coordinates
-               X = x[:,:,1]
-               Y = x[:,:,2]
-               v1= w[:,:,VarIndex1_]
-               v2= w[:,:,VarIndex2_]
+               X = x[:,1,1]
+               Y = x[1,:,2]
+               v1= w[:,:,VarIndex1_]'
+               v2= w[:,:,VarIndex2_]'
             end
 
-            # Modify the density of streamlines if needed
-            s = streamslice(xq,yq,v1,v2,streamdensity)
-
-            for is=1:length(s)
-               s[is].Color = "w" # Change streamline color to white
-               s[is].LineWidth = 1.5
-            end
+            s = streamplot(X,Y,v1,v2,color="w",linewidth=1.0)
 
             if !any(abs.(plotrange) .== Inf) axis(plotrange) end
 
