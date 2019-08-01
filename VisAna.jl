@@ -9,6 +9,7 @@ using Glob
 using PyPlot
 using Printf
 using PyCall
+using Dierckx
 
 struct Data
    x::Array{Float64}
@@ -877,21 +878,21 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
          if plotmode[ivar] ∈ ("surf","surfbar","surfbarlog","cont","contbar",
             "contlog","contbarlog")
 
+
+
             if filehead[:gencoord] # Generalized coordinates
                # Use Interpolations package instead!!!
-
+               if any(abs.(plotrange) .!== Inf)
+                  if plotrange[1] == -Inf plotrange[1] = minimum(X) end
+                  if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
+                  if plotrange[3] == -Inf plotrange[3] = minimum(Y) end
+                  if plotrange[4] ==  Inf plotrange[4] = maximum(Y)
+               end
 
                X = vec(x[:,:,1])
                Y = vec(x[:,:,2])
                W = vec(w[:,:,VarIndex_])
-               if all(abs.(plotrange) .!== Inf)
-                  axis(plotrange)
-               else
-                  plotrange[1] = minimum(X)
-                  plotrange[2] = maximum(X)
-                  plotrange[3] = minimum(Y)
-                  plotrange[4] = maximum(Y)
-               end
+
                # Create grid values first.
                xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
                yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
@@ -908,21 +909,23 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
                   yi = x[:,:,2]
                   wi = w[:,:,VarIndex_]
                else
-                  X = vec(x[:,:,1])
-                  Y = vec(x[:,:,2])
-                  W = vec(w[:,:,VarIndex_])
-                  plotrange[1] = minimum(X)
-                  plotrange[2] = maximum(X)
-                  plotrange[3] = minimum(Y)
-                  plotrange[4] = maximum(Y)
-                  xi = range(plotrange[1],plotrange[2],length=filehead.nx[1])
-                  yi = range(plotrange[3],plotrange[4],length=filehead.nx[2])
+                  if plotrange[1] == -Inf plotrange[1] = minimum(X) end
+                  if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
+                  if plotrange[3] == -Inf plotrange[3] = minimum(Y) end
+                  if plotrange[4] ==  Inf plotrange[4] = maximum(Y) end
 
-                  triang = matplotlib.tri.Triangulation(X, Y)
-                  interpolator = matplotlib.tri.LinearTriInterpolator(triang, W)
-                  np = pyimport("numpy")
-                  Xi, Yi = np.meshgrid(xi, yi)
-                  wi = interpolator(Xi, Yi)
+                  X = x[:,1,1]
+                  Y = x[1,:,2]
+                  W = w[:,:,VarIndex_]
+
+                  xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
+                  yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
+
+                  spline = Spline2D(X, Y, W)
+                  Xi = [i for i in xi, j in yi]
+                  Yi = [j for i in xi, j in yi]
+                  wi = spline(Xi[:], Yi[:])
+                  wi = reshape(wi,size(Xi))'
                end
             end
 
@@ -992,10 +995,8 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
             else # Cartesian coordinates
                X = x[:,:,1]
                Y = x[:,:,2]
-               F1 = griddedInterpolant(X,Y,w[:,:,1,VarIndex1_])
-               v1 = F1(xq,yq)
-               F2 = griddedInterpolant(X,Y,w[:,:,1,VarIndex2_])
-               v2 = F2(xq,yq)
+               v1= w[:,:,VarIndex1_]
+               v2= w[:,:,VarIndex2_]
             end
 
             # Modify the density of streamlines if needed
