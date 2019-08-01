@@ -3,7 +3,7 @@ module VisAna
 #
 # Hongyang Zhou, hyzhou@umich.edu 07/24/2019
 
-export readdata, plotdata, plotlogdata
+export readdata, plotdata, plotlogdata, Data
 
 using Glob
 using PyPlot
@@ -776,9 +776,7 @@ end
 
 
 """
-   plotdata(data, filehead, func, (plotmode="contbar",
-      plotrange=[-Inf Inf -Inf Inf],
-      plotinterval=0.1))
+   plotdata(data, filehead, func, (...))
 Plot the variable from SWMF output.
 
 `plotdata(data, filehead, "p", plotmode="contbar")`
@@ -796,6 +794,7 @@ Plot the variable from SWMF output.
 - `plotmode::String`: (optional) type of plotting ["cont","contbar"]...
 - `plotrange::Vector`: (optional) range of plotting.
 - `plotinterval`: (optional) interval for interpolation.
+- `density`: (optional) density for streamlines.
 - `cut`: (optional) select 2D cut plane from 3D outputs ["x","y","z"].
 - `CutPlaneIndex`: (optional)
 - `streamdensity`: (optional) streamline density.
@@ -809,17 +808,13 @@ variables, but it may not seem to be easy!
 """
 function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
    plotmode::String="contbar", plotrange::Vector{Float64}=[-Inf,Inf,-Inf,Inf],
-   plotinterval::Float64=0.1, multifigure::Bool=true, verbose::Bool=true)
+   plotinterval::Float64=0.1, density::Float64=1, multifigure::Bool=true,
+   verbose::Bool=true)
 
    x,w = data.x, data.w
    plotmode = split(plotmode)
    vars     = split(func)
    ndim     = filehead[:ndim]
-
-   # I should check the size info of x to determine the type of plot!
-   if ndim == 3 && isempty(cut)
-
-   end
 
    if verbose
       println("============ PLOTTING PARAMETERS ===============")
@@ -849,7 +844,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
    if ndim == 1
       for (ivar,var) in enumerate(vars)
          VarIndex_ = findfirst(x->x==var,filehead[:wnames])
-         if multifigure fig, ax = subplots() end
+         if ivar == 1 || multifigure fig, ax = subplots() else ax = gca() end
          if !occursin("scatter",plotmode[ivar])
             plot(x,w[:,VarIndex_])
          else
@@ -870,20 +865,19 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
       end
    elseif ndim == 2
       for (ivar,var) in enumerate(vars)
-         if ivar == 1 || multifigure fig, ax = subplots() end
+         occursin("over", plotmode[ivar]) && (multifigure = false)
+         if ivar == 1 || multifigure fig, ax = subplots() else ax = gca() end
          if !occursin(";",var)
             VarIndex_ = findfirst(x->x==lowercase(var),
                lowercase.(filehead[:wnames]))
                isempty(VarIndex_) &&
                   error("$(var) not found in header variables!")
          end
-         # I need to think of a better way to check. now this cannot identify the
-         # vars for streamline | quiver plotting!!!
+
          if plotmode[ivar] ∈ ("surf","surfbar","surfbarlog","cont","contbar",
             "contlog","contbarlog")
 
             if filehead[:gencoord] # Generalized coordinates
-               # Use Interpolations package instead!!!
                if any(abs.(plotrange) .!== Inf)
                   if plotrange[1] == -Inf plotrange[1] = minimum(X) end
                   if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
@@ -898,8 +892,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
                # Create grid values first.
                xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
                yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
-               # Perform linear interpolation of the data (x,y)
-               # on a grid defined by (xi,yi)
+               # Perform linear interpolation of the data (x,y) on grid(xi,yi)
                triang = matplotlib.tri.Triangulation(X,Y)
                interpolator = matplotlib.tri.LinearTriInterpolator(triang, W)
                np = pyimport("numpy")
@@ -978,9 +971,6 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
             title(filehead[:wnames][VarIndex_])
 
          elseif plotmode[ivar] ∈ ("stream","streamover")
-            # handle the "over"case!!!
-
-            # find the index for var in filehead
             VarStream  = split(var,";")
             VarIndex1_ = findfirst(x->x==lowercase(VarStream[1]),
                lowercase.(filehead[:wnames]))
@@ -1001,9 +991,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
                v2= w[:,:,VarIndex2_]'
             end
 
-            s = streamplot(X,Y,v1,v2,color="w",linewidth=1.0)
-
-            if !any(abs.(plotrange) .== Inf) axis(plotrange) end
+            s = streamplot(X,Y,v1,v2,color="w",linewidth=1.0,density=density)
 
          elseif plotmode[ivar] ∈ ("quiver","quiverover")
             # Overplotting with more variables; keyword "over"
@@ -1038,6 +1026,8 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
                     bbox_transform=ax.transAxes)
          at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
          ax.add_artist(at)
+         # recover status
+         occursin("over", plotmode[ivar]) && (multifigure = true)
       end
 
    else # 2D cut from 3D output; now only for Cartesian output
@@ -1056,7 +1046,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
 
          if multifigure fig, ax = subplots() end
 
-         if cut == "x"
+         if cut ∈ ("x","")
             cut1 = dropdims(X[:,CutPlaneIndex,:]; dims=2)
             cut2 = dropdims(Z[:,CutPlaneIndex,:]; dims=2)
             W    = dropdims(W[:,CutPlaneIndex,:]; dims=2)
@@ -1154,6 +1144,8 @@ in advance to avoid any jump in the movie.
 function animatedata(data::Data, filehead::Dict, func::String; cut::String="",
    plotmode::String="contbar", plotrange::Vector{Float64}=[-Inf,Inf,-Inf,Inf],
    plotinterval::Float64=0.1, verbose::Bool=true)
+
+   # I realized the usage of animation in matplotlib.
 
 end
 
