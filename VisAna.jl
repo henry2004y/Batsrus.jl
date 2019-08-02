@@ -62,7 +62,7 @@ function readdata( filenamesIn::String; dir::String=".", npict::Int=1,
 
    if verbose
       [println("filename=$(filelist[i].name)\n"*
-      "npict=$(filelist[i].npictinfiles)") for i in length(filelist)]
+      "npict=$(filelist[i].npictinfiles)") for i in eachindex(filelist)]
    end
 
    for ifile=1:nfile
@@ -796,7 +796,7 @@ Plot the variable from SWMF output.
 - `plotinterval`: (optional) interval for interpolation.
 - `density`: (optional) density for streamlines.
 - `cut`: (optional) select 2D cut plane from 3D outputs ["x","y","z"].
-- `CutPlaneIndex`: (optional)
+- `cutPlaneIndex`: (optional)
 - `streamdensity`: (optional) streamline density.
 - `multifigure`: (optional) 1 for multifigure display, 0 for subplots.
 - `verbose`: (optional) display additional information.
@@ -808,8 +808,8 @@ variables, but it may not seem to be easy!
 """
 function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
    plotmode::String="contbar", plotrange::Vector{Float64}=[-Inf,Inf,-Inf,Inf],
-   plotinterval::Float64=0.1, density::Float64=1.0, multifigure::Bool=true,
-   verbose::Bool=true)
+   plotinterval::Float64=0.1, density::Float64=1.0, cutPlaneIndex::Int=1,
+   multifigure::Bool=true, verbose::Bool=true)
 
    x,w = data.x, data.w
    plotmode = split(plotmode)
@@ -899,7 +899,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
                Xi, Yi = np.meshgrid(xi, yi)
                wi = interpolator(Xi, Yi)
             else # Cartesian coordinates
-               if all(abs.(plotrange) .== Inf)
+               if all(isinf.(plotrange))
                   xi = x[:,:,1]
                   yi = x[:,:,2]
                   wi = w[:,:,VarIndex_]
@@ -950,7 +950,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
             W = vec(w[:,:,VarIndex_])
 
             # This needs to be modified!!!
-            if !all(abs.(plotrange) .== Inf)
+            if !all(isinf.(plotrange))
                xyIndex = X .> plotrange[1] .& X .< plotrange[2] .&
                   Y .> plotrange[3] .& Y .< plotrange[4]
                X = X[xyIndex]
@@ -980,7 +980,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
                lowercase.(filehead[:wnames]))
 
             if filehead[:gencoord] # Generalized coordinates
-               if any(abs.(plotrange) .!== Inf)
+               if any(!isinf.(plotrange))
                   if plotrange[1] == -Inf plotrange[1] = minimum(X) end
                   if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
                   if plotrange[3] == -Inf plotrange[3] = minimum(Y) end
@@ -1010,7 +1010,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
             else # Cartesian coordinates
                X = x[:,1,1]
                Y = x[1,:,2]
-               if all(abs.(plotrange) .== Inf)
+               if all(isinf.(plotrange))
                   v1, v2 = w[:,:,VarIndex1_]', w[:,:,VarIndex2_]'
                else
                   if plotrange[1] == -Inf plotrange[1] = minimum(X) end
@@ -1078,43 +1078,44 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
          Y = permutedims(x[:,:,:,2],[2, 1, 3])
          Z = permutedims(x[:,:,:,3],[2, 1, 3])
 
-         VarIndex_ = findfirst(x->x==lowecase(var),
+         VarIndex_ = findfirst(x->x==lowercase(var),
             lowercase.(filehead[:wnames]))
-         if VarIndex_ == 0
-            error("$(func[ivar]) not found in output variables!")
-         end
+         isempty(VarIndex_) && error("$(var) not found in header variables!")
 
          W  = permutedims(w[:,:,:,VarIndex_],[2, 1, 3])
 
-         if multifigure fig, ax = subplots() end
+         if multifigure fig, ax = subplots() else ax = gca() end
 
          if cut ∈ ("x","")
-            cut1 = dropdims(X[:,CutPlaneIndex,:]; dims=2)
-            cut2 = dropdims(Z[:,CutPlaneIndex,:]; dims=2)
-            W    = dropdims(W[:,CutPlaneIndex,:]; dims=2)
+            cut1 = X[:,cutPlaneIndex,:]
+            cut2 = Z[:,cutPlaneIndex,:]
+            W    = W[:,cutPlaneIndex,:]
          elseif cut ==  "y"
-            cut1 = dropdims(X[CutPlaneIndex,:,:]; dims=1)
-            cut2 = dropdims(Z[CutPlaneIndex,:,:]; dims=1)
-            W    = dropdims(W[CutPlaneIndex,:,:]; dims=1)
+            cut1 = X[cutPlaneIndex,:,:]
+            cut2 = Z[cutPlaneIndex,:,:]
+            W    = W[cutPlaneIndex,:,:]
          elseif cut == "z"
-            cut1 = dropdims(X[:,:,CutPlaneIndex]; dims=3)
-            cut2 = dropdims(Y[:,:,CutPlaneIndex]; dims=3)
-            W    = dropdims(W[:,:,CutPlaneIndex]; dims=3)
+            cut1 = X[:,:,cutPlaneIndex]
+            cut2 = Y[:,:,cutPlaneIndex]
+            W    = W[:,:,cutPlaneIndex]
          end
-      end
 
-      cut1, cut2, W = subsurface(cut1, cut2, W, plotrange)
+         if !all(isinf.(plotrange))
+            cut1, cut2, W = subsurface(cut1, cut2, W, plotrange)
+         end
 
-      c = ax.contourf(cut1,cut2,W)
-      fig.colorbar(c,ax=ax)
-      ax.axis("equal")
+         c = ax.contourf(cut1,cut2,W)
+         fig.colorbar(c,ax=ax)
+         #ax.axis("equal")
 
-      if cut == "x"
-         xlabel("y"); ylabel("z")
-      elseif cut == "y"
-         xlabel("x"); ylabel("z")
-      elseif cut =="z"
-         xlabel("x"); ylabel("y")
+         if cut == "x"
+            xlabel("y"); ylabel("z")
+         elseif cut == "y"
+            xlabel("x"); ylabel("z")
+         elseif cut =="z"
+            xlabel("x"); ylabel("y")
+         end
+
       end
 
    end
@@ -1123,10 +1124,11 @@ end
 
 """
    subsurface(x, y, data, limits)
-Extract subset of surface dataset.
+Extract subset of 2D surface dataset.
 This is a simplified version of subvolume.
 """
-function subsurface(x, y, data::Data, limits)
+function subsurface(x::Array{Float64,2}, y::Array{Float64,2},
+   data::Array{Float64,2}, limits::Vector{Float64})
 
    if length(limits)!=4
       error("Reduction must be [xmin xmax ymin ymax]")
@@ -1144,13 +1146,13 @@ function subsurface(x, y, data::Data, limits)
    hx = x[:,1]
    hy = y[1,:]
 
-   if isnan(limits[1])  limits[1] = minimum(hx) end
-   if isnan(limits[3])  limits[3] = minimum(hy) end
-   if isnan(limits[2])  limits[2] = maximum(hx) end
-   if isnan(limits[4])  limits[4] = maximum(hy) end
+   if isinf(limits[1])  limits[1] = minimum(hx) end
+   if isinf(limits[3])  limits[3] = minimum(hy) end
+   if isinf(limits[2])  limits[2] = maximum(hx) end
+   if isinf(limits[4])  limits[4] = maximum(hy) end
 
-   xind = findfirst(limits[1]<=hx & hx<=limits[2])
-   yind = findfirst(limits[3]<=hy & hy<=limits[4])
+   xind = findall(limits[1] .≤ hx .≤ limits[2])
+   yind = findall(limits[3] .≤ hy .≤ limits[4])
 
    newdata = subdata(data, xind, yind, sz)
 
@@ -1163,13 +1165,14 @@ end
 """
    subdata(data, xind, yind, sz)
 """
-function subdata(data, xind, yind, sz)
+function subdata(data::Array{Float64,2},
+   xind::Vector{Int64}, yind::Vector{Int64}, sz::Tuple{Int64,Int64})
 
    newdata = data[xind, yind]
    newsz = size(newdata)
 
    if length(sz) > 2
-      newdata = reshape(newdata, [newsz[1:3] sz[4:end]])
+      newdata = reshape(newdata, (newsz[1:3]..., sz[4:end]))
    end
 
    return newdata
