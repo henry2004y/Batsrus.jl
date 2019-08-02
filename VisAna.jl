@@ -808,7 +808,7 @@ variables, but it may not seem to be easy!
 """
 function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
    plotmode::String="contbar", plotrange::Vector{Float64}=[-Inf,Inf,-Inf,Inf],
-   plotinterval::Float64=0.1, density::Float64=1, multifigure::Bool=true,
+   plotinterval::Float64=0.1, density::Float64=1.0, multifigure::Bool=true,
    verbose::Bool=true)
 
    x,w = data.x, data.w
@@ -930,16 +930,18 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
             elseif plotmode[ivar] == "cont"
                contour(xi,yi,wi)
             elseif plotmode[ivar] == "contlog"
-               contour(xi,yi,wi,locator=matplotlib.ticker.LogLocator())
+               c = contour(xi,yi,wi)
             elseif plotmode[ivar] == "contbarlog"
-               contourf(xi,yi,wi,locator=matplotlib.ticker.LogLocator())
+               c = contourf(xi,yi,wi)
             elseif plotmode[ivar] == "surfbar"
                plot_surface(xi,yi,wi)
             elseif plotmode[ivar] == "surfbarlog"
-               plot_surface(xi,yi,wi,locator=matplotlib.ticker.LogLocator())
+               c = plot_surface(xi,yi,wi)
             end
 
             occursin("bar", plotmode[ivar]) && colorbar()
+            occursin("log", plotmode[ivar]) &&
+               ( c.locator = matplotlib.ticker.LogLocator() )
             title(filehead[:wnames][VarIndex_])
 
          elseif plotmode[ivar] ∈ ("trimesh","trisurf","tricont","tristream")
@@ -978,40 +980,80 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
                lowercase.(filehead[:wnames]))
 
             if filehead[:gencoord] # Generalized coordinates
-               # I found this scatteredInterpolation package for Julia
-               # Another one: Dierckx.jl Interpolation.jl
-               F1 = scatteredInterpolant(x[:,1,1],x[:,1,2],w[:,1,VarIndex1_])
-               v1 = F1(xq,yq)
-               F2 = scatteredInterpolant(x[:,1,1],x[:,1,2],w[:,1,VarIndex2_])
-               v2 = F2(xq,yq)
+               if any(abs.(plotrange) .!== Inf)
+                  if plotrange[1] == -Inf plotrange[1] = minimum(X) end
+                  if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
+                  if plotrange[3] == -Inf plotrange[3] = minimum(Y) end
+                  if plotrange[4] ==  Inf plotrange[4] = maximum(Y) end
+               end
+
+               X, Y, W = vec(x[:,:,1]), vec(x[:,:,2]), vec(w[:,:,VarIndex_])
+
+               # Create grid values first.
+               xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
+               yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
+
+               # The PyCall here can be potentially replaced with Spline2D.
+               # Perform linear interpolation of the data (x,y) on grid(xi,yi)
+               triang = matplotlib.tri.Triangulation(X,Y)
+               np = pyimport("numpy")
+               Xi, Yi = np.meshgrid(xi, yi)
+               W = w[:,1,VarIndex1_]
+
+               interpolator = matplotlib.tri.LinearTriInterpolator(triang, W)
+               v1 = interpolator(Xi, Yi)
+
+               W = w[:,1,VarIndex2_]
+               interpolator = matplotlib.tri.LinearTriInterpolator(triang, W)
+               v2 = interpolator(Xi, Yi)
+
             else # Cartesian coordinates
                X = x[:,1,1]
                Y = x[1,:,2]
-               v1= w[:,:,VarIndex1_]'
-               v2= w[:,:,VarIndex2_]'
+               if all(abs.(plotrange) .== Inf)
+                  v1, v2 = w[:,:,VarIndex1_]', w[:,:,VarIndex2_]'
+               else
+                  if plotrange[1] == -Inf plotrange[1] = minimum(X) end
+                  if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
+                  if plotrange[3] == -Inf plotrange[3] = minimum(Y) end
+                  if plotrange[4] ==  Inf plotrange[4] = maximum(Y) end
+
+                  w1, w2 = w[:,:,VarIndex1_], w[:,:,VarIndex2_]
+
+                  xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
+                  yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
+
+                  Xi = [i for i in xi, j in yi]
+                  Yi = [j for i in xi, j in yi]
+
+                  spline = Spline2D(X, Y, w1)
+                  wi = spline(Xi[:], Yi[:])
+                  v1 = reshape(wi,size(Xi))'
+
+                  spline = Spline2D(X, Y, w2)
+                  wi = spline(Xi[:], Yi[:])
+                  v2 = reshape(wi,size(Xi))'
+               end
             end
 
             s = streamplot(X,Y,v1,v2,color="w",linewidth=1.0,density=density)
 
-         elseif plotmode[ivar] ∈ ("quiver","quiverover")
-            # Overplotting with more variables; keyword "over"
-
-            # find the index for var in filehead.wnames
+         elseif occursin("quiver", plotmode[ivar])
             VarQuiver  = split(var,";")
             VarIndex1_ = findfirst(x->x==lowercase(VarQuiver[1]),
                lowercase.(filehead[:wnames]))
             VarIndex2_ = findfirst(x->x==lowercase(VarQuiver[2]),
                lowercase.(filehead[:wnames]))
 
-            q = quiver(x[:,1,1],x[:,1,2],w[:,1,VarIndex1_],w[:,1,VarIndex2_])
+            X, Y = x[:,1,1], x[1,:,2]
+            v1, v2 = w[:,:,VarIndex1_]', w[:,:,VarIndex2_]'
 
-            if !any(abs.(plotrange) .== Inf) axis(plotrange) end
+            q = quiver(X,Y,v1,v2,color="w")
 
-         elseif plotmode[ivar] == "grid"    # Grid plot()
-            scatter(x[:,1,1],x[:,1,2],".",LineWidth=0.1)
-
-            if !any(abs.(plotrange) .== Inf) axis(plotrange) end
-
+         elseif occursin("grid", plotmode[ivar])
+            # This does not take subdomain plot into account!
+            X, Y = x[:,:,1], x[:,:,2]
+            scatter(X,Y,marker=".",alpha=0.6)
             title("Grid illustration")
          else
             error("unknown plot mode: $(plotmode[ivar])")
@@ -1115,7 +1157,7 @@ function subsurface(x, y, data::Data, limits)
    newx = x[xind, yind]
    newy = y[xind, yind]
 
-   return  newx, newy, newdata
+   return newx, newy, newdata
 end
 
 """
