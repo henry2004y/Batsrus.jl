@@ -1,9 +1,9 @@
 module VisAna
-# Reimplementation of BATSRUS data reader in Julia
+# Reimplementation of BATSRUS data reader in Julia.
 #
 # Hongyang Zhou, hyzhou@umich.edu 07/24/2019
 
-export readdata, plotdata, plotlogdata, Data
+export readdata, plotdata, plotlogdata, animatedata, Data, FileList
 
 using Glob
 using PyPlot
@@ -809,35 +809,40 @@ variables, but it may not seem to be easy!
 function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
    plotmode::String="contbar", plotrange::Vector{Float64}=[-Inf,Inf,-Inf,Inf],
    plotinterval::Float64=0.1, density::Float64=1.0, cutPlaneIndex::Int=1,
-   multifigure::Bool=true, verbose::Bool=true)
+   multifigure::Bool=true, getrangeOnly::Bool=false, verbose::Bool=true)
 
    x,w = data.x, data.w
    plotmode = split(plotmode)
    vars     = split(func)
    ndim     = filehead[:ndim]
+   nvar     = length(vars)
 
-   if verbose
+   if verbose || getrangeOnly
       println("============ PLOTTING PARAMETERS ===============")
       println("wnames = $(filehead[:wnames])")
       println("================================================")
+      wmin = Vector{Float64}(undef,nvar)
+      wmax = Vector{Float64}(undef,nvar)
       # Display min & max for each variable
-      for var in vars
+      for (ivar,var) in enumerate(vars)
          if occursin(";",var) continue end # skip the vars for streamline
          VarIndex_ = findfirst(x->x==lowercase(var),
             lowercase.(filehead[:wnames]))
          if ndim == 1
-            println("Min & Max value for $(var) :$(minimum(w[:,VarIndex_]))",
-               ", $(maximum(w[:,VarIndex_]))")
+            wmin[ivar] = minimum(w[:,VarIndex_])
+            wmax[ivar] = maximum(w[:,VarIndex_])
          elseif ndim == 2
-            println("Min & Max value for $(var) :$(minimum(w[:,:,VarIndex_]))",
-               ", $(maximum(w[:,:,VarIndex_]))")
+            wmin[ivar] = minimum(w[:,:,VarIndex_])
+            wmax[ivar] = maximum(w[:,:,VarIndex_])
          end
+         println("Min & Max value for $(var) :$(wmin[ivar])",", $(wmax[ivar])")
       end
+      if getrangeOnly return wmin, wmax end
    end
 
    ## plot multiple variables with same plotmode
-   if length(plotmode) < length(vars)
-      [push!(plotmode, plotmode[i]) for i = 1:length(vars)-length(plotmode)]
+   if length(plotmode) < nvar
+      [push!(plotmode, plotmode[i]) for i = 1:nvar-length(plotmode)]
    end
 
    ## Plot
@@ -878,16 +883,16 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
             "contlog","contbarlog")
 
             if filehead[:gencoord] # Generalized coordinates
-               if any(abs.(plotrange) .!== Inf)
+               X = vec(x[:,:,1])
+               Y = vec(x[:,:,2])
+               W = vec(w[:,:,VarIndex_])
+
+               if any(abs.(plotrange) .== Inf)
                   if plotrange[1] == -Inf plotrange[1] = minimum(X) end
                   if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
                   if plotrange[3] == -Inf plotrange[3] = minimum(Y) end
                   if plotrange[4] ==  Inf plotrange[4] = maximum(Y) end
                end
-
-               X = vec(x[:,:,1])
-               Y = vec(x[:,:,2])
-               W = vec(w[:,:,VarIndex_])
 
                # Create grid values first.
                xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
@@ -926,18 +931,19 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
 
             # I may need to use pattern match instead for a more robust method!
             if plotmode[ivar] == "contbar"
-               contourf(xi,yi,wi)
+               c = contourf(xi,yi,wi)
             elseif plotmode[ivar] == "cont"
-               contour(xi,yi,wi)
+               c = contour(xi,yi,wi)
             elseif plotmode[ivar] == "contlog"
                c = contour(xi,yi,wi)
             elseif plotmode[ivar] == "contbarlog"
                c = contourf(xi,yi,wi)
             elseif plotmode[ivar] == "surfbar"
-               plot_surface(xi,yi,wi)
+               c = plot_surface(xi,yi,wi)
             elseif plotmode[ivar] == "surfbarlog"
                c = plot_surface(xi,yi,wi)
             end
+
 
             occursin("bar", plotmode[ivar]) && colorbar()
             occursin("log", plotmode[ivar]) &&
@@ -1164,6 +1170,7 @@ end
 
 """
    subdata(data, xind, yind, sz)
+Return the sliced data based on indexes.
 """
 function subdata(data::Array{Float64,2},
    xind::Vector{Int64}, yind::Vector{Int64}, sz::Tuple{Int64,Int64})
@@ -1186,11 +1193,55 @@ Generate animations from data. This is basically calling plotdata function for
 multiple snapshots. The main issue here is to determine the colorbar/axis range
 in advance to avoid any jump in the movie.
 """
-function animatedata(data::Data, filehead::Dict, func::String; cut::String="",
+function animatedata(data::Data,filehead::Dict,filelist::FileList,func::String;
+   imin::Int=1, imax::Int=1, cut::String="",
    plotmode::String="contbar", plotrange::Vector{Float64}=[-Inf,Inf,-Inf,Inf],
    plotinterval::Float64=0.1, verbose::Bool=true)
 
    # I realized the usage of animation in matplotlib.
+   #=
+   py"""
+   import numpy as np
+   import matplotlib.pyplot as plt
+   from matplotlib.animation import FuncAnimation
+
+   fig, ax = plt.subplots()
+   xdata, ydata = [], []
+   ln, = ax.plot([], [], 'r-', animated=False)
+
+   def init():
+       ax.set_xlim(0, 2*np.pi)
+       ax.set_ylim(-1, 1)
+       return ln,
+
+   def update(frame):
+       xdata.append(frame)
+       ydata.append(np.sin(frame))
+       ln.set_data(xdata, ydata)
+       return ln,
+
+   ani = FuncAnimation(fig, update, frames=np.linspace(0, 2*np.pi, 128),
+                       init_func=init, blit=True)
+   plt.show()
+   """
+   =#
+
+   # Get the color range for all snapshots
+   wmin, wmax = plotdata(data,filehead,func,getrangeOnly=true)
+
+
+   # Do individual snapshot plotting
+   for ipict = 1:filelist.npictinfiles
+      fhead, d, flist = readdata(filelist.name,verbose=false,npict=ipict)
+      plotdata(d[1],fhead[1],"rho",plotmode="contbar")
+      fig = gcf()
+      ax  = gca()
+      #ani = FuncAnimation(fig,)
+   end
+
+   # Combine the plots
+
+
 
 end
 
