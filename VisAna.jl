@@ -81,7 +81,7 @@ function readdata( filenamesIn::String; dir::String=".", npict::Int=1,
          # Skip npict-1 snapshots (because we only want npict snapshot)
          skip(fileID[ifile], pictsize[ifile]*(npict-1))
 
-         filehead = getfilehead(fileID[ifile], filelist[ifile].type, 2)
+         filehead = getfilehead(fileID[ifile], filelist[ifile].type)
          push!(fileheads, filehead)
 
          # Read data
@@ -214,7 +214,7 @@ function get_file_types(nfile::Int,filenames::Array{String,1},dir::String)
 
       # Obtain file size & number of snapshots
       seekstart(fileID[ifile])
-      pictsize[ifile] = getfilehead(fileID[ifile], type)
+      pictsize[ifile] = getfilesize(fileID[ifile], type)
       npictinfiles = floor(Int, bytes / pictsize[ifile])
 
       filelist[ifile] = FileList(filenames[ifile], type, bytes, npictinfiles)
@@ -237,20 +237,16 @@ Obtain the header information from BATSRUS output files.
 - `filehead::Dict`: file header info.
 ...
 """
-function getfilehead(fileID::IOStream, type::String, iargout::Int=1)
+function getfilehead(fileID::IOStream, type::String)
 
    pictsize = 0
 
+   # Create a struct for substituting common block file_head
    head = Dict(:ndim => 3, :headline => "", :it => Int32(-1.0),
       :time => Float32(-1.0),
       :gencoord => false, :neqpar => Int32(0), :nw => 1, :nx => [Int32(0)],
       :eqpar => [Float32(0.0)], :variables => Array{String,1}(undef,1),
       :wnames => Array{String,1}(undef,1))
-
-   # Create a struct for substituting common block file_head
-   if isempty(head)
-      println("Do something here?")
-   end
 
    ftype = string(lowercase(type))
 
@@ -320,18 +316,83 @@ function getfilehead(fileID::IOStream, type::String, iargout::Int=1)
       pictsize = headlen + 8*(1+head[:nw]) + 4*(head[:ndim]+head[:nw])*nxs
    end
 
-   if iargout == 1
-      return pictsize
-   elseif iargout == 2
-      # Set variables array
-      head[:variables] = split(varname)     # returns a string array
-      return head
-   else
-      error("unknown iargout=$(iargout)!")
-   end
-
+   # Set variables array
+   head[:variables] = split(varname)     # returns a string array
+   return head
 end
 
+# Do I want multiple-dispatch, or another function?
+function getfilesize(fileID::IOStream, type::String)
+
+   pictsize = 0
+
+   ndim = convert(Int32,1)
+   tmp  = convert(Int32,1)
+   nw   = convert(Int32,1)
+   nxs  = 0
+
+   ftype = string(lowercase(type))
+
+   if ftype == type lenstr = 79 else lenstr = 500 end
+
+   # Read header
+   pointer0 = position(fileID)
+
+   if ftype == "log"
+      # This part is done in the main readdata function.
+   elseif ftype == "ascii"
+      readline(fileID)
+      readline(fileID)
+      line = split(line)
+      ndim = parse(Int32,line[3])
+      tmp = parse(Int32,line[4])
+      tmp > 0 && readline(fileID)
+      nw = parse(Int32,line[5])
+      readline(fileID)
+      nx = parse(Int64, readline(fileID))
+   elseif ftype ∈ ["real4","binary"]
+      skip(fileID,4)
+      read(fileID,lenstr)
+      skip(fileID,8)
+      read(fileID,Int32)
+      read(fileID,Float32)
+      ndim = abs(read(fileID,Int32))
+      tmp = read(fileID,Int32)
+      nw = read(fileID,Int32)
+      skip(fileID,8)
+      nx = zeros(Int32,ndim)
+      read!(fileID,nx)
+      skip(fileID,8)
+      if tmp > 0
+         tmp2 = zeros(Float32,tmp)
+         read!(fileID,tmp2)
+         skip(fileID,8) # skip record end/start tags.
+      end
+      read(fileID, lenstr)
+      skip(fileID,4)
+   end
+
+   # Header length
+   pointer1 = position(fileID)
+   headlen = pointer1 - pointer0
+
+   # Calculate the snapshot size = header + data + recordmarks
+   nxs = prod(nx)
+
+   if ftype == "log"
+      pictsize = 1
+   elseif ftype == "ascii"
+      pictsize = headlen + (18*(ndim+nw)+1)*nxs
+   elseif ftype == "binary"
+      pictsize = headlen + 8*(1+nw) + 8*(ndim+nw)*nxs
+   elseif ftype == "real4"
+      pictsize = headlen + 8*(1+nw) + 4*(ndim+nw)*nxs
+   end
+
+   return pictsize
+end
+
+# There are plan to include this into Julia's base. See github for more info.
 import Base: read!
 
 """
