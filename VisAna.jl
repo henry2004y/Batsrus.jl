@@ -3,17 +3,13 @@ module VisAna
 #
 # Hongyang Zhou, hyzhou@umich.edu 07/24/2019
 
-export readdata, plotdata, plotlogdata, animatedata, Data, FileList
+export readdata, readlogdata, plotdata, plotlogdata, animatedata, Data, FileList
 
-using Glob
-using PyPlot
-using Printf
-using PyCall
-using Dierckx
+using Glob, PyPlot, Printf, PyCall, Dierckx
 
-struct Data
-   x::Array{Float64}
-   w::Array{Float64}
+struct Data{T}
+   x::Array{T}
+   w::Array{T}
 end
 
 struct FileList
@@ -43,7 +39,7 @@ function readdata( filenamesIn::String; dir::String=".", npict::Int=1,
 
    ## Check the existence of files
    filenamesSplit = split(filenamesIn)
-   filenames = Array{String,1}(undef,0)
+   filenames = Vector{String}(undef,0)
    for filename in filenamesSplit
       filesfound = glob(filename)
       if isempty(filesfound)
@@ -55,10 +51,10 @@ function readdata( filenamesIn::String; dir::String=".", npict::Int=1,
 
    nfile = length(filenames)
 
-   fileheads = []
+   fileheads = Vector{Dict}(undef,0)
    data = Vector{Data}()
 
-   filelist, fileID, pictsize = get_file_types(nfile,filenames,dir)
+   filelist, fileID, pictsize = getFileTypes(nfile,filenames,dir)
 
    if verbose
       [println("filename=$(filelist[i].name)\n"*
@@ -110,7 +106,7 @@ function readdata( filenamesIn::String; dir::String=".", npict::Int=1,
             fileheads[ifile][:ndim]+1:fileheads[ifile][:ndim]+
             fileheads[ifile][:nw] ]
 
-         push!(data,Data(x,w))
+         push!(data, Data(x,w))
 
          println("Finished reading $(filelist[ifile].name)")
       end
@@ -122,40 +118,40 @@ function readdata( filenamesIn::String; dir::String=".", npict::Int=1,
 end
 
 """
-   read_log_data(filename)
+   readlogdata(filename)
 Read information from log file.
 """
-function read_log_data( filename )
-
-# This part can be achieved using some packages.
-
-#=
-data = importdata(filename)
-
-head = Dict(:ndim => 3, :headline => "", :it => Int32(-1.0),
+function readlogdata( filename )
+   # Is this really necessary?
+   head = Dict(:ndim => 3, :headline => "", :it => Int32(-1.0),
    :time => Float32(-1.0), :gencoord => false, :neqpar => Int32(0), :nw => 1,
    :nx => [Int32(0)], :variables => Array{String,1}(undef,1))
 
-if isstruct(data)
-   head[:headline]  = data.textdata{1}
-   head[:variables] = data.colheaders
+   f = open(filename, "r")
+   nLine = countlines(f)-2
+   seekstart(f)
+   head[:headline]  = readline(f)
+   head[:variables] = split(readline(f))
    head[:ndim]      = 1
    head[:it]        = 0
    head[:time]      = 0.0
    head[:gencoord]  = false
    head[:nx]        = 1
-   head[:nw]        = numel(data.colheaders)
-   head[:variables] = split(data.textdata)
+   head[:nw]        = length(head[:variables])
 
-   data = []
-end
+   data = zeros(head[:nw],nLine)
+   for i = 1:nLine
+      line = split(readline(f))
+      data[:,i] = parse.(Float64,line)
+   end
 
-return head, data
-=#
+   close(f)
+
+   return head, data
 end
 
 """
-   get_file_types(nfile, filenames, dir)
+   getFileTypes(nfile, filenames, dir)
 Get the type of files.
 ...
 # Output arguments
@@ -164,12 +160,12 @@ Get the type of files.
 - `pictsize::Int`: size (in bytes) of one snapshot.
 ...
 """
-function get_file_types(nfile::Int,filenames::Array{String,1},dir::String)
+function getFileTypes(nfile::Int, filenames::Array{String,1}, dir::String)
 
-   fileID   = Array{IOStream,1}(undef,nfile)
-   pictsize = Array{Int64,1}(undef,nfile)
+   fileID   = Vector{IOStream}(undef,nfile)
+   pictsize = Vector{Int64}(undef,nfile)
 
-   filelist = Array{FileList,1}(undef,nfile)
+   filelist = Vector{FileList}(undef,nfile)
 
    for ifile=1:nfile
       f = joinpath(dir,filenames[ifile])
@@ -202,7 +198,7 @@ function get_file_types(nfile::Int,filenames::Array{String,1},dir::String)
             elseif len == 24
                type = "binary"
             else
-               error("Error in get_file_types: strange unformatted file:
+               error("Error in getFileTypes: strange unformatted file:
                   $(filelist[ifile].name)")
             end
 
@@ -321,7 +317,7 @@ function getfilehead(fileID::IOStream, type::String)
    return head
 end
 
-# Do I want multiple-dispatch, or another function?
+
 function getfilesize(fileID::IOStream, type::String)
 
    pictsize = 0
