@@ -214,7 +214,6 @@ function getFileTypes(nfile::Int, filenames::Array{String,1}, dir::String)
       npictinfiles = floor(Int, bytes / pictsize[ifile])
 
       filelist[ifile] = FileList(filenames[ifile], type, bytes, npictinfiles)
-
    end
 
    return filelist, fileID, pictsize
@@ -317,7 +316,7 @@ function getfilehead(fileID::IOStream, type::String)
    return head
 end
 
-
+""" Return the size of file. """
 function getfilesize(fileID::IOStream, type::String)
 
    pictsize = 0
