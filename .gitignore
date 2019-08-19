@@ -2,6 +2,7 @@
 .gitattributes
 *.out
 *.outs
+*.log
 #.dat
 *.eps
 *.png
