@@ -981,7 +981,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
                   Xi = [i for i in xi, j in yi]
                   Yi = [j for i in xi, j in yi]
                   wi = spline(Xi[:], Yi[:])
-                  wi = reshape(wi,size(Xi))'
+                  wi = reshape(wi, size(Xi))'
                end
             end
 
@@ -1136,9 +1136,9 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
 
    else # 2D cut from 3D output; now only for Cartesian output
       for (ivar,var) in enumerate(vars)
-         X = permutedims(x[:,:,:,1],[2, 1, 3])
-         Y = permutedims(x[:,:,:,2],[2, 1, 3])
-         Z = permutedims(x[:,:,:,3],[2, 1, 3])
+         X = permutedims(x[:,:,:,1], [2,1,3])
+         Y = permutedims(x[:,:,:,2], [2,1,3])
+         Z = permutedims(x[:,:,:,3], [2,1,3])
 
          VarIndex_ = findfirst(x->x==lowercase(var),
             lowercase.(filehead[:wnames]))
@@ -1174,7 +1174,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
             xlabel("y"); ylabel("z")
          elseif cut == "y"
             xlabel("x"); ylabel("z")
-         elseif cut =="z"
+         elseif cut == "z"
             xlabel("x"); ylabel("y")
          end
 
@@ -1208,10 +1208,10 @@ function subsurface(x::Array{Float64,2}, y::Array{Float64,2},
    hx = x[:,1]
    hy = y[1,:]
 
-   if isinf(limits[1])  limits[1] = minimum(hx) end
-   if isinf(limits[3])  limits[3] = minimum(hy) end
-   if isinf(limits[2])  limits[2] = maximum(hx) end
-   if isinf(limits[4])  limits[4] = maximum(hy) end
+   if isinf(limits[1]) limits[1] = minimum(hx) end
+   if isinf(limits[3]) limits[3] = minimum(hy) end
+   if isinf(limits[2]) limits[2] = maximum(hx) end
+   if isinf(limits[4]) limits[4] = maximum(hy) end
 
    xind = findall(limits[1] .≤ hx .≤ limits[2])
    yind = findall(limits[3] .≤ hy .≤ limits[4])
