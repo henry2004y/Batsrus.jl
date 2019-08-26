@@ -2,14 +2,19 @@
 #
 # Hongyang Zhou, hyzhou@umich.edu 07/23/2019
 
-using WriteVTK, MATLAB
+using WriteVTK
+try
+   using MATLAB
+catch
+   println("MATLAB not found path...")
+end
 include("VisAna.jl")
 using .VisAna
 
 searchdir(path,key) = filter(x->occursin(key,x), readdir(path))
 
 mypath = "."
-mykey  = "box.out"
+mykey  = "box_test.out"
 
 filenames = searchdir(mypath,mykey)
 
@@ -35,7 +40,7 @@ function convertBox2VTK_matlab(filenames::Array{String,1})
       if isnothing(func_) @error "Couldn't find variable $(func)!" end
       P = data["w"][:,:,:,func_]
 
-      outname = filename[1:end-5]
+      outname = filename[1:end-4]
 
       # Rectilinear or structured grid
       outfiles = vtk_grid(outname, x, y, z) do vtk
@@ -64,7 +69,7 @@ function convertBox2VTK(filenames::Array{String,1}, gridType::Int64=1)
       P = data[1].w[:,:,:,func_]
       =#
 
-      outname = filename[1:end-5]
+      outname = filename[1:end-4]
 
       if gridType == 1 # rectilinear grid
          x = @view data[1].x[:,1,1,1]
@@ -87,7 +92,7 @@ function convertBox2VTK(filenames::Array{String,1}, gridType::Int64=1)
          vtk_cell_data(vtkfile, cdata, "my_cell_data")
          outfiles = vtk_save(vtkfile)
       end
-
+      println(filename," finished conversion.")
    end
 
 end
