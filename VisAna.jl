@@ -1297,9 +1297,74 @@ function animatedata(data::Data,filehead::Dict,filelist::FileList,func::String;
 
    # Combine the plots
 
-
-
 end
 
+#=
+"""Approximate gradient. """
+function gradient(arr)
+
+   # first dimension
+   g  = zeros(size(f),class(f)) # case of singleton dimension
+   h = loc{1}(:)
+   n = siz(1)
+   # Take forward differences on left and right edges
+   if n > 1
+      g(1,:) = (f(2,:) - f(1,:))/(h(2)-h(1))
+      g(n,:) = (f(n,:) - f(n-1,:))/(h(end)-h(end-1))
+   end
+
+   # Take centered differences on interior points
+   if n > 2
+      g(2:n-1,:) = (f(3:n,:)-f(1:n-2,:)) ./ (h(3:n) - h(1:n-2))
+   end
+
+
+   # second dimensions and beyond
+   if ndim == 2
+       # special case 2-D matrices to support sparse matrices,
+       # which lack support for N-D operations including reshape
+       # and indexing
+       n = siz(2)
+       h = reshape(loc{2},1,[])
+       g = zeros(size(f),class(f))
+
+       # Take forward differences on left and right edges
+       if n > 1
+           g(:,1) = (f(:,2) - f(:,1))/(h(2)-h(1));
+           g(:,n) = (f(:,n) - f(:,n-1))/(h(end)-h(end-1));
+       end
+
+       # Take centered differences on interior points
+       if n > 2
+           h = h(3:n) - h(1:n-2);
+           g(:,2:n-1) = (f(:,3:n) - f(:,1:n-2)) ./ h;
+       end
+
+   elseif ndim > 2
+       # N-D case
+       for k = 2:ndim
+           n = siz(k);
+           newsiz = [prod(siz(1:k-1)) siz(k) prod(siz(k+1:end))];
+           nf = reshape(f,newsiz);
+           h = reshape(loc{k},1,[]);
+           g  = zeros(size(nf),class(nf)); % case of singleton dimension
+
+           # Take forward differences on left and right edges
+           if n > 1
+               g(:,1,:) = (nf(:,2,:) - nf(:,1,:))/(h(2)-h(1));
+               g(:,n,:) = (nf(:,n,:) - nf(:,n-1,:))/(h(end)-h(end-1));
+           end
+
+           # Take centered differences on interior points
+           if n > 2
+               h = h(3:n) - h(1:n-2);
+               g(:,2:n-1,:) = (nf(:,3:n,:) - nf(:,1:n-2,:)) ./ h;
+           end
+
+       end
+   end
+
+end
+=#
 
 end
