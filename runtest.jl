@@ -69,3 +69,51 @@ filehead, data, filelist = readdata(filename,verbose=false);
 # log file
 logfilename = "shocktube.log";
 filehead, data = readlogdata(logfilename)
+
+
+using PyCall, PyPlot
+
+include("VisAna.jl")
+using .VisAna
+
+filename = "y*.outs"
+filehead, data, filelist = readdata(filename,verbose=false);
+
+X = vec(data[1].x[:,:,1])
+Y = vec(data[1].x[:,:,2])
+W = vec(data[1].w[:,:,8])
+
+# Perform linear interpolation of the data (x,y) on grid(xi,yi)
+plotrange = zeros(4)
+plotrange[1] = minimum(X)
+plotrange[2] = maximum(X)
+plotrange[3] = minimum(Y)
+plotrange[4] = maximum(Y)
+
+#plotinterval = X[2] - X[1]
+plotinterval = 1.0
+
+xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
+yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
+
+triang = matplotlib.tri.Triangulation(X,Y)
+interpolator = matplotlib.tri.LinearTriInterpolator(triang, W)
+np = pyimport("numpy")
+Xi, Yi = np.meshgrid(xi, yi)
+wi = interpolator(Xi, Yi)
+
+c = contourf(xi,yi,wi)
+using MATLAB
+px, py = mxcall(:gradient, 2, wi)
+
+
+
+filename = "3d*"
+filehead, data, filelist = readdata(filename,verbose=false);
+
+X = vec(data[1].x[:,:,1])
+Y = vec(data[1].x[:,:,2])
+Z = vec(data[1].x[:,:,3])
+W = vec(data[1].w[:,:,8])
+
+# ScatteredInterpolation using Dierckx
