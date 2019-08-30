@@ -3,9 +3,11 @@ module VisAna
 #
 # Hongyang Zhou, hyzhou@umich.edu 07/24/2019
 
-export readdata, readlogdata, plotdata, plotlogdata, animatedata, Data, FileList
+export readdata, readlogdata, plotdata, plotlogdata, animatedata, readtecdata
+export Data, FileList
 
 using Glob, PyPlot, Printf, PyCall, Dierckx
+
 
 struct Data{T}
    x::Array{T}
@@ -70,9 +72,12 @@ function readdata( filenamesIn::String; dir::String=".", npict::Int=1,
 
    ## Read data from files
    for ifile=1:nfile
-      if occursin("log",filelist[ifile].type)
-         filehead,data = readlogdata(joinpath(dir,filelist[ifile].name))
+      if filelist[ifile].type == "log"
+         filehead, data = readlogdata(joinpath(dir,filelist[ifile].name))
          return
+      elseif filelist[ifile].type == "dat"
+         filehead, data = readtecdata(joinpath(dir,filelist[ifile].name),
+            verbose)
       else
          # Skip npict-1 snapshots (because we only want npict snapshot)
          skip(fileID[ifile], pictsize[ifile]*(npict-1))
@@ -88,8 +93,6 @@ function readdata( filenamesIn::String; dir::String=".", npict::Int=1,
             x,w = getpictbinary(fileID[ifile], fileheads[ifile])
          elseif fileType == "real4"
             x,w = getpictreal(fileID[ifile], fileheads[ifile])
-         elseif fileType == "log"
-
          else
             error("get_pict: unknown filetype: $(filelist[ifile].type)")
          end
@@ -150,6 +153,61 @@ function readlogdata( filename )
    return head, data
 end
 
+
+function readtecdata(filename, verbose::Bool)
+
+   f = open(filename)
+   nNode = 0
+
+   # Read Tecplot header
+   ln = readline(f)
+   if startswith(ln, "TITLE")
+      title = ln[8:end-1]
+   else
+      @warn "No title provided."
+   end
+   ln = readline(f)
+   if startswith(ln, "VARIABLES")
+      VARS = split(ln[12:end],", ")
+      for i in 1:length(VARS)
+         VARS[i] = chop(VARS[i], head = 1, tail = 1)
+      end
+   else
+      @warn "No variable names provided."
+   end
+   ln = readline(f)
+   if startswith(ln, "ZONE")
+      info = split(ln[6:end],", ")
+      nNode = parse(Int,info[2][3:end])
+   else
+      @warn "No zone info provided."
+   end
+
+   pt0 = position(f)
+   while true
+      x = readline(f)
+      if !startswith(x, "AUXDATA")
+         break
+      else
+         verbose && println(x)
+      end
+      pt0 = position(f)
+   end
+   seek(f, pt0)
+
+   # Read data
+   data = Array{Float32,2}(undef,length(VARS),nNode)
+   for i = 1:nNode
+      x = readline(f)
+      data[:,i] .= parse.(Float32, split(x))
+   end
+
+   close(f)
+
+   return VARS, data
+end
+
+
 """
    getFileTypes(nfile, filenames, dir)
 Get the type of files.
@@ -175,13 +233,15 @@ function getFileTypes(nfile::Int, filenames::Array{String,1}, dir::String)
       type  = ""
 
       # Check the appendix of file names
-      # I realized that this may not be a robust way; especially in linux
-      # because you can have any appendix you want!!!
       # Gabor uses a trick: the first 4 bytes decides the file type()
 
-      if occursin(r"^.*\.(log|dat)$",filenames[ifile])
-         filelist[ifile][:type] = "log"
-         filelist[ifile].npictinfiles = 1
+      if occursin(r"^.*\.(log)$",filenames[ifile])
+         type = "log"
+         npictinfiles = 1
+      elseif occursin(r"^.*\.(dat)$",filenames[ifile])
+         # tecplot ascii format
+         type = "dat"
+         npictinfiles = 1
       else
          # Obtain filetype based on the length info in the first 4 bytes
          lenhead = read(fileID[ifile], Int32)
@@ -206,12 +266,11 @@ function getFileTypes(nfile::Int, filenames::Array{String,1}, dir::String)
                type = uppercase(type)
             end
          end
+         # Obtain file size & number of snapshots
+         seekstart(fileID[ifile])
+         pictsize[ifile] = getfilesize(fileID[ifile], type)
+         npictinfiles = floor(Int, bytes / pictsize[ifile])
       end
-
-      # Obtain file size & number of snapshots
-      seekstart(fileID[ifile])
-      pictsize[ifile] = getfilesize(fileID[ifile], type)
-      npictinfiles = floor(Int, bytes / pictsize[ifile])
 
       filelist[ifile] = FileList(filenames[ifile], type, bytes, npictinfiles)
    end
