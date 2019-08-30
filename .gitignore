@@ -3,7 +3,7 @@
 *.out
 *.outs
 *.log
-#.dat
+*.dat
 *.eps
 *.png
 *.avi
