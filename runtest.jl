@@ -109,13 +109,15 @@ px, py = mxcall(:gradient, 2, wi)
 
 include("VisAna.jl")
 using .VisAna
-filename = "3d.dat"
+filename = "3d__var_4_t00000040_n00196955.dat"
 filehead, data, filelist = readdata(filename,verbose=false);
 
-X = vec(data[1,:]);
-Y = vec(data[2,:]);
-Z = vec(data[3,:]);
-W = vec(data[8,:]);
+@views X = data[1,:];
+@views Y = data[2,:];
+@views Z = data[3,:];
+@views W = data[11,:];
+
+points = hcat(X,Y,Z);
 
 using PyCall
 
@@ -124,13 +126,25 @@ scipy = pyimport("scipy")
 interpolate = pyimport("scipy.interpolate")
 griddata = interpolate.griddata
 
+xMin = minimum(X)
+xMax = maximum(X)
+yMin = minimum(Y)
+yMax = maximum(Y)
+zMin = minimum(Z)
+zMax = maximum(Z)
+
+nX, nY, nZ = 10im, 10im, 10im
+
 s = pybuiltin(:slice)
-XYZ = get(np.mgrid, (s(0,1,10im), s(0,1,20im), s(0,1,10im)))
-grid_x, grid_y, grid_z = XYZ[1,:,:,:], XYZ[2,:,:,:], XYZ[3,:,:,:]
+XYZ = get(np.mgrid, (s(xMin,xMax,nX), s(yMin,yMax,nY), s(zMin,zMax,nZ)));
+grid_x, grid_y, grid_z = XYZ[1,:,:,:], XYZ[2,:,:,:], XYZ[3,:,:,:];
 
-points = np.random.rand(1000, 3)
-values = py"func"(points[:,1], points[:,2], points[:,3])
+#points = np.random.rand(1000, 3)
+#values = py"func"(points[:,1], points[:,2], points[:,3])
 
-grid_z0 = griddata(points, values, (grid_x, grid_y, grid_z), method="nearest")
-grid_z1 = griddata(points, values, (grid_x, grid_y, grid_z), method="linear")
-grid_z2 = griddata(points, values, (grid_x, grid_y, grid_z), method="cubic")
+grid_z0 = griddata(points, W, (grid_x, grid_y, grid_z), method="nearest")
+#grid_z1 = griddata(, values, (grid_x, grid_y, grid_z), method="linear")
+#grid_z2 = griddata(points, values, (grid_x, grid_y, grid_z), method="cubic")
+
+
+
