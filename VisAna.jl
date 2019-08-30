@@ -78,6 +78,7 @@ function readdata( filenamesIn::String; dir::String=".", npict::Int=1,
       elseif filelist[ifile].type == "dat"
          filehead, data = readtecdata(joinpath(dir,filelist[ifile].name),
             verbose)
+	 push!(fileheads, filehead)
       else
          # Skip npict-1 snapshots (because we only want npict snapshot)
          skip(fileID[ifile], pictsize[ifile]*(npict-1))
@@ -156,6 +157,9 @@ end
 
 function readtecdata(filename, verbose::Bool)
 
+   # Create a struct for substituting common block file_head
+   head = Dict(:variables => Array{String,1}(undef,1))
+
    f = open(filename)
    nNode = 0
 
@@ -204,7 +208,9 @@ function readtecdata(filename, verbose::Bool)
 
    close(f)
 
-   return VARS, data
+   head[:variables] = VARS
+
+   return head, data
 end
 
 
@@ -1358,23 +1364,24 @@ function animatedata(data::Data,filehead::Dict,filelist::FileList,func::String;
 
 end
 
-#=
-"""Approximate gradient. """
-function gradient(arr)
 
+"""Approximate gradient. """
+function gradient(f::Array{Float64}, hx::Float64=1.0, hy::Float64=1.0, hz::Float64=1.0)
+
+   siz = size(f)
    # first dimension
-   g  = zeros(size(f),class(f)) # case of singleton dimension
-   h = loc{1}(:)
-   n = siz(1)
+   px = similar(f)
+   h = range(0, step=hx, length=siz[1])
+   n = siz[1]
    # Take forward differences on left and right edges
    if n > 1
-      g(1,:) = (f(2,:) - f(1,:))/(h(2)-h(1))
-      g(n,:) = (f(n,:) - f(n-1,:))/(h(end)-h(end-1))
+      px[1,:] .= (f[2,:] .- f[1,:])./(h[2]-h[1])
+      px[n,:] .= (f[n,:] .- f[n-1,:])./(h[end]-h[end-1])
    end
 
    # Take centered differences on interior points
    if n > 2
-      g(2:n-1,:) = (f(3:n,:)-f(1:n-2,:)) ./ (h(3:n) - h(1:n-2))
+      px[2:n-1,:] .= (f[3:n,:].-f[1:n-2,:]) ./ (h[3:n] - h[1:n-2])
    end
 
 
@@ -1383,47 +1390,46 @@ function gradient(arr)
        # special case 2-D matrices to support sparse matrices,
        # which lack support for N-D operations including reshape
        # and indexing
-       n = siz(2)
+       n = siz[2]
        h = reshape(loc{2},1,[])
-       g = zeros(size(f),class(f))
+       py = similar(f)
 
        # Take forward differences on left and right edges
        if n > 1
-           g(:,1) = (f(:,2) - f(:,1))/(h(2)-h(1));
-           g(:,n) = (f(:,n) - f(:,n-1))/(h(end)-h(end-1));
+           py[:,1] .= (f[:,2] .- f[:,1])./(h[2]-h[1])
+           py[:,n] .= (f[:,n] .- f[:,n-1])./(h[end]-h[end-1])
        end
 
        # Take centered differences on interior points
        if n > 2
-           h = h(3:n) - h(1:n-2);
-           g(:,2:n-1) = (f(:,3:n) - f(:,1:n-2)) ./ h;
+           hy = h[3:n] - h[1:n-2]
+           py[:,2:n-1] .= (f[:,3:n] .- f[:,1:n-2]) ./ hy
        end
 
    elseif ndim > 2
        # N-D case
        for k = 2:ndim
-           n = siz(k);
-           newsiz = [prod(siz(1:k-1)) siz(k) prod(siz(k+1:end))];
-           nf = reshape(f,newsiz);
-           h = reshape(loc{k},1,[]);
-           g  = zeros(size(nf),class(nf)); % case of singleton dimension
+           n = siz[k]
+           newsiz = [prod(siz[1:k-1]) siz[k] prod(siz[k+1:end])]
+           nf = reshape(f,newsiz...)
+           g  = similar(nf)
 
            # Take forward differences on left and right edges
            if n > 1
-               g(:,1,:) = (nf(:,2,:) - nf(:,1,:))/(h(2)-h(1));
-               g(:,n,:) = (nf(:,n,:) - nf(:,n-1,:))/(h(end)-h(end-1));
+               g[:,1,:] .= (nf[:,2,:] .- nf[:,1,:])./(h[2]-h[1])
+               g[:,n,:] .= (nf[:,n,:] .- nf[:,n-1,:])./(h[end]-h[end-1])
            end
 
            # Take centered differences on interior points
            if n > 2
-               h = h(3:n) - h(1:n-2);
-               g(:,2:n-1,:) = (nf(:,3:n,:) - nf(:,1:n-2,:)) ./ h;
+               hz = h[3:n] .- h[1:n-2]
+               g[:,2:n-1,:] .= (nf[:,3:n,:] .- nf[:,1:n-2,:]) ./ h
            end
 
        end
    end
 
 end
-=#
+
 
 end
