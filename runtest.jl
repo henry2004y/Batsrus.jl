@@ -112,9 +112,25 @@ using .VisAna
 filename = "3d.dat"
 filehead, data, filelist = readdata(filename,verbose=false);
 
-X = vec(data[1].x[1,:])
-Y = vec(data[1].x[2,:])
-Z = vec(data[1].x[3,:])
-W = vec(data[1].w[8,:])
+X = vec(data[1,:]);
+Y = vec(data[2,:]);
+Z = vec(data[3,:]);
+W = vec(data[8,:]);
 
-# ScatteredInterpolation using Dierckx
+using PyCall
+
+np = pyimport("numpy")
+scipy = pyimport("scipy")
+interpolate = pyimport("scipy.interpolate")
+griddata = interpolate.griddata
+
+s = pybuiltin(:slice)
+XYZ = get(np.mgrid, (s(0,1,10im), s(0,1,20im), s(0,1,10im)))
+grid_x, grid_y, grid_z = XYZ[1,:,:,:], XYZ[2,:,:,:], XYZ[3,:,:,:]
+
+points = np.random.rand(1000, 3)
+values = py"func"(points[:,1], points[:,2], points[:,3])
+
+grid_z0 = griddata(points, values, (grid_x, grid_y, grid_z), method="nearest")
+grid_z1 = griddata(points, values, (grid_x, grid_y, grid_z), method="linear")
+grid_z2 = griddata(points, values, (grid_x, grid_y, grid_z), method="cubic")
