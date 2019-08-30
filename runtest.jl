@@ -107,13 +107,14 @@ using MATLAB
 px, py = mxcall(:gradient, 2, wi)
 
 
-
-filename = "3d*"
+include("VisAna.jl")
+using .VisAna
+filename = "3d.dat"
 filehead, data, filelist = readdata(filename,verbose=false);
 
-X = vec(data[1].x[:,:,1])
-Y = vec(data[1].x[:,:,2])
-Z = vec(data[1].x[:,:,3])
-W = vec(data[1].w[:,:,8])
+X = vec(data[1].x[1,:])
+Y = vec(data[1].x[2,:])
+Z = vec(data[1].x[3,:])
+W = vec(data[1].w[8,:])
 
 # ScatteredInterpolation using Dierckx
