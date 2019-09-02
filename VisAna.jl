@@ -43,7 +43,7 @@ function readdata( filenamesIn::String; dir::String=".", npict::Int=1,
    filenamesSplit = split(filenamesIn)
    filenames = Vector{String}(undef,0)
    for filename in filenamesSplit
-      filesfound = glob(filename)
+      filesfound = glob(filename, dir)
       if isempty(filesfound)
          error("Error in readdata: no matching filename was found for
          $(filename)")
