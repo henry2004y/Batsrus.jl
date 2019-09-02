@@ -77,21 +77,21 @@ include("VisAna.jl")
 using .VisAna
 
 filename = "y*.outs"
-filehead, data, filelist = readdata(filename,verbose=false);
+filehead, data, filelist = readdata(filename,npict=20,verbose=false);
 
 X = vec(data[1].x[:,:,1])
 Y = vec(data[1].x[:,:,2])
-W = vec(data[1].w[:,:,8])
+W = vec(data[1].w[:,:,10])
 
 # Perform linear interpolation of the data (x,y) on grid(xi,yi)
 plotrange = zeros(4)
-plotrange[1] = minimum(X)
-plotrange[2] = maximum(X)
-plotrange[3] = minimum(Y)
-plotrange[4] = maximum(Y)
+plotrange[1] = -3 # minimum(X)
+plotrange[2] = 3  # maximum(X)
+plotrange[3] = -3 # minimum(Y)
+plotrange[4] = 3  # maximum(Y)
 
 #plotinterval = X[2] - X[1]
-plotinterval = 1.0
+plotinterval = 0.01
 
 xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
 yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
@@ -102,49 +102,11 @@ np = pyimport("numpy")
 Xi, Yi = np.meshgrid(xi, yi)
 wi = interpolator(Xi, Yi)
 
-c = contourf(xi,yi,wi)
+# mask a circle in the middle:
+interior = (Xi.^2 .+ Yi.^2 .< 1.0);
+wi[interior] .= np.ma.masked
+
+c = contourf(xi,yi,wi,50)
+colorbar()
 using MATLAB
 px, py = mxcall(:gradient, 2, wi)
-
-
-include("VisAna.jl")
-using .VisAna
-filename = "3d__var_4_t00000040_n00196955.dat"
-filehead, data, filelist = readdata(filename,verbose=false);
-
-@views X = data[1,:];
-@views Y = data[2,:];
-@views Z = data[3,:];
-@views W = data[11,:];
-
-points = hcat(X,Y,Z);
-
-using PyCall
-
-np = pyimport("numpy")
-scipy = pyimport("scipy")
-interpolate = pyimport("scipy.interpolate")
-griddata = interpolate.griddata
-
-xMin = minimum(X)
-xMax = maximum(X)
-yMin = minimum(Y)
-yMax = maximum(Y)
-zMin = minimum(Z)
-zMax = maximum(Z)
-
-nX, nY, nZ = 10im, 10im, 10im
-
-s = pybuiltin(:slice)
-XYZ = get(np.mgrid, (s(xMin,xMax,nX), s(yMin,yMax,nY), s(zMin,zMax,nZ)));
-grid_x, grid_y, grid_z = XYZ[1,:,:,:], XYZ[2,:,:,:], XYZ[3,:,:,:];
-
-#points = np.random.rand(1000, 3)
-#values = py"func"(points[:,1], points[:,2], points[:,3])
-
-grid_z0 = griddata(points, W, (grid_x, grid_y, grid_z), method="nearest")
-#grid_z1 = griddata(, values, (grid_x, grid_y, grid_z), method="linear")
-#grid_z2 = griddata(points, values, (grid_x, grid_y, grid_z), method="cubic")
-
-
-
