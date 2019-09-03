@@ -1065,7 +1065,6 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
                c = plot_surface(xi,yi,wi)
             end
 
-
             occursin("bar", plotmode[ivar]) && colorbar()
             occursin("log", plotmode[ivar]) &&
                ( c.locator = matplotlib.ticker.LogLocator() )
@@ -1087,9 +1086,9 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
 
             if plotmode[ivar] == "trimesh"
                triang = matplotlib.tri.Triangulation(X, Y)
-               ax.triplot(triang)
+               c = ax.triplot(triang)
             elseif plotmode[ivar] == "trisurf"
-               ax.plot_trisurf(X, Y, W)
+               c = ax.plot_trisurf(X, Y, W)
             elseif plotmode[ivar] == "tricont"
                c = ax.tricontourf(X, Y, W)
                fig.colorbar(c,ax=ax)
@@ -1107,14 +1106,13 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
                lowercase.(filehead[:wnames]))
 
             if filehead[:gencoord] # Generalized coordinates
-               if any(!isinf.(plotrange))
+			   X, Y= vec(x[:,:,1]), vec(x[:,:,2])
+			   if any(isinf.(plotrange))
                   if plotrange[1] == -Inf plotrange[1] = minimum(X) end
                   if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
                   if plotrange[3] == -Inf plotrange[3] = minimum(Y) end
                   if plotrange[4] ==  Inf plotrange[4] = maximum(Y) end
                end
-
-               X, Y, W = vec(x[:,:,1]), vec(x[:,:,2]), vec(w[:,:,VarIndex_])
 
                # Create grid values first.
                xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
@@ -1154,16 +1152,16 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
                   Yi = [j for i in xi, j in yi]
 
                   spline = Spline2D(X, Y, w1)
-                  wi = spline(Xi[:], Yi[:])
-                  v1 = reshape(wi,size(Xi))'
+                  v1 = spline(Xi[:], Yi[:])
+                  v1 = reshape(v1, size(Xi))'
 
                   spline = Spline2D(X, Y, w2)
-                  wi = spline(Xi[:], Yi[:])
-                  v2 = reshape(wi,size(Xi))'
+                  v2 = spline(Xi[:], Yi[:])
+                  v2 = reshape(v2, size(Xi))'
                end
             end
 
-            s = streamplot(X,Y,v1,v2,color="w",linewidth=1.0,density=density)
+            s = streamplot(Xi,Yi,v1,v2,color="w",linewidth=1.0,density=density)
 
          elseif occursin("quiver", plotmode[ivar])
             VarQuiver  = split(var,";")
@@ -1307,14 +1305,14 @@ function subdata(data::Array{Float64,2},
 end
 
 """
-   animatedata(data, filehead, func, (plotmode="contbar",
+   animatedata(filelist, func, (plotmode="contbar",
       plotrange=[-Inf Inf -Inf Inf],
       plotinterval=0.1))
 Generate animations from data. This is basically calling plotdata function for
 multiple snapshots. The main issue here is to determine the colorbar/axis range
 in advance to avoid any jump in the movie.
 """
-function animatedata(data::Data,filehead::Dict,filelist::FileList,func::String;
+function animatedata(filelist::FileList,func::String;
    imin::Int=1, imax::Int=1, cut::String="",
    plotmode::String="contbar", plotrange::Vector{Float64}=[-Inf,Inf,-Inf,Inf],
    plotinterval::Float64=0.1, verbose::Bool=true)
@@ -1348,20 +1346,26 @@ function animatedata(data::Data,filehead::Dict,filelist::FileList,func::String;
    =#
 
    # Get the color range for all snapshots
-   wmin, wmax = plotdata(data,filehead,func,getrangeOnly=true)
-
+   #wmin, wmax = plotdata(data,filehead,func,getrangeOnly=true)
 
    # Do individual snapshot plotting
-   for ipict = 1:filelist.npictinfiles
-      fhead, d, flist = readdata(filelist.name,verbose=false,npict=ipict)
-      plotdata(d[1],fhead[1],"rho",plotmode="contbar")
-      fig = gcf()
-      ax  = gca()
-      #ani = FuncAnimation(fig,)
-   end
+   #for ipict = 1:filelist.npictinfiles
+   anim = pyimport("matplotlib.animation")
+   fig = plt.figure()
+   ani = anim.FuncAnimation(fig, animate, frames=2, fargs=(filelist,), blit=true)
 
    # Combine the plots
-
+   plt.show()
 end
+
+
+function animate(i,filelist)
+   clf()
+   fhead, d, flist = readdata(filelist.name,verbose=false,npict=i+1)
+   plotdata(d[1],fhead[1],"p",plotmode="contbar")
+
+   return gca()
+end
+
 
 end
