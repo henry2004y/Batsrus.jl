@@ -68,7 +68,7 @@ function get_diamagnetic_current(filehead::Dict, data::Array{T,2}) where
    Bz = griddata(points, Bz0, (grid_x, grid_y, grid_z), method="linear")
    P  = griddata(points, P0,  (grid_x, grid_y, grid_z), method="linear")
 
-   px, py, pz = np.gradient(P) # ▽P
+   px, py, pz = np.gradient(P) # ▽P, unit length should be provided!!!
 
    jDiaMag  = Array{Float64,4}(undef,3,nX,nY,nZ)
    jCurrent = Array{Float64,3}(undef,nX,nY,nZ)
