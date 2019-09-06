@@ -155,10 +155,13 @@ function readlogdata( filename )
 end
 
 
-function readtecdata(filename, verbose::Bool)
+function readtecdata(filename, verbose::Bool=false)
 
-   # Create a struct for substituting common block file_head
-   head = Dict(:variables => Array{String,1}(undef,1))
+   # Create a Dict for substituting common block file_head
+   head = Dict(:variables => Array{String,1}(undef,1),
+      :nNode => 0,
+	  :nCell => 0,
+	  :nDim  => 0)
 
    f = open(filename)
    nNode = 0
@@ -182,7 +185,9 @@ function readtecdata(filename, verbose::Bool)
    ln = readline(f)
    if startswith(ln, "ZONE")
       info = split(ln[6:end],", ")
+	  nDim = parse(Int,info[1][4])
       nNode = parse(Int,info[2][3:end])
+	  nCell = parse(Int,info[3][3:end])
    else
       @warn "No zone info provided."
    end
@@ -206,11 +211,26 @@ function readtecdata(filename, verbose::Bool)
       data[:,i] .= parse.(Float32, split(x))
    end
 
+   # Read connectivity
+   if nDim == 3
+   	  connectivity = Array{Int32,2}(undef,8,nCell)
+   elseif nDim == 2
+	  connectivity = Array{Int32,2}(undef,4,nCell)
+   end
+
+   for i = 1:nCell
+	  x = readline(f)
+	  connectivity[:,i] .= parse.(Int32, split(x))
+   end
+
    close(f)
 
    head[:variables] = VARS
+   head[:nNode] = nNode
+   head[:nCell] = nCell
+   head[:nDim]  = nDim
 
-   return head, data
+   return head, data, connectivity
 end
 
 
@@ -1317,45 +1337,7 @@ function animatedata(filelist::FileList,func::String;
    plotmode::String="contbar", plotrange::Vector{Float64}=[-Inf,Inf,-Inf,Inf],
    plotinterval::Float64=0.1, verbose::Bool=true)
 
-   # I realized the usage of animation in matplotlib.
-   #=
-   py"""
-   import numpy as np
-   import matplotlib.pyplot as plt
-   from matplotlib.animation import FuncAnimation
 
-   fig, ax = plt.subplots()
-   xdata, ydata = [], []
-   ln, = ax.plot([], [], 'r-', animated=False)
-
-   def init():
-       ax.set_xlim(0, 2*np.pi)
-       ax.set_ylim(-1, 1)
-       return ln,
-
-   def update(frame):
-       xdata.append(frame)
-       ydata.append(np.sin(frame))
-       ln.set_data(xdata, ydata)
-       return ln,
-
-   ani = FuncAnimation(fig, update, frames=np.linspace(0, 2*np.pi, 128),
-                       init_func=init, blit=True)
-   plt.show()
-   """
-   =#
-
-   # Get the color range for all snapshots
-   #wmin, wmax = plotdata(data,filehead,func,getrangeOnly=true)
-
-   # Do individual snapshot plotting
-   #for ipict = 1:filelist.npictinfiles
-   anim = pyimport("matplotlib.animation")
-   fig = plt.figure()
-   ani = anim.FuncAnimation(fig, animate, frames=2, fargs=(filelist,), blit=true)
-
-   # Combine the plots
-   plt.show()
 end
 
 
