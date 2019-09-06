@@ -96,3 +96,32 @@ function convertBox2VTK(filenames::Array{String,1}, gridType::Int64=1)
    end
 
 end
+
+function convertTec2VTK()
+   filename = "3d.dat"
+   head, data, connectivity  = readtecdata(filename,false)
+
+   points = @view data[1:3,:]
+   cells = Vector{MeshCell{Array{Int32,1}}}(undef,head[:nCell])
+   if head[:nDim] == 3
+      @inbounds for i = 1:head[:nCell]
+         cells[i] = MeshCell(VTKCellTypes.VTK_VOXEL, connectivity[:,i])
+      end
+   elseif head[:nDim] == 2
+      @inbounds for i = 1:head[:nCell]
+         cells[i] = MeshCell(VTKCellTypes.VTK_PIXEL, connectivity[:,i])
+      end
+   end
+
+   # 777MB in Ascii to 147MB in VTK binary;
+   # What about preplot? 234MB
+   vtkfile = vtk_grid("test_unstructured", points, cells)
+
+   rho = @view data[4,:]
+   p = @view data[14,:]
+
+   vtk_point_data(vtkfile, rho, "Rho")
+   vtk_point_data(vtkfile, p, "P")
+
+   outfiles = vtk_save(vtkfile)
+end
