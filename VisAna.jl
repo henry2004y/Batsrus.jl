@@ -78,7 +78,7 @@ function readdata( filenamesIn::String; dir::String=".", npict::Int=1,
       elseif filelist[ifile].type == "dat"
          filehead, data = readtecdata(joinpath(dir,filelist[ifile].name),
             verbose)
-	 push!(fileheads, filehead)
+	     push!(fileheads, filehead)
       else
          # Skip npict-1 snapshots (because we only want npict snapshot)
          skip(fileID[ifile], pictsize[ifile]*(npict-1))
@@ -155,7 +155,7 @@ function readlogdata( filename )
 end
 
 
-function readtecdata(filename, verbose::Bool=false)
+function readtecdata(filename, IsBinary::Bool=false, verbose::Bool=false)
 
    # Create a Dict for substituting common block file_head
    head = Dict(:variables => Array{String,1}(undef,1),
@@ -164,7 +164,6 @@ function readtecdata(filename, verbose::Bool=false)
 	  :nDim  => 0)
 
    f = open(filename)
-   nNode = 0
 
    # Read Tecplot header
    ln = readline(f)
@@ -186,8 +185,13 @@ function readtecdata(filename, verbose::Bool=false)
    if startswith(ln, "ZONE")
       info = split(ln[6:end],", ")
 	  nDim = parse(Int,info[1][4])
-      nNode = parse(Int,info[2][3:end])
-	  nCell = parse(Int,info[3][3:end])
+	  if IsBinary
+		 nNode = read(IOBuffer(info[2][3:end]), Int32)
+	     nCell = read(IOBuffer(info[3][3:end]), Int32)
+	  else
+      	 nNode = parse(Int,info[2][3:end])
+	  	 nCell = parse(Int,info[3][3:end])
+	 end
    else
       @warn "No zone info provided."
    end
@@ -204,23 +208,34 @@ function readtecdata(filename, verbose::Bool=false)
    end
    seek(f, pt0)
 
-   # Read data
-   data = Array{Float32,2}(undef,length(VARS),nNode)
-   for i = 1:nNode
-      x = readline(f)
-      data[:,i] .= parse.(Float32, split(x))
+   # Ask Gabor how to change this all to Float32!!!
+   if IsBinary
+      data = Array{Float64,2}(undef,length(VARS),nNode)
+   else
+   	  data = Array{Float32,2}(undef,length(VARS),nNode)
    end
-
-   # Read connectivity
    if nDim == 3
-   	  connectivity = Array{Int32,2}(undef,8,nCell)
+	  connectivity = Array{Int32,2}(undef,8,nCell)
    elseif nDim == 2
 	  connectivity = Array{Int32,2}(undef,4,nCell)
    end
 
-   for i = 1:nCell
-	  x = readline(f)
-	  connectivity[:,i] .= parse.(Int32, split(x))
+   if IsBinary
+	  @inbounds for i = 1:nNode
+		 read!(f, view(data,:,i))
+	  end
+	  @inbounds for i = 1:nCell
+         read!(f, view(connectivity,:,i))
+      end
+   else
+   	  @inbounds for i = 1:nNode
+         x = readline(f)
+         data[:,i] .= parse.(Float32, split(x))
+      end
+	  @inbounds for i = 1:nCell
+		 x = readline(f)
+		 connectivity[:,i] .= parse.(Int32, split(x))
+	  end
    end
 
    close(f)
