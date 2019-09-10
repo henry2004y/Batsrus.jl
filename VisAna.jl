@@ -4,9 +4,9 @@ module VisAna
 # Hongyang Zhou, hyzhou@umich.edu 07/24/2019
 
 export readdata, readlogdata, plotdata, plotlogdata, animatedata, readtecdata
-export Data, FileList
+export Data, FileList, convertVTK
 
-using Glob, PyPlot, Printf, PyCall, Dierckx
+using Glob, PyPlot, Printf, PyCall, Dierckx, WriteVTK
 
 
 struct Data{T}
@@ -1402,5 +1402,58 @@ function animate(i,filelist)
    return gca()
 end
 
+
+function convertVTK(head::Dict, data::Array{Float32,2},
+   connectivity::Array{Int32,2})
+
+   nVar = length(head[:variables])
+
+   points = @view data[1:head[:nDim],:]
+   cells = Vector{MeshCell{Array{Int32,1}}}(undef,head[:nCell])
+   if head[:nDim] == 3
+      # PLT to VTK index_ = [1 2 4 3 5 6 8 7]
+      for i = 1:2
+         connectivity = swaprows(connectivity, 4*i-1, 4*i)
+      end
+      @inbounds for i = 1:head[:nCell]
+         cells[i] = MeshCell(VTKCellTypes.VTK_VOXEL, connectivity[:,i])
+      end
+   elseif head[:nDim] == 2
+      @inbounds for i = 1:head[:nCell]
+         cells[i] = MeshCell(VTKCellTypes.VTK_PIXEL, connectivity[:,i])
+      end
+   end
+
+   vtkfile = vtk_grid("test_unstructured", points, cells)
+
+   for ivar = head[:nDim]+1:nVar
+      if occursin("_x",head[:variables][ivar]) # vector
+         var1 = @view data[ivar,:]
+         var2 = @view data[ivar+1,:]
+         var3 = @view data[ivar+2,:]
+         namevar = replace(head[:variables][ivar], "_x"=>"")
+         vtk_point_data(vtkfile, (var1, var2, var3), namevar)
+      elseif occursin(r"(_y|_z)",head[:variables][ivar])
+         continue
+      else
+         var = @view data[ivar,:]
+         vtk_point_data(vtkfile, var, head[:variables][ivar])
+      end
+   end
+
+   outfiles = vtk_save(vtkfile)
+end
+
+function swaprows(X, i, j)
+   m, n = size(X)
+   if (1 <= i <= n) && (1 <= j <= n)
+      for k = 1:n
+        @inbounds X[i,k],X[j,k] = X[j,k],X[i,k]
+      end
+      return X
+   else
+      throw(BoundsError())
+   end
+end
 
 end
