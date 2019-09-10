@@ -208,9 +208,8 @@ function readtecdata(filename, IsBinary::Bool=false, verbose::Bool=false)
    end
    seek(f, pt0)
 
-   # Ask Gabor how to change this all to Float32!!!
    if IsBinary
-      data = Array{Float64,2}(undef,length(VARS),nNode)
+      data = Array{Float32,2}(undef,length(VARS),nNode)
    else
    	  data = Array{Float32,2}(undef,length(VARS),nNode)
    end

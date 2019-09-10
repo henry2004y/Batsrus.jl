@@ -98,7 +98,7 @@ function convertBox2VTK(filenames::Array{String,1}, gridType::Int64=1)
 end
 
 function convertTec2VTK()
-   filename = "3d.dat"
+   filename = "3d_ascii.dat"
    head, data, connectivity  = readtecdata(filename,false)
 
    points = @view data[1:3,:]
@@ -115,7 +115,7 @@ function convertTec2VTK()
 
    # 777MB in Ascii to 147MB in VTK binary;
    # What about preplot? 234MB
-   vtkfile = vtk_grid("test_unstructured", points, cells)
+   vtkfile = vtk_grid("test_unstructured1", points, cells)
 
    rho = @view data[4,:]
    p = @view data[14,:]
@@ -127,7 +127,7 @@ function convertTec2VTK()
 end
 
 function test_bin()
-   filename = "3d_mhd.dat"
+   filename = "3d_bin.dat"
 
    head, data, connectivity  = readtecdata(filename,true)
 
@@ -143,13 +143,54 @@ function test_bin()
       end
    end
 
-   vtkfile = vtk_grid("test_unstructured", points, cells)
+   vtkfile = vtk_grid("test_unstructured2", points, cells)
 
    rho = @view data[4,:]
    p = @view data[14,:]
 
    vtk_point_data(vtkfile, rho, "Rho")
    vtk_point_data(vtkfile, p, "P")
+
+   outfiles = vtk_save(vtkfile)
+
+end
+
+
+function test_cell()
+   filename = "3d_cell.dat"
+
+   head, data, connectivity  = readtecdata(filename,true)
+
+   nVar = length(head[:variables])
+
+   points = @view data[1:head[:nDim],:]
+   cells = Vector{MeshCell{Array{Int32,1}}}(undef,head[:nCell])
+   if head[:nDim] == 3
+      @inbounds for i = 1:head[:nCell]
+         cells[i] = MeshCell(VTKCellTypes.VTK_VOXEL, connectivity[:,i])
+      end
+   elseif head[:nDim] == 2
+      @inbounds for i = 1:head[:nCell]
+         cells[i] = MeshCell(VTKCellTypes.VTK_PIXEL, connectivity[:,i])
+      end
+   end
+
+   vtkfile = vtk_grid("test_unstructured2", points, cells)
+
+   for ivar = head[:nDim]+1:nVar
+      if occursin("_x",head[:variables][ivar]) # vector
+         var1 = @view data[ivar,:]
+         var2 = @view data[ivar+1,:]
+         var3 = @view data[ivar+2,:]
+         namevar = replace(head[:variables][ivar], "_x"=>"")
+         vtk_point_data(vtkfile, (var1, var2, var3), namevar)
+      elseif occursin(r"(_y|_z)",head[:variables][ivar])
+         continue
+      else
+         var = @view data[ivar,:]
+         vtk_point_data(vtkfile, var, head[:variables][ivar])
+      end
+   end
 
    outfiles = vtk_save(vtkfile)
 
