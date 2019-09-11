@@ -157,7 +157,7 @@ end
 
 
 function test_cell()
-   filename = "3d_cell.dat"
+   filename = "3d.tcp"
 
    head, data, connectivity  = readtecdata(filename,true)
 
@@ -166,6 +166,10 @@ function test_cell()
    points = @view data[1:head[:nDim],:]
    cells = Vector{MeshCell{Array{Int32,1}}}(undef,head[:nCell])
    if head[:nDim] == 3
+      # PLT to VTK index_ = [1 2 4 3 5 6 8 7]
+      for i = 1:2
+         connectivity = swaprows(connectivity, 4*i-1, 4*i)
+      end   
       @inbounds for i = 1:head[:nCell]
          cells[i] = MeshCell(VTKCellTypes.VTK_VOXEL, connectivity[:,i])
       end
@@ -193,5 +197,25 @@ function test_cell()
    end
 
    outfiles = vtk_save(vtkfile)
+
+end
+
+function swaprows(X, i, j)
+   m, n = size(X)
+   if (1 <= i <= n) && (1 <= j <= n)
+      for k = 1:n
+        @inbounds X[i,k],X[j,k] = X[j,k],X[i,k]
+      end
+      return X
+   else
+      throw(BoundsError())
+   end
+end
+
+
+function test_ascii_convert()
+   filename = "3d_ascii.dat"
+   head, data, connectivity  = readtecdata(filename,false)
+   convertVTK(head, data, connectivity)
 
 end
