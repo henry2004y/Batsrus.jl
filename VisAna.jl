@@ -1,7 +1,7 @@
 module VisAna
 # Reimplementation of BATSRUS data reader in Julia.
 #
-# Hongyang Zhou, hyzhou@umich.edu 07/24/2019
+# Hongyang Zhou, hyzhou@umich.edu
 
 export readdata, readlogdata, plotdata, plotlogdata, animatedata, readtecdata
 export Data, FileList, convertVTK
@@ -154,10 +154,14 @@ function readlogdata( filename )
    return head, data
 end
 
+"""
+   readtecdata(filename, IsBinary, verbose)
 
+Return header, data and connectivity from BATSRUS Tecplot outputs. Both binary
+and ascii format are supported.
+"""
 function readtecdata(filename, IsBinary::Bool=false, verbose::Bool=false)
 
-   # Create a Dict for substituting common block file_head
    head = Dict(:variables => Array{String,1}(undef,1),
       :nNode => 0,
 	  :nCell => 0,
@@ -1402,9 +1406,14 @@ function animate(i,filelist)
    return gca()
 end
 
+"""
+   convertVTK(head, data, connectivity, filename)
 
+Convert 3D unstructured Tecplot data to VTK. Note that if using voxel type data
+in VTK, the connectivity sequence is different from Tecplot.
+"""
 function convertVTK(head::Dict, data::Array{Float32,2},
-   connectivity::Array{Int32,2})
+   connectivity::Array{Int32,2}, filename::String="3DBATSRUS")
 
    nVar = length(head[:variables])
 
@@ -1424,7 +1433,7 @@ function convertVTK(head::Dict, data::Array{Float32,2},
       end
    end
 
-   vtkfile = vtk_grid("test_unstructured", points, cells)
+   vtkfile = vtk_grid(filename, points, cells)
 
    for ivar = head[:nDim]+1:nVar
       if occursin("_x",head[:variables][ivar]) # vector
