@@ -23,7 +23,6 @@ filename = "1d_bin.out";
 filehead, data, filelist = readdata(filename,verbose=false);
 plotdata(data[1],filehead[1],"p",plotmode="line")
 plotdata(data[1],filehead[1],"p",plotmode="linegrid")
-animatedata(data[1],filehead[1],"p")
 
 # 2D Cartesian (structured)
 filename = "z=0_raw_1_t10.07620_n00000102.out";
@@ -47,7 +46,6 @@ plotdata(data[1],filehead[1],"rho",plotmode="contbar")
 plotdata(data[1],filehead[1],"rho",plotmode="trimesh")
 plotdata(data[1],filehead[1],"rho",plotmode="tricont")
 
-animatedata(data[1],filehead[1],filelist[1],"rho",plotmode="contbar")
 
 # 2D structured spherical ???
 filename = "y_structured.out"; #???
