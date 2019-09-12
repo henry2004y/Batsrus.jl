@@ -33,7 +33,7 @@ filenames as a single string.
 # Examples
 ```jldoctest
 filenames = "1d__raw*"
-fileheads, data, filelist = BATSRUS.readdata(filenames)
+fileheads, data, filelist = readdata(filenames)
 ```
 """
 function readdata( filenamesIn::String; dir::String=".", npict::Int=1,
@@ -158,7 +158,12 @@ end
    readtecdata(filename, IsBinary, verbose)
 
 Return header, data and connectivity from BATSRUS Tecplot outputs. Both binary
-and ascii format are supported.
+and ascii formats are supported.
+# Examples
+```jldoctest
+filenames = "3d_ascii.dat"
+fileheads, data, filelist = readtecdata(filenames)
+```
 """
 function readtecdata(filename, IsBinary::Bool=false, verbose::Bool=false)
 
@@ -173,6 +178,11 @@ function readtecdata(filename, IsBinary::Bool=false, verbose::Bool=false)
    ln = readline(f)
    if startswith(ln, "TITLE")
       title = ln[8:end-1]
+	  try # This should throw error if in binary format
+		 parse(Int32,ln[17])
+	  catch
+		 IsBinary = true
+	  end
    else
       @warn "No title provided."
    end
