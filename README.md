@@ -1,7 +1,7 @@
 # VisAnaJulia
 SWMF data reader and visualization using Julia.
 
-This is inherited from the Matlab version of BATSRUS output reader and analyzer. It can be combined with the VTK format converter to generate files for Paraview.
+This is inherited from the Matlab version of BATSRUS output reader and analyzer. It can be combined with the VTK format converter to generate files for Paraview and Tecplot.
 
 The ultimate goal is to replace the IDL scripts for regular data visualizations, especially on Frontera. I am half way through. 
 
@@ -10,7 +10,7 @@ The ultimate goal is to replace the IDL scripts for regular data visualizations,
 Julia 1.0+
 
 
-# Usage
+## Usage
 ```
 using Pkg; Pkg.activate(".")
 using VisAna
@@ -94,11 +94,17 @@ convertVTK(head, data, connectivity, outname)
 
 ## Tricks
 
-This is the first time I use Julia for reading general ascii/binary files. It was a pain at first due to the lack of examples and documents using any basic function like read/read!, but fortunately I figured them out myself. One trick in reading binary array data is the usage of view, or subarrays, in Julia. In order to achieve that, I have to implement my own read! function in addition to the base ones.
+- This is the first time I use Julia for reading general ascii/binary files. It was a pain at first due to the lack of examples and documents using any basic function like read/read!, but fortunately I figured them out myself. One trick in reading binary array data is the usage of view, or subarrays, in Julia. In order to achieve that, I have to implement my own read! function in addition to the base ones.
+- Tecplot and VTK unstructured data formats have the same connectivity ordering for hexahedron, but different ordering for voxel (in VTK). A function `swaprows` is implemented to switch the orderings.
 
 ## Issues
 
 At first I forgot to export the Data struct, so everytime when I modified the code and rerun plotdata, it will shout error at me, saying no type was found for the input type.
+
+The current support of animation in Matplotlib is not good enough, especially for interactive plotting and scanning through multiple snapshots.
+
+- [ ] Switch to Makie for 3D plotting and animation
+- [ ] PyBase support for manipulating data directly in Python
 
 ## Author
 
