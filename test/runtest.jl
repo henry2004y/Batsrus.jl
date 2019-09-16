@@ -56,11 +56,14 @@ plotdata(data[1],filehead[1],"rho",plotmode="contbar")
 
 
 # 3D box
-filename = "box.outs";
+filename = "3d_box.out";
 filehead, data, filelist = readdata(filename,verbose=false);
+plotdata(data[1],filehead[1],"ps1 bx;bz",plotmode="contbar stream",cut="y",cutPlaneIndex=65)
+plotdata(data[1],filehead[1],"ps1 bx;by",plotmode="contbar stream",cut="z")
 plotdata(data[1],filehead[1],"bx",plotmode="contbar",cut="y")
 plotdata(data[1],filehead[1],"bx",plotmode="contbar",cut="y",
    plotrange=[-1.4,-1.1,0.70,0.78])
+
 
 # 3D structured spherical
 filename = "3d_structured.out";
