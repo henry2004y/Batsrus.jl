@@ -1154,8 +1154,8 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
                lowercase.(filehead[:wnames]))
 
             if filehead[:gencoord] # Generalized coordinates
-	       X, Y= vec(x[:,:,1]), vec(x[:,:,2])
-	       if any(isinf.(plotrange))
+	            X, Y= vec(x[:,:,1]), vec(x[:,:,2])
+	            if any(isinf.(plotrange))
                   if plotrange[1] == -Inf plotrange[1] = minimum(X) end
                   if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
                   if plotrange[3] == -Inf plotrange[3] = minimum(Y) end
@@ -1184,6 +1184,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
                X = x[:,1,1]
                Y = x[1,:,2]
                if all(isinf.(plotrange))
+                  Xi, Yi = X, Y
                   v1, v2 = w[:,:,VarIndex1_]', w[:,:,VarIndex2_]'
                else
                   if plotrange[1] == -Inf plotrange[1] = minimum(X) end
@@ -1246,79 +1247,83 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
       end
 
    else # 2D cut from 3D output; now only for Cartesian output
+      X = @view x[:,:,:,1]
+      Y = @view x[:,:,:,2]
+      Z = @view x[:,:,:,3]
       for (ivar,var) in enumerate(vars)
-         X = permutedims(x[:,:,:,1], [2,1,3])
-         Y = permutedims(x[:,:,:,2], [2,1,3])
-         Z = permutedims(x[:,:,:,3], [2,1,3])
+         if plotmode[ivar] ∈ ("surf","surfbar","surfbarlog","cont","contbar",
+            "contlog","contbarlog")
+            VarIndex_ = findfirst(x->x==lowercase(var),
+               lowercase.(filehead[:wnames]))
+            isempty(VarIndex_) && error("$(var) not found in header variables!")
 
-         VarIndex_ = findfirst(x->x==lowercase(var),
-            lowercase.(filehead[:wnames]))
-         isempty(VarIndex_) && error("$(var) not found in header variables!")
+            if ivar == 1 || multifigure fig, ax = subplots() else ax = gca() end
 
-         W  = permutedims(w[:,:,:,VarIndex_],[2,1,3])
+            W = w[:,:,:,VarIndex_]
 
-         if multifigure fig, ax = subplots() else ax = gca() end
+            if cut ∈ ("x","")
+               cut1 = @view X[cutPlaneIndex,:,:]
+               cut2 = @view Y[cutPlaneIndex,:,:]
+               W    = @view W[cutPlaneIndex,:,:]
+            elseif cut ==  "y"
+               cut1 = @view X[:,cutPlaneIndex,:]
+               cut2 = @view Z[:,cutPlaneIndex,:]
+               W    = @view W[:,cutPlaneIndex,:]
+            elseif cut == "z"
+               cut1 = @view X[:,:,cutPlaneIndex]
+               cut2 = @view Y[:,:,cutPlaneIndex]
+               W    = @view W[:,:,cutPlaneIndex]
+            end
+         elseif plotmode[ivar] ∈ ("stream","streamover")
+            VarStream  = split(var,";")
+            VarIndex1_ = findfirst(x->x==lowercase(VarStream[1]),
+               lowercase.(filehead[:wnames]))
+            VarIndex2_ = findfirst(x->x==lowercase(VarStream[2]),
+               lowercase.(filehead[:wnames]))
+            (isempty(VarIndex1_) || isempty(VarIndex2_)) &&
+               error("$(VarStream) not found in header variables!")
 
-         if cut ∈ ("x","")
-            cut1 = X[:,cutPlaneIndex,:]
-            cut2 = Z[:,cutPlaneIndex,:]
-            W    = W[:,cutPlaneIndex,:]
-         elseif cut ==  "y"
-            cut1 = X[cutPlaneIndex,:,:]
-            cut2 = Z[cutPlaneIndex,:,:]
-            W    = W[cutPlaneIndex,:,:]
-         elseif cut == "z"
-            cut1 = X[:,:,cutPlaneIndex]
-            cut2 = Y[:,:,cutPlaneIndex]
-            W    = W[:,:,cutPlaneIndex]
+            v1 = @view w[:,:,:,VarIndex1_]
+            v2 = @view w[:,:,:,VarIndex2_]
+
+            if cut ∈ ("x","")
+               cut1 = @view Y[cutPlaneIndex,:,:]
+               cut2 = @view Z[cutPlaneIndex,:,:]
+               v1   = v1[cutPlaneIndex,:,:]'
+               v2   = v2[cutPlaneIndex,:,:]'
+            elseif cut ==  "y"
+               cut1 = @view X[:,cutPlaneIndex,:]
+               cut2 = @view Z[:,cutPlaneIndex,:]
+               v1   = v1[:,cutPlaneIndex,:]'
+               v2   = v2[:,cutPlaneIndex,:]'
+            elseif cut == "z"
+               cut1 = @view X[:,:,cutPlaneIndex]
+               cut2 = @view Y[:,:,cutPlaneIndex]
+               v1   = v1[:,:,cutPlaneIndex]'
+               v2   = v2[:,:,cutPlaneIndex]'
+            end
+            cut1, cut2 = cut1', cut2'
          end
 
          if !all(isinf.(plotrange))
             cut1, cut2, W = subsurface(cut1, cut2, W, plotrange)
          end
 
-
-	 if plotmode[ivar] ∈ ("surf","surfbar","surfbarlog","cont","contbar",
+	      if plotmode[ivar] ∈ ("surf","surfbar","surfbarlog","cont","contbar",
             "contlog","contbarlog")
             c = ax.contourf(cut1,cut2,W)
             fig.colorbar(c,ax=ax)
             #ax.axis("equal")
 
-	 elseif plotmode[ivar] ∈ ("stream","streamover")
-            VarStream  = split(var,";")
-            VarIndex1_ = findfirst(x->x==lowercase(VarStream[1]),
-               lowercase.(filehead[:wnames]))
-            VarIndex2_ = findfirst(x->x==lowercase(VarStream[2]),
-               lowercase.(filehead[:wnames]))
-
- 	    X = cut1
-            Y = cut2
+	      elseif plotmode[ivar] ∈ ("stream","streamover")
             if all(isinf.(plotrange))
-               v1, v2 = w[:,:,:,VarIndex1_]', w[:,:,VarIndex2_]'
+
             else
-               if plotrange[1] == -Inf plotrange[1] = minimum(X) end
-               if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
-               if plotrange[3] == -Inf plotrange[3] = minimum(Y) end
-               if plotrange[4] ==  Inf plotrange[4] = maximum(Y) end
 
-               w1, w2 = w[:,:,VarIndex1_], w[:,:,VarIndex2_]
-
-               xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
-               yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
-
-               Xi = [i for i in xi, j in yi]
-               Yi = [j for i in xi, j in yi]
-
-               spline = Spline2D(X, Y, w1)
-               v1 = spline(Xi[:], Yi[:])
-               v1 = reshape(v1, size(Xi))'
-
-               spline = Spline2D(X, Y, w2)
-               v2 = spline(Xi[:], Yi[:])
-               v2 = reshape(v2, size(Xi))'
             end
-	    s = streamplot(Xi,Yi,v1,v2,color="w",linewidth=1.0,density=density)
-	 end
+            s = streamplot(cut1,cut2,v1,v2,
+               color="w",linewidth=1.0,density=density)
+	      end
 
          if cut == "x"
             xlabel("y"); ylabel("z")
