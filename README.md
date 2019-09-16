@@ -5,7 +5,7 @@ This is inherited from the Matlab version of BATSRUS output reader and analyzer.
 
 Demos are provided for calling Matlab/Python directly from Julia for debugging and testing. For example, the 3D scatterred interpolation is done via `Interpolate` in Scipy.
 
-The ultimate goal is to replace the IDL scripts for regular data visualizations, especially on Frontera. I am half way through. 
+The ultimate goal is to replace the IDL scripts for regular data visualizations, especially on Frontera. I am half way through.
 
 ### Prerequisites
 
@@ -25,7 +25,7 @@ using VisAna
 ```
 
 IDL output processing:
-- 1D binary 
+- 1D binary
 ```
 filename = "1d_bin.out";
 filehead, data, filelist = readdata(filename,verbose=false);
@@ -112,6 +112,7 @@ The current support of animation in Matplotlib is not good enough, especially fo
 
 In the roadmap of PyCall 2.0, there will direct support for accessing Julia objects. I hesitate to do it myself, so let's just wait for it to come.
 
+- [ ] Test suite for checking validity
 - [ ] Cuts from 3D data visualization besides contour
 - [ ] Switch to Makie for 3D plotting and animation
 - [ ] PyBase support for manipulating data directly in Python
