@@ -1322,8 +1322,8 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
 
             xi = range(cut1[1,1], stop=cut1[1,end],
 	       	   step=(cut1[1,end]-cut1[1,1])/(size(cut1,2)-1))
-            yi = range(cut2[1,1], stop=cut2[end,1],m
-	           step=(cut2[end,1]-cut2[1,1])/(size(cut2,1)))
+            yi = range(cut2[1,1], stop=cut2[end,1],
+	           step=(cut2[end,1]-cut2[1,1])/(size(cut2,1)-1))
 
             Xi = [i for j in yi, x in xi]
             Yi = [j for j in yi, x in xi]
