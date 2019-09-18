@@ -1309,21 +1309,21 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
             cut1, cut2, W = subsurface(cut1, cut2, W, plotrange)
          end
 
-	      if plotmode[ivar] ∈ ("surf","surfbar","surfbarlog","cont","contbar",
+	     if plotmode[ivar] ∈ ("surf","surfbar","surfbarlog","cont","contbar",
             "contlog","contbarlog")
             c = ax.contourf(cut1,cut2,W)
             fig.colorbar(c,ax=ax)
             #ax.axis("equal")
 
-	      elseif plotmode[ivar] ∈ ("stream","streamover")
-	    # Surprisingly, some box outputs do not have equal spaces???
-	    #xi = range(cut1[1,1], stop=cut1[1,end], length=size(cut1)[2])
+	     elseif plotmode[ivar] ∈ ("stream","streamover")
+	    	# Surprisingly, some box outputs do not have equal spaces???
+	    	#xi = range(cut1[1,1], stop=cut1[1,end], length=size(cut1)[2])
             #yi = range(cut2[1,1], stop=cut2[end,1], length=size(cut2)[1])
 
-            xi = range(cut1[1,1], stop=cut1[1,end], 
-	       step=(cut1[1,end]-cut1[1,1])/(size(cut1,2)-1)) 
+            xi = range(cut1[1,1], stop=cut1[1,end],
+	       	   step=(cut1[1,end]-cut1[1,1])/(size(cut1,2)-1))
             yi = range(cut2[1,1], stop=cut2[end,1],m
-	       step=(cut2[end,1]-cut2[1,1])/(size(cut2,1)))
+	           step=(cut2[end,1]-cut2[1,1])/(size(cut2,1)))
 
             Xi = [i for j in yi, x in xi]
             Yi = [j for j in yi, x in xi]
@@ -1334,7 +1334,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
             end
             s = streamplot(Xi,Yi,v1,v2,
                color="w",linewidth=1.0,density=density)
-	      end
+	     end
 
          if cut == "x"
             xlabel("y"); ylabel("z")
