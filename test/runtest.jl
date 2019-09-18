@@ -7,16 +7,11 @@
 # readdata
 # in IDL. To achieve that, probably I need a script to do so.
 
-using Test
+using VisAna, Test
 
-include("VisAna.jl")
-using .VisAna
-
-filename = "1d_bin.out";
-
-@testset "some tests" begin
-   @test filehead, data, filelist = readdata(filename);
-end
+#@testset "some tests" begin
+#   @test filehead, data, filelist = readdata(filename);
+#end
 
 # 1D
 filename = "1d_bin.out";
