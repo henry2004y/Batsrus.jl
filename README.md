@@ -99,6 +99,20 @@ head, data, connectivity  = readtecdata(filename,true)
 convertVTK(head, data, connectivity, outname)
 ```
 
+Multiple files:
+```
+using Glob
+filenamesIn = "3d*.dat"
+dir = "."
+filenames = Vector{String}(undef,0)
+filesfound = glob(filenamesIn, dir)
+filenames = vcat(filenames, filesfound)
+tec = readtecdata.(filenames, false) # head, data, connectivity
+for (i, outname) in enumerate(filenames)
+   convertVTK(tec[i][1], tec[i][2], tec[i][3], outname[1:end-4])
+end
+```
+
 ## Tricks
 
 - This is the first time I use Julia for reading general ascii/binary files. It was a pain at first due to the lack of examples and documents using any basic function like read/read!, but fortunately I figured them out myself. One trick in reading binary array data is the usage of view, or subarrays, in Julia. In order to achieve that, I have to implement my own `read!` function in addition to the base ones.

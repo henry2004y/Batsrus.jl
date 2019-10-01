@@ -68,6 +68,19 @@ filehead, data, filelist = readdata(filename,verbose=false);
 logfilename = "shocktube.log";
 filehead, data = readlogdata(logfilename)
 
+# Tecplot ascii to vtk conversion
+using Glob
+filenamesIn = "3d*.dat"
+dir = "."
+filenames = Vector{String}(undef,0)
+filesfound = glob(filenamesIn, dir)
+filenames = vcat(filenames, filesfound)
+tec = readtecdata.(filenames, false) # head, data, connectivity
+for (i, outname) in enumerate(filenames)
+   convertVTK(tec[i][1], tec[i][2], tec[i][3], outname[1:end-4])
+end
+
+
 
 using PyCall, PyPlot
 
