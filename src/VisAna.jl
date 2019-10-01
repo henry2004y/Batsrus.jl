@@ -40,16 +40,12 @@ function readdata( filenamesIn::String; dir::String=".", npict::Int=1,
    verbose::Bool=true )
 
    ## Check the existence of files
-   filenamesSplit = split(filenamesIn)
    filenames = Vector{String}(undef,0)
-   for filename in filenamesSplit
-      filesfound = glob(filename, dir)
-      if isempty(filesfound)
-         error("Error in readdata: no matching filename was found for
-         $(filename)")
-      end
-      filenames = vcat(filenames, filesfound)
+   filesfound = glob(filenamesIn, dir)
+   if isempty(filesfound)
+      error("readdata: no matching filename was found for $(filenamesIn)")
    end
+   filenames = vcat(filenames, filesfound)
 
    nfile = length(filenames)
 
@@ -72,60 +68,51 @@ function readdata( filenamesIn::String; dir::String=".", npict::Int=1,
 
    ## Read data from files
    for ifile=1:nfile
-      if filelist[ifile].type == "log"
-         filehead, data = readlogdata(joinpath(dir,filelist[ifile].name))
-         return
-      elseif filelist[ifile].type == "dat"
-         filehead, data = readtecdata(joinpath(dir,filelist[ifile].name),
-            verbose)
-	     push!(fileheads, filehead)
+      # Skip npict-1 snapshots (because we only want npict snapshot)
+      skip(fileID[ifile], pictsize[ifile]*(npict-1))
+
+      filehead = getfilehead(fileID[ifile], filelist[ifile].type)
+      push!(fileheads, filehead)
+
+      # Read data
+      fileType = lowercase(filelist[ifile].type)
+      if fileType == "ascii"
+         x,w = getpictascii(fileID[ifile], fileheads[ifile])
+      elseif fileType == "binary"
+         x,w = getpictbinary(fileID[ifile], fileheads[ifile])
+      elseif fileType == "real4"
+         x,w = getpictreal(fileID[ifile], fileheads[ifile])
       else
-         # Skip npict-1 snapshots (because we only want npict snapshot)
-         skip(fileID[ifile], pictsize[ifile]*(npict-1))
-
-         filehead = getfilehead(fileID[ifile], filelist[ifile].type)
-         push!(fileheads, filehead)
-
-         # Read data
-         fileType = lowercase(filelist[ifile].type)
-         if fileType == "ascii"
-            x,w = getpictascii(fileID[ifile], fileheads[ifile])
-         elseif fileType == "binary"
-            x,w = getpictbinary(fileID[ifile], fileheads[ifile])
-         elseif fileType == "real4"
-            x,w = getpictreal(fileID[ifile], fileheads[ifile])
-         else
-            error("get_pict: unknown filetype: $(filelist[ifile].type)")
-         end
-
-         setunits(fileheads[ifile],"")
-
-         if verbose
-            showhead(filelist[ifile], ifile, fileheads[ifile])
-         end
-
-         # Produce a wnames from the last file
-         fileheads[ifile][:wnames] =
-            fileheads[ifile][:variables][
-            fileheads[ifile][:ndim]+1:fileheads[ifile][:ndim]+
-            fileheads[ifile][:nw] ]
-
-         push!(data, Data(x,w))
-
-         println("Finished reading $(filelist[ifile].name)")
+         error("get_pict: unknown filetype: $(filelist[ifile].type)")
       end
+
+      setunits(fileheads[ifile],"")
+
+      if verbose
+         showhead(filelist[ifile], ifile, fileheads[ifile])
+      end
+
+      # Produce a wnames from the last file
+      fileheads[ifile][:wnames] =
+      fileheads[ifile][:variables][
+      fileheads[ifile][:ndim]+1:fileheads[ifile][:ndim]+
+      fileheads[ifile][:nw] ]
+
+      push!(data, Data(x,w))
+
+      println("Finished reading $(filelist[ifile].name)")
+
       close(fileID[ifile])
    end
 
    return fileheads, data, filelist
-
 end
 
 """
    readlogdata(filename)
 Read information from log file.
 """
-function readlogdata( filename )
+function readlogdata( filename::String )
    # Is this really necessary?
    head = Dict(:ndim => 3, :headline => "", :it => Int32(-1.0),
    :time => Float32(-1.0), :gencoord => false, :neqpar => Int32(0), :nw => 1,
@@ -165,12 +152,11 @@ filenames = "3d_ascii.dat"
 fileheads, data, filelist = readtecdata(filenames)
 ```
 """
-function readtecdata(filename, IsBinary::Bool=false, verbose::Bool=false)
+function readtecdata(filename::String, IsBinary::Bool=false,
+   verbose::Bool=false)
 
    head = Dict(:variables => Array{String,1}(undef,1),
-      :nNode => 0,
-	  :nCell => 0,
-	  :nDim  => 0)
+      :nNode => 0, :nCell => 0, :nDim  => 0)
 
    f = open(filename)
 
