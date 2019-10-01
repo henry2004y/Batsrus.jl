@@ -1,7 +1,7 @@
 # VisAna
 SWMF data reader and visualization using Julia.
 
-This is inherited from the Matlab version of BATSRUS output reader and analyzer. It can be combined with the VTK format converter to generate files for Paraview and Tecplot.
+This is inherited from the Matlab version of BATSRUS output reader and analyzer. It can be combined with the VTK format converter to generate files for Paraview and Tecplot. By default the file size will be reduced by a factor of ~6.
 
 Demos are provided for calling Matlab/Python directly from Julia for debugging and testing. For example, the 3D scatterred interpolation is done via `Interpolate` in Scipy.
 
@@ -16,7 +16,6 @@ Julia 1.0+
 using Pkg
 Pkg.add(PackageSpec(url="https://github.com/henry2004y/VisAnaJulia", rev="master"))
 ```
-
 
 ## Usage
 ```
@@ -126,6 +125,9 @@ The current support of animation in Matplotlib is not good enough, especially fo
 
 In the roadmap of PyCall 2.0, there will direct support for accessing Julia objects. I hesitate to do it myself, so let's just wait for it to come.
 
+The support for a long string containing several filenames as inputs has been dropped. It should be substituted by an array of strings.
+
+- [ ] Fixed colorbar control through Matplotlib
 - [ ] Test suite for checking validity
 - [x] Cuts from 3D data visualization besides contour
 - [ ] Switch to Makie for 3D plotting and animation
