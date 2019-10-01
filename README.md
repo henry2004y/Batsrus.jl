@@ -24,7 +24,7 @@ Pkg.add(PackageSpec(url="https://github.com/henry2004y/VisAnaJulia", rev="master
 using VisAna
 ```
 
-IDL output processing:
+IDL format output processing:
 - 1D binary
 ```
 filename = "1d_bin.out";
@@ -113,7 +113,7 @@ The current support of animation in Matplotlib is not good enough, especially fo
 In the roadmap of PyCall 2.0, there will direct support for accessing Julia objects. I hesitate to do it myself, so let's just wait for it to come.
 
 - [ ] Test suite for checking validity
-- [ ] Cuts from 3D data visualization besides contour
+- [x] Cuts from 3D data visualization besides contour
 - [ ] Switch to Makie for 3D plotting and animation
 - [ ] PyBase support for manipulating data directly in Python
 
