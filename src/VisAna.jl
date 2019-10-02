@@ -26,9 +26,8 @@ end
 
 Read data from BATSRUS output files. Stores the npict-th snapshot from an ascii
 or binary data file into the x [coordinates] and w [data] arrays.
-Filenames can be provided with wildcards. You are also allowed to pass multiple
-filenames as a single string.
-`fileheads, data, filelist = readdata(filename, "npict", 2, "verbose", false)`
+Filenames can be provided with wildcards.
+`fileheads, data, filelist = readdata(filename, npict=2, verbose=false)`
 
 # Examples
 ```jldoctest
