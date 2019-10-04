@@ -165,6 +165,18 @@ function processing(filehead::Dict, data::Data, saveDir::String, nType::Int=1)
    plt.savefig(saveDir*"/diamagnetic_$(i).png")
 end
 
+function vtk_auto_conversion(fnames::String)
+
+   dir = "."
+   filenames = Vector{String}(undef,0)
+   filesfound = glob(fnames, dir)
+   filenames = vcat(filenames, filesfound)
+   for filename in filenames
+      head, data, connectivity = readtecdata(filename, false)
+      convertVTK(head, data, connectivity, filename[1:end-4])
+   end
+
+end
 
 ####################################################
 filename = "box*outs";
