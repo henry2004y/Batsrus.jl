@@ -51,7 +51,7 @@ function readdata( filenamesIn::String; dir::String=".", npict::Int=1,
    fileheads = Vector{Dict}(undef,0)
    data = Vector{Data}()
 
-   filelist, fileID, pictsize = getFileTypes(nfile,filenames,dir)
+   filelist, fileID, pictsize = getFileTypes(nfile,filenames)
 
    if verbose
       [println("filename=$(filelist[i].name)\n"*
@@ -257,7 +257,7 @@ Get the type of files.
 - `pictsize::Int`: size (in bytes) of one snapshot.
 ...
 """
-function getFileTypes(nfile::Int, filenames::Array{String,1}, dir::String)
+function getFileTypes(nfile::Int, filenames::Array{String,1})
 
    fileID   = Vector{IOStream}(undef,nfile)
    pictsize = Vector{Int64}(undef,nfile)
@@ -265,7 +265,7 @@ function getFileTypes(nfile::Int, filenames::Array{String,1}, dir::String)
    filelist = Vector{FileList}(undef,nfile)
 
    for ifile=1:nfile
-      f = joinpath(dir,filenames[ifile])
+      f = filenames[ifile]
       fileID[ifile] = open(f,"r")
 
       bytes = filesize(filenames[ifile])
@@ -1085,7 +1085,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
 
             # I may need to use pattern match instead for a more robust method!
             if plotmode[ivar] == "contbar"
-               c = contourf(xi,yi,wi)
+               c = contourf(xi,yi,wi,50)
             elseif plotmode[ivar] == "cont"
                c = contour(xi,yi,wi)
             elseif plotmode[ivar] == "contlog"
