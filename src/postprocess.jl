@@ -165,9 +165,8 @@ function processing(filehead::Dict, data::Data, saveDir::String, nType::Int=1)
    plt.savefig(saveDir*"/diamagnetic_$(i).png")
 end
 
-function vtk_auto_conversion(fnames::String)
+function vtk_auto_conversion(fnames::String, dir::String=".")
 
-   dir = "."
    filenames = Vector{String}(undef,0)
    filesfound = glob(fnames, dir)
    filenames = vcat(filenames, filesfound)
@@ -178,9 +177,10 @@ function vtk_auto_conversion(fnames::String)
 
 end
 
-####################################################
+#=
 filename = "box*outs";
 dir = "/Users/hyzhou/Ganymede/run_mercury_80s_newbox/GM";
 
 filename = "y*outs";
 dir = "/Users/hyzhou/Ganymede/run_mercury_80s_newbox/GM";
+=#
