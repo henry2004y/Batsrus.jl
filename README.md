@@ -123,6 +123,8 @@ At first I forgot to export the Data struct, so everytime when I modified the co
 
 The current support of animation in Matplotlib is not good enough, especially for interactive plotting and scanning through multiple snapshots.
 
+The current wrapper over Matplotlib makes it difficult to modify the plots afterwards, which especially causes problems when dealing with time series snapshots. The colorbar is so hard to fix.
+
 In the roadmap of PyCall 2.0, there will direct support for accessing Julia objects. I hesitate to do it myself, so let's just wait for it to come.
 
 The support for a long string containing several filenames as inputs has been dropped. It should be substituted by an array of strings.
