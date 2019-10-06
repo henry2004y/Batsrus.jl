@@ -1085,7 +1085,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
 
             # I may need to use pattern match instead for a more robust method!
             if plotmode[ivar] == "contbar"
-               c = contourf(xi,yi,wi,50)
+               c = contourf(xi,yi,wi)
             elseif plotmode[ivar] == "cont"
                c = contour(xi,yi,wi)
             elseif plotmode[ivar] == "contlog"
@@ -1299,6 +1299,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
             c = ax.contourf(cut1,cut2,W)
             fig.colorbar(c,ax=ax)
             #ax.axis("equal")
+			title(filehead[:wnames][VarIndex_])
 
 	     elseif plotmode[ivar] ∈ ("stream","streamover")
 	        # Surprisingly, some box outputs do not have equal spaces???
@@ -1310,23 +1311,31 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
            yi = range(cut2[1,1], stop=cut2[end,1],
 	           step=(cut2[end,1]-cut2[1,1])/(size(cut2,1)-1))
 
-           Xi = [i for j in yi, x in xi]
-           Yi = [j for j in yi, x in xi]
+           Xi = [i for j in yi, i in xi]
+           Yi = [j for j in yi, i in xi]
 
            s = streamplot(Xi,Yi,v1,v2,
               color="w",linewidth=1.0,density=density)
 	     end
 
-        if cut == "x"
-           xlabel("y"); ylabel("z")
-        elseif cut == "y"
-           xlabel("x"); ylabel("z")
-        elseif cut == "z"
-           xlabel("x"); ylabel("y")
-        end
+         if cut == "x"
+            xlabel("y"); ylabel("z")
+         elseif cut == "y"
+            xlabel("x"); ylabel("z")
+         elseif cut == "z"
+            xlabel("x"); ylabel("y")
+         end
 
-     end
-
+		 ax = gca()
+		 dim = [0.125, 0.013, 0.2, 0.045]
+         str = @sprintf "it=%d, time=%4.2f" filehead[:it] filehead[:time]
+         at = matplotlib.offsetbox.AnchoredText(str,
+                    loc="lower left", prop=Dict("size"=>8), frameon=true,
+                    bbox_to_anchor=(0., 1.),
+                    bbox_transform=ax.transAxes)
+         at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
+         ax.add_artist(at)
+      end
    end
 
 end
