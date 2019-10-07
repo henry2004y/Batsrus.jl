@@ -82,6 +82,13 @@ filehead, data, filelist = readdata(filename,verbose=false);
 logfilename = "shocktube.log";
 filehead, data = readlogdata(logfilename)
 ```
+## Derived variables
+```
+filename = "3d_box.out"
+filehead, data, filelist = readdata(filename,verbose=false);
+v = get_vars(data[1], filehead[1], ["Bx", "By", "Bz"])
+B = @. sqrt(v.Bx^2 + v.By^2 + v.Bz^2)
+```
 
 ## Output Format Conversion
 ASCII tecplot file:
@@ -165,7 +172,7 @@ In the roadmap of PyCall 2.0, there will direct support for accessing Julia obje
 The support for a long string containing several filenames as inputs has been dropped. It should be substituted by an array of strings.
 
 Right now the derived quantity plots are not supported. In order to achieve this, I may need:
-- [ ] A new function `get_var(data, string)` returning the derived variable
+- [ ] A new function `get_var(data, filehead, string)` returning the derived variable
 - [ ] A new plotting function that understands the derived data type
 
 There is a user recipe in Plots. Check it out for the possibility of parameter control!

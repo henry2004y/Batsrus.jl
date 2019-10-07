@@ -4,7 +4,7 @@ module VisAna
 # Hongyang Zhou, hyzhou@umich.edu
 
 export readdata, readlogdata, plotdata, plotlogdata, animatedata, readtecdata
-export Data, FileList, convertVTK
+export Data, FileList, convertVTK, get_vars
 
 using Glob, PyPlot, Printf, PyCall, Dierckx, WriteVTK
 
@@ -19,6 +19,10 @@ struct FileList
    type::String
    bytes::Int64
    npictinfiles::Int64
+end
+
+struct Vars
+   data::Dict{String, Array{Float32}}
 end
 
 """
@@ -1468,6 +1472,32 @@ function convertVTK(head::Dict, data::Array{Float32,2},
 
    outfiles = vtk_save(vtkfile)
 end
+
+function get_var(data::Data, filehead::Dict, var::String)
+   VarIndex_ = findfirst(x->x==var,filehead[:wnames])
+
+   ndim = filehead[:ndim]
+   if ndim == 1
+      w = data.w[:,VarIndex_]
+   elseif ndim == 2
+      w = data.w[:,:,VarIndex_]
+   elseif ndim == 3
+      w = data.w[:,:,:,VarIndex_]
+   end
+   w
+end
+
+function get_vars(data::Data, filehead::Dict, Names::Vector{String})
+
+   dict = Dict()
+   for name in Names
+      dict[name] = get_var(data, filehead, name)
+   end
+
+   Vars(dict)
+end
+
+Base.getproperty(p::Vars, name::Symbol) = getfield(p, :data)[String(name)]
 
 function swaprows(X::Array{Int32,2}, i::Int64, j::Int64)
    m, n = size(X)
