@@ -2,7 +2,10 @@
 #
 # Hongyang Zhou, hyzhou@umich.edu 10/01/2019
 
-using VisAna, PyPlot, PyCall, Glob
+using Pkg
+Pkg.activate("/Users/hyzhou/Documents/Computer/Julia/BATSRUS/VisAnaJulia")
+
+using VisAna, PyPlot, PyCall, Glob, Printf
 
 include("constants.jl")
 
@@ -184,3 +187,90 @@ dir = "/Users/hyzhou/Ganymede/run_mercury_80s_newbox/GM";
 filename = "y*outs";
 dir = "/Users/hyzhou/Ganymede/run_mercury_80s_newbox/GM";
 =#
+
+#filename = "cut*.dat";
+#dir = "GM/IO2";
+#vtk_auto_conversion(filename, dir)
+
+
+using Pkg
+Pkg.activate("/Users/hyzhou/Documents/Computer/Julia/BATSRUS/VisAnaJulia");
+using VisAna, PyCall, PyPlot
+
+function y_by_cuts()
+   np = pyimport("numpy");
+   filename = "y*out";
+   filehead, data, filelist = readdata(filename,verbose=false);
+
+   fig, ax = plt.subplots(1, 1);
+   var = "by"; plotinterval = 0.1;
+   VarIndex_ = findfirst(x->x==lowercase(var), lowercase.(filehead[1][:wnames]));
+   X = vec(data[1].x[:,:,1]);
+   Y = vec(data[1].x[:,:,2]);
+   W = vec(data[1].w[:,:,VarIndex_]);
+
+   # Create grid values first.
+   xi = range(minimum(X), stop=maximum(X), step=plotinterval);
+   yi = range(minimum(Y), stop=maximum(Y), step=plotinterval);
+   # Perform linear interpolation of the data (x,y) on grid(xi,yi)
+   triang = matplotlib.tri.Triangulation(X,Y);
+   interpolator = matplotlib.tri.LinearTriInterpolator(triang, W);
+   Xi, Yi = np.meshgrid(xi, yi);
+   wi = interpolator(Xi, Yi);
+
+   c = contourf(xi,yi,wi,50);
+   fig.set_size_inches(6,6);
+   plt.axis("scaled");
+   colorbar(c, ax=ax,ticks=np.arange(-100.0, 0.0, 12.5));
+   xlabel("x"); ylabel("z")
+   title(L"By")
+   plt.savefig("test.png")
+end
+
+function plot_beta(filename::String)
+
+   filehead, data, filelist = readdata(filename,verbose=false);
+
+   cutPlaneIndex = 65
+   VarIndex_ = 18
+
+   filehead = filehead[1]
+   data = data[1]
+
+   X = @view data.x[:,:,:,1]
+   Y = @view data.x[:,:,:,2]
+   Z = @view data.x[:,:,:,3]
+
+   fig, ax = plt.subplots(1, 1)
+   fig.set_size_inches(3.3,6);
+
+   W = @view data.w[:,:,:,VarIndex_]
+   Bx = @view data.w[:,:,:,5]
+   By = @view data.w[:,:,:,6]
+   Bz = @view data.w[:,:,:,7]
+
+   cut1 = @view X[:,cutPlaneIndex,:]
+   cut2 = @view Z[:,cutPlaneIndex,:]
+   W    = @view W[:,cutPlaneIndex,:]
+   Bx   = @view Bx[:,cutPlaneIndex,:]
+   By   = @view By[:,cutPlaneIndex,:]
+   Bz   = @view Bz[:,cutPlaneIndex,:]
+   PB   = sqrt.(Bx.^2 .+ By.^2 .+ Bz.^2)
+
+   c = ax.contourf(cut1,cut2,W./PB)
+   fig.colorbar(c,ax=ax)
+   ax.axis("scaled")
+   title(filehead[:wnames][VarIndex_])
+
+   xlabel("x"); ylabel("z")
+
+   dim = [0.125, 0.013, 0.2, 0.045]
+   str = @sprintf "it=%d, time=%4.2f" filehead[:it] filehead[:time]
+   at = matplotlib.offsetbox.AnchoredText(str,
+      loc="lower left", prop=Dict("size"=>8), frameon=true,
+      bbox_to_anchor=(0., 1.),
+      bbox_transform=ax.transAxes)
+      at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
+      ax.add_artist(at)
+   #plt.savefig("beta.png")
+end
