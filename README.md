@@ -129,11 +129,14 @@ In the roadmap of PyCall 2.0, there will direct support for accessing Julia obje
 
 The support for a long string containing several filenames as inputs has been dropped. It should be substituted by an array of strings.
 
+Right now the derived quantity plots are not supported. This can be achieved by passing function handles or strings with special quotes? There is a user recipe in Plots. Check it out!
+
 - [ ] Fixed colorbar control through Matplotlib
 - [ ] Test suite for checking validity
 - [x] Cuts from 3D data visualization besides contour
 - [ ] Switch to Makie for 3D plotting and animation
 - [ ] PyBase support for manipulating data directly in Python
+- [ ] Derived variable support
 
 ## Author
 
