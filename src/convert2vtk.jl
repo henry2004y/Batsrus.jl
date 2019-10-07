@@ -10,13 +10,19 @@ using Distributed
 @everywhere using VisAna, Glob
 
 filenamesIn = "cut*.dat"
-dir = "."
+dir = "GM"
+originDir = pwd()
+cd(dir)
 filenames = Vector{String}(undef,0)
 filesfound = glob(filenamesIn, dir)
 filenames = vcat(filenames, filesfound)
+# Do not work on files that have already been converted
+filenames = [fname for fname in filenames if ~isfile(fname[1:end-3]*"vtu")]
 
 @sync @distributed for outname in filenames
    println("filename=$(outname)")
    head, data, connectivity = readtecdata(outname, false)
    convertVTK(head, data, connectivity, outname[1:end-4])
 end
+
+cd(originDir) # Return to the starting directory
