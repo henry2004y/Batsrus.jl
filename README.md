@@ -164,7 +164,11 @@ In the roadmap of PyCall 2.0, there will direct support for accessing Julia obje
 
 The support for a long string containing several filenames as inputs has been dropped. It should be substituted by an array of strings.
 
-Right now the derived quantity plots are not supported. This can be achieved by passing function handles or strings with special quotes? There is a user recipe in Plots. Check it out!
+Right now the derived quantity plots are not supported. In order to achieve this, I may need:
+- [ ] A new function `get_var(data, string)` returning the derived variable
+- [ ] A new plotting function that understands the derived data type
+
+There is a user recipe in Plots. Check it out for the possibility of parameter control!
 
 When doing processing in batch mode on a cluster, there's usually no support for displaying backends. My current workaround:
 ```
