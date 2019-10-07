@@ -112,10 +112,45 @@ for (i, outname) in enumerate(filenames)
 end
 ```
 
+If each individual file size is large, consider using:
+```
+using Glob
+filenamesIn = "3d*.dat"
+dir = "."
+filenames = Vector{String}(undef,0)
+filesfound = glob(filenamesIn, dir)
+filenames = vcat(filenames, filesfound)
+for (i, outname) in enumerate(filenames)
+   head, data, connectivity = readtecdata(filenames, false)
+   convertVTK(head, data, connectivity, outname[1:end-4])
+end
+```
+
+Multiple files in parallel:
+```
+using Distributed
+@everywhere using Pkg
+@everywhere Pkg.activate("VisAnaJulia");
+@everywhere using VisAna, Glob
+
+filenamesIn = "cut*.dat"
+dir = "."
+filenames = Vector{String}(undef,0)
+filesfound = glob(filenamesIn, dir)
+filenames = vcat(filenames, filesfound)
+
+@sync @distributed for outname in filenames
+   println("filename=$(outname)")
+   head, data, connectivity = readtecdata(outname, false)
+   convertVTK(head, data, connectivity, outname[1:end-4])
+end
+```
+
 ## Tricks
 
 - This is the first time I use Julia for reading general ascii/binary files. It was a pain at first due to the lack of examples and documents using any basic function like read/read!, but fortunately I figured them out myself. One trick in reading binary array data is the usage of view, or subarrays, in Julia. In order to achieve that, I have to implement my own `read!` function in addition to the base ones.
 - Tecplot and VTK unstructured data formats have the same connectivity ordering for hexahedron, but different ordering for voxel (in VTK). A function `swaprows` is implemented to switch the orderings.
+- Because of the embarrassing parallelism nature of postprocessing, it is quite easy to take advantage of parallel approaches to process the data.
 
 ## Issues
 
@@ -130,6 +165,15 @@ In the roadmap of PyCall 2.0, there will direct support for accessing Julia obje
 The support for a long string containing several filenames as inputs has been dropped. It should be substituted by an array of strings.
 
 Right now the derived quantity plots are not supported. This can be achieved by passing function handles or strings with special quotes? There is a user recipe in Plots. Check it out!
+
+When doing processing in batch mode on a cluster, there's usually no support for displaying backends. My current workaround:
+```
+using PyCall
+matplotlib = pyimport("matplotlib")
+matplotlib.use("Agg")
+using PyPlot
+```
+This will give you a warning for the existed identifier, but it works.
 
 - [ ] Fixed colorbar control through Matplotlib
 - [ ] Test suite for checking validity
