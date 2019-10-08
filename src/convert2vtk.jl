@@ -9,6 +9,9 @@ using Distributed
 @everywhere Pkg.activate("/home1/06426/hyzhou/VisAnaJulia");
 @everywhere using VisAna, Glob
 
+catcommand = `pTEC`
+run(catcommand)
+
 filenamesIn = "cut*.dat"
 dir = "GM"
 originDir = pwd()
