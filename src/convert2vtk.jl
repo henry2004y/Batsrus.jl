@@ -9,7 +9,7 @@ using Distributed
 @everywhere Pkg.activate("/home1/06426/hyzhou/VisAnaJulia");
 @everywhere using VisAna, Glob
 
-catcommand = `pTEC`
+catcommand = `./pTEC`
 run(catcommand)
 
 filenamesIn = "cut*.dat"
@@ -17,7 +17,7 @@ dir = "GM"
 originDir = pwd()
 cd(dir)
 filenames = Vector{String}(undef,0)
-filesfound = glob(filenamesIn, dir)
+filesfound = glob(filenamesIn)
 filenames = vcat(filenames, filesfound)
 # Do not work on files that have already been converted
 filenames = [fname for fname in filenames if ~isfile(fname[1:end-3]*"vtu")]
@@ -29,3 +29,5 @@ filenames = [fname for fname in filenames if ~isfile(fname[1:end-3]*"vtu")]
 end
 
 cd(originDir) # Return to the starting directory
+
+# Choose whether or not to delete the original *.dat files.
