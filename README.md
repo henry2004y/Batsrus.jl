@@ -188,6 +188,8 @@ using PyPlot
 ```
 This will give you a warning for the existed identifier, but it works.
 
+Vector naming is messed up if you are using Tecplot VTK reader. For example, "B [nT]" --> "B [nT]_X", "B [nT]_Y", "B [nT]_Z". Not a big issue, but annoying.
+
 - [ ] Fixed colorbar control through Matplotlib
 - [ ] Test suite for checking validity
 - [x] Cuts from 3D data visualization besides contour
