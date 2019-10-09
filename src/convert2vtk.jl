@@ -2,17 +2,18 @@
 # Example usage:
 # julia -p 8 convert_parallel.jl
 #
+# It is assumed that this script is executed from run directory. If not, please
+# specify the relative location of the output files to be processed.
+#
 # Hongyang Zhou, hyzhou@umich.edu
 
 using Distributed
-@everywhere using Pkg
-@everywhere Pkg.activate("/home1/06426/hyzhou/VisAnaJulia");
 @everywhere using VisAna, Glob
 
 catcommand = `./pTEC`
 run(catcommand)
 
-filenamesIn = "cut*.dat"
+filenamesIn = "3d*.dat"
 dir = "GM/IO2"
 
 filenames = Vector{String}(undef,0)
