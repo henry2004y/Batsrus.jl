@@ -24,57 +24,56 @@ using VisAna
 ```
 
 IDL format output processing:
-- 1D binary
+
+- Read data
 ```
 filename = "1d_bin.out";
-filehead, data, filelist = readdata(filename,verbose=false);
-plotdata(data[1],filehead[1],"p",plotmode="line")
-plotdata(data[1],filehead[1],"p",plotmode="linegrid")
+filehead, data, filelist = readdata(filename, verbose=false);
+filehead, data, filelist = readdata(filename);
+filehead, data, filelist = readdata(filename, npict=1);
+filehead, data, filelist = readdata(filename, dir=".");
+```
+
+- 1D binary
+```
+plotdata(data[1], filehead[1], "p", plotmode="line")
+plotdata(data[1], filehead[1], "p", plotmode="linegrid")
 ```
 
 - 2D Cartesian (structured)
 ```
-filename = "z=0_raw_1_t10.07620_n00000102.out";
-filehead, data, filelist = readdata(filename,verbose=false);
-
-plotdata(data[1],filehead[1],"p bx;by",plotmode="contbar streamover")
-plotdata(data[1],filehead[1],"p bx;by",plotmode="contbar quiverover")
-plotdata(data[1],filehead[1],"p bx;by",plotmode="contbar streamover", density=2.0)
-plotdata(data[1],filehead[1],"p",plotmode="grid")
-plotdata(data[1],filehead[1],"p",plotmode="contbar",plotrange=[-50., 50., -1., 1.])
-plotdata(data[1],filehead[1],"p",plotmode="contbar")
-plotdata(data[1],filehead[1],"p",plotmode="contbarlog")
-plotdata(data[1],filehead[1],"p",plotmode="surfbar")
+plotdata(data[1], filehead[1], "p bx;by", plotmode="contbar streamover")
+plotdata(data[1], filehead[1], "p bx;by", plotmode="contbar quiverover")
+plotdata(data[1], filehead[1], "p bx;by", plotmode="contbar streamover", density=2.0)
+plotdata(data[1], filehead[1], "p", plotmode="grid")
+plotdata(data[1], filehead[1], "p", plotmode="contbar", plotrange=[-50., 50., -1., 1.])
+plotdata(data[1], filehead[1], "p", plotmode="contbar")
+plotdata(data[1], filehead[1], "p", plotmode="contbarlog")
+plotdata(data[1], filehead[1], "p", plotmode="surfbar")
 ```
 
 - 2D unstructured
 ```
-filename = "y=0_unstructured.outs";
-filehead, data, filelist = readdata(filename, npict=2, verbose=false);
-plotdata(data[1],filehead[1],"rho",plotmode="contbar")
-plotdata(data[1],filehead[1],"rho",plotmode="trimesh")
-plotdata(data[1],filehead[1],"rho",plotmode="tricont")
+plotdata(data[1], filehead[1],"rho", plotmode="contbar")
+plotdata(data[1], filehead[1],"rho", plotmode="trimesh")
+plotdata(data[1], filehead[1],"rho", plotmode="tricont")
 ```
 
 - 2D structured spherical coordinates
 ```
-filename = "y_structured.out"; #???
-filehead, data, filelist = readdata(filename,verbose=false);
-plotdata(data[1],filehead[1],"rho",plotmode="contbar")
+plotdata(data[1], filehead[1], "rho", plotmode="contbar")
 ```
 
 - 3D box
 ```
-filename = "box.outs";
-filehead, data, filelist = readdata(filename,verbose=false);
-plotdata(data[1],filehead[1],"bx",plotmode="contbar",cut="y")
-plotdata(data[1],filehead[1],"bx",plotmode="contbar",cut="y", plotrange=[-1.4,-1.1,0.70,0.78])
+plotdata(data[1], filehead[1], "bx", plotmode="contbar", cut="y")
+plotdata(data[1], filehead[1], "bx", plotmode="contbar", cut="y", plotrange=[-1.4,-1.1,0.70,0.78])
 ```
 
 - 3D structured spherical coordinates
 ```
 filename = "3d_structured.out";
-filehead, data, filelist = readdata(filename,verbose=false);
+filehead, data, filelist = readdata(filename, verbose=false);
 ```
 
 - log file
@@ -82,10 +81,40 @@ filehead, data, filelist = readdata(filename,verbose=false);
 logfilename = "shocktube.log";
 filehead, data = readlogdata(logfilename)
 ```
+
+## Multiple dispatch for matplotlib functions
+- contour
+```
+# 2D contour
+contour(data[1], filehead[1], "p")
+```
+
+- filled contour
+```
+# 2D contourf
+contourf(data[1], filehead[1], "p")
+contourf(data[1], filehead[1], "p", levels, plotrange=[-10,10,-Inf,Inf],
+   plotinterval=0.1)
+```
+
+- surface plot
+```
+# surface
+plot_surface(data[1], filehead[1], "p")
+```
+
+- triangle surface plot
+```
+plot_trisurf(data[1], filehead[1], "p")
+```
+
+- triangle filled contour plot
+```
+tricontourf(data[1], filehead[1], "p")
+```
+
 ## Derived variables
 ```
-filename = "3d_box.out"
-filehead, data, filelist = readdata(filename,verbose=false);
 v = get_vars(data[1], filehead[1], ["Bx", "By", "Bz"])
 B = @. sqrt(v.Bx^2 + v.By^2 + v.Bz^2)
 ```
@@ -179,7 +208,7 @@ The first one is achieved by a trick I found on discourse, which basically ident
 
 There is a user recipe in Plots. Check it out for the possibility of parameter control!
 
-After some discussion with Xiantong, I realized that a direct wrapper over PyPlot function is possible, and would be more suitable for passing arguments. This may be a more plausible way to go than relying on recipes.
+A direct wrapper over PyPlot function is possible, and would be more suitable for passing arguments. This may be a more plausible way to go than relying on recipes.
 
 When doing processing in batch mode on a cluster, there's usually no support for displaying backends. My current workaround:
 ```
@@ -197,9 +226,9 @@ Vector naming is messed up if you are using Tecplot VTK reader. For example, "B 
 - [x] Cuts from 3D data visualization besides contour
 - [ ] Switch to Makie for 3D plotting and animation
 - [ ] PyBase support for manipulating data directly in Python
-- [ ] Derived variable support
+- [x] Derived variable support
 - [ ] General postprocessing script for concatenating and converting files.
-- [ ] Direct wrapper over matplotlib functions to get seamless API
+- [x] Direct wrapper over matplotlib functions to get seamless API
 - [ ] Replace np.meshgrid with list comprehension
 
 ## Author
