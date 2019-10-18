@@ -4,11 +4,14 @@ module VisAna
 # Hongyang Zhou, hyzhou@umich.edu
 
 export readdata, readlogdata, plotdata, plotlogdata, animatedata, readtecdata
-export Data, FileList, convertVTK, get_vars, contour, contourf, plot_surface
+export Data, FileList, convertVTK, get_vars
+export contour, contourf, plot_surface, tricontourf, plot_trisurf
 
 using Glob, PyPlot, Printf, PyCall, Dierckx, WriteVTK
 
-import PyPlot.contour, PyPlot.contourf, PyPlot.plot_surface
+import PyPlot.contour, PyPlot.contourf, PyPlot.plot_surface, PyPlot.tricontourf,
+   PyPlot.plot_trisurf
+
 
 struct Data{T}
    x::Array{T}
@@ -366,8 +369,7 @@ function getfilehead(fileID::IOStream, type::String)
       head[:nw] = parse(Int8,line[5])
       head[:gencoord] = head[:ndim] < 0
       head[:ndim] = abs(head[:ndim])
-      line = parse(Int64, readline(fileID))
-      head[:nx] = line
+      head[:nx] = parse.(Int64, split(readline(fileID)))
       if head[:neqpar] > 0
          head[:eqpar] = parse.(Float64, split(readline(fileID)))
       end
@@ -439,15 +441,21 @@ function getfilesize(fileID::IOStream, type::String)
    if ftype == "log"
       # This part is done in the main readdata function.
    elseif ftype == "ascii"
-      readline(fileID)
-      readline(fileID)
+      headline = readline(fileID)
+      line = readline(fileID)
       line = split(line)
-      ndim = parse(Int32,line[3])
-      tmp = parse(Int32,line[4])
-      tmp > 0 && readline(fileID)
-      nw = parse(Int32,line[5])
-      readline(fileID)
-      nx = parse(Int64, readline(fileID))
+      it = parse(Int,line[1])
+      time = parse(Float64,line[2])
+      ndim = parse(Int8,line[3])
+      neqpar = parse(Int32,line[4])
+      nw = parse(Int8,line[5])
+      gencoord = ndim < 0
+      ndim = abs(ndim)
+      nx = parse.(Int64, split(readline(fileID)))
+      if neqpar > 0
+         eqpar = parse.(Float64, split(readline(fileID)))
+      end
+      varname = readline(fileID)
    elseif ftype ∈ ["real4","binary"]
       skip(fileID,4)
       read(fileID,lenstr)
@@ -531,8 +539,8 @@ function getpictascii(fileID::IOStream, filehead::Dict)
       w  = Array{Float64,3}(undef,n1,n2,nw)
       for ix1=1:n1, ix2=1:n2
          temp = parse.(Float64, split(readline(fileID)))
-         x[ix1,ix2,:] .= temp[1]
-         w[ix1,ix2,:] .= temp[2:end]
+         x[ix1,ix2,:] .= temp[1:2]
+         w[ix1,ix2,:] .= temp[3:end]
       end
    elseif ndim == 3 # 3D
       n1 = filehead[:nx][1]
@@ -542,8 +550,8 @@ function getpictascii(fileID::IOStream, filehead::Dict)
       w  = Array{Float64,4}(undef,n1,n2,n3,nw)
       for ix1=1:n1, ix2=1:n2, ix3=1:n3
          temp = parse.(Float64, split(readline(fileID)))
-         x[ix1,ix2,ix3,:] .= temp[1]
-         w[ix1,ix2,ix3,:] .= temp[2:end]
+         x[ix1,ix2,ix3,:] .= temp[1:3]
+         w[ix1,ix2,ix3,:] .= temp[4:end]
       end
    end
 
@@ -1068,13 +1076,13 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
                   yi = x[:,:,2]
                   wi = w[:,:,VarIndex_]
                else
+				  X = x[:,1,1]
+				  Y = x[1,:,2]
                   if plotrange[1] == -Inf plotrange[1] = minimum(X) end
                   if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
                   if plotrange[3] == -Inf plotrange[3] = minimum(Y) end
                   if plotrange[4] ==  Inf plotrange[4] = maximum(Y) end
 
-                  X = x[:,1,1]
-                  Y = x[1,:,2]
                   W = w[:,:,VarIndex_]
 
                   xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
@@ -1403,13 +1411,13 @@ function subdata(data::Array{Float64,2},
 end
 
 """
-   contour(data, filehead, var; plotrange, plotinterval, levels, kwargs)
+   contour(data, filehead, var, levels=0; plotrange, plotinterval, kwargs)
 
 Wrapper over the contour function in matplotlib.
 """
-function contour(data::Data, filehead::Dict, var::String;
+function contour(data::Data, filehead::Dict, var::String, levels::Int=0;
    plotrange::Vector{Float64}=[-Inf,Inf,-Inf,Inf], plotinterval::Float64=0.1,
-   levels::Int=0, kwargs::Dict=Dict())
+   kwargs::Dict=Dict())
 
    xi, yi, wi = getdata(data, filehead, var, plotrange, plotinterval)
 
@@ -1423,13 +1431,13 @@ function contour(data::Data, filehead::Dict, var::String;
 end
 
 """
-   contourf(data, filehead, var; plotrange, plotinterval, levels, kwargs)
+   contourf(data, filehead, var, levels=0; plotrange, plotinterval, kwargs)
 
 Wrapper over the contourf function in matplotlib.
 """
-function contourf(data::Data, filehead::Dict, var::String;
+function contourf(data::Data, filehead::Dict, var::String, levels::Int=0;
    plotrange::Vector{Float64}=[-Inf,Inf,-Inf,Inf], plotinterval::Float64=0.1,
-   levels::Int=0, kwargs::Dict=Dict())
+   kwargs::Dict=Dict())
 
    xi, yi, wi = getdata(data, filehead, var, plotrange, plotinterval)
 
@@ -1441,6 +1449,59 @@ function contourf(data::Data, filehead::Dict, var::String;
 
    return c::PyCall.PyObject
 end
+
+
+function tricontourf(data::Data, filehead::Dict, var::String;
+   plotrange::Vector{Float64}=[-Inf,Inf,-Inf,Inf], plotinterval::Float64=0.1,
+   kwargs::Dict=Dict())
+
+   x = data.x
+   w = data.w
+
+   VarIndex_ = findfirst(x->x==lowercase(var), lowercase.(filehead[:wnames]))
+   isempty(VarIndex_) && error("$(var) not found in header variables!")
+
+   X = vec(x[:,:,1])
+   Y = vec(x[:,:,2])
+   W = vec(w[:,:,VarIndex_])
+
+   # This needs to be modified!!!
+   if !all(isinf.(plotrange))
+	  xyIndex = X .> plotrange[1] .& X .< plotrange[2] .&
+	  Y .> plotrange[3] .& Y .< plotrange[4]
+	  X = X[xyIndex]
+	  Y = Y[xyIndex]
+	  W = W[xyIndex]
+   end
+
+   c = tricontourf(X, Y, W)
+end
+
+function plot_trisurf(data::Data, filehead::Dict, var::String;
+   plotrange::Vector{Float64}=[-Inf,Inf,-Inf,Inf], kwargs::Dict=Dict())
+
+   x = data.x
+   w = data.w
+
+   VarIndex_ = findfirst(x->x==lowercase(var), lowercase.(filehead[:wnames]))
+   isempty(VarIndex_) && error("$(var) not found in header variables!")
+
+   X = vec(x[:,:,1])
+   Y = vec(x[:,:,2])
+   W = vec(w[:,:,VarIndex_])
+
+   # This needs to be modified!!!
+   if !all(isinf.(plotrange))
+	  xyIndex = X .> plotrange[1] .& X .< plotrange[2] .&
+	  Y .> plotrange[3] .& Y .< plotrange[4]
+	  X = X[xyIndex]
+	  Y = Y[xyIndex]
+	  W = W[xyIndex]
+   end
+
+   c = plot_trisurf(X, Y, W)
+end
+
 
 """
    plot_surface(data, filehead, var; plotrange, plotinterval, kwargs)
@@ -1493,13 +1554,13 @@ function getdata(data, filehead, var, plotrange, plotinterval)
          yi = x[:,:,2]
          wi = w[:,:,VarIndex_]
       else
+		 X = x[:,1,1]
+		 Y = x[1,:,2]
          if plotrange[1] == -Inf plotrange[1] = minimum(X) end
          if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
          if plotrange[3] == -Inf plotrange[3] = minimum(Y) end
          if plotrange[4] ==  Inf plotrange[4] = maximum(Y) end
 
-         X = x[:,1,1]
-         Y = x[1,:,2]
          W = w[:,:,VarIndex_]
 
          xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
