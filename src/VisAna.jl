@@ -4,10 +4,11 @@ module VisAna
 # Hongyang Zhou, hyzhou@umich.edu
 
 export readdata, readlogdata, plotdata, plotlogdata, animatedata, readtecdata
-export Data, FileList, convertVTK, get_vars
+export Data, FileList, convertVTK, get_vars, contour, contourf, plot_surface
 
 using Glob, PyPlot, Printf, PyCall, Dierckx, WriteVTK
 
+import PyPlot.contour, PyPlot.contourf, PyPlot.plot_surface
 
 struct Data{T}
    x::Array{T}
@@ -985,7 +986,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
       for (ivar,var) in enumerate(vars)
          if occursin(";",var) continue end # skip the vars for streamline
          VarIndex_ = findfirst(x->x==lowercase(var),
-            lowercase.(filehead[:wnames]))
+         lowercase.(filehead[:wnames]))
          if ndim == 1
             wmin[ivar] = minimum(w[:,VarIndex_])
             wmax[ivar] = maximum(w[:,VarIndex_])
@@ -1020,9 +1021,9 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
          dim = [0.125, 0.013, 0.2, 0.045]
          str = @sprintf "it=%d, time=%4.2f" filehead[:it] filehead[:time]
          at = matplotlib.offsetbox.AnchoredText(str,
-                    loc="lower left", prop=Dict("size"=>8), frameon=true,
-                    bbox_to_anchor=(0., 1.),
-                    bbox_transform=ax.transAxes)
+         loc="lower left", prop=Dict("size"=>8), frameon=true,
+         bbox_to_anchor=(0., 1.),
+         bbox_transform=ax.transAxes)
          at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
          ax.add_artist(at)
       end
@@ -1032,9 +1033,9 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
          if ivar == 1 || multifigure fig, ax = subplots() else ax = gca() end
          if !occursin(";",var)
             VarIndex_ = findfirst(x->x==lowercase(var),
-               lowercase.(filehead[:wnames]))
-               isempty(VarIndex_) &&
-                  error("$(var) not found in header variables!")
+            lowercase.(filehead[:wnames]))
+            isempty(VarIndex_) &&
+            error("$(var) not found in header variables!")
          end
 
          if plotmode[ivar] ∈ ("surf","surfbar","surfbarlog","cont","contbar",
@@ -1104,7 +1105,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
 
             occursin("bar", plotmode[ivar]) && colorbar()
             occursin("log", plotmode[ivar]) &&
-               ( c.locator = matplotlib.ticker.LogLocator() )
+            ( c.locator = matplotlib.ticker.LogLocator() )
             title(filehead[:wnames][VarIndex_])
 
          elseif plotmode[ivar] ∈ ("trimesh","trisurf","tricont","tristream")
@@ -1115,7 +1116,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
             # This needs to be modified!!!
             if !all(isinf.(plotrange))
                xyIndex = X .> plotrange[1] .& X .< plotrange[2] .&
-                  Y .> plotrange[3] .& Y .< plotrange[4]
+               Y .> plotrange[3] .& Y .< plotrange[4]
                X = X[xyIndex]
                Y = Y[xyIndex]
                W = W[xyIndex]
@@ -1138,13 +1139,13 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
          elseif plotmode[ivar] ∈ ("stream","streamover")
             VarStream  = split(var,";")
             VarIndex1_ = findfirst(x->x==lowercase(VarStream[1]),
-               lowercase.(filehead[:wnames]))
+            lowercase.(filehead[:wnames]))
             VarIndex2_ = findfirst(x->x==lowercase(VarStream[2]),
-               lowercase.(filehead[:wnames]))
+            lowercase.(filehead[:wnames]))
 
             if filehead[:gencoord] # Generalized coordinates
-	            X, Y= vec(x[:,:,1]), vec(x[:,:,2])
-	            if any(isinf.(plotrange))
+               X, Y= vec(x[:,:,1]), vec(x[:,:,2])
+               if any(isinf.(plotrange))
                   if plotrange[1] == -Inf plotrange[1] = minimum(X) end
                   if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
                   if plotrange[3] == -Inf plotrange[3] = minimum(Y) end
@@ -1204,9 +1205,9 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
          elseif occursin("quiver", plotmode[ivar])
             VarQuiver  = split(var,";")
             VarIndex1_ = findfirst(x->x==lowercase(VarQuiver[1]),
-               lowercase.(filehead[:wnames]))
+            lowercase.(filehead[:wnames]))
             VarIndex2_ = findfirst(x->x==lowercase(VarQuiver[2]),
-               lowercase.(filehead[:wnames]))
+            lowercase.(filehead[:wnames]))
 
             X, Y = x[:,1,1], x[1,:,2]
             v1, v2 = w[:,:,VarIndex1_]', w[:,:,VarIndex2_]'
@@ -1226,9 +1227,9 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
          dim = [0.125, 0.013, 0.2, 0.045]
          str = @sprintf "it=%d, time=%4.2f" filehead[:it] filehead[:time]
          at = matplotlib.offsetbox.AnchoredText(str,
-                    loc="lower left", prop=Dict("size"=>8), frameon=true,
-                    bbox_to_anchor=(0., 1.),
-                    bbox_transform=ax.transAxes)
+         loc="lower left", prop=Dict("size"=>8), frameon=true,
+         bbox_to_anchor=(0., 1.),
+         bbox_transform=ax.transAxes)
          at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
          ax.add_artist(at)
          # recover status
@@ -1243,7 +1244,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
          if plotmode[ivar] ∈ ("surf","surfbar","surfbarlog","cont","contbar",
             "contlog","contbarlog")
             VarIndex_ = findfirst(x->x==lowercase(var),
-               lowercase.(filehead[:wnames]))
+            lowercase.(filehead[:wnames]))
             isempty(VarIndex_) && error("$(var) not found in header variables!")
 
             if ivar == 1 || multifigure fig, ax = subplots() else ax = gca() end
@@ -1266,11 +1267,11 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
          elseif plotmode[ivar] ∈ ("stream","streamover")
             VarStream  = split(var,";")
             VarIndex1_ = findfirst(x->x==lowercase(VarStream[1]),
-               lowercase.(filehead[:wnames]))
+            lowercase.(filehead[:wnames]))
             VarIndex2_ = findfirst(x->x==lowercase(VarStream[2]),
-               lowercase.(filehead[:wnames]))
+            lowercase.(filehead[:wnames]))
             (isempty(VarIndex1_) || isempty(VarIndex2_)) &&
-               error("$(VarStream) not found in header variables!")
+            error("$(VarStream) not found in header variables!")
 
             v1 = @view w[:,:,:,VarIndex1_]
             v2 = @view w[:,:,:,VarIndex2_]
@@ -1298,29 +1299,29 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
             cut1, cut2, W = subsurface(cut1, cut2, W, plotrange)
          end
 
-	     if plotmode[ivar] ∈ ("surf","surfbar","surfbarlog","cont","contbar",
+         if plotmode[ivar] ∈ ("surf","surfbar","surfbarlog","cont","contbar",
             "contlog","contbarlog")
             c = ax.contourf(cut1,cut2,W)
             fig.colorbar(c,ax=ax)
             #ax.axis("equal")
-			title(filehead[:wnames][VarIndex_])
+            title(filehead[:wnames][VarIndex_])
 
-	     elseif plotmode[ivar] ∈ ("stream","streamover")
-	        # Surprisingly, some box outputs do not have equal spaces???
-	    	  #xi = range(cut1[1,1], stop=cut1[1,end], length=size(cut1)[2])
-           #yi = range(cut2[1,1], stop=cut2[end,1], length=size(cut2)[1])
+         elseif plotmode[ivar] ∈ ("stream","streamover")
+            # Surprisingly, some box outputs do not have equal spaces???
+            #xi = range(cut1[1,1], stop=cut1[1,end], length=size(cut1)[2])
+            #yi = range(cut2[1,1], stop=cut2[end,1], length=size(cut2)[1])
 
-           xi = range(cut1[1,1], stop=cut1[1,end],
-	       	  step=(cut1[1,end]-cut1[1,1])/(size(cut1,2)-1))
-           yi = range(cut2[1,1], stop=cut2[end,1],
-	           step=(cut2[end,1]-cut2[1,1])/(size(cut2,1)-1))
+            xi = range(cut1[1,1], stop=cut1[1,end],
+            step=(cut1[1,end]-cut1[1,1])/(size(cut1,2)-1))
+            yi = range(cut2[1,1], stop=cut2[end,1],
+            step=(cut2[end,1]-cut2[1,1])/(size(cut2,1)-1))
 
-           Xi = [i for j in yi, i in xi]
-           Yi = [j for j in yi, i in xi]
+            Xi = [i for j in yi, i in xi]
+            Yi = [j for j in yi, i in xi]
 
-           s = streamplot(Xi,Yi,v1,v2,
-              color="w",linewidth=1.0,density=density)
-	     end
+            s = streamplot(Xi,Yi,v1,v2,
+            color="w",linewidth=1.0,density=density)
+         end
 
          if cut == "x"
             xlabel("y"); ylabel("z")
@@ -1330,13 +1331,13 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
             xlabel("x"); ylabel("y")
          end
 
-		 ax = gca()
-		 dim = [0.125, 0.013, 0.2, 0.045]
+         ax = gca()
+         dim = [0.125, 0.013, 0.2, 0.045]
          str = @sprintf "it=%d, time=%4.2f" filehead[:it] filehead[:time]
          at = matplotlib.offsetbox.AnchoredText(str,
-                    loc="lower left", prop=Dict("size"=>8), frameon=true,
-                    bbox_to_anchor=(0., 1.),
-                    bbox_transform=ax.transAxes)
+         loc="lower left", prop=Dict("size"=>8), frameon=true,
+         bbox_to_anchor=(0., 1.),
+         bbox_transform=ax.transAxes)
          at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
          ax.add_artist(at)
       end
@@ -1399,6 +1400,119 @@ function subdata(data::Array{Float64,2},
    end
 
    return newdata
+end
+
+"""
+   contour(data, filehead, var; plotrange, plotinterval, levels, kwargs)
+
+Wrapper over the contour function in matplotlib.
+"""
+function contour(data::Data, filehead::Dict, var::String;
+   plotrange::Vector{Float64}=[-Inf,Inf,-Inf,Inf], plotinterval::Float64=0.1,
+   levels::Int=0, kwargs::Dict=Dict())
+
+   xi, yi, wi = getdata(data, filehead, var, plotrange, plotinterval)
+
+   if levels != 0
+      c = plt.contour(xi, yi, wi, levels; kwargs...)
+   else
+      c = plt.contour(xi, yi, wi; kwargs...)
+   end
+
+   return c::PyCall.PyObject
+end
+
+"""
+   contourf(data, filehead, var; plotrange, plotinterval, levels, kwargs)
+
+Wrapper over the contourf function in matplotlib.
+"""
+function contourf(data::Data, filehead::Dict, var::String;
+   plotrange::Vector{Float64}=[-Inf,Inf,-Inf,Inf], plotinterval::Float64=0.1,
+   levels::Int=0, kwargs::Dict=Dict())
+
+   xi, yi, wi = getdata(data, filehead, var, plotrange, plotinterval)
+
+   if levels != 0
+      c = plt.contourf(xi, yi, wi, levels; kwargs...)
+   else
+      c = plt.contourf(xi, yi, wi; kwargs...)
+   end
+
+   return c::PyCall.PyObject
+end
+
+"""
+   plot_surface(data, filehead, var; plotrange, plotinterval, kwargs)
+
+Wrapper over the plot_surface function in matplotlib.
+"""
+function plot_surface(data::Data, filehead::Dict, var::String;
+   plotrange::Vector{Float64}=[-Inf,Inf,-Inf,Inf], plotinterval::Float64=0.1,
+   kwargs::Dict=Dict())
+
+   xi, yi, wi = getdata(data, filehead, var, plotrange, plotinterval)
+
+   c = plot_surface(xi, yi, wi; kwargs...)
+
+   return c::PyCall.PyObject
+end
+
+"""Prepare data for passing to plotting functions."""
+function getdata(data, filehead, var, plotrange, plotinterval)
+   x,w = data.x, data.w
+   ndim = filehead[:ndim]
+
+   VarIndex_ = findfirst(x->x==lowercase(var), lowercase.(filehead[:wnames]))
+   isempty(VarIndex_) && error("$(var) not found in header variables!")
+
+   if filehead[:gencoord] # Generalized coordinates
+      X = vec(x[:,:,1])
+      Y = vec(x[:,:,2])
+      W = vec(w[:,:,VarIndex_])
+
+      if any(abs.(plotrange) .== Inf)
+         if plotrange[1] == -Inf plotrange[1] = minimum(X) end
+         if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
+         if plotrange[3] == -Inf plotrange[3] = minimum(Y) end
+         if plotrange[4] ==  Inf plotrange[4] = maximum(Y) end
+      end
+
+      # Create grid values first.
+      xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
+      yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
+      # Perform linear interpolation of the data (x,y) on grid(xi,yi)
+      triang = matplotlib.tri.Triangulation(X,Y)
+      interpolator = matplotlib.tri.LinearTriInterpolator(triang, W)
+      np = pyimport("numpy")
+      Xi, Yi = np.meshgrid(xi, yi) # This can be replaced by list comprehension
+      wi = interpolator(Xi, Yi)
+   else # Cartesian coordinates
+      if all(isinf.(plotrange))
+         xi = x[:,:,1]
+         yi = x[:,:,2]
+         wi = w[:,:,VarIndex_]
+      else
+         if plotrange[1] == -Inf plotrange[1] = minimum(X) end
+         if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
+         if plotrange[3] == -Inf plotrange[3] = minimum(Y) end
+         if plotrange[4] ==  Inf plotrange[4] = maximum(Y) end
+
+         X = x[:,1,1]
+         Y = x[1,:,2]
+         W = w[:,:,VarIndex_]
+
+         xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
+         yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
+
+         spline = Spline2D(X, Y, W)
+         Xi = [i for i in xi, j in yi]
+         Yi = [j for i in xi, j in yi]
+         wi = spline(Xi[:], Yi[:])
+         wi = reshape(wi, size(Xi))'
+      end
+   end
+   return xi, yi, wi
 end
 
 """
