@@ -34,6 +34,8 @@ filehead, data, filelist = readdata(filename, npict=1);
 filehead, data, filelist = readdata(filename, dir=".");
 ```
 
+A general `plotdata` function is provided for quick visualizations. In addition to that, some plotting functions can be directly called as shown below, which allows for more control by the user.
+
 - 1D binary
 ```
 plotdata(data[1], filehead[1], "p", plotmode="line")
@@ -93,8 +95,7 @@ contour(data[1], filehead[1], "p")
 ```
 # 2D contourf
 contourf(data[1], filehead[1], "p")
-contourf(data[1], filehead[1], "p", levels, plotrange=[-10,10,-Inf,Inf],
-   plotinterval=0.1)
+contourf(data[1], filehead[1], "p", levels, plotrange=[-10,10,-Inf,Inf], plotinterval=0.1)
 ```
 
 - surface plot
