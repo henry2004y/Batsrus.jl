@@ -179,6 +179,8 @@ The first one is achieved by a trick I found on discourse, which basically ident
 
 There is a user recipe in Plots. Check it out for the possibility of parameter control!
 
+After some discussion with Xiantong, I realized that a direct wrapper over PyPlot function is possible, and would be more suitable for passing arguments. This may be a more plausible way to go than relying on recipes.
+
 When doing processing in batch mode on a cluster, there's usually no support for displaying backends. My current workaround:
 ```
 using PyCall
@@ -197,6 +199,8 @@ Vector naming is messed up if you are using Tecplot VTK reader. For example, "B 
 - [ ] PyBase support for manipulating data directly in Python
 - [ ] Derived variable support
 - [ ] General postprocessing script for concatenating and converting files.
+- [ ] Direct wrapper over matplotlib functions to get seamless API
+- [ ] Replace np.meshgrid with list comprehension
 
 ## Author
 
