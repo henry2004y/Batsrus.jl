@@ -38,9 +38,10 @@ plotdata(data[1],filehead[1],"p",plotmode="surfbar")
 # 2D unstructured
 filename = "y=0_unstructured.outs";
 filehead, data, filelist = readdata(filename,verbose=false);
-plotdata(data[1],filehead[1],"rho",plotmode="contbar")
-plotdata(data[1],filehead[1],"rho",plotmode="trimesh")
-plotdata(data[1],filehead[1],"rho",plotmode="tricont")
+plotdata(data[1],filehead[1],"rho",plotmode="contbar",
+   plotrange=[-2.2, 2.2, -2.2, 2.2])
+plotdata(data[1], filehead[1], "rho", plotmode="trimesh")
+plotdata(data[1], filehead[1], "rho", plotmode="tricont")
 
 animatedata(data[1],filehead[1],filelist[1],"rho",plotmode="contbar")
 
@@ -49,16 +50,34 @@ filename = "y_structured.out"; #???
 filehead, data, filelist = readdata(filename,verbose=false);
 plotdata(data[1],filehead[1],"rho",plotmode="contbar")
 
+# Similar API as matplotlib
+
+# 2D contour
+contour(data[1], filehead[1], "p")
+
+# 2D contourf
+contourf(data[1], filehead[1], "p")
+contourf(data[1], filehead[1], "p", levels, plotrange=[-10,10,-Inf,Inf],
+   plotinterval=0.1)
+
+# surface
+plot_surface(data[1], filehead[1], "p")
+
+# triangle filled contour
+tricontourf(data[1], filehead[1], "p")
+
+# triangle surface plot
+plot_trisurf(data[1], filehead[1], "p")
 
 # 3D box
 filename = "3d_box.out";
 filehead, data, filelist = readdata(filename,verbose=false);
-plotdata(data[1],filehead[1],"ps1 bx;bz",plotmode="contbar stream",cut="y",cutPlaneIndex=65)
-plotdata(data[1],filehead[1],"ps1 bx;by",plotmode="contbar stream",cut="z")
-plotdata(data[1],filehead[1],"bx",plotmode="contbar",cut="y")
-plotdata(data[1],filehead[1],"bx",plotmode="contbar",cut="y",
+plotdata(data[1], filehead[1], "ps1 bx;bz", plotmode="contbar stream", cut="y",
+   cutPlaneIndex=65)
+plotdata(data[1], filehead[1], "ps1 bx;by", plotmode="contbar stream", cut="z")
+plotdata(data[1], filehead[1], "bx", plotmode="contbar", cut="y")
+plotdata(data[1], filehead[1], "bx", plotmode="contbar", cut="y",
    plotrange=[-1.4,-1.1,0.70,0.78])
-
 
 # 3D structured spherical
 filename = "3d_structured.out";
