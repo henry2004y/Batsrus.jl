@@ -37,6 +37,7 @@ filenames = Vector{String}(undef,0)
 filesfound = glob(filenamesIn, dir)
 filenames = vcat(filenames, filesfound)
 # Do not work on files that have already been converted
+# This won't work if new files are generated with exactly the same name!
 filenames = [fname for fname in filenames if ~isfile(fname[1:end-3]*"vtu")]
 
 @sync @distributed for outname in filenames
