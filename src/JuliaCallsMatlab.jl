@@ -38,5 +38,6 @@ hold off
 using PyPlot
 x = -2:0.2:2
 y = x'
+z = x .* exp.(-x.^2 .- y.^2)
 contour(x,y,z)
 quiver(x,y,px,py)
