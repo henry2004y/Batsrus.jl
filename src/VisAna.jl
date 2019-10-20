@@ -5,12 +5,12 @@ module VisAna
 
 export readdata, readlogdata, plotdata, plotlogdata, animatedata, readtecdata
 export Data, FileList, convertVTK, get_vars
-export contour, contourf, plot_surface, tricontourf, plot_trisurf
+export plot, scatter, contour, contourf, plot_surface, tricontourf, plot_trisurf
 
 using Glob, PyPlot, Printf, PyCall, Dierckx, WriteVTK
 
-import PyPlot.contour, PyPlot.contourf, PyPlot.plot_surface, PyPlot.tricontourf,
-   PyPlot.plot_trisurf
+import PyPlot.plot, PyPlot.scatter, PyPlot.contour, PyPlot.contourf,
+   PyPlot.plot_surface, PyPlot.tricontourf, PyPlot.plot_trisurf
 
 
 struct Data{T}
@@ -1408,6 +1408,41 @@ function subdata(data::Array{Float64,2},
    end
 
    return newdata
+end
+
+"""
+   plot(data, filehead, var; kwargs)
+
+Wrapper over the plot function in matplotlib. For some reason, we cannot pass
+dictionary arguments. However, the properties can be changed afterwards.
+
+For example,
+```jldoctest
+c = plot(data, filehead, "p")
+plt.setp(c, linestyle="--", linewidth=2);
+```
+"""
+function plot(data::Data, filehead::Dict, var::String)
+   x,w = data.x, data.w
+   VarIndex_ = findfirst(x->x==var,filehead[:wnames])
+
+   c = plot(x, w[:,VarIndex_])
+
+   return c::Vector{PyCall.PyObject}
+end
+
+"""
+   scatter(data, filehead, var; kwargs)
+
+Wrapper over the scatter function in matplotlib.
+"""
+function scatter(data::Data, filehead::Dict, var::String)
+   x,w = data.x, data.w
+   VarIndex_ = findfirst(x->x==var,filehead[:wnames])
+
+   c = scatter(x, w[:,VarIndex_])
+
+   return c::Vector{PyCall.PyObject}
 end
 
 """
