@@ -85,6 +85,17 @@ filehead, data = readlogdata(logfilename)
 ```
 
 ## Multiple dispatch for matplotlib functions
+- line plot
+```
+c = plot(data[1], filehead[1], "p")
+plt.setp(c, linestyle="--", linewidth=2);
+```
+
+- scatter plot
+```
+scatter(data[1], filehead[1], "p")
+```
+
 - contour
 ```
 # 2D contour
@@ -209,7 +220,7 @@ The first one is achieved by a trick I found on discourse, which basically ident
 
 There is a user recipe in Plots. Check it out for the possibility of parameter control!
 
-A direct wrapper over PyPlot function is possible, and would be more suitable for passing arguments. This may be a more plausible way to go than relying on recipes.
+A direct wrapper over PyPlot function is possible, and would be more suitable for passing arguments. This may be a more plausible way to go than relying on recipes. Because of the reason described in [StackOverFlow](https://stackoverflow.com/questions/56153469/can-a-dictionary-be-used-as-a-complete-input-to-a-matplotlib-pyplot), plot cannot accept dictionary keywords input pairs.
 
 When doing processing in batch mode on a cluster, there's usually no support for displaying backends. My current workaround:
 ```
