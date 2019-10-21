@@ -1413,20 +1413,13 @@ end
 """
    plot(data, filehead, var; kwargs)
 
-Wrapper over the plot function in matplotlib. For some reason, we cannot pass
-dictionary arguments. However, the properties can be changed afterwards.
-
-For example,
-```jldoctest
-c = plot(data, filehead, "p")
-plt.setp(c, linestyle="--", linewidth=2);
-```
+Wrapper over the plot function in matplotlib.
 """
-function plot(data::Data, filehead::Dict, var::String)
+function plot(data::Data, filehead::Dict, var::String; kwargs...)
    x,w = data.x, data.w
    VarIndex_ = findfirst(x->x==var,filehead[:wnames])
 
-   c = plot(x, w[:,VarIndex_])
+   c = plot(x, w[:,VarIndex_]; kwargs...)
 
    return c::Vector{PyCall.PyObject}
 end
@@ -1436,11 +1429,11 @@ end
 
 Wrapper over the scatter function in matplotlib.
 """
-function scatter(data::Data, filehead::Dict, var::String)
+function scatter(data::Data, filehead::Dict, var::String; kwargs...)
    x,w = data.x, data.w
    VarIndex_ = findfirst(x->x==var,filehead[:wnames])
 
-   c = scatter(x, w[:,VarIndex_])
+   c = scatter(x, w[:,VarIndex_]; kwargs...)
 
    return c::Vector{PyCall.PyObject}
 end
