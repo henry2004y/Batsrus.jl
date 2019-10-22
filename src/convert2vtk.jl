@@ -1,7 +1,7 @@
 #!/usr/bin/env julia --startup-file=no
 # Script for converting BATSRUS unstructured binary outputs to VTK formats.
 # Example usage:
-# julia -p 8 convert_parallel.jl
+# julia -p 8 convert2vtk.jl
 #
 # Currently the relative location of the output files to be processed is "IO2".
 #
