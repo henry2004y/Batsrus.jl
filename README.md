@@ -56,9 +56,9 @@ plotdata(data[1], filehead[1], "p", plotmode="surfbar")
 
 - 2D unstructured
 ```
-plotdata(data[1], filehead[1],"rho", plotmode="contbar")
-plotdata(data[1], filehead[1],"rho", plotmode="trimesh")
-plotdata(data[1], filehead[1],"rho", plotmode="tricont")
+plotdata(data[1], filehead[1], "rho", plotmode="contbar")
+plotdata(data[1], filehead[1], "rho", plotmode="trimesh")
+plotdata(data[1], filehead[1], "rho", plotmode="tricont")
 ```
 
 - 2D structured spherical coordinates
@@ -124,6 +124,12 @@ plot_trisurf(data[1], filehead[1], "p")
 - triangle filled contour plot
 ```
 tricontourf(data[1], filehead[1], "p")
+```
+
+- streamline
+```
+streamplot(data[1], filehead[1], "bx;bz")
+streamplot(data[1], filehead[1], "bx;bz", density=2.0, color="k", plotinterval=1.0, plotrange=[-10,10,-Inf,Inf])
 ```
 
 ## Derived variables
@@ -244,7 +250,8 @@ There is a unit package in Julia [unitful](https://github.com/PainterQubits/Unit
 - [x] Derived variable support
 - [ ] General postprocessing script for concatenating and converting files.
 - [x] Direct wrapper over matplotlib functions to get seamless API
-- [ ] Replace np.meshgrid with list comprehension
+- [x] Replace np.meshgrid with list comprehension
+- [ ] Find a substitution of triangulation in Julia
 
 ## Author
 
