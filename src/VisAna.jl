@@ -6,11 +6,13 @@ module VisAna
 export readdata, readlogdata, plotdata, plotlogdata, animatedata, readtecdata
 export Data, FileList, convertVTK, get_vars
 export plot, scatter, contour, contourf, plot_surface, tricontourf, plot_trisurf
+export streamplot
 
 using Glob, PyPlot, Printf, PyCall, Dierckx, WriteVTK
 
 import PyPlot.plot, PyPlot.scatter, PyPlot.contour, PyPlot.contourf,
-   PyPlot.plot_surface, PyPlot.tricontourf, PyPlot.plot_trisurf
+   PyPlot.plot_surface, PyPlot.tricontourf, PyPlot.plot_trisurf,
+   PyPlot.streamplot
 
 
 struct Data{T}
@@ -1067,8 +1069,8 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
                # Perform linear interpolation of the data (x,y) on grid(xi,yi)
                triang = matplotlib.tri.Triangulation(X,Y)
                interpolator = matplotlib.tri.LinearTriInterpolator(triang, W)
-               np = pyimport("numpy")
-               Xi, Yi = np.meshgrid(xi, yi)
+               Xi = [y for x in xi, y in yi]
+          	   Yi = [x for x in xi, y in yi]
                wi = interpolator(Xi, Yi)
             else # Cartesian coordinates
                if all(isinf.(plotrange))
@@ -1076,8 +1078,8 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
                   yi = x[:,:,2]
                   wi = w[:,:,VarIndex_]
                else
-				  X = x[:,1,1]
-				  Y = x[1,:,2]
+				      X = x[:,1,1]
+				      Y = x[1,:,2]
                   if plotrange[1] == -Inf plotrange[1] = minimum(X) end
                   if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
                   if plotrange[3] == -Inf plotrange[3] = minimum(Y) end
@@ -1152,7 +1154,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
             lowercase.(filehead[:wnames]))
 
             if filehead[:gencoord] # Generalized coordinates
-               X, Y= vec(x[:,:,1]), vec(x[:,:,2])
+               X, Y = vec(x[:,:,1]), vec(x[:,:,2])
                if any(isinf.(plotrange))
                   if plotrange[1] == -Inf plotrange[1] = minimum(X) end
                   if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
@@ -1167,10 +1169,10 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
                # The PyCall here can be potentially replaced with Spline2D.
                # Perform linear interpolation of the data (x,y) on grid(xi,yi)
                triang = matplotlib.tri.Triangulation(X,Y)
-               np = pyimport("numpy")
-               Xi, Yi = np.meshgrid(xi, yi)
-               W = w[:,1,VarIndex1_]
+               Xi = [y for x in xi, y in yi]
+          	   Yi = [x for x in xi, y in yi]
 
+               W = w[:,1,VarIndex1_]
                interpolator = matplotlib.tri.LinearTriInterpolator(triang, W)
                v1 = interpolator(Xi, Yi)
 
@@ -1327,8 +1329,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
             Xi = [i for j in yi, i in xi]
             Yi = [j for j in yi, i in xi]
 
-            s = streamplot(Xi,Yi,v1,v2,
-            color="w",linewidth=1.0,density=density)
+            s = streamplot(Xi,Yi,v1,v2,color="w",linewidth=1.0,density=density)
          end
 
          if cut == "x"
@@ -1547,6 +1548,84 @@ function plot_surface(data::Data, filehead::Dict, var::String;
    return c::PyCall.PyObject
 end
 
+"""
+   streamplot(data, filehead, var; plotrange, plotinterval)
+
+Wrapper over the streamplot function in matplotlib. Streamplot does not have
+**kwargs in the API.
+"""
+function streamplot(data::Data, filehead::Dict, var::String;
+   plotrange::Vector{Float64}=[-Inf,Inf,-Inf,Inf], plotinterval::Float64=0.1,
+   density::Real=1.0, color::String="")
+
+   x, w = data.x, data.w
+   VarStream  = split(var,";")
+   wnames = lowercase.(filehead[:wnames])
+   VarIndex1_ = findfirst(x->x==lowercase(VarStream[1]), wnames)
+   VarIndex2_ = findfirst(x->x==lowercase(VarStream[2]), wnames)
+
+   if filehead[:gencoord] # Generalized coordinates
+	  X, Y = vec(x[:,:,1]), vec(x[:,:,2])
+	  if any(isinf.(plotrange))
+		 if plotrange[1] == -Inf plotrange[1] = minimum(X) end
+		 if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
+		 if plotrange[3] == -Inf plotrange[3] = minimum(Y) end
+		 if plotrange[4] ==  Inf plotrange[4] = maximum(Y) end
+	  end
+
+	  # Create grid values first.
+	  xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
+	  yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
+
+     # Is there a triangulation method in Julia?
+	  tr = matplotlib.tri.Triangulation(X, Y)
+	  Xi = [y for x in xi, y in yi]
+	  Yi = [x for x in xi, y in yi]
+
+	  interpolator = matplotlib.tri.LinearTriInterpolator(tr, w[:,1,VarIndex1_])
+	  v1 = interpolator(Xi, Yi)
+
+	  interpolator = matplotlib.tri.LinearTriInterpolator(tr, w[:,1,VarIndex2_])
+	  v2 = interpolator(Xi, Yi)
+
+   else # Cartesian coordinates
+	  X = x[:,1,1]
+	  Y = x[1,:,2]
+	  if all(isinf.(plotrange))
+		 Xi, Yi = X, Y
+		 v1, v2 = w[:,:,VarIndex1_]', w[:,:,VarIndex2_]'
+	  else
+		 if plotrange[1] == -Inf plotrange[1] = minimum(X) end
+		 if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
+		 if plotrange[3] == -Inf plotrange[3] = minimum(Y) end
+		 if plotrange[4] ==  Inf plotrange[4] = maximum(Y) end
+
+		 w1, w2 = w[:,:,VarIndex1_], w[:,:,VarIndex2_]
+
+		 xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
+		 yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
+
+		 Xi = [i for i in xi, j in yi]
+		 Yi = [j for i in xi, j in yi]
+
+		 spline = Spline2D(X, Y, w1)
+		 v1 = spline(Xi[:], Yi[:])
+		 v1 = reshape(v1, size(Xi))'
+
+		 spline = Spline2D(X, Y, w2)
+		 v2 = spline(Xi[:], Yi[:])
+		 v2 = reshape(v2, size(Xi))'
+	  end
+   end
+
+   if isempty(color)
+      c = streamplot(Xi, Yi, v1, v2; density=density)
+   else
+      c = streamplot(Xi, Yi, v1, v2; density=density, color=color)
+   end
+   return c::PyCall.PyObject
+end
+
 """Prepare data for passing to plotting functions."""
 function getdata(data, filehead, var, plotrange, plotinterval)
    x,w = data.x, data.w
@@ -1573,8 +1652,8 @@ function getdata(data, filehead, var, plotrange, plotinterval)
       # Perform linear interpolation of the data (x,y) on grid(xi,yi)
       triang = matplotlib.tri.Triangulation(X,Y)
       interpolator = matplotlib.tri.LinearTriInterpolator(triang, W)
-      np = pyimport("numpy")
-      Xi, Yi = np.meshgrid(xi, yi) # This can be replaced by list comprehension
+      Xi = [y for x in xi, y in yi]
+	   Yi = [x for x in xi, y in yi]
       wi = interpolator(Xi, Yi)
    else # Cartesian coordinates
       if all(isinf.(plotrange))
@@ -1582,8 +1661,8 @@ function getdata(data, filehead, var, plotrange, plotinterval)
          yi = x[:,:,2]
          wi = w[:,:,VarIndex_]
       else
-		 X = x[:,1,1]
-		 Y = x[1,:,2]
+		   X = x[:,1,1]
+		   Y = x[1,:,2]
          if plotrange[1] == -Inf plotrange[1] = minimum(X) end
          if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
          if plotrange[3] == -Inf plotrange[3] = minimum(Y) end
@@ -1616,8 +1695,6 @@ function animatedata(filelist::FileList,func::String;
    imin::Int=1, imax::Int=1, cut::String="",
    plotmode::String="contbar", plotrange::Vector{Float64}=[-Inf,Inf,-Inf,Inf],
    plotinterval::Float64=0.1, verbose::Bool=true)
-
-
 end
 
 
