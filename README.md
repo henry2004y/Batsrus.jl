@@ -28,8 +28,8 @@ IDL format output processing:
 - Read data
 ```
 filename = "1d_bin.out";
-filehead, data, filelist = readdata(filename, verbose=false);
 filehead, data, filelist = readdata(filename);
+filehead, data, filelist = readdata(filename, verbose=true);
 filehead, data, filelist = readdata(filename, npict=1);
 filehead, data, filelist = readdata(filename, dir=".");
 ```

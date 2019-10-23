@@ -32,12 +32,12 @@ struct Vars
 end
 
 """
-   readdata(filenames,(, dir=".", npict=1, verbose=true))
+   readdata(filenames,(, dir=".", npict=1, verbose=false))
 
 Read data from BATSRUS output files. Stores the npict-th snapshot from an ascii
 or binary data file into the x [coordinates] and w [data] arrays.
 Filenames can be provided with wildcards.
-`fileheads, data, filelist = readdata(filename, npict=2, verbose=false)`
+`fileheads, data, filelist = readdata(filename, npict=2, verbose=true)`
 
 # Examples
 ```jldoctest
@@ -46,7 +46,7 @@ fileheads, data, filelist = readdata(filenames)
 ```
 """
 function readdata( filenamesIn::String; dir::String=".", npict::Int=1,
-   verbose::Bool=true )
+   verbose::Bool=false )
 
    ## Check the existence of files
    filenames = Vector{String}(undef,0)
