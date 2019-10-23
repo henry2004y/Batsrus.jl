@@ -963,22 +963,21 @@ Plot the variable from SWMF output.
 - `plotmode::String`: (optional) type of plotting ["cont","contbar"]...
 - `plotrange::Vector`: (optional) range of plotting.
 - `plotinterval`: (optional) interval for interpolation.
+- `level`: (optional) level of contour.
 - `density`: (optional) density for streamlines.
 - `cut`: (optional) select 2D cut plane from 3D outputs ["x","y","z"].
 - `cutPlaneIndex`: (optional)
-- `streamdensity`: (optional) streamline density.
 - `multifigure`: (optional) 1 for multifigure display, 0 for subplots.
 - `verbose`: (optional) display additional information.
 ...
 Right now this can only deal with 2D plots or 3D cuts. Full 3D plots may be
 supported in the future.
-I want to make this function more powerful to include plotting derived
-variables, but it may not seem to be easy!
 """
 function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
    plotmode::String="contbar", plotrange::Vector{Float64}=[-Inf,Inf,-Inf,Inf],
    plotinterval::Float64=0.1, density::Float64=1.0, cutPlaneIndex::Int=1,
-   multifigure::Bool=true, getrangeOnly::Bool=false, verbose::Bool=true)
+   multifigure::Bool=true, getrangeOnly::Bool=false, level::Int=0,
+   verbose::Bool=false)
 
    x,w = data.x, data.w
    plotmode = split(plotmode)
@@ -1078,8 +1077,8 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
                   yi = x[:,:,2]
                   wi = w[:,:,VarIndex_]
                else
-				      X = x[:,1,1]
-				      Y = x[1,:,2]
+				  X = x[:,1,1]
+				  Y = x[1,:,2]
                   if plotrange[1] == -Inf plotrange[1] = minimum(X) end
                   if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
                   if plotrange[3] == -Inf plotrange[3] = minimum(Y) end
@@ -1098,19 +1097,17 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
                end
             end
 
-            # I may need to use pattern match instead for a more robust method!
-            if plotmode[ivar] == "contbar"
-               c = contourf(xi,yi,wi)
-            elseif plotmode[ivar] == "cont"
-               c = contour(xi,yi,wi)
-            elseif plotmode[ivar] == "contlog"
-               c = contour(xi,yi,wi)
-            elseif plotmode[ivar] == "contbarlog"
-               c = contourf(xi,yi,wi)
-            elseif plotmode[ivar] == "surfbar"
-               c = plot_surface(xi,yi,wi)
-            elseif plotmode[ivar] == "surfbarlog"
-               c = plot_surface(xi,yi,wi)
+            # More robust method needed!
+            if plotmode[ivar] ∈ ["contbar", "contbarlog"]
+			      if level == 0
+                  c = contourf(xi, yi, wi)
+			      else
+                  c = contourf(xi, yi, wi, level)
+			      end
+            elseif plotmode[ivar] ∈ ["cont", "contlog"]
+               c = contour(xi, yi, wi)
+            elseif plotmode[ivar] ∈ ["surfbar", "surfbarlog"]
+               c = plot_surface(xi, yi, wi)
             end
 
             occursin("bar", plotmode[ivar]) && colorbar()
@@ -1311,9 +1308,12 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
 
          if plotmode[ivar] ∈ ("surf","surfbar","surfbarlog","cont","contbar",
             "contlog","contbarlog")
-            c = ax.contourf(cut1,cut2,W)
-            fig.colorbar(c,ax=ax)
-            #ax.axis("equal")
+            if level == 0
+               c = ax.contourf(cut1, cut2, W)
+            else
+               c = ax.contourf(cut1, cut2, W, level)
+            end
+            fig.colorbar(c, ax=ax)
             title(filehead[:wnames][VarIndex_])
 
          elseif plotmode[ivar] ∈ ("stream","streamover")
