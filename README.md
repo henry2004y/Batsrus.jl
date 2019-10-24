@@ -236,6 +236,7 @@ When doing processing in batch mode on a cluster, there's usually no need to ren
 using PyPlot
 PyPlot.matplotlib.use("Agg")
 ```
+However, notice that currently Agg backend does not support draw_artist. For example, you cannot add an anchored text to your figure.
 
 Vector naming is messed up if you are using Tecplot VTK reader. For example, "B [nT]" --> "B [nT]_X", "B [nT]_Y", "B [nT]_Z". Not a big issue, but annoying.
 
