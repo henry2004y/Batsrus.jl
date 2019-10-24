@@ -68,8 +68,10 @@ plotdata(data[1], filehead[1], "rho", plotmode="contbar")
 
 - 3D box
 ```
-plotdata(data[1], filehead[1], "bx", plotmode="contbar", cut="y")
+plotdata(data[1], filehead[1], "bx", plotmode="contbar", cut="y", cutPlaneIndex=1, level=20)
 plotdata(data[1], filehead[1], "bx", plotmode="contbar", cut="y", plotrange=[-1.4,-1.1,0.70,0.78])
+using PyPlot
+plt.axis("scaled")
 ```
 
 - 3D structured spherical coordinates
@@ -211,7 +213,7 @@ end
 
 At first I forgot to export the Data struct, so everytime when I modified the code and rerun plotdata, it will shout error at me, saying no type was found for the input type.
 
-The current support of animation in Matplotlib is not good enough, especially for interactive plotting and scanning through multiple snapshots.
+The current support of animation in Matplotlib is not good enough, especially for interactive plotting and scanning through multiple snapshots. The color range is constantly giving me headaches.
 
 The current wrapper over Matplotlib makes it difficult to modify the plots afterwards, which especially causes problems when dealing with time series snapshots. The colorbar is so hard to fix.
 
