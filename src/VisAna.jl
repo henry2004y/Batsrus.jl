@@ -97,9 +97,7 @@ function readdata( filenamesIn::String; dir::String=".", npict::Int=1,
 
       setunits(fileheads[ifile],"")
 
-      if verbose
-         showhead(filelist[ifile], ifile, fileheads[ifile])
-      end
+      verbose && showhead(filelist[ifile], ifile, fileheads[ifile])
 
       # Produce a wnames from the last file
       fileheads[ifile][:wnames] =
@@ -109,7 +107,7 @@ function readdata( filenamesIn::String; dir::String=".", npict::Int=1,
 
       push!(data, Data(x,w))
 
-      println("Finished reading $(filelist[ifile].name)")
+      verbose && println("Finished reading $(filelist[ifile].name)")
 
       close(fileID[ifile])
    end
