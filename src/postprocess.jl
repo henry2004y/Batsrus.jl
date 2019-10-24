@@ -115,29 +115,31 @@ function processing(filehead::Dict, data::Data, saveDir::String, nType::Int=1)
    by_ = findfirst(isequal("By"),  filehead[:wnames])
    bz_ = findfirst(isequal("Bz"),  filehead[:wnames])
 
-   ni = w[:,:,:,ni_]*1e6  # [/m^3]
-   pi = w[:,:,:,pi_]*1e-9 # [Pa]
-   Bx = w[:,:,:,bx_]*1e-9 # [T]
-   By = w[:,:,:,by_]*1e-9 # [T]
-   Bz = w[:,:,:,bz_]*1e-9 # [T]
+   ni = w[:,:,:,ni_] # [/cm^3]
+   pi = w[:,:,:,pi_] # [nPa]
+   Bx = w[:,:,:,bx_] # [nT]
+   By = w[:,:,:,by_] # [nT]
+   Bz = w[:,:,:,bz_] # [nT]
 
    # This assumes uniform grid resolution!
-   px, py, pz = np.gradient(pi,(x[2]-x[1])*Rg)
+   px, py, pz = np.gradient(pi, x[2]-x[1])
 
    nX, nY, nZ = size(w)
 
    vDiaMag = Array{Float64,4}(undef,3,nX,nY,nZ)
    vMag    = Array{Float64,3}(undef,nX,nY,nZ)
 
+   cUnit = 1.0e7/(14*1.602*2.634)
+
    # v = B×▽p/neB^2
    @inbounds for k = 1:nZ, j = 1:nY, i = 1:nX
       Bmag2 = Bx[i,j,k]^2 + Bx[i,j,k]^2 + Bz[i,j,k]^2
       vDiaMag[1,i,j,k] = (By[i,j,k]*pz[i,j,k] - Bz[i,j,k]*py[i,j,k]) /
-         (ni[i,j,k]*q*Bmag2)
+         (ni[i,j,k]*Bmag2) * cUnit
       vDiaMag[2,i,j,k] = (Bz[i,j,k]*px[i,j,k] - Bx[i,j,k]*pz[i,j,k]) /
-         (ni[i,j,k]*q*Bmag2)
+         (ni[i,j,k]*Bmag2) * cUnit
       vDiaMag[3,i,j,k] = (Bx[i,j,k]*py[i,j,k] - By[i,j,k]*px[i,j,k]) /
-         (ni[i,j,k]*q*Bmag2)
+         (ni[i,j,k]*Bmag2) * cUnit
       vMag[i,j,k] = sqrt(
          vDiaMag[1,i,j,k]^2 + vDiaMag[2,i,j,k]^2 + vDiaMag[3,i,j,k]^2)
    end
