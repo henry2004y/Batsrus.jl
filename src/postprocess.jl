@@ -38,14 +38,13 @@ end
 """Series of contour plots from cuts."""
 function plot_contour_from_cuts(filename::String, dir::String=".")
 
-   filehead, data, filelist = readdata(filename, dir=dir, verbose=false);
+   filehead, data, filelist = readdata(filename, dir=dir);
    npict = filelist[1].npictinfiles
    saveDir = "ycuts"
    mkdir(saveDir)
 
    for ipict = 1:npict
-      filehead, data, filelist = readdata(filename,npict=ipict,dir=dir,
-         verbose=false)
+      filehead, data, filelist = readdata(filename,npict=ipict,dir=dir)
 
       plotdata(data[1], filehead[1], "by bx;bz", plotmode="contbar streamover",
          plotrange=[1.0 1.8 -2.0 2.0], density=1.5)
@@ -257,7 +256,7 @@ function plot_beta(filename::String)
    Bz   = @view Bz[:,cutPlaneIndex,:]
    PB   = sqrt.(Bx.^2 .+ By.^2 .+ Bz.^2)
 
-   c = ax.contourf(cut1,cut2,W./PB)
+   c = ax.contourf(cut1, cut2, W./PB)
    fig.colorbar(c,ax=ax)
    ax.axis("scaled")
    title(filehead[:wnames][VarIndex_])
