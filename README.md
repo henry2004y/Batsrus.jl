@@ -231,14 +231,11 @@ There is a user recipe in Plots. Check it out for the possibility of parameter c
 
 A direct wrapper over PyPlot function is possible, and would be more suitable for passing arguments. This may be a more plausible way to go than relying on recipes.
 
-When doing processing in batch mode on a cluster, there's usually no support for displaying backends. My current workaround:
+When doing processing in batch mode on a cluster, there's usually no need to render the plots on screen. There exists such a backend for this purpose:
 ```
-using PyCall
-matplotlib = pyimport("matplotlib")
-matplotlib.use("Agg")
 using PyPlot
+PyPlot.matplotlib.use("Agg")
 ```
-This will give you a warning for the existed identifier, but it works.
 
 Vector naming is messed up if you are using Tecplot VTK reader. For example, "B [nT]" --> "B [nT]_X", "B [nT]_Y", "B [nT]_Z". Not a big issue, but annoying.
 
