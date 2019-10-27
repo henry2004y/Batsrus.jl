@@ -149,7 +149,7 @@ function readlogdata( filename::String )
 end
 
 """
-   readtecdata(filename, IsBinary, verbose)
+   readtecdata(filename, IsBinary=false, verbose=false)
 
 Return header, data and connectivity from BATSRUS Tecplot outputs. Both binary
 and ascii formats are supported.
@@ -161,9 +161,6 @@ fileheads, data, filelist = readtecdata(filenames)
 """
 function readtecdata(filename::String, IsBinary::Bool=false,
    verbose::Bool=false)
-
-   head = Dict(:variables => Array{String,1}(undef,1),
-      :nNode => 0, :nCell => 0, :nDim  => 0)
 
    f = open(filename)
 
@@ -181,23 +178,23 @@ function readtecdata(filename::String, IsBinary::Bool=false,
    end
    ln = readline(f)
    if startswith(ln, "VARIABLES")
-      VARS = split(ln[12:end],", ")
+      VARS = split(ln[13:end], ", ")
       for i in 1:length(VARS)
-         VARS[i] = chop(VARS[i], head = 1, tail = 1)
+         VARS[i] = chop(VARS[i], head=1, tail=1)
       end
    else
       @warn "No variable names provided."
    end
    ln = readline(f)
    if startswith(ln, "ZONE")
-      info = split(ln[6:end],", ")
-	  nDim = parse(Int,info[1][4])
+      info = split(ln[6:end], ", ")
+	  nDim = parse(Int, info[1][4])
 	  if IsBinary
 		 nNode = read(IOBuffer(info[2][3:end]), Int32)
 	     nCell = read(IOBuffer(info[3][3:end]), Int32)
 	  else
-      	 nNode = parse(Int,info[2][3:end])
-	  	 nCell = parse(Int,info[3][3:end])
+      	 nNode = parse(Int, info[2][3:end])
+	  	 nCell = parse(Int, info[3][3:end])
 	 end
    else
       @warn "No zone info provided."
@@ -216,14 +213,14 @@ function readtecdata(filename::String, IsBinary::Bool=false,
    seek(f, pt0)
 
    if IsBinary
-      data = Array{Float32,2}(undef,length(VARS),nNode)
+      data = Array{Float32,2}(undef, length(VARS), nNode)
    else
-   	  data = Array{Float32,2}(undef,length(VARS),nNode)
+   	  data = Array{Float32,2}(undef, length(VARS), nNode)
    end
    if nDim == 3
-	  connectivity = Array{Int32,2}(undef,8,nCell)
+	  connectivity = Array{Int32,2}(undef, 8, nCell)
    elseif nDim == 2
-	  connectivity = Array{Int32,2}(undef,4,nCell)
+	  connectivity = Array{Int32,2}(undef, 4, nCell)
    end
 
    if IsBinary
@@ -246,10 +243,7 @@ function readtecdata(filename::String, IsBinary::Bool=false,
 
    close(f)
 
-   head[:variables] = VARS
-   head[:nNode] = nNode
-   head[:nCell] = nCell
-   head[:nDim]  = nDim
+   head = Dict(:variables=>VARS, :nNode=>nNode, :nCell=>nCell, :nDim=>nDim)
 
    return head, data, connectivity
 end
@@ -267,10 +261,10 @@ Get the type of files.
 """
 function getFileTypes(nfile::Int, filenames::Array{String,1})
 
-   fileID   = Vector{IOStream}(undef,nfile)
-   pictsize = Vector{Int64}(undef,nfile)
+   fileID   = Vector{IOStream}(undef, nfile)
+   pictsize = Vector{Int64}(undef, nfile)
 
-   filelist = Vector{FileList}(undef,nfile)
+   filelist = Vector{FileList}(undef, nfile)
 
    for ifile=1:nfile
       f = filenames[ifile]
@@ -282,10 +276,10 @@ function getFileTypes(nfile::Int, filenames::Array{String,1})
       # Check the appendix of file names
       # Gabor uses a trick: the first 4 bytes decides the file type()
 
-      if occursin(r"^.*\.(log)$",filenames[ifile])
+      if occursin(r"^.*\.(log)$", filenames[ifile])
          type = "log"
          npictinfiles = 1
-      elseif occursin(r"^.*\.(dat)$",filenames[ifile])
+      elseif occursin(r"^.*\.(dat)$", filenames[ifile])
          # tecplot ascii format
          type = "dat"
          npictinfiles = 1
