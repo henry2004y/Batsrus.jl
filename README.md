@@ -242,6 +242,8 @@ Vector naming is messed up if you are using Tecplot VTK reader. For example, "B 
 
 There is a unit package in Julia [unitful](https://github.com/PainterQubits/Unitful.jl) for handling units. Take a look at that one if you really want to solve the unit problems.
 
+I have encountered a very bad problem of corrupting binary *.dat files. Gabor suggests that now it is a good time to develop new function for converting binary back to ascii for debugging. I found that inside the wrong files the data and connectivities are totally wrong.
+
 - [ ] Fixed colorbar control through Matplotlib
 - [ ] Test suite for checking validity
 - [x] Cuts from 3D data visualization besides contour
