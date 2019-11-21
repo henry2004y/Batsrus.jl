@@ -204,12 +204,12 @@ function readtecdata(filename::String, IsBinary::Bool=false,
    pt0 = position(f)
    while true
       x = readline(f)
-      if !startswith(x, "AUXDATA")
-         break
+      if !startswith(x, "AUXDATA TIMESIMSHORT") # last line of AUXDATA
+         continue
       else
-         verbose && println(x)
+         pt0 = position(f)
+         break
       end
-      pt0 = position(f)
    end
    seek(f, pt0)
 
