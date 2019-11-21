@@ -155,8 +155,8 @@ Return header, data and connectivity from BATSRUS Tecplot outputs. Both binary
 and ascii formats are supported.
 # Examples
 ```jldoctest
-filenames = "3d_ascii.dat"
-fileheads, data, filelist = readtecdata(filenames)
+filename = "3d_ascii.dat"
+head, data, connectivity = readtecdata(filename)
 ```
 """
 function readtecdata(filename::String, IsBinary::Bool=false,
@@ -168,17 +168,18 @@ function readtecdata(filename::String, IsBinary::Bool=false,
    ln = readline(f)
    if startswith(ln, "TITLE")
       title = ln[8:end-1]
-	  try # This should throw error if in binary format
-		 parse(Int32,ln[17])
-	  catch
-		 IsBinary = true
-	  end
+	   try # This should throw error if in binary format
+		   parse(Int32,ln[17])
+	   catch
+		   IsBinary = true
+	   end
    else
       @warn "No title provided."
    end
    ln = readline(f)
    if startswith(ln, "VARIABLES")
-      VARS = split(ln[13:end], ", ")
+      start_ = findfirst("=",ln)[1]+1
+      VARS = split(ln[start_:end], ", ")
       for i in 1:length(VARS)
          VARS[i] = chop(VARS[i], head=1, tail=1)
       end
@@ -188,14 +189,14 @@ function readtecdata(filename::String, IsBinary::Bool=false,
    ln = readline(f)
    if startswith(ln, "ZONE")
       info = split(ln[6:end], ", ")
-	  nDim = parse(Int, info[1][4])
-	  if IsBinary
-		 nNode = read(IOBuffer(info[2][3:end]), Int32)
-	     nCell = read(IOBuffer(info[3][3:end]), Int32)
-	  else
-      	 nNode = parse(Int, info[2][3:end])
-	  	 nCell = parse(Int, info[3][3:end])
-	 end
+	   nDim = parse(Int, info[1][4])
+	   if IsBinary
+		   nNode = read(IOBuffer(info[2][3:end]), Int32)
+	      nCell = read(IOBuffer(info[3][3:end]), Int32)
+	   else
+      	nNode = parse(Int, info[2][3:end])
+	  	   nCell = parse(Int, info[3][3:end])
+	   end
    else
       @warn "No zone info provided."
    end
@@ -212,33 +213,30 @@ function readtecdata(filename::String, IsBinary::Bool=false,
    end
    seek(f, pt0)
 
-   if IsBinary
-      data = Array{Float32,2}(undef, length(VARS), nNode)
-   else
-   	  data = Array{Float32,2}(undef, length(VARS), nNode)
-   end
+   data = Array{Float32,2}(undef, length(VARS), nNode)
+
    if nDim == 3
-	  connectivity = Array{Int32,2}(undef, 8, nCell)
+	   connectivity = Array{Int32,2}(undef, 8, nCell)
    elseif nDim == 2
-	  connectivity = Array{Int32,2}(undef, 4, nCell)
+	   connectivity = Array{Int32,2}(undef, 4, nCell)
    end
 
    if IsBinary
-	  @inbounds for i = 1:nNode
-		 read!(f, view(data,:,i))
-	  end
-	  @inbounds for i = 1:nCell
+	   @inbounds for i = 1:nNode
+		   read!(f, view(data,:,i))
+	   end
+	   @inbounds for i = 1:nCell
          read!(f, view(connectivity,:,i))
       end
    else
-   	  @inbounds for i = 1:nNode
+   	@inbounds for i = 1:nNode
          x = readline(f)
          data[:,i] .= parse.(Float32, split(x))
       end
-	  @inbounds for i = 1:nCell
-		 x = readline(f)
-		 connectivity[:,i] .= parse.(Int32, split(x))
-	  end
+	   @inbounds for i = 1:nCell
+		   x = readline(f)
+		   connectivity[:,i] .= parse.(Int32, split(x))
+	   end
    end
 
    close(f)
