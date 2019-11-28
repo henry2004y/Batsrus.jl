@@ -168,11 +168,6 @@ function readtecdata(filename::String, IsBinary::Bool=false,
    ln = readline(f)
    if startswith(ln, "TITLE")
       title = ln[8:end-1]
-	   try # This should throw error if in binary format
-		   parse(Int32,ln[17])
-	   catch
-		   IsBinary = true
-	   end
    else
       @warn "No title provided."
    end
@@ -190,6 +185,12 @@ function readtecdata(filename::String, IsBinary::Bool=false,
    if startswith(ln, "ZONE")
       info = split(ln[6:end], ", ")
 	   nDim = parse(Int, info[1][4])
+      try # This should throw error if in binary format
+         parse(Int, info[2][3:end])
+      catch
+         IsBinary = true
+      end
+
 	   if IsBinary
 		   nNode = read(IOBuffer(info[2][3:end]), Int32)
 	      nCell = read(IOBuffer(info[3][3:end]), Int32)
