@@ -5,8 +5,8 @@ module VisAna
 
 using Glob, PyPlot, Printf, PyCall, Dierckx, WriteVTK
 
-export readdata, readlogdata, plotdata, plotlogdata, animatedata, readtecdata,
-       Data, FileList, convertVTK, get_vars#,
+export readdata, readlogdata, readtecdata, Data, FileList, convertVTK,
+       plotdata, plotlogdata, animatedata, get_vars,
        plot, scatter, contour, contourf, plot_surface, tricontourf,
        plot_trisurf, streamplot
 
