@@ -1,5 +1,15 @@
 # Plotting functionalities.
 
+using PyPlot
+
+export plotdata, plotlogdata, animatedata, get_vars,
+	   plot, scatter, contour, contourf, plot_surface, tricontourf,
+       plot_trisurf, streamplot
+
+import PyPlot.plot, PyPlot.scatter, PyPlot.contour, PyPlot.contourf,
+       PyPlot.plot_surface, PyPlot.tricontourf, PyPlot.plot_trisurf,
+       PyPlot.streamplot
+
 """
    plotlogdata(data, filehead, vars, (plotmode="line", plotrange=[-Inf,Inf]))
 Plot information from log file.
