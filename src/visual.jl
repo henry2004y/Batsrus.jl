@@ -181,8 +181,8 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
                wi = interpolator(Xi, Yi)
             else # Cartesian coordinates
                if all(isinf.(plotrange))
-                  xi = x[:,:,1]
-                  yi = x[:,:,2]
+				  xi = x[:,1,1]
+	              yi = x[1,:,2]
                   wi = w[:,:,VarIndex_]
                else
 				  X = x[:,1,1]
