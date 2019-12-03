@@ -3,6 +3,9 @@
 # Hongyang Zhou, hyzhou@umich.edu 12/01/2019
 
 using Plots
+# By default Plots uses gr() backend.
+# The GR backend contour plot only accept vector x,y!
+pyplot()
 
 #@userplot mycontour
 
@@ -12,7 +15,7 @@ using Plots
 @recipe function plotdata(data::Data, filehead::Dict, var::String;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1)
 
-	ndim = filehead[:ndim]
+   ndim = filehead[:ndim]
 
    x,w = data.x, data.w
    VarIndex_ = findfirst(x->x==var,filehead[:wnames])
@@ -42,8 +45,9 @@ using Plots
          # Perform linear interpolation of the data (x,y) on grid(xi,yi)
          # This part is not working because I don't know how to import
          # matplotlib.tri!
-         triang = matplotlib.tri.Triangulation(X,Y)
-         interpolator = matplotlib.tri.LinearTriInterpolator(triang, W)
+		   tri = pyimport("matplotlib.tri")
+         triang = tri.Triangulation(X,Y)
+         interpolator = tri.LinearTriInterpolator(triang, W)
          Xi = [y for x in xi, y in yi]
          Yi = [x for x in xi, y in yi]
          wi = interpolator(Xi, Yi)
@@ -74,10 +78,8 @@ using Plots
          end
       end
 
-      # The GR backend contour plot only accept vector x,y!
-
       @series begin
-         seriestype := :contour  # use --> if you don't want to force it
+         seriestype --> :contourf  # use := if you want to force it
          xi, yi, wi
       end
    end
