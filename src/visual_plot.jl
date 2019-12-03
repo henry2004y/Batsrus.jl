@@ -41,12 +41,13 @@ using Plots
          yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
          # Perform linear interpolation of the data (x,y) on grid(xi,yi)
          # This part is not working because I don't know how to import
-         # matplotlib!
+         # matplotlib.tri!
          triang = matplotlib.tri.Triangulation(X,Y)
          interpolator = matplotlib.tri.LinearTriInterpolator(triang, W)
          Xi = [y for x in xi, y in yi]
          Yi = [x for x in xi, y in yi]
          wi = interpolator(Xi, Yi)
+
       else # Cartesian coordinates
          if all(isinf.(plotrange))
             xi = x[:,1,1]

@@ -229,7 +229,7 @@ Right now the derived quantity plots are not supported. In order to achieve this
 
 The first one is achieved by a trick I found on discourse, which basically identifies symbols as names to members in a struct.
 
-There is a user recipe in Plots. Check it out for the possibility of parameter control!
+There is a user recipe in Plots. This is exactly what I am looking for, but more issues are coming up. The one that is giving me the most headaches is about interpolation scattered points onto regular grid for contour plots. Currently I call the function from matplotlib.tri, but this comes together with PyPlot. If I use Plots, then import PyPlot will cause me a lot of trouble. For sure the nice solution is to do scattered interpolation in Julia directly, but I have not found a simple solution to do this.
 
 A direct wrapper over PyPlot function is possible, and would be more suitable for passing arguments. This may be a more plausible way to go than relying on recipes.
 
