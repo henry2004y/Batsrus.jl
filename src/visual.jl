@@ -124,7 +124,8 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
    ## Plot
    if ndim == 1
       for (ivar,var) in enumerate(vars)
-         VarIndex_ = findfirst(x->x==var,filehead[:wnames])
+         VarIndex_ = findfirst(x->x==lowercase(var),
+            lowercase.(filehead[:wnames]))
          if ivar == 1 || multifigure fig, ax = subplots() else ax = gca() end
          if !occursin("scatter",plotmode[ivar])
             plot(x,w[:,VarIndex_])
@@ -150,7 +151,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
          if ivar == 1 || multifigure fig, ax = subplots() else ax = gca() end
          if !occursin(";",var)
             VarIndex_ = findfirst(x->x==lowercase(var),
-            lowercase.(filehead[:wnames]))
+               lowercase.(filehead[:wnames]))
             isempty(VarIndex_) &&
             error("$(var) not found in header variables!")
          end
