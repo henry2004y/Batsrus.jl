@@ -25,7 +25,7 @@ struct Vars
 end
 
 include("io.jl")
-#include("visual.jl")
-include("visual_plot.jl")
+include("visual.jl")
+#include("visual_plot.jl")
 
 end
