@@ -1,4 +1,6 @@
 # VisAna
+![](https://travis-ci.com/henry2004y/VisAnaJulia.svg?branch=master)
+
 SWMF data reader and visualization using Julia.
 
 This is inherited from the Matlab version of BATSRUS output reader and analyzer. It can be combined with the VTK format converter to generate files for Paraview and Tecplot. By default the file size will be reduced with compression level 6, but the actual compression ratio depends on the original data.
