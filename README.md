@@ -1,5 +1,6 @@
 # VisAna
 ![](https://travis-ci.com/henry2004y/VisAnaJulia.svg?branch=master)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 SWMF data reader and visualization using Julia.
 
@@ -34,10 +35,6 @@ See [here](docs/src/man/guide.md) for some development thoughts.
 ## Author
 
 * **Hongyang Zhou** - *Initial work* - [henry2004y](https://github.com/henry2004y)
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE) file for details.
 
 ## Acknowledgments
 
