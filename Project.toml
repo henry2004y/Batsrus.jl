@@ -1,7 +1,7 @@
 name = "VisAna"
 uuid = "3da60289-db0e-42b3-9214-5194de249930"
 authors = ["hyzhou <hyzhou@umich.edu>"]
-version = "0.4.4"
+version = "0.4.5"
 
 [deps]
 Dierckx = "39dd38d3-220a-591b-8e3c-4c3a8c710a94"
