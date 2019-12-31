@@ -5,5 +5,5 @@ push!(LOAD_PATH,"../src/")
 makedocs(sitename="My Documentation")
 
 deploydocs(
-    repo = "github.com/henry2004y/VisAnaJulia.jl.git",
+    repo = "github.com/henry2004y/VisAnaJulia.git",
 )
