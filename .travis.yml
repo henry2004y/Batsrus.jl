@@ -25,10 +25,8 @@ notifications:
   email: false
 
 after_success:
-  # push coverage results to Coveralls
-  - julia -e 'cd(Pkg.dir("VisAna")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
-  # push coverage results to Codecov
-  - julia -e 'cd(Pkg.dir("VisAna")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
+  - julia --project -e 'using Pkg; Pkg.add("Coverage"); import VisAna; joinpath(dirname(pathof(VisAna)), ".."); using Coverage; Coveralls.submit(Coveralls.process_folder());'
+  - julia --project -e 'using Pkg; Pkg.add("Coverage"); import VisAna; joinpath(dirname(pathof(VisAna)), ".."); using Coverage; Codecov.submit(Codecov.process_folder())'
 
 jobs:
   include:
