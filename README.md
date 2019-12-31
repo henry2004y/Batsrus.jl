@@ -229,7 +229,9 @@ Right now the derived quantity plots are not supported. In order to achieve this
 
 The first one is achieved by a trick I found on discourse, which basically identifies symbols as names to members in a struct.
 
-There is a user recipe in Plots. Check it out for the possibility of parameter control!
+There is a user recipe in Plots. This is exactly what I am looking for, but more issues are coming up. I have created a new branch for this development.
+
+I want to do scattered interpolation in Julia directly, but I have not found a simple solution to do this.
 
 A direct wrapper over PyPlot function is possible, and would be more suitable for passing arguments. This may be a more plausible way to go than relying on recipes.
 
@@ -256,6 +258,7 @@ I have encountered a very bad problem of corrupting binary *.vtu files. It turne
 - [x] Direct wrapper over matplotlib functions to get seamless API
 - [x] Replace np.meshgrid with list comprehension
 - [ ] Find a substitution of triangulation in Julia
+- [ ] Allow dot syntax to get dictionary contents (Base.convert?)
 
 ## Author
 

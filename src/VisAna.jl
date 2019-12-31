@@ -3,17 +3,10 @@ module VisAna
 #
 # Hongyang Zhou, hyzhou@umich.edu
 
-using Glob, PyPlot, Printf, PyCall, Dierckx, WriteVTK
+using Glob, Printf, PyCall, Dierckx, WriteVTK
 
 export readdata, readlogdata, readtecdata, Data, FileList, convertVTK,
-       plotdata, plotlogdata, animatedata, get_vars,
-       plot, scatter, contour, contourf, plot_surface, tricontourf,
-       plot_trisurf, streamplot
-
-import PyPlot.plot, PyPlot.scatter, PyPlot.contour, PyPlot.contourf,
-       PyPlot.plot_surface, PyPlot.tricontourf, PyPlot.plot_trisurf,
-       PyPlot.streamplot
-
+       plot
 
 struct Data{T}
    x::Array{T}
@@ -32,6 +25,7 @@ struct Vars
 end
 
 include("io.jl")
-include("visual.jl")
+#include("visual.jl")
+include("visual_plot.jl")
 
 end

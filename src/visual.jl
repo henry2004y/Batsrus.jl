@@ -1,5 +1,15 @@
 # Plotting functionalities.
 
+using PyPlot
+
+export plotdata, plotlogdata, animatedata, get_vars,
+	   plot, scatter, contour, contourf, plot_surface, tricontourf,
+       plot_trisurf, streamplot
+
+import PyPlot.plot, PyPlot.scatter, PyPlot.contour, PyPlot.contourf,
+       PyPlot.plot_surface, PyPlot.tricontourf, PyPlot.plot_trisurf,
+       PyPlot.streamplot
+
 """
    plotlogdata(data, filehead, vars, (plotmode="line", plotrange=[-Inf,Inf]))
 Plot information from log file.
@@ -114,7 +124,8 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
    ## Plot
    if ndim == 1
       for (ivar,var) in enumerate(vars)
-         VarIndex_ = findfirst(x->x==var,filehead[:wnames])
+         VarIndex_ = findfirst(x->x==lowercase(var),
+            lowercase.(filehead[:wnames]))
          if ivar == 1 || multifigure fig, ax = subplots() else ax = gca() end
          if !occursin("scatter",plotmode[ivar])
             plot(x,w[:,VarIndex_])
@@ -140,7 +151,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
          if ivar == 1 || multifigure fig, ax = subplots() else ax = gca() end
          if !occursin(";",var)
             VarIndex_ = findfirst(x->x==lowercase(var),
-            lowercase.(filehead[:wnames]))
+               lowercase.(filehead[:wnames]))
             isempty(VarIndex_) &&
             error("$(var) not found in header variables!")
          end
@@ -171,8 +182,8 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
                wi = interpolator(Xi, Yi)
             else # Cartesian coordinates
                if all(isinf.(plotrange))
-                  xi = x[:,:,1]
-                  yi = x[:,:,2]
+				  xi = x[:,1,1]
+	              yi = x[1,:,2]
                   wi = w[:,:,VarIndex_]
                else
 				  X = x[:,1,1]
