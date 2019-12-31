@@ -25,6 +25,8 @@ notifications:
   email: false
 
 after_success:
+  - julia -e 'using Pkg; Pkg.add("Documenter")'
+  - julia -e 'using Pkg; ENV["DOCUMENTER_DEBUG"] = "true"; include("docs/make.jl")'
   - julia --project -e 'using Pkg; Pkg.add("Coverage"); import VisAna; joinpath(dirname(pathof(VisAna)), ".."); using Coverage; Coveralls.submit(Coveralls.process_folder());'
   - julia --project -e 'using Pkg; Pkg.add("Coverage"); import VisAna; joinpath(dirname(pathof(VisAna)), ".."); using Coverage; Codecov.submit(Codecov.process_folder())'
 
