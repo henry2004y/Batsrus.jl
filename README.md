@@ -23,9 +23,7 @@ Pkg.add(PackageSpec(url="https://github.com/henry2004y/VisAnaJulia", rev="master
 using VisAna
 ```
 
-See the [examples](docs/src/man/examples.md)
-
-The VTK files does not have timestep information. To allow for further time series processing in Paraview, a script `create_pvd.jl` is provided for generating the pvd container.
+See the [examples](docs/src/man/examples.md).
 
 ## Guides
 
