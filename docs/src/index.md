@@ -28,7 +28,3 @@ Pages = [
 ]
 Depth = 1
 ```
-
-```@docs
-readdata(filenames,(, dir=".", npict=1, verbose=false)))
-```
