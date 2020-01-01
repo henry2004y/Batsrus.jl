@@ -23,7 +23,8 @@ VisAna is developed by [Hongyang Zhou](https://github.com/henry2004y).
 Pages = [
     "man/guide.md",
     "man/examples.md",
-    "man/syntax.md",
+    "man/functions.md",
+    "man/types.md",
 ]
 Depth = 1
 ```
