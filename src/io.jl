@@ -1,7 +1,7 @@
 # All the IO related functionalities.
 
 """
-   readdata(filenames,(, dir=".", npict=1, verbose=false))
+    readdata(filenames,(, dir=".", npict=1, verbose=false))
 
 Read data from BATSRUS output files. Stores the npict-th snapshot from an ascii
 or binary data file into the x [coordinates] and w [data] arrays.
@@ -85,7 +85,7 @@ function readdata( filenamesIn::String; dir::String=".", npict::Int=1,
 end
 
 """
-   readlogdata(filename)
+    readlogdata(filename)
 
 Read information from log file.
 """
@@ -119,7 +119,7 @@ function readlogdata( filename::String )
 end
 
 """
-   readtecdata(filename, IsBinary=false, verbose=false)
+    readtecdata(filename, IsBinary=false, verbose=false)
 
 Return header, data and connectivity from BATSRUS Tecplot outputs. Both binary
 and ascii formats are supported.
@@ -219,7 +219,7 @@ end
 
 
 """
-   getFileTypes(nfile, filenames, dir)
+    getFileTypes(nfile, filenames, dir)
 
 Get the type of files.
 ...
@@ -290,7 +290,7 @@ function getFileTypes(nfile::Int, filenames::Array{String,1})
 end
 
 """
-   getfilehead(fileID, type, iargout=1)
+    getfilehead(fileID, type, iargout=1)
 
 Obtain the header information from BATSRUS output files.
 ...
@@ -467,7 +467,7 @@ end
 import Base: read!
 
 """
-   read!(s,a)
+    read!(s,a)
 
 Read slices of arrays using subarrays, in addition to the built-in methods.
 """
@@ -480,7 +480,7 @@ function read!(s::IO, a::SubArray{T}) where T
 end
 
 """
-   getpictascii(fileID, filehead)
+    getpictascii(fileID, filehead)
 
 Read ascii format data.
 """
@@ -526,7 +526,7 @@ function getpictascii(fileID::IOStream, filehead::Dict)
 end
 
 """
-   getpictbinary(fileID, filehead)
+    getpictbinary(fileID, filehead)
 
 Read binary format data.
 """
@@ -578,7 +578,7 @@ function getpictbinary(fileID::IOStream, filehead::Dict)
 end
 
 """
-   getpictreal(fileID, filehead)
+    getpictreal(fileID, filehead)
 
 Read real4 format data.
 """
@@ -630,7 +630,7 @@ function getpictreal(fileID::IOStream, filehead::Dict)
 end
 
 """
-   setunits(filehead, type, (distunit, Mion, Melectron))
+    setunits(filehead, type, (distunit, Mion, Melectron))
 
 Set the units for the output files。
 If type is given as "SI", "CGS", "NORMALIZED", "PIC", "PLANETARY", "SOLAR", set
@@ -841,7 +841,7 @@ function setunits( filehead::Dict,type::String; distunit::Float64=1.0,
 end
 
 """
-   showhead(file, ifile, filehead)
+    showhead(file, ifile, filehead)
 
 Displaying file header information.
 """

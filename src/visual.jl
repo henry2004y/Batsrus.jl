@@ -11,7 +11,7 @@ import PyPlot.plot, PyPlot.scatter, PyPlot.contour, PyPlot.contourf,
        PyPlot.streamplot
 
 """
-   plotlogdata(data, filehead, vars, (plotmode="line", plotrange=[-Inf,Inf]))
+   	plotlogdata(data, filehead, vars, (plotmode="line", plotrange=[-Inf,Inf]))
 
 Plot information from log file.
 ...
@@ -54,7 +54,7 @@ end
 
 
 """
-   plotdata(data, filehead, func, (...))
+   	plotdata(data, filehead, func, (...))
 
 Plot the variable from SWMF output.
 
@@ -466,7 +466,7 @@ function plotdata(data::Data, filehead::Dict, func::String; cut::String="",
 end
 
 """
-   subsurface(x, y, data, limits)
+   	subsurface(x, y, data, limits)
 
 Extract subset of 2D surface dataset.
 This is a simplified version of subvolume.
@@ -507,7 +507,7 @@ function subsurface(x::Array{Float64,2}, y::Array{Float64,2},
 end
 
 """
-   subdata(data, xind, yind, sz)
+   	subdata(data, xind, yind, sz)
 
 Return the sliced data based on indexes.
 """
@@ -525,7 +525,7 @@ function subdata(data::Array{Float64,2},
 end
 
 """
-   plot(data, filehead, var; kwargs)
+   	plot(data, filehead, var; kwargs)
 
 Wrapper over the plot function in matplotlib.
 """
@@ -539,7 +539,7 @@ function plot(data::Data, filehead::Dict, var::String; kwargs...)
 end
 
 """
-   scatter(data, filehead, var; kwargs)
+   	scatter(data, filehead, var; kwargs)
 
 Wrapper over the scatter function in matplotlib.
 """
@@ -553,7 +553,7 @@ function scatter(data::Data, filehead::Dict, var::String; kwargs...)
 end
 
 """
-   contour(data, filehead, var, levels=0; plotrange, plotinterval, kwargs)
+   	contour(data, filehead, var, levels=0; plotrange, plotinterval, kwargs)
 
 Wrapper over the contour function in matplotlib.
 """
@@ -573,7 +573,7 @@ function contour(data::Data, filehead::Dict, var::String, levels::Int=0;
 end
 
 """
-   contourf(data, filehead, var, levels=0; plotrange, plotinterval, kwargs)
+   	contourf(data, filehead, var, levels=0; plotrange, plotinterval, kwargs)
 
 Wrapper over the contourf function in matplotlib.
 """
@@ -592,7 +592,11 @@ function contourf(data::Data, filehead::Dict, var::String, levels::Int=0;
    return c::PyCall.PyObject
 end
 
+"""
+   	tricontourf(data, filehead, var; plotrange, plotinterval, kwargs)
 
+Wrapper over the tricontourf function in matplotlib.
+"""
 function tricontourf(data::Data, filehead::Dict, var::String;
    plotrange::Vector{Float64}=[-Inf,Inf,-Inf,Inf], plotinterval::Float64=0.1,
    kwargs::Dict=Dict())
@@ -619,6 +623,12 @@ function tricontourf(data::Data, filehead::Dict, var::String;
    c = tricontourf(X, Y, W)
 end
 
+"""
+	plot_trisurf(data::Data, filehead::Dict, var::String;
+ plotrange::Vector{Float64}=[-Inf,Inf,-Inf,Inf], kwargs::Dict=Dict())
+
+Wrapper over the plot_trisurf function in matplotlib.
+"""
 function plot_trisurf(data::Data, filehead::Dict, var::String;
    plotrange::Vector{Float64}=[-Inf,Inf,-Inf,Inf], kwargs::Dict=Dict())
 
@@ -646,7 +656,7 @@ end
 
 
 """
-   plot_surface(data, filehead, var; plotrange, plotinterval, kwargs)
+   	plot_surface(data, filehead, var; plotrange, plotinterval, kwargs)
 
 Wrapper over the plot_surface function in matplotlib.
 """
@@ -662,7 +672,7 @@ function plot_surface(data::Data, filehead::Dict, var::String;
 end
 
 """
-   streamplot(data, filehead, var; plotrange, plotinterval)
+   	streamplot(data, filehead, var; plotrange, plotinterval)
 
 Wrapper over the streamplot function in matplotlib. Streamplot does not have
 **kwargs in the API.
@@ -797,7 +807,7 @@ function getdata(data, filehead, var, plotrange, plotinterval)
 end
 
 """
-   animatedata(filelist, func, (plotmode="contbar",
+   	animatedata(filelist, func, (plotmode="contbar",
       plotrange=[-Inf Inf -Inf Inf],
       plotinterval=0.1))
 
@@ -821,7 +831,7 @@ function animate(i,filelist)
 end
 
 """
-   convertVTK(head, data, connectivity, filename)
+   	convertVTK(head, data, connectivity, filename)
 
 Convert 3D unstructured Tecplot data to VTK. Note that if using voxel type data
 in VTK, the connectivity sequence is different from Tecplot.
