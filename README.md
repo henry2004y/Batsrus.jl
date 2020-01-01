@@ -9,7 +9,7 @@ This is inherited from the Matlab version of BATSRUS output reader and analyzer.
 
 Demos are provided for calling Matlab/Python directly from Julia for debugging and testing. For example, the 3D scatterred interpolation is done via `Interpolate` in Scipy.
 
-The ultimate goal is to replace the IDL scripts for regular data visualizations, especially on Frontera. I am half way through.
+The ultimate goal is to build a convenient tool of reading and analyzing simulation outputs which is easy to install and easy to use.
 
 ### Prerequisites
 
@@ -39,4 +39,4 @@ See [here](docs/src/man/guide.md) for some development thoughts.
 
 ## Acknowledgments
 
-* All the nice guys who share their codes
+* All the nice guys who share their codes!
