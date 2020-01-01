@@ -12,6 +12,7 @@ import PyPlot.plot, PyPlot.scatter, PyPlot.contour, PyPlot.contourf,
 
 """
    plotlogdata(data, filehead, vars, (plotmode="line", plotrange=[-Inf,Inf]))
+
 Plot information from log file.
 ...
 # Input arguments
@@ -54,6 +55,7 @@ end
 
 """
    plotdata(data, filehead, func, (...))
+
 Plot the variable from SWMF output.
 
 `plotdata(data, filehead, "p", plotmode="contbar")`
@@ -465,6 +467,7 @@ end
 
 """
    subsurface(x, y, data, limits)
+
 Extract subset of 2D surface dataset.
 This is a simplified version of subvolume.
 """
@@ -505,6 +508,7 @@ end
 
 """
    subdata(data, xind, yind, sz)
+
 Return the sliced data based on indexes.
 """
 function subdata(data::Array{Float64,2},
@@ -796,6 +800,7 @@ end
    animatedata(filelist, func, (plotmode="contbar",
       plotrange=[-Inf Inf -Inf Inf],
       plotinterval=0.1))
+
 Generate animations from data. This is basically calling plotdata function for
 multiple snapshots. The main issue here is to determine the colorbar/axis range
 in advance to avoid any jump in the movie.

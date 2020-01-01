@@ -86,6 +86,7 @@ end
 
 """
    readlogdata(filename)
+
 Read information from log file.
 """
 function readlogdata( filename::String )
@@ -219,6 +220,7 @@ end
 
 """
    getFileTypes(nfile, filenames, dir)
+
 Get the type of files.
 ...
 # Output arguments
@@ -289,6 +291,7 @@ end
 
 """
    getfilehead(fileID, type, iargout=1)
+
 Obtain the header information from BATSRUS output files.
 ...
 # Input arguments
@@ -465,6 +468,7 @@ import Base: read!
 
 """
    read!(s,a)
+
 Read slices of arrays using subarrays, in addition to the built-in methods.
 """
 function read!(s::IO, a::SubArray{T}) where T
@@ -477,6 +481,7 @@ end
 
 """
    getpictascii(fileID, filehead)
+
 Read ascii format data.
 """
 function getpictascii(fileID::IOStream, filehead::Dict)
@@ -522,6 +527,7 @@ end
 
 """
    getpictbinary(fileID, filehead)
+
 Read binary format data.
 """
 function getpictbinary(fileID::IOStream, filehead::Dict)
@@ -573,6 +579,7 @@ end
 
 """
    getpictreal(fileID, filehead)
+
 Read real4 format data.
 """
 function getpictreal(fileID::IOStream, filehead::Dict)
@@ -624,6 +631,7 @@ end
 
 """
    setunits(filehead, type, (distunit, Mion, Melectron))
+
 Set the units for the output files。
 If type is given as "SI", "CGS", "NORMALIZED", "PIC", "PLANETARY", "SOLAR", set
 typeunit = type otherwise try to guess from the fileheader.
@@ -834,6 +842,7 @@ end
 
 """
    showhead(file, ifile, filehead)
+
 Displaying file header information.
 """
 function showhead(file::FileList, ifile::Int, filehead::Dict)
