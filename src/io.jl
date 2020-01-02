@@ -221,12 +221,10 @@ end
 	getFileTypes(nfile, filenames, dir)
 
 Get the type of files.
-...
 # Output arguments
 - `filelist::FileList`: fulfilled file structs.
 - `fileID::Vector{IOStream}`: file IOStream for accessing data.
 - `pictsize::Int`: size (in bytes) of one snapshot.
-...
 """
 function getFileTypes(nfile::Int, filenames::Array{String,1})
 
@@ -292,7 +290,6 @@ end
 	getfilehead(fileID, type, iargout=1)
 
 Obtain the header information from BATSRUS output files.
-...
 # Input arguments
 - `fileID::IOStream`: file identifier.
 - `type::String`: file type in ["ascii", "real4", "binary", "log"].
@@ -300,7 +297,6 @@ Obtain the header information from BATSRUS output files.
 # Output arguments
 - `pictsize::Int`: size of a single snapshot in bytes.
 - `filehead::Dict`: file header info.
-...
 """
 function getfilehead(fileID::IOStream, type::String)
 

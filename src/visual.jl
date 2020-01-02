@@ -14,14 +14,12 @@ import PyPlot.plot, PyPlot.scatter, PyPlot.contour, PyPlot.contourf,
 	plotlogdata(data, filehead, vars, (plotmode="line", plotrange=[-Inf,Inf]))
 
 Plot information from log file.
-...
 # Input arguments
 - `data::Data`: original variable data.
 - `filehead::Dict`: header information.
 - `vars::String`: variables for plotting.
 - `plotmode::String`: (optional) type of plotting ["line","scatter"].
 - `plotrange::Vector`: (optional) range of plotting.
-...
 """
 function plotlogdata(data::Data, filehead::Dict, func::String;
    plotmode::String="line", plotrange::Vector=[-Inf,Inf] )
@@ -65,7 +63,6 @@ Plot the variable from SWMF output.
 `plotdata(data, filehead, func, plotmode="trimesh",plotrange=plotrange,
    plotinterval=0.2)`
 
-...
 # Input arguments
 - `data::Data`: original variable data.
 - `filehead::Dict`: header information.
@@ -79,7 +76,7 @@ Plot the variable from SWMF output.
 - `cutPlaneIndex`: (optional)
 - `multifigure`: (optional) 1 for multifigure display, 0 for subplots.
 - `verbose`: (optional) display additional information.
-...
+
 Right now this can only deal with 2D plots or 3D cuts. Full 3D plots may be
 supported in the future.
 """
