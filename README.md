@@ -2,6 +2,7 @@
 [![](https://travis-ci.com/henry2004y/VisAnaJulia.svg?branch=master)](https://travis-ci.com/henry2004y/VisAnaJulia/builds/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://henry2004y.github.io/VisAnaJulia/dev)
+[![][codecov-img]][codecov-url]
 
 SWMF data reader and visualization using Julia.
 
@@ -40,3 +41,6 @@ See [here](docs/src/man/guide.md) for some development thoughts.
 ## Acknowledgments
 
 * All the nice guys who share their codes!
+
+[codecov-img]: https://codecov.io/gh/henry2004y/VisAnaJulia/branch/master/graph/badge.svg
+[codecov-url]: https://codecov.io/gh/henry2004y/VisAnaJulia
