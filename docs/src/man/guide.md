@@ -46,7 +46,8 @@ There is a unit package in Julia [unitful](https://github.com/PainterQubits/Unit
 I have encountered a very bad problem of corrupting binary *.vtu files. It turned out that the issue is the starting position of data is wrong because of the way I skip the header AUXDATA part. Sometimes the binary numbers may contain newline character that confuses the reader. It is now fixed.
 
 - [x] Fixed colorbar control through Matplotlib
-- [ ] Test suite for checking validity
+- [x] Test suite for checking validity
+- [ ] Full coverage of tests
 - [x] Cuts from 3D data visualization besides contour
 - [ ] Switch to Makie for 3D plotting and animation
 - [ ] PyBase support for manipulating data directly in Python
