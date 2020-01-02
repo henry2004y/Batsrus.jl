@@ -1,18 +1,14 @@
 # VisAna
-[![](https://travis-ci.com/henry2004y/VisAnaJulia.svg?branch=master)](https://travis-ci.com/henry2004y/VisAnaJulia/builds/)
+[![](https://travis-ci.com/henry2004y/VisAnaJulia.svg?branch=master)][travis-url]
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://henry2004y.github.io/VisAnaJulia/dev)
+[![](https://img.shields.io/badge/docs-stable-blue.svg)][VisAna-doc]
 [![][codecov-img]][codecov-url]
 
 SWMF data reader and visualization using Julia.
 
-This is inherited from the Matlab version of BATSRUS output reader and analyzer. It can be combined with the VTK format converter to generate files for Paraview and Tecplot. By default the file size will be reduced with compression level 6, but the actual compression ratio depends on the original data.
+For more details, please check the [document][VisAna-doc].
 
-Demos are provided for calling Matlab/Python directly from Julia for debugging and testing. For example, the 3D scatterred interpolation is done via `Interpolate` in Scipy.
-
-The ultimate goal is to build a convenient tool of reading and analyzing simulation outputs which is easy to install and easy to use.
-
-### Prerequisites
+## Prerequisites
 
 Julia 1.0+
 
@@ -42,5 +38,7 @@ See [here](docs/src/man/guide.md) for some development thoughts.
 
 * All the nice guys who share their codes!
 
+[travis-url]: https://travis-ci.com/henry2004y/VisAnaJulia/builds/
 [codecov-img]: https://codecov.io/gh/henry2004y/VisAnaJulia/branch/master/graph/badge.svg
 [codecov-url]: https://codecov.io/gh/henry2004y/VisAnaJulia
+[VisAna-doc]: https://henry2004y.github.io/VisAnaJulia/dev
