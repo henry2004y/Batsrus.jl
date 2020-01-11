@@ -11,8 +11,9 @@
 
 ## Minimum Variance Analysis
 
-A nice introduction is given by BENGT U. ``\''{O}``. SONNERUP AND MAUREEN
-SCHEIBLE. Here is a brief summary of the idea.
+A nice introduction is given by Bengt U.``\"{O}``.Sonnerup and Maureen Scheible.
+ Here is a brief summary of the idea. The implementation of MVA can be found in
+ [`MVA.jl`](https://github.com/henry2004y/VisAnaJulia/blob/master/src/space/MVA.jl).
 
 The main purpose of minimum or maximum variance analysis (MVA) is to find, from
 single-spacecraft data, an estimator for the direction normal to a
@@ -69,5 +70,3 @@ is the magnetic variance matrix. It is seen from the equation that the allowed
 corresponding eigenvectors, ``x_1``, ``x_2``, and ``x_3``, are orthogonal. The
 three eigenvectors represent the directions of maximum, intermediate, and
 minimum variance of the field component along each vector.
-
-The implementation of MVA can be found in [`MVA.jl`](src/space/MVA.jl).
