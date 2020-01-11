@@ -32,12 +32,12 @@ field-component set {``\mathbf{B}^{(m)}\cdot\widehat{n}``} ``(m = 1, 2, 3...M)``
  has minimum variance. In other words, ``\widehat{n}`` is determined by
  minimisation of
 ```math
-\sigma^2 = \frac{1}{M} \sum_{m=1}^{M}| (\mathbf{B}^(m) - \mathbf{B})\cdot\widehat{n} |^2
+\sigma^2 = \frac{1}{M} \sum_{m=1}^{M}| (\mathbf{B}^{(m)} - \mathbf{B})\cdot\widehat{n} |^2
 ```
 
 where the average ``<\mathbf{B}>`` is defined by
 ```math
-<\mathbf{B}> \equiv frac{1}{M} \sum_{m=1}^M \mathbf{B}^{(m)}
+<\mathbf{B}> \equiv \frac{1}{M} \sum_{m=1}^M \mathbf{B}^{(m)}
 ```
 and where the minimisation is subject to the normalisation constraint
 ``|\widehat{n}|=1``. Using a Lagrange multiplier ``\lambda`` to implement this
@@ -62,6 +62,12 @@ X, Y, Z system and
 ```math
 M_{\mu\nu}^{B} \equiv <B_\mu B_\nu> - <B_\mu><B_\nu>
 ```
-is the magnetic variance matrix. It is seen from the  equation that the allowed
+is the magnetic variance matrix. It is seen from the equation that the allowed
 ``\lambda`` values are the eigenvalues ``\lambda_1,\lambda_2,\lambda_3``
-(given here in order of decreasing magnitude) of ``M_{\mu\nu}^{B}``.
+(given here in order of decreasing magnitude) of ``M_{\mu\nu}^{B}``. Since
+``M_{\mu\nu}^{B}`` is symmetric, the eigenvalues are all real and the
+corresponding eigenvectors, ``x_1``, ``x_2``, and ``x_3``, are orthogonal. The
+three eigenvectors represent the directions of maximum, intermediate, and
+minimum variance of the field component along each vector.
+
+The implementation of MVA can be found in [`MVA.jl`](src/space/MVA.jl).
