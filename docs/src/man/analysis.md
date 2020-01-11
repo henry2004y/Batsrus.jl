@@ -11,7 +11,7 @@
 
 ## Minimum Variance Analysis
 
-A nice introduction is given by Bengt U.``\"{O}``.Sonnerup and Maureen Scheible.
+A nice introduction is given by Bengt U.Ö.Sonnerup and Maureen Scheible.
  Here is a brief summary of the idea. The implementation of MVA can be found in
  [`MVA.jl`](https://github.com/henry2004y/VisAnaJulia/blob/master/src/space/MVA.jl).
 
@@ -38,7 +38,7 @@ field-component set {``\mathbf{B}^{(m)}\cdot\widehat{n}``} ``(m = 1, 2, 3...M)``
 
 where the average ``<\mathbf{B}>`` is defined by
 ```math
-<\mathbf{B}> \equiv \frac{1}{M} \sum_{m=1}^M \mathbf{B}^{(m)}
+\langle\mathbf{B}\rangle \equiv \frac{1}{M} \sum_{m=1}^M \mathbf{B}^{(m)}
 ```
 and where the minimisation is subject to the normalisation constraint
 ``|\widehat{n}|=1``. Using a Lagrange multiplier ``\lambda`` to implement this
@@ -61,7 +61,7 @@ in matrix form as
 where the subscripts ``\mu,\nu = 1,2,3`` denote cartesian components along the
 X, Y, Z system and
 ```math
-M_{\mu\nu}^{B} \equiv <B_\mu B_\nu> - <B_\mu><B_\nu>
+M_{\mu\nu}^{B} \equiv \langle B_\mu B_\nu\rangle - \langle B_\mu\rangle\langle B_\nu\rangle
 ```
 is the magnetic variance matrix. It is seen from the equation that the allowed
 ``\lambda`` values are the eigenvalues ``\lambda_1,\lambda_2,\lambda_3``
