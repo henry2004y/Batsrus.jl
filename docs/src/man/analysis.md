@@ -6,8 +6,11 @@
 
 ### Periodogram
 
+This is a group of techniques to determine the periodicity of data.
+
 ### Spectrogram
 
+Spectrogram is used a lot in wave analysis. For my purpose, I use it as an approach to visualize time dependent simulation data along a continuous line region.
 
 ## Minimum Variance Analysis
 
@@ -71,6 +74,10 @@ corresponding eigenvectors, ``x_1``, ``x_2``, and ``x_3``, are orthogonal. The
 three eigenvectors represent the directions of maximum, intermediate, and
 minimum variance of the field component along each vector.
 
+## ULF Wave Detection
+
+
+
 ## Correlation Test Between Two Variables
 
 This part takes the reference from [R](http://www.sthda.com/english/wiki/correlation-test-between-two-variables-in-r).
@@ -79,7 +86,7 @@ Correlation test is used to evaluate the association between two or more
 variables.
 
 !!! info
-If there is no relationship between the two variables (father and son heights), the average height of son should be the same regardless of the height of the fathers and vice versa.
+  If there is no relationship between the two variables (father and son heights), the average height of son should be the same regardless of the height of the fathers and vice versa.
 
 ### Methods for correlation analyses
 
