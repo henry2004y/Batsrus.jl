@@ -48,3 +48,7 @@ end
    @test isfile("3DBATSRUS.vtu")
    rm("3DBATSRUS.vtu")
 end
+
+@testset "MVA" begin
+   @info("Minimum variance analysis test.")
+end

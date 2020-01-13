@@ -70,3 +70,37 @@ is the magnetic variance matrix. It is seen from the equation that the allowed
 corresponding eigenvectors, ``x_1``, ``x_2``, and ``x_3``, are orthogonal. The
 three eigenvectors represent the directions of maximum, intermediate, and
 minimum variance of the field component along each vector.
+
+## Correlation Test Between Two Variables
+
+This part takes the reference from [R](http://www.sthda.com/english/wiki/correlation-test-between-two-variables-in-r).
+
+Correlation test is used to evaluate the association between two or more
+variables.
+
+!!! info
+If there is no relationship between the two variables (father and son heights), the average height of son should be the same regardless of the height of the fathers and vice versa.
+
+### Methods for correlation analyses
+
+There are different methods to perform correlation analysis:
+  * Pearson correlation (r), which measures a linear dependence between two variables (x and y). It’s also known as a parametric correlation test because it depends to the distribution of the data. It can be used only when x and y are from normal distribution. The plot of y = f(x) is named the linear regression curve.
+  * Kendall tau and Spearman rho, which are rank-based correlation coefficients (non-parametric).
+
+### Correlation formula
+
+In the formula below,
+  * x and y are two vectors of length n
+  * ``\bar{x}`` and ``\bar{y}`` corresponds to the means of ``x`` and ``y``, respectively.
+
+Pearson correlation formula
+```math
+r = \frac{\sum (x-\bar{x})(y-\bar{y}}{\sqrt{\sum(x-\bar{x})^2\sum(y-\bar{y})^2}}
+```
+The p-value (significance level) of the correlation can be determined :
+1. by using the correlation coefficient table for the degrees of freedom : ``df=n−2``, where ``n`` is the number of observation in ``x`` and ``y`` variables.
+2 or by calculating the ``t`` value as follows:
+```math
+t = \frac{r}{\sqrt{1-r^2}}\sqrt{n-2}
+```
+where the corresponding p-value is determined using t table distribution for ``df=n-2``. If the p-value is ``< 5\%``, then the correlation between ``x`` and ``y`` is significant.
