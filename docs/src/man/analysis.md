@@ -6,7 +6,7 @@
 
 ### Periodogram
 
-This is a group of techniques to determine the periodicity of data.
+This is a group of techniques to determine the periodicity of data. Julia has implementations in the [DSP](https://juliadsp.github.io/DSP.jl/stable/contents/) package. Here we introduce the usage by looking at practical examples.
 
 ### Spectrogram
 
@@ -39,7 +39,7 @@ field-component set {``\mathbf{B}^{(m)}\cdot\widehat{n}``} ``(m = 1, 2, 3...M)``
 \sigma^2 = \frac{1}{M} \sum_{m=1}^{M}| (\mathbf{B}^{(m)} - \mathbf{B})\cdot\widehat{n} |^2
 ```
 
-where the average ``<\mathbf{B}>`` is defined by
+where the average ``\langle\mathbf{B}\rangle`` is defined by
 ```math
 \langle\mathbf{B}\rangle \equiv \frac{1}{M} \sum_{m=1}^M \mathbf{B}^{(m)}
 ```
@@ -76,7 +76,7 @@ minimum variance of the field component along each vector.
 
 ## ULF Wave Detection
 
-
+ULF waves are MHD waves: Alfvén wave, fast wave and slow wave. One basic approach to identify waves is to check the correlation of quantity perturbations.
 
 ## Correlation Test Between Two Variables
 
@@ -86,7 +86,7 @@ Correlation test is used to evaluate the association between two or more
 variables.
 
 !!! info
-  If there is no relationship between the two variables (father and son heights), the average height of son should be the same regardless of the height of the fathers and vice versa.
+	If there is no relationship between the two variables, the average of ``x`` should be the same regardless of ``y`` and vice versa.
 
 ### Methods for correlation analyses
 
