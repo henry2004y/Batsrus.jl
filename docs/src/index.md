@@ -27,7 +27,7 @@ The ultimate goal is to build a convenient tool of reading and analyzing simulat
     Feel free to contact the author for any help or collaboration!
 
 ## Installation
-Install VisAna from the `julia` `REPL` prompt with
+Install VisAna from the `julia REPL` prompt with
 ```julia
 using Pkg
 Pkg.add(PackageSpec(url="https://github.com/henry2004y/VisAnaJulia", rev="master"))

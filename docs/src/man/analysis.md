@@ -74,9 +74,16 @@ corresponding eigenvectors, ``x_1``, ``x_2``, and ``x_3``, are orthogonal. The
 three eigenvectors represent the directions of maximum, intermediate, and
 minimum variance of the field component along each vector.
 
+!!! note
+    In practice, the ratio of intermediate to minimum variance should be larger than 5 to give good fit of LMN.
+
 ## ULF Wave Detection
 
 ULF waves are MHD waves: Alfvén wave, fast wave and slow wave. One basic approach to identify waves is to check the correlation of quantity perturbations.
+
+A tricky part in practice is how to get the average through smoothing. Note that a real satellite moves both in time and space. Usually people do moving-box-average to get an average state within a short period.
+
+A more careful analysis is called Walen test.
 
 ## Correlation Test Between Two Variables
 
@@ -86,7 +93,7 @@ Correlation test is used to evaluate the association between two or more
 variables.
 
 !!! info
-	If there is no relationship between the two variables, the average of ``x`` should be the same regardless of ``y`` and vice versa.
+    If there is no relationship between the two variables, the average of ``x`` should be the same regardless of ``y`` and vice versa.
 
 ### Methods for correlation analyses
 
