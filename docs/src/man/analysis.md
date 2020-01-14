@@ -89,7 +89,7 @@ where ``v_A`` is the Alfvén speed and ``\theta`` is the angle between wave vect
 
 The perturbed quantities of Alfvén waves follow these relations:
 ```math
-\frac{\delta \mathbf{v}{v_A} = \pm \frac{\delta \mathbf{B}}{B_0} \\
+\frac{\delta \mathbf{v}}{v_A} = \pm \frac{\delta \mathbf{B}}{B_0} \\
 \delta \rho = 0
 ```
 where ``\delta \boldsymbol{v}``, ``\delta \boldsymbol{B}``, and ``\delta ρ`` are perturbed plasma velocity, magnetic fields, and plasma density, respectively, and ``B_0`` is the background magnetic magnitude.
