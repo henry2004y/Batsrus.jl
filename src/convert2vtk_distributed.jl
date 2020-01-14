@@ -21,6 +21,8 @@ end
 dir = "IO2"
 
 # Concatenate files
+# Before deleting the .T
+# you need to make sure all the .tec files have been concatenated!
 headers = glob("*.T", dir)
 @sync @distributed for header in headers
    name = basename(header)[1:end-2]

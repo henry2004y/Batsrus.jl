@@ -1,0 +1,6 @@
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+VisAna = "3da60289-db0e-42b3-9214-5194de249930"
+
+[compat]
+Documenter = "0.24"
