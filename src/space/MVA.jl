@@ -73,9 +73,9 @@ if DoPlot
 
 	# Coordinate transformation
 	id_ = 2000:2900
-	BL = sum(F.vectors[:,3]' .* [df.Bx[id_] df.By[id_] df.Bz[id_]];dims=2)
+	BL = sum(F.vectors[:,1]' .* [df.Bx[id_] df.By[id_] df.Bz[id_]];dims=2)
 	BM = sum(F.vectors[:,2]' .* [df.Bx[id_] df.By[id_] df.Bz[id_]];dims=2)
-	BN = sum(F.vectors[:,1]' .* [df.Bx[id_] df.By[id_] df.Bz[id_]];dims=2)
+	BN = sum(F.vectors[:,3]' .* [df.Bx[id_] df.By[id_] df.Bz[id_]];dims=2)
 	figure(figsize=(12,4))
 	subplot(411)
 	plot(t[id_], BL, label=L"B_L")
