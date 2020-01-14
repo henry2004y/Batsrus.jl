@@ -15,45 +15,45 @@ const upstream_value = [NaN, 56., 140., 0., 0., -10., -6., -86., 0.2, 3.4]
 const γ = 5/3 # adiabatic index
 
 struct Index
-	Rho_::Integer
-	Ux_::Integer
-	Uy_::Integer
-	Uz_::Integer
-	Bx_::Integer
-	By_::Integer
-	Bz_::Integer
-	Pe_::Integer
-	P_::Integer
-	B_::UnitRange{Int64}
-	U_::UnitRange{Int64}
+   Rho_::Integer
+   Ux_::Integer
+   Uy_::Integer
+   Uz_::Integer
+   Bx_::Integer
+   By_::Integer
+   Bz_::Integer
+   Pe_::Integer
+   P_::Integer
+   B_::UnitRange{Int64}
+   U_::UnitRange{Int64}
 end
 
 """Import satellite data."""
 function read_data(fname)
-	f = readdlm(fname, ',', Float32, '\n'; header=true)
+   f = readdlm(fname, ',', Float32, '\n'; header=true)
 
-	header = f[2][1:end-1]
-	data   = f[1]
+   header = f[2][1:end-1]
+   data   = f[1]
 
-	satelliteNo = unique(data[:,1]) # number of static satellites
+   satelliteNo = unique(data[:,1]) # number of static satellites
 
-	return header, data, satelliteNo
+   return header, data, satelliteNo
 end
 
 function get_indexes(header::Vector{AbstractString})
-	Rho_= findfirst(x->x=="Rho", header) + 1
-	P_  = findfirst(x->x=="P", header) + 1
-	Pe_ = findfirst(x->x=="Pe", header) + 1
-	Bx_ = findfirst(x->x=="Bx", header) + 1
-	By_ = Bx_ + 1
-	Bz_ = Bx_ + 2
-	B_  = Bx_:(Bx_+2)
-	Ux_ = findfirst(x->x=="Ux", header) + 1
-	Uy_ = Ux_ + 1
-	Uz_ = Ux_ + 2
-	U_  = Ux_:(Ux_+2)
+   Rho_= findfirst(x->x=="Rho", header) + 1
+   P_  = findfirst(x->x=="P", header) + 1
+   Pe_ = findfirst(x->x=="Pe", header) + 1
+   Bx_ = findfirst(x->x=="Bx", header) + 1
+   By_ = Bx_ + 1
+   Bz_ = Bx_ + 2
+   B_  = Bx_:(Bx_+2)
+   Ux_ = findfirst(x->x=="Ux", header) + 1
+   Uy_ = Ux_ + 1
+   Uz_ = Ux_ + 2
+   U_  = Ux_:(Ux_+2)
 
-	id = Index(Rho_, Ux_, Uy_, Uz_, Bx_, By_, Bz_, Pe_, P_, B_, U_)
+   id = Index(Rho_, Ux_, Uy_, Uz_, Bx_, By_, Bz_, Pe_, P_, B_, U_)
 end
 
 """
@@ -66,76 +66,76 @@ Plot all MHD quantities for a static location during the simulation.
 - `nShift::Integer`: shift w.r.t. the satellite starting location.
 """
 function single_satellite_plot(filename="satellites_PIC.txt",
-	dir="/Users/hyzhou/Documents/Computer/ParaView/data/", nShift=91)
+   dir="/Users/hyzhou/Documents/Computer/ParaView/data/", nShift=91)
 
-	@assert nShift≥0 "nShift must be non-negative!"
+   @assert nShift≥0 "nShift must be non-negative!"
 
-	header, data, satelliteNo = read_data(dir*filename)
+   header, data, satelliteNo = read_data(dir*filename)
 
-	index_ = findall(x->x==satelliteNo[1], data[:,1])
+   index_ = findall(x->x==satelliteNo[1], data[:,1])
 
-	id = get_indexes(header)
-	Rho_, Ux_, Uy_, Uz_, Bx_, By_, Bz_, Pe_, P_, U_, B_ =
-		id.Rho_, id.Ux_, id.Uy_, id.Uz_, id.Bx_, id.By_, id.Bz_, id.Pe_, id.P_,
-		id.U_, id.B_
+   id = get_indexes(header)
+   Rho_, Ux_, Uy_, Uz_, Bx_, By_, Bz_, Pe_, P_, U_, B_ =
+   id.Rho_, id.Ux_, id.Uy_, id.Uz_, id.Bx_, id.By_, id.Bz_, id.Pe_, id.P_,
+   id.U_, id.B_
 
-	# magnetic pressure, [nPa]
-	PB = sum(data[index_ .+ nShift,B_].^2; dims=2) ./ (2*μ₀) ./ (1e9)
+   # magnetic pressure, [nPa]
+   PB = sum(data[index_ .+ nShift,B_].^2; dims=2) ./ (2*μ₀) ./ (1e9)
 
-	# dynamic pressure, [nPa]
-	Pd = sum(data[index_ .+ nShift,Rho_] .* data[index_ .+ nShift,U_].^2; dims=2) * amu * 1e21
+   # dynamic pressure, [nPa]
+   Pd = sum(data[index_ .+ nShift,Rho_] .* data[index_ .+ nShift,U_].^2; dims=2) * amu * 1e21
 
 
-	# All quantities at one location
-	fig = figure(figsize=(8.5,4.5))
-	plt.subplot(221) # rho
-	plot(data[index_ .+ nShift,Rho_], label=L"\rho\ [amu/cc]")
-	plt.axhline(y=upstream_value[Rho_], color="r", linestyle="--", alpha=0.5)
-	grid(true)
-	legend()
-	#ylabel("[amu/cc]")
+   # All quantities at one location
+   fig = figure(figsize=(8.5,4.5))
+   plt.subplot(221) # rho
+   plot(data[index_ .+ nShift,Rho_], label=L"\rho\ [amu/cc]")
+   plt.axhline(y=upstream_value[Rho_], color="r", linestyle="--", alpha=0.5)
+   grid(true)
+   legend()
+   #ylabel("[amu/cc]")
 
-	plt.subplot(222) # p
-	plot(data[index_ .+ nShift,P_], alpha=0.9, label=L"P_i")
-	plot(data[index_ .+ nShift,Pe_], alpha=0.9, label=L"P_e")
-	plot(Pd, alpha=0.9, label=L"P_d")
-	plot(PB, alpha=0.9, label=L"P_B\ [nPa]")
-	legend(loc="upper left", bbox_to_anchor=(0, 1.18), ncol=4, frameon=false)
-	plt.axhline(y=upstream_value[P_], color="r", linestyle="--", alpha=0.5)
-	#plt.axhline(y=upstream_value[Pe_], color="r", linestyle="--", alpha=0.5)
-	grid(true)
-	#ylabel("[nPa]")
+   plt.subplot(222) # p
+   plot(data[index_ .+ nShift,P_], alpha=0.9, label=L"P_i")
+   plot(data[index_ .+ nShift,Pe_], alpha=0.9, label=L"P_e")
+   plot(Pd, alpha=0.9, label=L"P_d")
+   plot(PB, alpha=0.9, label=L"P_B\ [nPa]")
+   legend(loc="upper left", bbox_to_anchor=(0, 1.18), ncol=4, frameon=false)
+   plt.axhline(y=upstream_value[P_], color="r", linestyle="--", alpha=0.5)
+   #plt.axhline(y=upstream_value[Pe_], color="r", linestyle="--", alpha=0.5)
+   grid(true)
+   #ylabel("[nPa]")
 
-	plt.subplot(223) # U
-	plot(data[index_ .+ nShift,Ux_], alpha=0.9, label="Ux")
-	plot(data[index_ .+ nShift,Uy_], alpha=0.9, label="Uy")
-	plot(data[index_ .+ nShift,Uz_], alpha=0.9, label="Uz  [km/s]")
-	legend(loc="upper left", bbox_to_anchor=(0, 1.18), ncol=3, frameon=false)
-	plt.axhline(y=upstream_value[Ux_], color="r", linestyle="--", alpha=0.5)
-	plt.axhline(y=upstream_value[Uy_], color="r", linestyle="--", alpha=0.5)
-	plt.axhline(y=upstream_value[Uz_], color="r", linestyle="--", alpha=0.5)
-	grid(true)
-	xlabel("simulation time [s]")
-	f1 = plt.gca()
-	f1.axes.xaxis.set_ticklabels([])
+   plt.subplot(223) # U
+   plot(data[index_ .+ nShift,Ux_], alpha=0.9, label="Ux")
+   plot(data[index_ .+ nShift,Uy_], alpha=0.9, label="Uy")
+   plot(data[index_ .+ nShift,Uz_], alpha=0.9, label="Uz  [km/s]")
+   legend(loc="upper left", bbox_to_anchor=(0, 1.18), ncol=3, frameon=false)
+   plt.axhline(y=upstream_value[Ux_], color="r", linestyle="--", alpha=0.5)
+   plt.axhline(y=upstream_value[Uy_], color="r", linestyle="--", alpha=0.5)
+   plt.axhline(y=upstream_value[Uz_], color="r", linestyle="--", alpha=0.5)
+   grid(true)
+   xlabel("simulation time [s]")
+   f1 = plt.gca()
+   f1.axes.xaxis.set_ticklabels([])
 
-	plt.subplot(224) # B
-	plot(data[index_ .+ nShift,Bx_], alpha=0.9, label="Bx")
-	plot(data[index_ .+ nShift,By_], alpha=0.9, label="By")
-	plot(data[index_ .+ nShift,Bz_], alpha=0.9, label="Bz  [nT]")
-	legend(loc="upper left", bbox_to_anchor=(0, 1.18), ncol=3, frameon=false)
-	plt.axhline(y=upstream_value[Bx_], color="r", linestyle="--", alpha=0.5)
-	plt.axhline(y=upstream_value[By_], color="r", linestyle="--", alpha=0.5)
-	plt.axhline(y=upstream_value[Bz_], color="r", linestyle="--", alpha=0.5)
-	grid(true)
-	xlabel("simulation time [s]")
-	f1 = plt.gca()
-	f1.axes.xaxis.set_ticklabels([])
+   plt.subplot(224) # B
+   plot(data[index_ .+ nShift,Bx_], alpha=0.9, label="Bx")
+   plot(data[index_ .+ nShift,By_], alpha=0.9, label="By")
+   plot(data[index_ .+ nShift,Bz_], alpha=0.9, label="Bz  [nT]")
+   legend(loc="upper left", bbox_to_anchor=(0, 1.18), ncol=3, frameon=false)
+   plt.axhline(y=upstream_value[Bx_], color="r", linestyle="--", alpha=0.5)
+   plt.axhline(y=upstream_value[By_], color="r", linestyle="--", alpha=0.5)
+   plt.axhline(y=upstream_value[Bz_], color="r", linestyle="--", alpha=0.5)
+   grid(true)
+   xlabel("simulation time [s]")
+   f1 = plt.gca()
+   f1.axes.xaxis.set_ticklabels([])
 
-	#
-	suptitle("outside magnetosphere, location: "*string(data[nShift+1,11:end])[8:end]*L"R_G", fontsize=14)
-	#fig.text(0.5, 0.01, "location: "*string(data[nShift+1,10:end])[8:end], ha="center", fontsize=14)
-	plt.tight_layout(rect=[0, -0.02, 1, 0.98])
+   #
+   suptitle("outside magnetosphere, location: "*string(data[nShift+1,11:end])[8:end]*L"R_G", fontsize=14)
+   #fig.text(0.5, 0.01, "location: "*string(data[nShift+1,10:end])[8:end], ha="center", fontsize=14)
+   plt.tight_layout(rect=[0, -0.02, 1, 0.98])
 end
 
 """
@@ -146,35 +146,35 @@ end
 - `var::String`: variable for plotting.
 """
 function multi_satellite_plot(filename="satellites_PIC.txt",
-	dir="/Users/hyzhou/Documents/Computer/ParaView/data/", var="Rho")
+   dir="/Users/hyzhou/Documents/Computer/ParaView/data/", var="Rho")
 
-	header, data, satelliteNo = read_data(dir*filename)
+   header, data, satelliteNo = read_data(dir*filename)
 
-	var_ = findfirst(x->x==var, header) + 1
+   var_ = findfirst(x->x==var, header) + 1
 
-	index_ = findall(x->x==satelliteNo[1], data[:,1])
+   index_ = findall(x->x==satelliteNo[1], data[:,1])
 
-	shift = [i*46 for i in 0:5]
-	#shift = [i + 88 for i in 0:5]
-	satelliteLoc = data[1 .+ shift,11:13]
+   shift = [i*46 for i in 0:5]
+   #shift = [i + 88 for i in 0:5]
+   satelliteLoc = data[1 .+ shift,11:13]
 
-	# one variable at 6 locations
-	figure(figsize=(10,6))
-	for iplot in 1:6
-	   plt.subplot(3,2,iplot)
-	   plot(data[index_ .+ shift[iplot],var_])
-	   plt.axhline(y=upstream_value[var_], color="r", linestyle="--", alpha=0.5)
-	   plt.title(string(satelliteLoc[iplot,:])[8:end])
-	   grid(true)
-	   f1 = plt.gca()
-	   if iplot ∉ [5,6]
-	      f1.axes.xaxis.set_ticklabels([])
-	      #f1.axes.yaxis.set_ticklabels([])
-	   end
-	end
+   # one variable at 6 locations
+   figure(figsize=(10,6))
+   for iplot in 1:6
+      plt.subplot(3,2,iplot)
+      plot(data[index_ .+ shift[iplot],var_])
+      plt.axhline(y=upstream_value[var_], color="r", linestyle="--", alpha=0.5)
+      plt.title(string(satelliteLoc[iplot,:])[8:end])
+      grid(true)
+      f1 = plt.gca()
+      if iplot ∉ [5,6]
+         f1.axes.xaxis.set_ticklabels([])
+         #f1.axes.yaxis.set_ticklabels([])
+      end
+   end
 
-	suptitle("$var at 6 satellite locations", fontsize=14)
-	plt.tight_layout()
+   suptitle("$var at 6 satellite locations", fontsize=14)
+   plt.tight_layout()
 
 end
 
@@ -190,54 +190,54 @@ Static satellite analysis, contour plots of location and time.
 - `DoSubtractMean::Bool`: Subtract the average state for each variable.
 """
 function multi_satellite_contour(filename="satellites_PIC.txt",
-	dir="/Users/hyzhou/Documents/Computer/ParaView/data/", DoSave=false,
-	DoSubtractMean = true)
+   dir="/Users/hyzhou/Documents/Computer/ParaView/data/", DoSave=false,
+   DoSubtractMean = true)
 
-	header, data, satelliteNo = read_data(dir*filename)
+   header, data, satelliteNo = read_data(dir*filename)
 
-	# Remove the trailing satellites
-	satelliteNo = satelliteNo[1:end-20]
+   # Remove the trailing satellites
+   satelliteNo = satelliteNo[1:end-20]
 
-	index_ = findall(x->x==satelliteNo[1], data[:,1])
+   index_ = findall(x->x==satelliteNo[1], data[:,1])
 
-	c = Array{Float32, 2}(undef, length(index_), length(satelliteNo))
+   c = Array{Float32, 2}(undef, length(index_), length(satelliteNo))
 
-	# Subtract the average
-	for var in header[1:end-3]
-	   var_ = findfirst(x->x==var, header) + 1
-	   @show var, var_
+   # Subtract the average
+   for var in header[1:end-3]
+      var_ = findfirst(x->x==var, header) + 1
+      @show var, var_
 
-	   for i in satelliteNo
-	      c[:,Int(i+1)] = data[index_ .+ Int(i),var_]
-	   end
+      for i in satelliteNo
+         c[:,Int(i+1)] = data[index_ .+ Int(i),var_]
+      end
 
-	   cmean = mean(c, dims=1)
+      cmean = mean(c, dims=1)
 
-	   figure()
-		if DoSubtractMean
-			contourf(c .- cmean, 50)
-		else
-	   	contourf(c, 50)
-		end
+      figure()
+      if DoSubtractMean
+         contourf(c .- cmean, 50)
+      else
+         contourf(c, 50)
+      end
 
-	   plt.set_cmap("plasma")
-	   colorbar()
-	   title(var)
+      plt.set_cmap("plasma")
+      colorbar()
+      title(var)
 
-		if DoSave
-			if occursin("pic",lowercase(filename))
-				subname = "pic"
-			elseif occursin("hall",lowercase(filename))
-				subname = "hall"
-			end
-			if DoSubtractMean
-				savefig(var*"_traj_contour_subtractMean_"*subname*".png")
-			else
-				savefig(var*"_traj_contour_"*subname*".png")
-			end
-			close()
-		end
-	end
+      if DoSave
+         if occursin("pic",lowercase(filename))
+            subname = "pic"
+         elseif occursin("hall",lowercase(filename))
+            subname = "hall"
+         end
+         if DoSubtractMean
+            savefig(var*"_traj_contour_subtractMean_"*subname*".png")
+         else
+            savefig(var*"_traj_contour_"*subname*".png")
+         end
+         close()
+      end
+   end
 
 end
 
@@ -249,23 +249,23 @@ Return the moving box average of the vector data `x` with box length 'n'.
 One-sided average on the left and right edge.
 """
 function smooth(x::Vector, n::Int=100)
-	nx = length(x)
+   nx = length(x)
    x̄ = zeros(length(x))
 
-	# left points
-	for i = 1:n
-		x̄[i] = mean(x[1:(i+n)])
-	end
+   # left points
+   for i = 1:n
+      x̄[i] = mean(x[1:(i+n)])
+   end
 
-	# middle points
-	for i = (n+1):(nx-n)
-		x̄[i] = mean(x[(i-n):(i+n)])
-	end
+   # middle points
+   for i = (n+1):(nx-n)
+      x̄[i] = mean(x[(i-n):(i+n)])
+   end
 
-	# right points
-	for i = (nx-n+1):nx
-		x̄[i] = mean(x[i-n:end])
-	end
+   # right points
+   for i = (nx-n+1):nx
+      x̄[i] = mean(x[i-n:end])
+   end
 
    return x̄
 end
@@ -282,213 +282,213 @@ Static satellite wave analysis.
 - `dir::String`: file directory.
 """
 function wave_analysis(nShift=115, DoPlot=false, filename="satellites_PIC.txt",
-	dir="/Users/hyzhou/Documents/Computer/ParaView/data/"; verbose=true)
+   dir="/Users/hyzhou/Documents/Computer/ParaView/data/"; verbose=true)
 
-	header, data, satelliteNo = read_data(dir*filename)
+   header, data, satelliteNo = read_data(dir*filename)
 
-	index_ = findall(x->x==satelliteNo[1], data[:,1])
+   index_ = findall(x->x==satelliteNo[1], data[:,1])
 
-	verbose && println("satellite location: ",nShift, " ",data[nShift+1,11:end])
+   verbose && println("satellite location: ",nShift, " ",data[nShift+1,11:end])
 
-	id = get_indexes(header)
-	Rho_, Ux_, Uy_, Uz_, Bx_, By_, Bz_, Pe_, P_, U_, B_ =
-	    id.Rho_, id.Ux_, id.Uy_, id.Uz_, id.Bx_, id.By_, id.Bz_, id.Pe_, id.P_,
-	    id.U_, id.B_
+   id = get_indexes(header)
+   Rho_, Ux_, Uy_, Uz_, Bx_, By_, Bz_, Pe_, P_, U_, B_ =
+   id.Rho_, id.Ux_, id.Uy_, id.Uz_, id.Bx_, id.By_, id.Bz_, id.Pe_, id.P_,
+   id.U_, id.B_
 
-	ρ = data[index_ .+ nShift,Rho_]
-	P = data[index_ .+ nShift,P_]
-	Ux= data[index_ .+ nShift,Ux_]
-	Uy= data[index_ .+ nShift,Uy_]
-	Uz= data[index_ .+ nShift,Uz_]
-	Bx= data[index_ .+ nShift,Bx_]
-	By= data[index_ .+ nShift,By_]
-	Bz= data[index_ .+ nShift,Bz_]
-	B = @. √(Bx^2 + By^2 + Bz^2)
+   ρ = data[index_ .+ nShift,Rho_]
+   P = data[index_ .+ nShift,P_]
+   Ux= data[index_ .+ nShift,Ux_]
+   Uy= data[index_ .+ nShift,Uy_]
+   Uz= data[index_ .+ nShift,Uz_]
+   Bx= data[index_ .+ nShift,Bx_]
+   By= data[index_ .+ nShift,By_]
+   Bz= data[index_ .+ nShift,Bz_]
+   B = @. √(Bx^2 + By^2 + Bz^2)
 
-	# Subtract the background
-	ρ̄ = smooth(ρ)
-	P̄ = smooth(P)
-	Ūx= smooth(Ux)
-	Ūy= smooth(Uy)
-	Ūz= smooth(Uz)
-	B̄x= smooth(Bx)
-	B̄y= smooth(By)
-	B̄z= smooth(Bz)
-	B̄ = smooth(B)
+   # Subtract the background
+   ρ̄ = smooth(ρ)
+   P̄ = smooth(P)
+   Ūx= smooth(Ux)
+   Ūy= smooth(Uy)
+   Ūz= smooth(Uz)
+   B̄x= smooth(Bx)
+   B̄y= smooth(By)
+   B̄z= smooth(Bz)
+   B̄ = smooth(B)
 
-	#ρvar = (ρ.-ρ̄)./ρ
-	#Pvar = (P.-P̄)./P
-	#=
-	ρvar = (ρ.-ρ̄)./ρ
-	Uxvar= (Ux.-Ūx)./Ux
-	Uyvar= (Uy.-Ūy)./Uy
-	Uzvar= (Uz.-Ūz)./Uz
-	Bxvar= (Bx.-B̄x)./Bx
-	Byvar= (By.-B̄y)./By
-	Bzvar= (Bz.-B̄z)./Bz
-	Bvar = (B.-B̄)./B
+   #ρvar = (ρ.-ρ̄)./ρ
+   #Pvar = (P.-P̄)./P
+   #=
+   ρvar = (ρ.-ρ̄)./ρ
+   Uxvar= (Ux.-Ūx)./Ux
+   Uyvar= (Uy.-Ūy)./Uy
+   Uzvar= (Uz.-Ūz)./Uz
+   Bxvar= (Bx.-B̄x)./Bx
+   Byvar= (By.-B̄y)./By
+   Bzvar= (Bz.-B̄z)./Bz
+   Bvar = (B.-B̄)./B
 
-	figure()
-	subplot(311)
-	plot(Uxvar)
-	plot(Bxvar)
-	subplot(312)
-	plot(Uyvar)
-	plot(Byvar)
-	subplot(313)
-	plot(Uzvar)
-	plot(Bzvar)
-	=#
+   figure()
+   subplot(311)
+   plot(Uxvar)
+   plot(Bxvar)
+   subplot(312)
+   plot(Uyvar)
+   plot(Byvar)
+   subplot(313)
+   plot(Uzvar)
+   plot(Bzvar)
+   =#
 
-	Δρ = ρ .- ρ̄
-	ΔUx= Ux .- Ūx
-	ΔUy= Uy .- Ūy
-	ΔUz= Uz .- Ūz
-	ΔBx= Bx .- B̄x
-	ΔBy= By .- B̄y
-	ΔBz= Bz .- B̄z
-	ΔB = @. sqrt(Bx^2 + By^2 + Bz^2) - sqrt(B̄x^2 + B̄y^2 + B̄z^2)
-	ΔP = P .- P̄
+   Δρ = ρ .- ρ̄
+   ΔUx= Ux .- Ūx
+   ΔUy= Uy .- Ūy
+   ΔUz= Uz .- Ūz
+   ΔBx= Bx .- B̄x
+   ΔBy= By .- B̄y
+   ΔBz= Bz .- B̄z
+   ΔB = @. sqrt(Bx^2 + By^2 + Bz^2) - sqrt(B̄x^2 + B̄y^2 + B̄z^2)
+   ΔP = P .- P̄
 
-	VA = @. B/√(μ₀*ρ*amu)*1e-15 # [km/s]
+   VA = @. B/√(μ₀*ρ*amu)*1e-15 # [km/s]
 
-	start_ = 100 # remove the starting points in correlation analysis
+   start_ = 100 # remove the starting points in correlation analysis
 
-	# Determine if ΔB and ΔU are correlated --> Alfven wave?
-	rUBx = cor((ΔUx./VA)[start_:end],(ΔBx./B)[start_:end])
-	rUBy = cor((ΔUy./VA)[start_:end],(ΔBy./B)[start_:end])
-	rUBz = cor((ΔUz./VA)[start_:end],(ΔBz./B)[start_:end])
+   # Determine if ΔB and ΔU are correlated --> Alfven wave?
+   rUBx = cor((ΔUx./VA)[start_:end],(ΔBx./B)[start_:end])
+   rUBy = cor((ΔUy./VA)[start_:end],(ΔBy./B)[start_:end])
+   rUBz = cor((ΔUz./VA)[start_:end],(ΔBz./B)[start_:end])
 
-	if verbose
-		println("correlation between ΔUx and ΔBx = ", round(rUBx, digits=3))
-		println("correlation between ΔUy and ΔBy = ", round(rUBy, digits=3))
-		println("correlation between ΔUz and ΔBz = ", round(rUBz, digits=3))
-	end
+   if verbose
+      println("correlation between ΔUx and ΔBx = ", round(rUBx, digits=3))
+      println("correlation between ΔUy and ΔBy = ", round(rUBy, digits=3))
+      println("correlation between ΔUz and ΔBz = ", round(rUBz, digits=3))
+   end
 
-	n = length(ρ)
-	α = 0.05
+   n = length(ρ)
+   α = 0.05
 
-	t = abs(rUBx) / √(1-rUBx^2)*√(n-start_-2)
-	if t ≤ quantile(TDist(n-start_-2), 1-α)
-		verbose &&
-			println("ΔUx and ΔBx hypothesis test rejected! No strong evidence of correlation!")
-	end
+   t = abs(rUBx) / √(1-rUBx^2)*√(n-start_-2)
+   if t ≤ quantile(TDist(n-start_-2), 1-α)
+      verbose &&
+      println("ΔUx and ΔBx hypothesis test rejected! No strong evidence of correlation!")
+   end
 
-	t = abs(rUBy) / √(1-rUBy^2)*√(n-start_-2)
+   t = abs(rUBy) / √(1-rUBy^2)*√(n-start_-2)
 
-	if t ≤ quantile(TDist(n-start_-2), 1-α)
-		verbose &&
-		println("ΔUy and ΔBy hypothesis test rejected! No strong evidence of correlation!")
-	end
+   if t ≤ quantile(TDist(n-start_-2), 1-α)
+      verbose &&
+      println("ΔUy and ΔBy hypothesis test rejected! No strong evidence of correlation!")
+   end
 
-	t = abs(rUBz) / √(1-rUBz^2)*√(n-start_-2)
-	if t ≤ quantile(TDist(n-start_-2), 1-α)
-		verbose &&
-		println("ΔUz and ΔBz hypothesis test rejected! No strong evidence of correlation!")
-	end
+   t = abs(rUBz) / √(1-rUBz^2)*√(n-start_-2)
+   if t ≤ quantile(TDist(n-start_-2), 1-α)
+      verbose &&
+      println("ΔUz and ΔBz hypothesis test rejected! No strong evidence of correlation!")
+   end
 
-	# Determine if ΔB and Δρ are correlated --> fast/slow wave?
-	rUρ = cor(ΔB[start_:end], Δρ[start_:end])
+   # Determine if ΔB and Δρ are correlated --> fast/slow wave?
+   rUρ = cor(ΔB[start_:end], Δρ[start_:end])
 
-	verbose && println("correlation between ΔB and Δρ = ", round(rUρ, digits=3))
+   verbose && println("correlation between ΔB and Δρ = ", round(rUρ, digits=3))
 
-	if rUρ > 0.5
-		verbose && println("possibly fast magnetosonic wave")
-	elseif rUρ < -0.5
-		verbose && println("possibly slow magnetosonic wave")
-	end
+   if rUρ > 0.5
+      verbose && println("possibly fast magnetosonic wave")
+   elseif rUρ < -0.5
+      verbose && println("possibly slow magnetosonic wave")
+   end
 
-	t = abs(rUρ) / √(1-rUρ^2)*√(n-start_-2)
+   t = abs(rUρ) / √(1-rUρ^2)*√(n-start_-2)
 
-	if t ≤ quantile(TDist(n-start_-2), 1-α)
-		verbose &&
-		println("ΔB and Δρ hypothesis test rejected! No strong evidence of correlation!")
-	end
+   if t ≤ quantile(TDist(n-start_-2), 1-α)
+      verbose &&
+      println("ΔB and Δρ hypothesis test rejected! No strong evidence of correlation!")
+   end
 
-	# thermal pressure perturbation vs. magnetic pressure perturbation
-	ΔPB = @. (Bx^2 + By^2 + Bz^2 - B̄x^2 - B̄y^2 - B̄z^2)/(2*μ₀)*1e-9
-	rPBPt = cor(ΔPB[start_:end], ΔP[start_:end])
+   # thermal pressure perturbation vs. magnetic pressure perturbation
+   ΔPB = @. (Bx^2 + By^2 + Bz^2 - B̄x^2 - B̄y^2 - B̄z^2)/(2*μ₀)*1e-9
+   rPBPt = cor(ΔPB[start_:end], ΔP[start_:end])
 
-	verbose && println("correlation between ΔPB and ΔPt = ", round(rPBPt, digits=3))
+   verbose && println("correlation between ΔPB and ΔPt = ", round(rPBPt, digits=3))
 
-	if DoPlot
-		figure()
-		plot(ΔP, label=L"\Delta P")
-		plot(ΔPB, label=L"\Delta P_B")
-		legend()
-	end
+   if DoPlot
+      figure()
+      plot(ΔP, label=L"\Delta P")
+      plot(ΔPB, label=L"\Delta P_B")
+      legend()
+   end
 
-	#=
-	(ρ+Δρ)*(U + ΔU)^2 - ρU^2
-	≈ ρ UΔU + Δρ U^2
-	=#
-	Ek = @. (((ΔUx*Ux+ΔUy*Uy+ΔUz*Bz)+0.5*(ΔUx^2 + ΔUy^2 + ΔUz^2))*ρ̄ +
-		Δρ*(Ūx^2 + Ūy^2 + Ūz^2))*amu*1e12
-	Et = @. ΔP*1e-9/(γ-1)
-	Eb = @. ((ΔBx*Bx+ΔBy*By+ΔBz*Bz)+0.5*(ΔBx^2 + ΔBy^2 + ΔBz^2))/μ₀*1e-18
+   #=
+   (ρ+Δρ)*(U + ΔU)^2 - ρU^2
+   ≈ ρ UΔU + Δρ U^2
+   =#
+   Ek = @. (((ΔUx*Ux+ΔUy*Uy+ΔUz*Bz)+0.5*(ΔUx^2 + ΔUy^2 + ΔUz^2))*ρ̄ +
+   Δρ*(Ūx^2 + Ūy^2 + Ūz^2))*amu*1e12
+   Et = @. ΔP*1e-9/(γ-1)
+   Eb = @. ((ΔBx*Bx+ΔBy*By+ΔBz*Bz)+0.5*(ΔBx^2 + ΔBy^2 + ΔBz^2))/μ₀*1e-18
 
-	verbose && println("correlation between Ek and Et = ",
-		round(cor(Ek[start_:end], Et[start_:end]), digits=3))
-	verbose && println("correlation between Ek and Eb = ",
-		round(cor(Ek[start_:end], Eb[start_:end]), digits=3))
-	verbose && println("correlation between Et and Eb = ",
-		round(cor(Et[start_:end], Eb[start_:end]), digits=3))
+   verbose && println("correlation between Ek and Et = ",
+   round(cor(Ek[start_:end], Et[start_:end]), digits=3))
+   verbose && println("correlation between Ek and Eb = ",
+   round(cor(Ek[start_:end], Eb[start_:end]), digits=3))
+   verbose && println("correlation between Et and Eb = ",
+   round(cor(Et[start_:end], Eb[start_:end]), digits=3))
 
-	#=
-	figure()
-	plot(Ek, alpha=0.7, label="Ek")
-	plot(Et, alpha=0.7, label="Et")
-	plot(Eb, alpha=0.7, label="Eb")
-	legend()
-	=#
+   #=
+   figure()
+   plot(Ek, alpha=0.7, label="Ek")
+   plot(Et, alpha=0.7, label="Et")
+   plot(Eb, alpha=0.7, label="Eb")
+   legend()
+   =#
 
-	#println("Average kinetic energy = ",mean(Ek))
-	#println("Average magnetic energy = ",mean(Eb))
+   #println("Average kinetic energy = ",mean(Ek))
+   #println("Average magnetic energy = ",mean(Eb))
 
-	if DoPlot
-		figure(figsize=(12,5))
-		subplot(311)
-		plot(ΔUx ./ VA, label=L"\Delta U_x / V_A")
-		plot(ΔBx ./ B, label=L"\Delta B_x / B_0")
-		legend()
-		subplot(312)
-		plot(ΔUy ./ VA, label=L"\Delta U_y / V_A")
-		plot(ΔBy ./ B, label=L"\Delta B_y / B_0")
-		legend()
-		subplot(313)
-		plot(ΔUz ./ VA, label=L"\Delta U_z / V_A")
-		plot(ΔBz ./ B, label=L"\Delta B_z / B_0")
-		legend()
+   if DoPlot
+      figure(figsize=(12,5))
+      subplot(311)
+      plot(ΔUx ./ VA, label=L"\Delta U_x / V_A")
+      plot(ΔBx ./ B, label=L"\Delta B_x / B_0")
+      legend()
+      subplot(312)
+      plot(ΔUy ./ VA, label=L"\Delta U_y / V_A")
+      plot(ΔBy ./ B, label=L"\Delta B_y / B_0")
+      legend()
+      subplot(313)
+      plot(ΔUz ./ VA, label=L"\Delta U_z / V_A")
+      plot(ΔBz ./ B, label=L"\Delta B_z / B_0")
+      legend()
 
-		figure()
-		plot(ΔB, alpha=0.6, label=L"\Delta B")
-		plot(Δρ, alpha=0.6, label=L"\Delta \rho")
-		legend()
-	end
+      figure()
+      plot(ΔB, alpha=0.6, label=L"\Delta B")
+      plot(Δρ, alpha=0.6, label=L"\Delta \rho")
+      legend()
+   end
 
 
-	#=
-	figure()
-	plot(ΔUx, alpha=0.7)
-	plot(ΔP .* -50, alpha=0.7)
-	xlabel("delta Ux")
-	ylabel("delta P")
-	=#
+   #=
+   figure()
+   plot(ΔUx, alpha=0.7)
+   plot(ΔP .* -50, alpha=0.7)
+   xlabel("delta Ux")
+   ylabel("delta P")
+   =#
 
-	#=
-	# Check the linearity
-	figure(figsize=(12,4))
-	subplot(131)
-	scatter(ΔUx,ΔBx)
-	subplot(132)
-	scatter(ΔUy,ΔBy)
-	subplot(133)
-	scatter(ΔUz,ΔBz)
+   #=
+   # Check the linearity
+   figure(figsize=(12,4))
+   subplot(131)
+   scatter(ΔUx,ΔBx)
+   subplot(132)
+   scatter(ΔUy,ΔBy)
+   subplot(133)
+   scatter(ΔUz,ΔBz)
 
-	figure()
-	scatter(ΔB,Δρ)
-	=#
-	return rPBPt
+   figure()
+   scatter(ΔB,Δρ)
+   =#
+   return rPBPt
 end
 
 #single_satellite_plot()
@@ -499,12 +499,12 @@ end
 nShift = 80
 #wave_analysis(nShift)
 for iShift = 1:250
-	r = wave_analysis(iShift, false, "satellites_Hall.txt"; verbose=false)
-	if r > 0.5
-		println("fast wave, ", iShift)
-	elseif r < -0.5
-		println("slow wave, ", iShift)
-	end
+   r = wave_analysis(iShift, false, "satellites_Hall.txt"; verbose=false)
+   if r > 0.5
+      println("fast wave, ", iShift)
+   elseif r < -0.5
+      println("slow wave, ", iShift)
+   end
 end
 
 # PIC
