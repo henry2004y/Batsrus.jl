@@ -74,7 +74,7 @@ function get_diamagnetic_velocity(filename::String, filedir::String=".",
    mkdir(saveDir)
 
    if filename[end-3:end] == "outs"
-      filehead, data, filelist = readdata(filename, dir=dir, verbose=false)
+      filehead, data, filelist = readdata(filename, dir=filedir, verbose=false)
       npict = filelist[1].npictinfiles
       for i = 1:npict
          filehead, data, filelist =
@@ -149,23 +149,18 @@ function processing(filehead::Dict, data::Data, saveDir::String, nType::Int=1)
 
    clf()
 
-   #cf = contourf(x[:,yMid,:],z[:,yMid,:],vMag[:,yMid,:],levels=np.logspace(6,8,30))
-   #cf = contourf(x[:,yMid,:],z[:,yMid,:],vMag[:,yMid,:],
-   #   locator=matplotlib.ticker.LogLocator(subs=collect(1:10)))
-   #cf = contourf(x[:,yMid,:],z[:,yMid,:],vMag[:,yMid,:], levels=50)
-   #cf = contourf(x[xrange,yMid,zrange],z[xrange,yMid,zrange],vMag[xrange,yMid,zrange], levels=50)
-   #cf = contourf(x[xrange,yMid,zrange],z[xrange,yMid,zrange],vMag[xrange,yMid,zrange], locator=matplotlib.ticker.LogLocator(), extend="both")
-   v = np.linspace(0.0, 20.0, 11, endpoint=true)
-   cf = contourf(x[xrange,yMid,zrange],z[xrange,yMid,zrange],log.(vMag[xrange,yMid,zrange]), v, levels=50, extend="both")
-
-   fig = matplotlib.pyplot.gcf()
-   fig.set_size_inches(3.5,6)
-   plt.axis("scaled")
-   cbar = plt.colorbar(cf,boundaries=v, ticks=v)
-   plt.clim(0.0, 20.0)
-   #plt.clim(0, 3e6) # This creates the same color for values above
+   fig, ax = subplots()
+   cont_levels = range(0.0, 10000.0, length=50)
+   c = ax.contourf(x[xrange,yMid,zrange], z[xrange,yMid,zrange], vMag[xrange,y\
+Mid,zrange], levels=cont_levels)
+   fig.colorbar(c, ax=ax, ticks=range(0.0, 10000.0, step=1000.0)) 
    xlabel("x"); ylabel("z")
    title(L"$\mathbf{B}\times \nabla P/(neB^2)$"*", t=$(i)")
+
+   fig.set_size_inches(3.5,6)
+   plt.axis("scaled")
+
+
    plt.savefig(saveDir*"/diamagnetic_$(i).png")
 end
 
