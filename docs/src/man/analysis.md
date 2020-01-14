@@ -81,9 +81,36 @@ minimum variance of the field component along each vector.
 
 ULF waves are MHD waves: Alfvén wave, fast wave and slow wave. One basic approach to identify waves is to check the correlation of quantity perturbations.
 
+The phase speed of shear Alfvén wave is
+```math
+v_{pA} = \frac{\omega}{k} = v_A \cos{\theta}
+```
+where ``v_A`` is the Alfvén speed and ``\theta`` is the angle between wave vector ``\mathbf{k}`` and magnetic field ``\boldsymbol{B}``.
+
+The perturbed quantities of Alfvén waves follow these relations:
+```math
+\frac{\delta \mathbf{v}{v_A} = \pm \frac{\delta \mathbf{B}}{B_0} \\
+\delta \rho = 0
+```
+where ``\delta \boldsymbol{v}``, ``\delta \boldsymbol{B}``, and ``\delta ρ`` are perturbed plasma velocity, magnetic fields, and plasma density, respectively, and ``B_0`` is the background magnetic magnitude.
+
+For slow and fast waves, the phase speeds are
+```math
+v_{p\pm}^2 &= \big(\frac{\omega}{k} \big) \\
+&= \frac{1}{2}(v_s^2 + v_A^2) \pm \frac{1}{2}\Big[ (v_s^2 + v_A^2)^2 - 4v_s^2v_A^2\cos^2{\theta}\Big]^{1/2}
+```
+The "+" is for fast waves and "−" for slow waves, and ``v_S`` is the sound speed. The perturbed quantities for fast and slow waves are
+```math
+\delta \rho = \frac{\rho_0}{v_p}\frac{v_A^2\sin\theta}{B_0 (v_p - v_s^2/v_p)}\delta B\\
+\delta \mathbf{v} = -\frac{v_A^2 \cos{\theta}}{B_0 v_p}\delta\mathbf{B} + \frac{v_A^2 \sin{\theta}\delta B}{B_0 (v_p - v_s^2/v_p)}\frac{\mathbf{k}}{k}
+```
+Thus generally the Alfvén wave is identified by the correlations between velocity and magnetic field perturbations, and the fast and slow waves are identified by the negative (for slow waves) or positive (for fast waves) correlations between either density and magnetic field perturbation or thermal pressure and magnetic pressure perturbation.
+
 A tricky part in practice is how to get the average through smoothing. Note that a real satellite moves both in time and space. Usually people do moving-box-average to get an average state within a short period.
 
 A more careful analysis is called Walen test.
+
+However, always keep in mind that the most reliable way of identifying waves is to calculate the dispersion relation.
 
 ## Correlation Test Between Two Variables
 
@@ -115,6 +142,6 @@ The p-value (significance level) of the correlation can be determined :
 1. by using the correlation coefficient table for the degrees of freedom : ``df=n−2``, where ``n`` is the number of observation in ``x`` and ``y`` variables.
 2 or by calculating the ``t`` value as follows:
 ```math
-t = \frac{r}{\sqrt{1-r^2}}\sqrt{n-2}
+t = \frac{|r|}{\sqrt{1-r^2}}\sqrt{n-2}
 ```
 where the corresponding p-value is determined using t table distribution for ``df=n-2``. If the p-value is ``< 5\%``, then the correlation between ``x`` and ``y`` is significant.
