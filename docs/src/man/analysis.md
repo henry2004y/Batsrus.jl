@@ -96,8 +96,7 @@ where ``\delta \boldsymbol{v}``, ``\delta \boldsymbol{B}``, and ``\delta ρ`` ar
 
 For slow and fast waves, the phase speeds are
 ```math
-v_{p\pm}^2 &= \big(\frac{\omega}{k} \big) \\
-&= \frac{1}{2}(v_s^2 + v_A^2) \pm \frac{1}{2}\Big[ (v_s^2 + v_A^2)^2 - 4v_s^2v_A^2\cos^2{\theta}\Big]^{1/2}
+v_{p\pm}^2 = \big(\frac{\omega}{k} \big) = \frac{1}{2}(v_s^2 + v_A^2) \pm \frac{1}{2}\Big[ (v_s^2 + v_A^2)^2 - 4v_s^2 v_A^2 \cos^2{\theta}\Big]^{1/2}
 ```
 The "+" is for fast waves and "−" for slow waves, and ``v_S`` is the sound speed. The perturbed quantities for fast and slow waves are
 ```math
