@@ -85,14 +85,14 @@ The phase speed of shear Alfvén wave is
 ```math
 v_{pA} = \frac{\omega}{k} = v_A \cos{\theta}
 ```
-where ``v_A`` is the Alfvén speed and ``\theta`` is the angle between wave vector ``\mathbf{k}`` and magnetic field ``\boldsymbol{B}``.
+where ``v_A`` is the Alfvén speed and ``\theta`` is the angle between wave vector ``\mathbf{k}`` and magnetic field ``\mathbf{B}``.
 
 The perturbed quantities of Alfvén waves follow these relations:
 ```math
 \frac{\delta \mathbf{v}}{v_A} = \pm \frac{\delta \mathbf{B}}{B_0} \\
 \delta \rho = 0
 ```
-where ``\delta \boldsymbol{v}``, ``\delta \boldsymbol{B}``, and ``\delta \rho`` are perturbed plasma velocity, magnetic fields, and plasma density, respectively, and ``B_0`` is the background magnetic magnitude.
+where ``\delta \mathbf{v}``, ``\delta \mathbf{B}``, and ``\delta \rho`` are perturbed plasma velocity, magnetic fields, and plasma density, respectively, and ``B_0`` is the background magnetic magnitude.
 
 For slow and fast waves, the phase speeds are
 ```math
