@@ -92,7 +92,7 @@ The perturbed quantities of Alfvén waves follow these relations:
 \frac{\delta \mathbf{v}}{v_A} = \pm \frac{\delta \mathbf{B}}{B_0} \\
 \delta \rho = 0
 ```
-where ``\delta \boldsymbol{v}``, ``\delta \boldsymbol{B}``, and ``\delta ρ`` are perturbed plasma velocity, magnetic fields, and plasma density, respectively, and ``B_0`` is the background magnetic magnitude.
+where ``\delta \boldsymbol{v}``, ``\delta \boldsymbol{B}``, and ``\delta \rho`` are perturbed plasma velocity, magnetic fields, and plasma density, respectively, and ``B_0`` is the background magnetic magnitude.
 
 For slow and fast waves, the phase speeds are
 ```math
