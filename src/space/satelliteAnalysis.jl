@@ -341,14 +341,16 @@ function wave_analysis(nShift=115; DoPlot=false, filename="satellites_PIC.txt",
    rUBy = cor((ΔUy./VA)[start_:end],(ΔBy./B)[start_:end])
    rUBz = cor((ΔUz./VA)[start_:end],(ΔBz./B)[start_:end])
 
+   rAlfven = sort([rUBx, rUBy, rUBz])[2] # Take the intermediate value
+
    if verbose
-      println("correlation between ΔUx and ΔBx = ", round(rUBx, digits=3))
-      println("correlation between ΔUy and ΔBy = ", round(rUBy, digits=3))
-      println("correlation between ΔUz and ΔBz = ", round(rUBz, digits=3))
+      println("correlation between ΔUx and ΔBx = ", round(rUBx, digits=2))
+      println("correlation between ΔUy and ΔBy = ", round(rUBy, digits=2))
+      println("correlation between ΔUz and ΔBz = ", round(rUBz, digits=2))
    end
 
    n = length(ρ)
-   α = 0.05
+   α = 0.05 # acceptance quantile
 
    t = abs(rUBx) / √(1-rUBx^2)*√(n-start_-2)
    if t ≤ quantile(TDist(n-start_-2), 1-α)
@@ -370,15 +372,9 @@ function wave_analysis(nShift=115; DoPlot=false, filename="satellites_PIC.txt",
    end
 
    # Determine if ΔB and Δρ are correlated --> fast/slow wave?
-   rUρ = cor(ΔB[start_:end], Δρ[start_:end])
+   rUρ = cor(ΔB[start_:end], Δρ[start_:end]) # this one is not actually used
 
-   verbose && println("correlation between ΔB and Δρ = ", round(rUρ, digits=3))
-
-   if rUρ > 0.5
-      verbose && println("possibly fast magnetosonic wave")
-   elseif rUρ < -0.5
-      verbose && println("possibly slow magnetosonic wave")
-   end
+   verbose && println("correlation between ΔB and Δρ = ", round(rUρ, digits=2))
 
    t = abs(rUρ) / √(1-rUρ^2)*√(n-start_-2)
 
@@ -391,7 +387,13 @@ function wave_analysis(nShift=115; DoPlot=false, filename="satellites_PIC.txt",
    ΔPB = @. (Bx^2 + By^2 + Bz^2 - B̄x^2 - B̄y^2 - B̄z^2)/(2*μ₀)*1e-9
    rPBPt = cor(ΔPB[start_:end], ΔP[start_:end])
 
-   verbose && println("correlation between ΔPB and ΔPt = ", round(rPBPt, digits=3))
+   verbose && println("correlation between ΔPB and ΔPt = ", round(rPBPt, digits=2))
+
+   if rPBPt > 0.5
+      verbose && println("possibly fast magnetosonic wave")
+   elseif rPBPt < -0.5
+      verbose && println("possibly slow magnetosonic wave")
+   end
 
    if DoPlot
       figure(figsize=(12,3.5))
@@ -417,11 +419,11 @@ function wave_analysis(nShift=115; DoPlot=false, filename="satellites_PIC.txt",
    Eb = @. ((ΔBx*Bx+ΔBy*By+ΔBz*Bz)+0.5*(ΔBx^2 + ΔBy^2 + ΔBz^2))/μ₀*1e-18
 
    verbose && println("correlation between Ek and Et = ",
-      round(cor(Ek[start_:end], Et[start_:end]), digits=3))
+      round(cor(Ek[start_:end], Et[start_:end]), digits=2))
    verbose && println("correlation between Ek and Eb = ",
-      round(cor(Ek[start_:end], Eb[start_:end]), digits=3))
+      round(cor(Ek[start_:end], Eb[start_:end]), digits=2))
    verbose && println("correlation between Et and Eb = ",
-      round(cor(Et[start_:end], Eb[start_:end]), digits=3))
+      round(cor(Et[start_:end], Eb[start_:end]), digits=2))
 
    #println("Average kinetic energy = ",mean(Ek))
    #println("Average magnetic energy = ",mean(Eb))
@@ -502,7 +504,7 @@ function wave_analysis(nShift=115; DoPlot=false, filename="satellites_PIC.txt",
    figure()
    scatter(ΔB,Δρ)
    =#
-   return rPBPt
+   return rAlfven, rPBPt
 end
 
 #single_satellite_plot("satellites_PIC.txt",
@@ -514,7 +516,8 @@ end
 nShift = 173
 #single_satellite_plot("satellites_Hall.txt",
 #   "/Users/hyzhou/Documents/Computer/ParaView/data/", nShift)
-wave_analysis(nShift; DoPlot=true, filename="satellites_PIC.txt", verbose=true)
+#wave_analysis(nShift; DoPlot=true, filename="satellites_PIC.txt",
+#   dir="/Users/hyzhou/Ganymede/PIC_frontera/GM/", verbose=true)
 #=
 for iShift = 137:170
    r = wave_analysis(iShift, false, "satellites_Hall.txt"; verbose=false)
@@ -525,6 +528,40 @@ for iShift = 137:170
    end
 end
 =#
+function check_wave_type(filename="satellites_PIC.txt",
+   dir="/Users/hyzhou/Ganymede/PIC_frontera/GM/")
+   f = readdlm("/Users/hyzhou/Ganymede/PIC_frontera/GM/G8Traj.csv", ',', Float32, '\n'; header=true)
+   nS = size(f[1])[1]
+
+   # X, Y, Z, rAlfven, rFastSlow
+   fnew = Array{Float32,2}(undef, nS, 5)
+
+   header, data, satelliteNo = read_data(dir*filename)
+
+   if nS != length(satelliteNo)
+      error("Number of satellites not right! Check the input files!")
+   end
+
+   for iShift = 1:nS
+      r1,r2 = wave_analysis(iShift-1; DoPlot=false, filename=filename,
+         dir=dir, verbose=false)
+      fnew[iShift,1:3] = f[1][iShift,:]
+      fnew[iShift,3] = 0.75 # For plotting purpose
+      fnew[iShift,4:5] .= r1, r2
+      println("iShift = ", iShift)
+   end
+
+   # Write to file
+   open("waveAlongTrajG8.csv", "w") do io
+      write(io, "\"X\",\"Y\",\"Z\",\"rA\",\"rM\"\n")
+      writedlm(io, fnew, ',')
+   end
+
+   return fnew
+end
+
+
+fnew = check_wave_type()
 
 
 #=
