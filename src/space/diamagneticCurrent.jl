@@ -99,8 +99,6 @@ end
 
 #get_diamagnetic_current(filehead[1], data)
 
-include("VisAna.jl")
-using .VisAna
 using Glob
 
 const q = 1.6021765e-19 #[C]
@@ -182,7 +180,7 @@ for i = 80:100#length(filenames)
 
    plt.axis("equal")
    cbar = colorbar(cf)
-   plt.clim(0, 3e6) # This creates the same color for values above
+   #plt.clim(0, 3e6) # This creates the same color for values above
    xlabel("x"); ylabel("z")
    title(L"$\mathbf{B}\times \nabla P/(neB^2)$"*", t=$(i)")
    plt.savefig("testoutput/diamagnetic_$(i).png")
