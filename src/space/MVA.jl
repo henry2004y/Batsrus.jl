@@ -12,7 +12,8 @@
 #
 # Hongyang Zhou, hyzhou@umich.edu 01/10/2020
 
-using Statistics, LinearAlgebra, CSV, Dates
+using Statistics, LinearAlgebra, CSV, Dates, PyPlot
+
 
 function MVA(Bx, By, Bz)
 
@@ -54,7 +55,6 @@ round(F.values[2]/F.values[3],digits=3))
 
 
 if DoPlot
-   using PyPlot
    # Original Cartesian coordinates
    figure(figsize=(12,5))
    subplot(411)
