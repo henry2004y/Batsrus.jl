@@ -105,6 +105,12 @@ The "+" is for fast waves and "−" for slow waves, and ``v_S`` is the sound spe
 ```
 Thus generally the Alfvén wave is identified by the correlations between velocity and magnetic field perturbations, and the fast and slow waves are identified by the negative (for slow waves) or positive (for fast waves) correlations between either density and magnetic field perturbation or thermal pressure and magnetic pressure perturbation.
 
+For the magnetosonic waves, consider using ``\delta \mathbf{E}`` and ``\delta \mathbf{B}`` for identifying speed. The slopes of the curves ``\delta E∕\delta B`` correspond to the wave propagation speed in the spacecraft frame.
+
+About the specific names: transverse and shear Alfvén wave refer to actually the same thing.
+
+It is possible for a static satellite to encounter first one wave and then another wave?
+
 A tricky part in practice is how to get the average through smoothing. Note that a real satellite moves both in time and space. Usually people do moving-box-average to get an average state within a short period.
 
 A more careful analysis is called Walen test.
