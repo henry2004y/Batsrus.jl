@@ -29,7 +29,7 @@ struct Index
    U_::UnitRange{Int64}
 end
 
-"""Import satellite data."""
+"""Import satellite data. Require one line header presented."""
 function read_data(fname)
    f = readdlm(fname, ',', Float32, '\n'; header=true)
 
@@ -194,13 +194,13 @@ Static satellite analysis, contour plots of location and time.
 - `DoSubtractMean::Bool`: Subtract the average state for each variable.
 """
 function multi_satellite_contour(filename="satellites_PIC.txt",
-   dir="/Users/hyzhou/Documents/Computer/ParaView/data/", DoSave=false,
+   dir="/Users/hyzhou/Documents/Computer/ParaView/data/"; DoSave=false,
    DoSubtractMean = true)
 
    header, data, satelliteNo = read_data(dir*filename)
 
    # Remove the trailing satellites
-   satelliteNo = satelliteNo[1:end-20]
+   #satelliteNo = satelliteNo[1:end-20]
 
    index_ = findall(x->x==satelliteNo[1], data[:,1])
 
@@ -507,30 +507,10 @@ function wave_analysis(nShift=115; DoPlot=false, filename="satellites_PIC.txt",
    return rAlfven, rPBPt
 end
 
-#single_satellite_plot("satellites_PIC.txt",
-#   "/Users/hyzhou/Documents/Computer/ParaView/data/", 185)
-#multi_satellite_plot()
-#multi_satellite_contour()
-
-
-nShift = 173
-#single_satellite_plot("satellites_Hall.txt",
-#   "/Users/hyzhou/Documents/Computer/ParaView/data/", nShift)
-#wave_analysis(nShift; DoPlot=true, filename="satellites_PIC.txt",
-#   dir="/Users/hyzhou/Ganymede/PIC_frontera/GM/", verbose=true)
-#=
-for iShift = 137:170
-   r = wave_analysis(iShift, false, "satellites_Hall.txt"; verbose=false)
-   if r > 0.5
-      println("fast wave, ", iShift, r)
-   elseif r < -0.5
-      println("slow wave, ", iShift, r)
-   end
-end
-=#
 function check_wave_type(filename="satellites_PIC.txt",
-   dir="/Users/hyzhou/Ganymede/PIC_frontera/GM/")
-   f = readdlm("/Users/hyzhou/Ganymede/PIC_frontera/GM/G8Traj.csv", ',', Float32, '\n'; header=true)
+   dir="/Users/hyzhou/Documents/Computer/ParaView/data/")
+   f = readdlm("/Users/hyzhou/Documents/Computer/ParaView/data/G8Traj.csv",
+      ',', Float32, '\n'; header=true)
    nS = size(f[1])[1]
 
    # X, Y, Z, rAlfven, rFastSlow
@@ -552,7 +532,7 @@ function check_wave_type(filename="satellites_PIC.txt",
    end
 
    # Write to file
-   open("waveAlongTrajG8.csv", "w") do io
+   open(dir*"waveAlongTrajG8.csv", "w") do io
       write(io, "\"X\",\"Y\",\"Z\",\"rA\",\"rM\"\n")
       writedlm(io, fnew, ',')
    end
@@ -560,9 +540,19 @@ function check_wave_type(filename="satellites_PIC.txt",
    return fnew
 end
 
+#single_satellite_plot("satellites_PIC.txt",
+#   "/Users/hyzhou/Documents/Computer/ParaView/data/", 185)
+#multi_satellite_plot()
+#multi_satellite_contour("satellites_boundary_PIC.txt", DoSubtractMean=false)
 
-fnew = check_wave_type()
 
+#nShift = 173
+#single_satellite_plot("satellites_Hall.txt",
+#   "/Users/hyzhou/Documents/Computer/ParaView/data/", nShift)
+#wave_analysis(nShift; DoPlot=true, filename="satellites_PIC.txt",
+#   dir="/Users/hyzhou/Ganymede/PIC_frontera/GM/", verbose=true)
+#fnew = check_wave_type()
+check_wave_type()
 
 #=
 # Cross correlation check
