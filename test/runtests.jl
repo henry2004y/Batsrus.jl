@@ -18,7 +18,7 @@ using VisAna, PyPlot, Test
    @test line.get_ydata() ≈ data[1].w[:,10]
 end
 
-@testset "reading 2D binary" begin
+@testset "reading 2D structured binary" begin
    filename = "z=0_raw_1_t25.60000_n00000258.out"
    filehead, data, filelist = readdata(filename)
    @test isa(filehead[1], Dict)
@@ -30,6 +30,16 @@ end
    contourf(data[1],filehead[1],"p")
    ax = gca()
    @test isa(ax, PyPlot.PyObject)
+end
+
+@testset "reading 2D unstructured binary" begin
+   #filename = "z=0_raw_1_t25.60000_n00000258.out"
+   #filehead, data, filelist = readdata(filename)
+end
+
+@testset "reading 3D structured binary" begin
+   #filename = "3d_structured.out";
+   #filehead, data, filelist = readdata(filename,verbose=false);
 end
 
 @testset "log" begin
@@ -51,4 +61,6 @@ end
 
 @testset "MVA" begin
    @info("Minimum variance analysis test.")
+   eigenRef = [2079.360,  78.142,   34.309]
+   @test F.values ≈ eigenRef atol=1e-3
 end
