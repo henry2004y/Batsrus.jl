@@ -12,7 +12,7 @@
 #
 # Hongyang Zhou, hyzhou@umich.edu 01/10/2020
 
-using Statistics, LinearAlgebra, CSV, Dates, PyPlot
+using Statistics, LinearAlgebra, CSV, CodecZlib, Dates, PyPlot
 
 
 function MVA(Bx, By, Bz)
@@ -33,61 +33,73 @@ function MVA(Bx, By, Bz)
    F = eigen(M, sortby = x -> -abs(x))
 end
 
-DoPlot = false
-# Load magnetometer data Bx, By, Bz
-filename = "../../test/Galileo_G8_flyby_MAG.dat"
-df = CSV.File(filename; header=2, delim=" ", ignorerepeated=true)
+"""
+	MVA_analysis(filename::AbstractString, index_::UnitRange, DoPlot=false)
 
-# inbound crossing interval
-index_ = 2656:2775
-F = MVA(df.Bx[index_], df.By[index_], df.Bz[index_])
+This function is currently only written for the specific input file.
+"""
+function MVA_analysis(filename::AbstractString, index_::UnitRange, DoPlot=false)
+   # Load magnetometer data Bx, By, Bz
+   if filename[end-1:end] == "gz"
+      df = CSV.read(GzipDecompressorStream(open(filename));
+         header=2, delim=" ", ignorerepeated=true)
+   else
+      df = CSV.File(filename; header=2, delim=" ", ignorerepeated=true)
+   end
 
-t = DateTime.(df.yr, df.month, df.day, df.hr, df.min, floor.(Int, df.sec),
-floor.(Int, 1e3 .* (df.sec - floor.(df.sec))) )
+   # inbound crossing interval
+   #index_ = 2656:2775
+   F = MVA(df.Bx[index_], df.By[index_], df.Bz[index_])
 
-println("Eigenvalues:",F.values)
-println("Eigenvectors:")
-println(F.vectors[:,1])
-println(F.vectors[:,2])
-println(F.vectors[:,3])
-println("Ratio of intermediate variance to minimum variance = ",
-round(F.values[2]/F.values[3],digits=3))
+   t = DateTime.(df.yr, df.month, df.day, df.hr, df.min, floor.(Int, df.sec),
+      floor.(Int, 1e3 .* (df.sec - floor.(df.sec))) )
+
+   println("Eigenvalues:",F.values)
+   println("Eigenvectors:")
+   println(F.vectors[:,1])
+   println(F.vectors[:,2])
+   println(F.vectors[:,3])
+   println("Ratio of intermediate variance to minimum variance = ",
+      round(F.values[2]/F.values[3],digits=3))
 
 
-if DoPlot
-   # Original Cartesian coordinates
-   figure(figsize=(12,5))
-   subplot(411)
-   plot(t, df.Bx, label=L"B_x")
-   legend()
-   subplot(412)
-   plot(t, df.By, label=L"B_y")
-   legend()
-   subplot(413)
-   plot(t, df.Bz, label=L"B_z")
-   legend()
-   subplot(414)
-   plot(sqrt.(df.Bx.^2 .+ df.By.^2 .+ df.Bz.^2), label=L"B")
-   legend()
-   tight_layout()
+   if DoPlot
+      # Original Cartesian coordinates
+      figure(figsize=(12,5))
+      subplot(411)
+      plot(t, df.Bx, label=L"B_x")
+      legend()
+      subplot(412)
+      plot(t, df.By, label=L"B_y")
+      legend()
+      subplot(413)
+      plot(t, df.Bz, label=L"B_z")
+      legend()
+      subplot(414)
+      plot(sqrt.(df.Bx.^2 .+ df.By.^2 .+ df.Bz.^2), label=L"B")
+      legend()
+      tight_layout()
 
-   # Coordinate transformation
-   id_ = 2000:2900
-   BL = sum(F.vectors[:,1]' .* [df.Bx[id_] df.By[id_] df.Bz[id_]];dims=2)
-   BM = sum(F.vectors[:,2]' .* [df.Bx[id_] df.By[id_] df.Bz[id_]];dims=2)
-   BN = sum(F.vectors[:,3]' .* [df.Bx[id_] df.By[id_] df.Bz[id_]];dims=2)
-   figure(figsize=(12,5))
-   subplot(411)
-   plot(t[id_], BL, label=L"B_L")
-   legend()
-   subplot(412)
-   plot(t[id_], BM, label=L"B_M")
-   legend()
-   subplot(413)
-   plot(t[id_], BN, label=L"B_N")
-   legend()
-   subplot(414)
-   plot(t[id_], sqrt.(BL.^2 .+ BM.^2 .+ BN.^2), label=L"B")
-   legend()
-   tight_layout()
+      # Coordinate transformation
+      id_ = 2000:2900
+      BL = sum(F.vectors[:,1]' .* [df.Bx[id_] df.By[id_] df.Bz[id_]];dims=2)
+      BM = sum(F.vectors[:,2]' .* [df.Bx[id_] df.By[id_] df.Bz[id_]];dims=2)
+      BN = sum(F.vectors[:,3]' .* [df.Bx[id_] df.By[id_] df.Bz[id_]];dims=2)
+      figure(figsize=(12,5))
+      subplot(411)
+      plot(t[id_], BL, label=L"B_L")
+      legend()
+      subplot(412)
+      plot(t[id_], BM, label=L"B_M")
+      legend()
+      subplot(413)
+      plot(t[id_], BN, label=L"B_N")
+      legend()
+      subplot(414)
+      plot(t[id_], sqrt.(BL.^2 .+ BM.^2 .+ BN.^2), label=L"B")
+      legend()
+      tight_layout()
+   end
+
+   return F
 end
