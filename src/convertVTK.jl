@@ -2,21 +2,19 @@
 #
 # Hongyang Zhou, hyzhou@umich.edu 07/23/2019
 
-using WriteVTK
+using VisAna, WriteVTK
 try
    using MATLAB
 catch
    println("MATLAB not found path...")
 end
-include("VisAna.jl")
-using .VisAna
 
 searchdir(path,key) = filter(x->occursin(key,x), readdir(path))
 
-mypath = "."
-mykey  = "box_test.out"
+#mypath = "."
+#mykey  = "box_test.out"
 
-filenames = searchdir(mypath,mykey)
+#filenames = searchdir(mypath,mykey)
 
 function convertBox2VTK_matlab(filenames::Array{String,1})
 
@@ -51,23 +49,12 @@ function convertBox2VTK_matlab(filenames::Array{String,1})
 
 end
 
-function convertBox2VTK(filenames::Array{String,1}, gridType::Int64=1)
+function convertBox2VTK(filenames::Array{String,1}; dir=".", gridType=1)
 
    for filename in filenames
-      filehead, data, filelist = readdata(filename,verbose=false)
+      head, data, list = readdata(filename, dir=dir, verbose=false)
 
-      func = "bx"
-      func_ = findfirst(x->x==func, lowercase.(filehead[1][:wnames]))
-      if isnothing(func_) @error "Couldn't find variable $(func)!" end
-      B = @view data[1].w[:,:,:,func_:func_+2]
-      B = permutedims(B, [4,1,2,3])
-
-      #=
-      func = "P"
-      func_ = findfirst(x->x==func, filehead[1][:wnames])
-      if isnothing(func_) @error "Couldn't find variable $(func)!" end
-      P = data[1].w[:,:,:,func_]
-      =#
+      nVar = length(head[1][:wnames])
 
       outname = filename[1:end-4]
 
@@ -76,19 +63,43 @@ function convertBox2VTK(filenames::Array{String,1}, gridType::Int64=1)
          y = @view data[1].x[1,:,1,2]
          z = @view data[1].x[1,1,:,3]
 
-         outfiles = vtk_grid(outname, x,y,z) do vtk
-            #vtk_point_data(vtk, P, "P")
-            vtk_point_data(vtk, B, "B")
+         outfiles = vtk_grid(dir*outname, x,y,z) do vtk
+            for ivar = 1:nVar
+               if head[1][:wnames][ivar][end] == 'x' # vector
+                  var1 = @view data[1].w[:,:,:,ivar]
+                  var2 = @view data[1].w[:,:,:,ivar+1]
+                  var3 = @view data[1].w[:,:,:,ivar+2]
+                  namevar = head[1][:wnames][ivar][1:end-1]
+                  vtk_point_data(vtk, (var1, var2, var3), namevar)
+               elseif head[1][:wnames][ivar][end] in ('y','z')
+                  continue
+               else
+                  var = @view data[1].w[:,:,:,ivar]
+                  vtk_point_data(vtk, var, head[1][:wnames][ivar])
+               end
+            end
          end
       elseif gridType == 2 # structured grid
          xyz = permutedims(data[1].x, [4,1,2,3])
 
-         outfiles = vtk_grid(outname, xyz) do vtk
-            #vtk_point_data(vtk, P, "P")
-            vtk_point_data(vtk, B, "B")
+         outfiles = vtk_grid(dir*outname, xyz) do vtk
+            for ivar = 1:nVar
+               if head[1][:wnames][ivar][end] == 'x' # vector
+                  var1 = @view data[1].w[:,:,:,ivar]
+                  var2 = @view data[1].w[:,:,:,ivar+1]
+                  var3 = @view data[1].w[:,:,:,ivar+2]
+                  namevar = head[1][:wnames][ivar][1:end-1]
+                  vtk_point_data(vtk, (var1, var2, var3), namevar)
+               elseif head[1][:wnames][ivar][end] in ('y','z')
+                  continue
+               else
+                  var = @view data[1].w[:,:,:,ivar]
+                  vtk_point_data(vtk, var, head[1][:wnames][ivar])
+               end
+            end
          end
       elseif gridType == 3 # unstructured grid, not finished
-         vtkfile = vtk_grid(outname, points, cells)
+         vtkfile = vtk_grid(dir*outname, points, cells)
          vtk_cell_data(vtkfile, cdata, "my_cell_data")
          outfiles = vtk_save(vtkfile)
       end
@@ -103,11 +114,11 @@ function convertTec2VTK()
 
    points = @view data[1:3,:]
    cells = Vector{MeshCell{Array{Int32,1}}}(undef,head[:nCell])
-   if head[:nDim] == 3
+   if head[:ndim] == 3
       @inbounds for i = 1:head[:nCell]
          cells[i] = MeshCell(VTKCellTypes.VTK_VOXEL, connectivity[:,i])
       end
-   elseif head[:nDim] == 2
+   elseif head[:ndim] == 2
       @inbounds for i = 1:head[:nCell]
          cells[i] = MeshCell(VTKCellTypes.VTK_PIXEL, connectivity[:,i])
       end
@@ -133,11 +144,11 @@ function test_bin()
 
    points = @view data[1:3,:]
    cells = Vector{MeshCell{Array{Int32,1}}}(undef,head[:nCell])
-   if head[:nDim] == 3
+   if head[:ndim] == 3
       @inbounds for i = 1:head[:nCell]
          cells[i] = MeshCell(VTKCellTypes.VTK_VOXEL, connectivity[:,i])
       end
-   elseif head[:nDim] == 2
+   elseif head[:ndim] == 2
       @inbounds for i = 1:head[:nCell]
          cells[i] = MeshCell(VTKCellTypes.VTK_PIXEL, connectivity[:,i])
       end
@@ -163,17 +174,17 @@ function test_cell()
 
    nVar = length(head[:variables])
 
-   points = @view data[1:head[:nDim],:]
+   points = @view data[1:head[:ndim],:]
    cells = Vector{MeshCell{Array{Int32,1}}}(undef,head[:nCell])
-   if head[:nDim] == 3
+   if head[:ndim] == 3
       # PLT to VTK index_ = [1 2 4 3 5 6 8 7]
       for i = 1:2
          connectivity = swaprows(connectivity, 4*i-1, 4*i)
-      end   
+      end
       @inbounds for i = 1:head[:nCell]
          cells[i] = MeshCell(VTKCellTypes.VTK_VOXEL, connectivity[:,i])
       end
-   elseif head[:nDim] == 2
+   elseif head[:ndim] == 2
       @inbounds for i = 1:head[:nCell]
          cells[i] = MeshCell(VTKCellTypes.VTK_PIXEL, connectivity[:,i])
       end
@@ -181,7 +192,7 @@ function test_cell()
 
    vtkfile = vtk_grid("test_unstructured2", points, cells)
 
-   for ivar = head[:nDim]+1:nVar
+   for ivar = head[:ndim]+1:nVar
       if occursin("_x",head[:variables][ivar]) # vector
          var1 = @view data[ivar,:]
          var2 = @view data[ivar+1,:]
