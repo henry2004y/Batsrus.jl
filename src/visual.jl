@@ -793,9 +793,9 @@ function convertVTK(head::Dict, data::Array{Float32,2},
 
    nVar = length(head[:variables])
 
-   points = @view data[1:head[:nDim],:]
+   points = @view data[1:head[:ndim],:]
    cells = Vector{MeshCell{Array{Int32,1}}}(undef,head[:nCell])
-   if head[:nDim] == 3
+   if head[:ndim] == 3
       # PLT to VTK index_ = [1 2 4 3 5 6 8 7]
       for i = 1:2
          connectivity = swaprows(connectivity, 4*i-1, 4*i)
@@ -803,7 +803,7 @@ function convertVTK(head::Dict, data::Array{Float32,2},
       @inbounds for i = 1:head[:nCell]
          cells[i] = MeshCell(VTKCellTypes.VTK_VOXEL, connectivity[:,i])
       end
-   elseif head[:nDim] == 2
+   elseif head[:ndim] == 2
       @inbounds for i = 1:head[:nCell]
          cells[i] = MeshCell(VTKCellTypes.VTK_PIXEL, connectivity[:,i])
       end
@@ -811,7 +811,7 @@ function convertVTK(head::Dict, data::Array{Float32,2},
 
    vtkfile = vtk_grid(filename, points, cells)
 
-   for ivar = head[:nDim]+1:nVar
+   for ivar = head[:ndim]+1:nVar
       if occursin("_x",head[:variables][ivar]) # vector
          var1 = @view data[ivar,:]
          var2 = @view data[ivar+1,:]
