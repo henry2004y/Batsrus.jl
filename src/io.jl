@@ -153,20 +153,20 @@ function readtecdata(filename::String, IsBinary::Bool=false,
    ln = readline(f)
    if startswith(ln, "ZONE")
       info = split(ln[6:end], ", ")
-	   nDim = parse(Int, info[1][4])
+	  ndim = parse(Int, info[1][4])
       try # This should throw error if in binary format
          parse(Int, info[2][3:end])
       catch
          IsBinary = true
       end
 
-	   if IsBinary
-		   nNode = read(IOBuffer(info[2][3:end]), Int32)
-	      nCell = read(IOBuffer(info[3][3:end]), Int32)
-	   else
-      	nNode = parse(Int, info[2][3:end])
-	  	   nCell = parse(Int, info[3][3:end])
-	   end
+	  if IsBinary
+         nNode = read(IOBuffer(info[2][3:end]), Int32)
+         nCell = read(IOBuffer(info[3][3:end]), Int32)
+	  else
+         nNode = parse(Int, info[2][3:end])
+         nCell = parse(Int, info[3][3:end])
+	  end
    else
       @warn "No zone info provided."
    end
@@ -185,9 +185,9 @@ function readtecdata(filename::String, IsBinary::Bool=false,
 
    data = Array{Float32,2}(undef, length(VARS), nNode)
 
-   if nDim == 3
+   if ndim == 3
 	   connectivity = Array{Int32,2}(undef, 8, nCell)
-   elseif nDim == 2
+   elseif ndim == 2
 	   connectivity = Array{Int32,2}(undef, 4, nCell)
    end
 
@@ -211,7 +211,7 @@ function readtecdata(filename::String, IsBinary::Bool=false,
 
    close(f)
 
-   head = Dict(:variables=>VARS, :nNode=>nNode, :nCell=>nCell, :nDim=>nDim)
+   head = Dict(:variables=>VARS, :nNode=>nNode, :nCell=>nCell, :ndim=>ndim)
 
    return head, data, connectivity
 end
