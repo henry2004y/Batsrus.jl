@@ -17,12 +17,10 @@ function readdata( filenamesIn::String; dir::String=".", npict::Int=1,
    verbose::Bool=false )
 
    ## Check the existence of files
-   filenames = Vector{String}(undef,0)
-   filesfound = glob(filenamesIn, dir)
-   if isempty(filesfound)
+   filenames = glob(filenamesIn, dir)
+   if isempty(filenames)
       error("readdata: no matching filename was found for $(filenamesIn)")
    end
-   filenames = vcat(filenames, filesfound)
 
    nfile = length(filenames)
 
