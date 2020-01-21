@@ -254,7 +254,7 @@ One-sided average on the left and right edge.
 """
 function smooth(x::Vector, n::Int=100)
    nx = length(x)
-   x̄ = zeros(length(x))
+   x̄ = zeros(eltype(x),length(x))
 
    # left points
    for i = 1:n
@@ -268,7 +268,7 @@ function smooth(x::Vector, n::Int=100)
 
    # right points
    for i = (nx-n+1):nx
-      x̄[i] = mean(x[i-n:end])
+      x̄[i] = mean(x[(i-n):end])
    end
 
    return x̄
@@ -546,13 +546,13 @@ end
 #multi_satellite_contour("satellites_boundary_PIC.txt", DoSubtractMean=false)
 
 
-#nShift = 173
+nShift = 185
 #single_satellite_plot("satellites_Hall.txt",
 #   "/Users/hyzhou/Documents/Computer/ParaView/data/", nShift)
-#wave_analysis(nShift; DoPlot=true, filename="satellites_PIC.txt",
-#   dir="/Users/hyzhou/Ganymede/PIC_frontera/GM/", verbose=true)
+wave_analysis(nShift; DoPlot=true, filename="satellites_PIC.txt",
+   verbose=true)
 #fnew = check_wave_type()
-check_wave_type()
+#check_wave_type()
 
 #=
 # Cross correlation check
