@@ -11,6 +11,7 @@ In principle, I could also try some multi-block (VTM) type for conversion.
 - This is the first time I use Julia for reading general ascii/binary files. It was a pain at first due to the lack of examples and documents using any basic function like read/read!, but fortunately I figured them out myself. One trick in reading binary array data is the usage of view, or subarrays, in Julia. In order to achieve that, I have to implement my own `read!` function in addition to the base ones.
 - Tecplot and VTK unstructured data formats have the same connectivity ordering for hexahedron, but different ordering for voxel (in VTK). A function `swaprows` is implemented to switch the orderings.
 - Because of the embarrassing parallelism nature of postprocessing, it is quite easy to take advantage of parallel approaches to process the data.
+- The built-in streamline function of Matplotlib is not proper for scientifically visualizing field information. The solution is to trace field lines with ODEs and plot the line series, similar to what has been done by [Spacepy](https://github.com/spacepy/spacepy/blob/master/spacepy/pybats/trace2d.py).
 
 ## Issues
 
@@ -18,7 +19,7 @@ At first I forgot to export the Data struct, so everytime when I modified the co
 
 The current support of animation in Matplotlib is not good enough, especially for interactive plotting and scanning through multiple snapshots. The color range is constantly giving me headaches.
 
-The current wrapper over Matplotlib makes it difficult to modify the plots afterwards, which especially causes problems when dealing with time series snapshots. The colorbar is so hard to fix.
+The current wrapper over Matplotlib makes it difficult to modify the plots afterwards, which especially causes problems when dealing with time series snapshots. The colorbar is so hard to fix. The solution is, instead of using `level`, provide a range of points.
 
 In the roadmap of PyCall 2.0, there will direct support for accessing Julia objects. I hesitate to do it myself, so let's just wait for it to come.
 
@@ -58,6 +59,7 @@ For quickly scanning through data, I need a GUI.
 - [ ] Switch to Makie for 3D plotting and animation
 - [ ] GUI
 - [ ] PyBase support for manipulating data directly in Python
+- [ ] Field tracer
 - [x] Derived variable support
 - [x] General postprocessing script for concatenating and converting files.
 - [x] Direct wrapper over matplotlib functions to get seamless API
