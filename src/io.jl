@@ -126,59 +126,93 @@ filename = "3d_ascii.dat"
 head, data, connectivity = readtecdata(filename)
 ```
 """
-function readtecdata(filename::String, IsBinary::Bool=false,
-   verbose::Bool=false)
+function readtecdata(filename::String; IsBinary=false, verbose=false)
 
    f = open(filename)
 
+   nNode = Int32(0)
+   nCell = Int32(0)
+   ET = ""
+
    # Read Tecplot header
-   ln = readline(f)
+   ln = readline(f) |> strip
    if startswith(ln, "TITLE")
-      title = ln[8:end-1]
+      title = match(r"\"(.*?)\"", split(ln,'=')[2])[1]
    else
       @warn "No title provided."
    end
-   ln = readline(f)
+   ln = readline(f) |> strip
    if startswith(ln, "VARIABLES")
-      start_ = findfirst("=",ln)[1]+1
-      VARS = split(ln[start_:end], ", ")
-      for i in 1:length(VARS)
-         VARS[i] = chop(VARS[i], head=1, tail=1)
+      # Read until another keyword appears
+      varline = split(ln,'=')[2]
+
+      ln = readline(f) |> strip
+      while !startswith(ln, "ZONE")
+         varline *= strip(ln)
+         ln = readline(f) |> strip
       end
+      VARS = split(varline, '\"')
+      deleteat!(VARS,findall(x -> x in (" ",", ") || isempty(x), VARS))
    else
       @warn "No variable names provided."
    end
-   ln = readline(f)
-   if startswith(ln, "ZONE")
-      info = split(ln[6:end], ", ")
-	  ndim = parse(Int, info[1][4])
-      try # This should throw error if in binary format
-         parse(Int, info[2][3:end])
-      catch
-         IsBinary = true
-      end
 
-	  if IsBinary
-         nNode = read(IOBuffer(info[2][3:end]), Int32)
-         nCell = read(IOBuffer(info[3][3:end]), Int32)
-	  else
-         nNode = parse(Int, info[2][3:end])
-         nCell = parse(Int, info[3][3:end])
-	  end
+   if startswith(ln, "ZONE")
+      ndim = 3 # default is 3D
+
+      pt0 = position(f)
+
+      while !isnothing(findfirst('=', ln))
+         if startswith(ln, "AUXDATA") || startswith(ln,"DT")
+            pt0 = position(f)
+            # Are there better ways to identify end of header?
+            if IsBinary && startswith(ln, "AUXDATA TIMESIMSHORT")
+               break # last line of AUXDATA
+            end
+            ln = readline(f) |> strip # I should save the auxdata!
+            continue
+         end
+
+         if !startswith(ln, "ZONE")
+            zoneline = split(ln, ", ")
+         else # if the ZONE line has nothing, this won't work!
+            zoneline = split(ln[6:end], ", ")
+            replace(zoneline[1], '"'=>"") # Remove the quotes in T
+         end
+         for zline in zoneline
+            name, value = split(zline,'=')
+            name = uppercase(name)
+            if name == "T" # ZONE title
+               T = value
+            elseif name in ("NODES","N")
+               try
+                  nNode = parse(Int32, value)
+               catch
+                  IsBinary = true
+                  nNode = read(IOBuffer(value), Int32)
+               end
+            elseif name in ("ELEMENTS","E")
+               try
+                  nCell = parse(Int32, value)
+               catch
+                  IsBinary = true
+                  nCell = read(IOBuffer(value), Int32)
+               end
+            elseif name in ("ET","ZONETYPE")
+               if uppercase(value) in ("BRICK","FEBRICK")
+                  ndim = 3
+               elseif uppercase(value) == "FEQUADRILATERAL"
+                  ndim = 2
+               end
+               ET = uppercase(value)
+            end
+         end
+         ln = readline(f) |> strip
+      end
    else
       @warn "No zone info provided."
    end
 
-   pt0 = position(f)
-   while true
-      x = readline(f)
-      if !startswith(x, "AUXDATA TIMESIMSHORT") # last line of AUXDATA
-         continue
-      else
-         pt0 = position(f)
-         break
-      end
-   end
    seek(f, pt0)
 
    data = Array{Float32,2}(undef, length(VARS), nNode)
@@ -209,7 +243,8 @@ function readtecdata(filename::String, IsBinary::Bool=false,
 
    close(f)
 
-   head = Dict(:variables=>VARS, :nNode=>nNode, :nCell=>nCell, :ndim=>ndim)
+   head = Dict(:variables=>VARS, :nNode=>nNode, :nCell=>nCell, :ndim=>ndim,
+      :ET=>ET,:title=>title)
 
    return head, data, connectivity
 end
