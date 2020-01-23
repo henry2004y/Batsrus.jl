@@ -121,7 +121,7 @@ B = @. sqrt(v.Bx^2 + v.By^2 + v.Bz^2)
 ASCII tecplot file:
 ```
 filename = "3d_ascii.dat"
-head, data, connectivity  = readtecdata(filename,false)
+head, data, connectivity  = readtecdata(filename, IsBinary=false)
 convertVTK(head, data, connectivity, outname)
 ```
 
