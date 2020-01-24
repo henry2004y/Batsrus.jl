@@ -42,6 +42,11 @@ end
    #head, data, list = readdata(filename,verbose=false);
 end
 
+@testset "2D field tracing" begin
+   #filename = "y.out";
+   #head, data, list = readdata(filename,verbose=false);
+end
+
 @testset "log" begin
    logfilename = "log_n000001.log"
    head, data = readlogdata(logfilename)
