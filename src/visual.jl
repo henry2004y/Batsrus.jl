@@ -24,8 +24,6 @@ Plot information from log file.
 function plotlogdata(data::Data, filehead::Dict, func::String;
    plotmode::String="line", plotrange::Vector=[-Inf,Inf] )
 
-   # This is intended for plotting log data, not data!
-
    vars     = split(func)
    plotmode = split(plotmode)
 
