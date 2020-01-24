@@ -13,6 +13,15 @@ In principle, I could also try some multi-block (VTM) type for conversion.
 - Because of the embarrassing parallelism nature of postprocessing, it is quite easy to take advantage of parallel approaches to process the data.
 - The built-in streamline function of Matplotlib is not proper for scientifically visualizing field information. The solution is to trace field lines with ODEs and plot the line series, similar to what has been done by [Spacepy](https://github.com/spacepy/spacepy/blob/master/spacepy/pybats/trace2d.py).
 
+##
+
+A real open-source project is a collaborated work not only from a bunch of people, but also a group of languages. In Julia, this can be achieved with the help of the [Package manager](https://julialang.github.io/Pkg.jl/dev/).
+
+I want to have some C dependencies in my code instead of rewriting everything in Julia. This would serve as an attempt to quickly make things work.
+
+Checkout [BinaryBuilder](https://juliapackaging.github.io/BinaryBuilder.jl/latest/#Project-flow-1) for more information.
+
+
 ## Issues
 
 At first I forgot to export the Data struct, so everytime when I modified the code and rerun plotdata, it will shout error at me, saying no type was found for the input type.
@@ -66,3 +75,4 @@ For quickly scanning through data, I need a GUI.
 - [x] Replace np.meshgrid with list comprehension
 - [ ] Find a substitution of triangulation in Julia
 - [ ] Allow dot syntax to get dictionary contents (Base.convert?)
+- [ ] Binary library support
