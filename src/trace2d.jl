@@ -1,17 +1,335 @@
-# A set of routines for 2D fast field line tracing.
+# Field tracing routines for a streamline through a 2D vector field.
+# Original version in C from LANL. Reimplement in Julia.
 #
-# Do you know how to pass c function as arguments in Julia?
-# How to conveniently use single precision? I want the tests to be both working
-# for single and double precision!
+# Usage:
+# 1. Run as it is in pure Julia.
+# 2. Compile the standalone C code ctrace2d.c into a dynamic library and add to
+#    path.
+#
+# Calling the native functions in Julia is about 5 times faster than calling the
+# dynmic C library.
 #
 # Modified from [SpacePy](https://github.com/spacepy/spacepy)
-# Require that the dynamic library compiled from ctrace2d.c in the path!
-#
-# Hongyang Zhou, hyzhou@umich.edu
+# Hongyang Zhou, hyzhou@umich.edu 01/26/2020
 
 using PyPlot
 
 include("dipole.jl")
+
+"""
+	bilin_reg(x, y, Q00, Q01, Q10, Q11)
+
+Bilinear interpolation for x1,y1=(0,0) and x2,y2=(1,1)
+Q's are surrounding points such that Q00 = F[0,0], Q10 = F[1,0], etc.
+"""
+function bilin_reg(x, y, Q00, Q01, Q10, Q11)
+   fout =
+      Q00*(1.0-x)*(1.0-y) +
+      Q10* x *    (1.0-y) +
+      Q01* y *    (1.0-x) +
+      Q11* x * y
+end
+
+"""
+	DoBreak(iloc, jloc, iSize, jSize)
+
+Check to see if we should break out of an integration.
+As set now, code will extrapolate up to 1 point outside of current block.
+"""
+function DoBreak(iloc::Int, jloc::Int, iSize::Int, jSize::Int)
+   ibreak = false
+   if iloc ≥ iSize || jloc ≥ jSize; ibreak = true end
+   if iloc < -1 || jloc < -1; ibreak = true end
+   return ibreak
+end
+
+"""Create unit vectors of field."""
+function make_unit!(iSize::Int, jSize::Int, ux, uy)
+   for i = 1:iSize*jSize
+      magnitude = sqrt(ux[i]^2 + uy[i]^2)
+      ux[i] /= magnitude
+      uy[i] /= magnitude
+   end
+end
+
+
+"""
+	grid_interp!(x, y, field, xloc, yloc, xsize, ysize)
+
+Interpolate a value at (x,y) in a field. `xloc` and `yloc` are indexes for x,y
+locations. `xsize` and `ysize` are the sizes of field in X and Y.
+"""
+grid_interp!(x, y, field, xloc, yloc, xsize, ysize) =
+   bilin_reg(x-xloc, y-yloc,
+   field[yloc*xsize+xloc+1],
+   field[(yloc+1)*xsize+xloc+1],
+   field[yloc*xsize+xloc+2],
+   field[(yloc+1)*xsize+xloc+2])
+
+"""
+	Euler!(iSize,jSize, maxstep, ds, xstart,ystart, xGrid,yGrid, ux,uy, x,y)
+Simple tracing using Euler's method.
+Super fast but not super accurate.
+# Arguments
+- `iSize::Int,jSize::Int`: grid size.
+- `maxstep::Int`: max steps.
+- `ds::Float64`: step size.
+- `xstart::Float64, ystart::Float64`: starting locations.
+- `xGrid::Array{Float64,2},yGrid::Array{Float64,2}`: actual coord system.
+- `ux::Array{Float64,2},uy::Array{Float64,2}`: field to trace through.
+- `x::Vector{Float64},y::Vector{Float64}`: x, y of result stream.
+"""
+function Euler!(iSize::Int, jSize::Int, maxstep::Int, ds,
+   xstart, ystart, xGrid, yGrid, ux, uy, x, y)
+
+   # Get starting points in normalized/array coordinates
+   dx = xGrid[2] - xGrid[1]
+   dy = yGrid[2] - yGrid[1]
+   x[1] = (xstart-xGrid[1]) / dx
+   y[1] = (ystart-yGrid[1]) / dy
+
+   # Create unit vectors from full vector field
+   make_unit!(iSize, jSize, ux, uy)
+
+   nstep = 0
+   # Perform tracing using Euler's method
+   for n = 1:maxstep-1
+      # Find surrounding points
+      #@show n, maxstep, x[n]
+      xloc = floor(Int, x[n])
+      yloc = floor(Int, y[n])
+
+      # Break if we leave the domain
+      if DoBreak(xloc, yloc, iSize, jSize)
+         nstep = n; break
+      end
+      if xloc > iSize - 2; xloc = iSize - 2 end
+      if xloc < 0;         xloc = 0 end
+      if yloc > iSize - 2; yloc = iSize - 2 end
+      if yloc < 0;         yloc = 0 end
+      # Interpolate unit vectors to current location
+      fx = grid_interp!(x[n], y[n], ux, xloc, yloc, iSize, jSize)
+      fy = grid_interp!(x[n], y[n], uy, xloc, yloc, iSize, jSize)
+
+      # Detect NaNs in function values
+      if isnan(fx) || isnan(fy) || isinf(fx) || isinf(fy)
+         #@show n, x[n], y[n], fx,fy, xloc, yloc, iSize, jSize
+         #@show (yloc+1)*iSize+xloc+1, sizeof(ux), ux[(yloc+1)*iSize+xloc+1]
+         #error("debug")
+         nstep = n
+         break
+      end
+
+      # Perform single step
+      x[n+1] = x[n] + ds * fx
+      y[n+1] = y[n] + ds * fy
+
+      nstep = maxstep
+   end
+
+   # Return traced points to original coordinate system.
+   for i = 1:nstep
+      x[i] = x[i]*dx + xGrid[1]
+      y[i] = y[i]*dy + yGrid[1]
+   end
+   return nstep
+end
+
+"""
+	Rk4!(iSize,jSize, maxstep, ds, xstart,ystart, xGrid,yGrid, ux,uy, x,y)
+
+Fast and reasonably accurate tracing with 4th order Runge-Kutta method and
+constant step size `ds`.
+"""
+function Rk4!(iSize::Int, jSize::Int, maxstep::Int, ds,
+   xstart, ystart, xGrid, yGrid, ux, uy, x, y)
+
+   # Get starting points in normalized/array coordinates
+   dx = xGrid[2] - xGrid[1]
+   dy = yGrid[2] - yGrid[1]
+   x[1] = (xstart-xGrid[1]) / dx
+   y[1] = (ystart-yGrid[1]) / dy
+
+   # Create unit vectors from full vector field
+   make_unit!(iSize, jSize, ux, uy)
+
+   nstep = 0
+   # Perform tracing using RK4
+   for n = 1:maxstep-1
+      # See Euler's method for more descriptive comments.
+      # SUBSTEP #1
+      xloc = floor(Int, x[n])
+      yloc = floor(Int, y[n])
+      if DoBreak(xloc, yloc, iSize, jSize)
+         nstep = n; break
+      end
+      if xloc > iSize-2; xloc = iSize-2 end
+      if xloc < 1;       xloc = 1 end
+      if yloc > iSize-2; yloc = iSize-2 end
+      if yloc < 1;       yloc = 1 end
+
+      f1x = grid_interp!(x[n], y[n], ux, xloc, yloc, iSize, jSize)
+      f1y = grid_interp!(x[n], y[n], uy, xloc, yloc, iSize, jSize)
+      if isnan(f1x) || isnan(f1y) || isinf(f1x) || isinf(f1y)
+         nstep = n; break
+      end
+      # SUBSTEP #2
+      xpos = x[n] + f1x*ds/2.0
+      ypos = y[n] + f1y*ds/2.0
+      xloc = floor(Int, xpos)
+      yloc = floor(Int, ypos)
+      if DoBreak(xloc, yloc, iSize, jSize); break; end
+      if xloc > iSize-2; xloc = iSize-2 end
+      if xloc < 1;       xloc = 1 end
+      if yloc > iSize-2; yloc = iSize-2 end
+      if yloc < 1;       yloc = 1 end
+
+      f2x = grid_interp!(xpos, ypos, ux, xloc, yloc, iSize, jSize)
+      f2y = grid_interp!(xpos, ypos, uy, xloc, yloc, iSize, jSize)
+
+      if isnan(f2x) || isnan(f2y) || isinf(f2x) || isinf(f2y)
+         nstep = n; break
+      end
+      # SUBSTEP #3
+      xpos = x[n] + f2x*ds/2.0
+      ypos = y[n] + f2y*ds/2.0
+      xloc = floor(Int, xpos)
+      yloc = floor(Int, ypos)
+      if DoBreak(xloc, yloc, iSize, jSize)
+         nstep = n; break
+      end
+      if xloc > iSize-2; xloc = iSize-2 end
+      if xloc < 1;       xloc = 1 end
+      if yloc > iSize-2; yloc = iSize-2 end
+      if yloc < 1;       yloc = 1 end
+
+      f3x = grid_interp!(xpos, ypos, ux, xloc, yloc, iSize, jSize)
+      f3y = grid_interp!(xpos, ypos, uy, xloc, yloc, iSize, jSize)
+      if isnan(f3x) || isnan(f3y) || isinf(f3x) || isinf(f3y)
+         nstep = n; break
+      end
+
+      # SUBSTEP #4
+      xpos = x[n] + f3x*ds
+      ypos = y[n] + f3y*ds
+      xloc = floor(Int, xpos)
+      yloc = floor(Int, ypos)
+      if DoBreak(xloc, yloc, iSize, jSize)
+         nstep = n; break
+      end
+      if xloc > iSize-2; xloc = iSize-2 end
+      if xloc < 1;       xloc = 1 end
+      if yloc > iSize-2; yloc = iSize-2 end
+      if yloc < 1;       yloc = 1 end
+
+      f4x = grid_interp!(xpos, ypos, ux, xloc, yloc, iSize, jSize)
+      f4y = grid_interp!(xpos, ypos, uy, xloc, yloc, iSize, jSize)
+      if isnan(f4x) || isnan(f4y) || isinf(f4x) || isinf(f4y)
+         nstep = n; break
+      end
+
+      # Peform the full step using all substeps
+      x[n+1] = x[n] + ds/6.0 * (f1x + f2x*2.0 + f3x*2.0 + f4x)
+      y[n+1] = y[n] + ds/6.0 * (f1y + f2y*2.0 + f3y*2.0 + f4y)
+
+      nstep = n
+   end
+
+   # Return traced points to original coordinate system.
+   for i = 1:nstep
+      x[i] = x[i]*dx + xGrid[1]
+      y[i] = y[i]*dy + yGrid[1]
+   end
+
+   return nstep
+end
+
+
+"""A utility for printing test results."""
+function test_check(result, answer)
+   thresh = 0.00001
+   diff = 100.0*(result - answer) / answer
+
+   if diff < thresh
+      println("TEST PASSED!")
+   else
+      println("TEST FAILED!")
+      println("Result", result, " differs from answer ", answer)
+      println("Difference of", diff, " is over threshold of ", thresh)
+   end
+   return
+end
+
+
+"""Simple tests of the functionality of the basic functions."""
+function main_test()
+
+   x, y = 0.1, 0.2
+   Q00, Q01, Q10, Q11 = 3.0, 5.0, 40.0, 60.0
+   sol1 = 7.460
+
+   # Test bilin_reg
+   println("Testing bilin_reg\n")
+   out = bilin_reg(x, y, Q00, Q01, Q10, Q11)
+   println("TEST 1: ")
+   test_check(out, sol1)
+
+   # Test cEuler 1
+   nx, ny, maxstep = 841, 121, 10000
+
+   xgrid = Vector{Float64}(undef,nx)   # grid x
+   ygrid = Vector{Float64}(undef,nx)   # grid y
+   ux = Vector{Float64}(undef,nx*ny)   # field x
+   uy = Vector{Float64}(undef,nx*ny)   # field y
+   xt = Vector{Float64}(undef,maxstep) # output x
+   yt = Vector{Float64}(undef,maxstep) # output y
+   ds = 1.0
+
+   for i=1:nx
+      xgrid[i] = -10.0+0.25*(i-1)
+      ygrid[i] = xgrid[i]
+   end
+
+   for i=1:nx, j=1:ny
+      ux[(i-1)*ny+j] = xgrid[i]
+      uy[(i-1)*ny+j] = -1.0*ygrid[j]
+   end
+
+   @time npoints = Euler!(nx, ny, maxstep, ds, 1.0, 10.0, xgrid, ygrid,
+ 			 ux, uy, xt, yt)
+
+   try
+   @time npoints = ccall((:cEuler,"libtrace.so"),Cint,
+             (Cint,Cint,Cint,Float64,Float64,Float64,Ptr{Cdouble},Ptr{Cdouble},
+             Ptr{Cdouble},Ptr{Cdouble},Ptr{Cdouble},Ptr{Cdouble}),
+             nx, ny, maxstep, ds, 1.0, 10.0, xgrid, ygrid, ux, uy, xt, yt)
+   catch
+      @warn "libtrace.so not found in path!"
+   end
+
+   println("Npoints = ", npoints)
+   println("Grid goes from ", round(xgrid[1],digits=2), " to ", round(xgrid[nx],digits=2))
+   println("Our trace starts at ", round(xt[1],digits=2), " ", round(yt[1],digits=2))
+   println("...and ends at ", round(xt[npoints],digits=2), " ",round(yt[npoints],digits=2))
+
+   @time npoints = Rk4!(nx, ny, maxstep, ds, 1.0, 10.0, xgrid, ygrid,
+ 		 ux, uy, xt, yt)
+
+   try
+   @time npoints = ccall((:cRk4,"libtrace.so"),Cint,
+             (Cint,Cint,Cint,Float64,Float64,Float64,Ptr{Cdouble},Ptr{Cdouble},
+             Ptr{Cdouble},Ptr{Cdouble},Ptr{Cdouble},Ptr{Cdouble}),
+             nx, ny, maxstep, ds, 1.0, 10.0, xgrid, ygrid, ux, uy, xt, yt)
+   catch
+      @warn "libtrace.so not found in path!"
+   end
+
+   println("Npoints = ", npoints)
+   println("Grid goes from ", round(xgrid[1],digits=2), " to ", round(xgrid[nx],digits=2))
+   println("Our trace starts at ", round(xt[1],digits=2), " ", round(yt[1],digits=2))
+   println("...and ends at ", round(xt[npoints],digits=2), " ",round(yt[npoints],digits=2))
+end
+
 
 """
 	trace2d_rk4(fieldx, fieldy, xstart, ystart, gridx, gridy;
@@ -39,6 +357,7 @@ function trace2d_rk4(fieldx, fieldy, xstart, ystart, gridx, gridy;
    fx = permutedims(fieldx) # C is row-major
    fy = permutedims(fieldy) # C is row-major
 
+   #=
    if eltype(fieldx) == Float64
       npoints = ccall((:cRk4,"libtrace.so"),Cint,
       (Cint,Cint,Cint,Float64,Float64,Float64,Ptr{Cdouble},Ptr{Cdouble},
@@ -51,6 +370,9 @@ function trace2d_rk4(fieldx, fieldy, xstart, ystart, gridx, gridy;
       Int32(nx), Int32(ny), Int32(maxstep), Float32(ds), xstart, ystart, gx, gy,
       fx, fy, xt, yt)
    end
+   =#
+
+   npoints = Rk4!(nx, ny, maxstep, ds, xstart, ystart, gx, gy, fx, fy, xt, yt)
 
    return xt[1:npoints], yt[1:npoints]
 
@@ -79,6 +401,7 @@ function trace2d_eul(fieldx, fieldy, xstart, ystart, gridx, gridy;
    fx = permutedims(fieldx) # C is row-major
    fy = permutedims(fieldy) # C is row-major
 
+   #=
    if eltype(fieldx) == Float64
       npoints = ccall((:cEuler,"libtrace.so"),Cint,
       (Cint,Cint,Cint,Float64,Float64,Float64,Ptr{Cdouble},Ptr{Cdouble},
@@ -91,6 +414,9 @@ function trace2d_eul(fieldx, fieldy, xstart, ystart, gridx, gridy;
       Int32(nx), Int32(ny), Int32(maxstep), Float32(ds), xstart, ystart, gx, gy,
       fx, fy, xt, yt)
    end
+   =#
+
+   npoints = Euler!(nx, ny, maxstep, ds, xstart, ystart, gx, gy, fx, fy, xt, yt)
 
    return xt[1:npoints], yt[1:npoints]
 end
@@ -200,12 +526,10 @@ function test_dipole()
    # Start by creating a field of unit vectors...
    x = -100.0:5.0:101.0
    y = -100.0:5.0:101.0
-   xgrid = [i for j in y, i in x]
-   ygrid = [j for j in y, i in x]
 
-   bx, by = b_hat(x,y)
+   bx, by = b_hat(x, y)
 
-   # New figure.
+   # New figure
    fig2 = plt.figure(figsize=(12,6))
    fig2.subplots_adjust(wspace=0.15, left=0.08, right=0.94)
    ax2 = plt.subplot(121)
@@ -220,19 +544,18 @@ function test_dipole()
    ax5.quiver(x,y, bx, by, units="x", pivot="tip")
 
    # Trace through this field.
-   xstart = 10.0
-   #ystart = 25.0
+   xstart = 10.0 # ystart = 25.0
    ds = 0.1
    for ystart in 0.:5.:31.
-      (x1, y1) = trace2d_rk4(bx, by, xstart, ystart, x, y, ds=ds)
+      x1, y1 = trace2d_rk4(bx, by, xstart, ystart, x, y, ds=ds)
       l1 = ax2.plot(x1,y1,"b")[1]
       ax3.plot(x1,y1,"b"); ax4b.plot(x1,y1,"b")
       ax5.plot(x1,y1,"b"); ax4a.plot(x1,y1,"b")
-      (x2, y2) = trace2d_eul(bx, by, xstart, ystart, x, y, ds=ds)
+      x2, y2 = trace2d_eul(bx, by, xstart, ystart, x, y, ds=ds)
       l2 = ax2.plot(x2,y2,"r")[1]
       ax3.plot(x2,y2,"r"); ax4b.plot(x2,y2,"r")
       ax5.plot(x2,y2,"r"); ax4a.plot(x2,y2,"r")
-      (x3, y3) = b_line(xstart, ystart, npoints=300)
+      x3, y3 = b_line(xstart, ystart, npoints=300)
       l3 = ax2.plot(x3,y3,"k--")[1]
       ax3.plot(x3,y3,"k--"); ax4b.plot(x3,y3,"k--")
       ax5.plot(x3,y3,"k--"); ax4a.plot(x3,y3,"k--")
@@ -273,5 +596,7 @@ function test_dipole()
 
 end
 
+#main_test()
 #test_asymtote()
+#test_asymtote(true)
 #test_dipole()
