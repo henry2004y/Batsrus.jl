@@ -245,92 +245,6 @@ function Rk4!(iSize::Int, jSize::Int, maxstep::Int, ds,
 end
 
 
-"""A utility for printing test results."""
-function test_check(result, answer)
-   thresh = 0.00001
-   diff = 100.0*(result - answer) / answer
-
-   if diff < thresh
-      println("TEST PASSED!")
-   else
-      println("TEST FAILED!")
-      println("Result", result, " differs from answer ", answer)
-      println("Difference of", diff, " is over threshold of ", thresh)
-   end
-   return
-end
-
-
-"""Simple tests of the functionality of the basic functions."""
-function main_test()
-
-   x, y = 0.1, 0.2
-   Q00, Q01, Q10, Q11 = 3.0, 5.0, 40.0, 60.0
-   sol1 = 7.460
-
-   # Test bilin_reg
-   println("Testing bilin_reg\n")
-   out = bilin_reg(x, y, Q00, Q01, Q10, Q11)
-   println("TEST 1: ")
-   test_check(out, sol1)
-
-   # Test cEuler 1
-   nx, ny, maxstep = 841, 121, 10000
-
-   xgrid = Vector{Float64}(undef,nx)   # grid x
-   ygrid = Vector{Float64}(undef,nx)   # grid y
-   ux = Vector{Float64}(undef,nx*ny)   # field x
-   uy = Vector{Float64}(undef,nx*ny)   # field y
-   xt = Vector{Float64}(undef,maxstep) # output x
-   yt = Vector{Float64}(undef,maxstep) # output y
-   ds = 1.0
-
-   for i=1:nx
-      xgrid[i] = -10.0+0.25*(i-1)
-      ygrid[i] = xgrid[i]
-   end
-
-   for i=1:nx, j=1:ny
-      ux[(i-1)*ny+j] = xgrid[i]
-      uy[(i-1)*ny+j] = -1.0*ygrid[j]
-   end
-
-   @time npoints = Euler!(nx, ny, maxstep, ds, 1.0, 10.0, xgrid, ygrid,
- 			 ux, uy, xt, yt)
-
-   try
-   @time npoints = ccall((:cEuler,"libtrace.so"),Cint,
-             (Cint,Cint,Cint,Float64,Float64,Float64,Ptr{Cdouble},Ptr{Cdouble},
-             Ptr{Cdouble},Ptr{Cdouble},Ptr{Cdouble},Ptr{Cdouble}),
-             nx, ny, maxstep, ds, 1.0, 10.0, xgrid, ygrid, ux, uy, xt, yt)
-   catch
-      @warn "libtrace.so not found in path!"
-   end
-
-   println("Npoints = ", npoints)
-   println("Grid goes from ", round(xgrid[1],digits=2), " to ", round(xgrid[nx],digits=2))
-   println("Our trace starts at ", round(xt[1],digits=2), " ", round(yt[1],digits=2))
-   println("...and ends at ", round(xt[npoints],digits=2), " ",round(yt[npoints],digits=2))
-
-   @time npoints = Rk4!(nx, ny, maxstep, ds, 1.0, 10.0, xgrid, ygrid,
- 		 ux, uy, xt, yt)
-
-   try
-   @time npoints = ccall((:cRk4,"libtrace.so"),Cint,
-             (Cint,Cint,Cint,Float64,Float64,Float64,Ptr{Cdouble},Ptr{Cdouble},
-             Ptr{Cdouble},Ptr{Cdouble},Ptr{Cdouble},Ptr{Cdouble}),
-             nx, ny, maxstep, ds, 1.0, 10.0, xgrid, ygrid, ux, uy, xt, yt)
-   catch
-      @warn "libtrace.so not found in path!"
-   end
-
-   println("Npoints = ", npoints)
-   println("Grid goes from ", round(xgrid[1],digits=2), " to ", round(xgrid[nx],digits=2))
-   println("Our trace starts at ", round(xt[1],digits=2), " ", round(yt[1],digits=2))
-   println("...and ends at ", round(xt[npoints],digits=2), " ",round(yt[npoints],digits=2))
-end
-
-
 """
 	trace2d_rk4(fieldx, fieldy, xstart, ystart, gridx, gridy;
 		maxstep=20000, ds=0.01
@@ -514,6 +428,7 @@ function test_asymtote(IsSingle=false)
       arrowprops=Dict(:fc=>"black",:shrink=>0.005),
       horizontalalignment="center")
 
+   return true
 end
 
 """
@@ -593,10 +508,5 @@ function test_dipole()
       fig2.suptitle("RK4 vs Euler's Method: Dipole Field for dS="*
          string(round(ds,digits=3)))
    end
-
+   return true
 end
-
-#main_test()
-#test_asymtote()
-#test_asymtote(true)
-#test_dipole()

@@ -43,8 +43,71 @@ end
 end
 
 @testset "2D field tracing" begin
-   #filename = "y.out";
-   #head, data, list = readdata(filename,verbose=false);
+   include("../src/trace2d.jl")
+
+   # Test for the bilinear interpolation function
+   x, y = 0.1, 0.2
+   Q00, Q01, Q10, Q11 = 3.0, 5.0, 40.0, 60.0
+   sol1 = 7.460
+
+   println("Testing bilin_reg")
+   out = bilin_reg(x, y, Q00, Q01, Q10, Q11)
+   @test out ≈ sol1 atol=1e-5
+
+   # Test cEuler 1
+   nx, ny, maxstep = 841, 121, 10000
+
+   xgrid = Vector{Float64}(undef,nx)   # grid x
+   ygrid = Vector{Float64}(undef,nx)   # grid y
+   ux = Vector{Float64}(undef,nx*ny)   # field x
+   uy = Vector{Float64}(undef,nx*ny)   # field y
+   xt = Vector{Float64}(undef,maxstep) # output x
+   yt = Vector{Float64}(undef,maxstep) # output y
+   ds = 1.0
+
+   for i=1:nx
+      xgrid[i] = -10.0+0.25*(i-1)
+      ygrid[i] = xgrid[i]
+   end
+
+   for i=1:nx, j=1:ny
+      ux[(i-1)*ny+j] = xgrid[i]
+      uy[(i-1)*ny+j] = -1.0*ygrid[j]
+   end
+
+   @time npoints = Euler!(nx, ny, maxstep, ds, 1.0, 10.0, xgrid, ygrid,
+ 			 ux, uy, xt, yt)
+
+   #= This will cause error if libtrace.so not in path!
+   @time npoints = ccall((:cEuler,"libtrace.so"),Cint,
+             (Cint,Cint,Cint,Float64,Float64,Float64,Ptr{Cdouble},Ptr{Cdouble},
+             Ptr{Cdouble},Ptr{Cdouble},Ptr{Cdouble},Ptr{Cdouble}),
+             nx, ny, maxstep, ds, 1.0, 10.0, xgrid, ygrid, ux, uy, xt, yt)
+   =#
+   @test npoints == 801
+   println("Npoints = ", npoints)
+   println("Grid goes from ", round(xgrid[1],digits=2), " to ", round(xgrid[nx],digits=2))
+   println("Our trace starts at ", round(xt[1],digits=2), " ", round(yt[1],digits=2))
+   println("...and ends at ", round(xt[npoints],digits=2), " ",round(yt[npoints],digits=2))
+
+   @time npoints = Rk4!(nx, ny, maxstep, ds, 1.0, 10.0, xgrid, ygrid,
+ 		 ux, uy, xt, yt)
+
+   #= This will cause error if libtrace.so not in path!
+   @time npoints = ccall((:cRk4,"libtrace.so"),Cint,
+             (Cint,Cint,Cint,Float64,Float64,Float64,Ptr{Cdouble},Ptr{Cdouble},
+             Ptr{Cdouble},Ptr{Cdouble},Ptr{Cdouble},Ptr{Cdouble}),
+             nx, ny, maxstep, ds, 1.0, 10.0, xgrid, ygrid, ux, uy, xt, yt)
+   =#
+   @test npoints == 799
+   println("Npoints = ", npoints)
+   println("Grid goes from ", round(xgrid[1],digits=2), " to ", round(xgrid[nx],digits=2))
+   println("Our trace starts at ", round(xt[1],digits=2), " ", round(yt[1],digits=2))
+   println("...and ends at ", round(xt[npoints],digits=2), " ",round(yt[npoints],digits=2))
+
+   @test test_asymtote()    # single precision
+   @test test_asymtote(true)# double precision
+   @test test_dipole()      # dipole tracing
 end
 
 @testset "log" begin
