@@ -68,7 +68,7 @@ For quickly scanning through data, I need a GUI.
 - [ ] Switch to Makie for 3D plotting and animation
 - [ ] GUI
 - [ ] PyBase support for manipulating data directly in Python
-- [ ] Field tracer
+- [x] Field tracer 2D in Julia
 - [x] Derived variable support
 - [x] General postprocessing script for concatenating and converting files.
 - [x] Direct wrapper over matplotlib functions to get seamless API

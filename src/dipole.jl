@@ -26,7 +26,7 @@ components of b_hat for a dipole field. Plotting these two matrices using
 MatPlotLib's quiver function will create a beautiful dipole field for tracing
 and other stuff.
 """
-function b_hat(x::AbstractFloat, y::AbstractFloat)
+function b_hat(x, y)
 	xgrid = [i for j in y, i in x]
    ygrid = [j for j in y, i in x]
 
@@ -36,13 +36,13 @@ function b_hat(x::AbstractFloat, y::AbstractFloat)
 
 	denom = @. sqrt(1.0 + 3.0*cosy^2)
 
-	b_r     = @. 2.0 * cosy / denom
-	b_theta =          sinx ./ denom
+	br = @. 2.0 * cosy / denom
+	bθ =          sinx ./ denom
 
-	b_x = @. b_r*sinx + b_theta*cosy
-	b_y = @. b_r*cosy - b_theta*sinx
+	bx = @. br*sinx + bθ*cosy
+	by = @. br*cosy - bθ*sinx
 
-	return b_x, b_y
+	return bx, by
 end
 
 """
@@ -82,7 +82,7 @@ function test()
    y = -100.0:5.0:101.0
 
    x_vec, y_vec = b_hat(x,y)
-   
+
    fig = plt.figure(figsize=(10,8))
    ax1 = plt.subplot(111)
 

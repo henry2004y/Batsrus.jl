@@ -27,10 +27,8 @@ static double bilin_reg(double x, double y, double Q00,
     Q10* x *    (1.0-y) +
     Q01* y *    (1.0-x) +
     Q11* x * y;
-
-//  printf("points = %.5f, %.5f, %.5f, %.5f; ans = %.5f\n",
-//	 Q00, Q10, Q01, Q11, fout);
-
+  //printf("points = %.5f, %.5f, %.5f, %.5f; ans = %.5f\n",
+  //    Q00, Q10, Q01, Q11, fout);
   return fout;
 }
 
@@ -119,6 +117,7 @@ int cEuler(int iSize, int jSize,           /* Grid size and max steps */
       fy = grid_interp(x[n], y[n], uy, xloc, yloc, iSize, jSize);
 
       /* Detect NaNs in function values */
+		// This is required when there are null points in the field!
       //if (isnan(fx) || isnan(fy) || isinf(fx) || isinf(fy))
       //break;
 
@@ -248,7 +247,6 @@ int cRk4(int iSize, int jSize,             /* Grid size and max steps */
       y[i] = y[i]*dy + yGrid[0];
     }
   return n;
-
 }
 
 #ifdef CTRACE2D_TEST
