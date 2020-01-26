@@ -19,7 +19,7 @@ A real open-source project is a collaborated work not only from a bunch of peopl
 
 I want to have some C dependencies in my code instead of rewriting everything in Julia. This would serve as an attempt to quickly make things work.
 
-Right now this seems to be a little bit difficult for me. I need to learn from experts.
+Right now this seems to be a little bit difficult for me. I need to learn from experts. The tracing scheme in C is rewritten in Julia so I don't need to bother for now. 
 Checkout [BinaryBuilder](https://juliapackaging.github.io/BinaryBuilder.jl/latest/#Project-flow-1) for more information.
 
 
