@@ -337,13 +337,13 @@ end
 
 
 """
-   test_asymtote(IsSingle)
+   test_trace_asymtote(IsSingle)
 
 Test streamline tracing by plotting vectors and associated streamlines
 through a simple velocity field where Vx=x, Vy=-y.
 Support test for single and double precision.
 """
-function test_asymtote(IsSingle=false)
+function test_trace_asymtote(IsSingle=false)
 
    # Start by creating a velocity vector field.
    if IsSingle
@@ -431,12 +431,8 @@ function test_asymtote(IsSingle=false)
    return true
 end
 
-"""
-	test_dipole()
-Trace field lines through a dipole field to test
-the pybats.trace2d module.
-"""
-function test_dipole()
+"""Trace field lines through a dipole field."""
+function test_trace_dipole()
    # Now do dipole magnetic field.
    # Start by creating a field of unit vectors...
    x = -100.0:5.0:101.0

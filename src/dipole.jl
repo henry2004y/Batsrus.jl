@@ -1,4 +1,4 @@
-# Some functions for the generation of a dipole field.
+# Functions for the generation of a dipole field.
 #
 # Modified from the original Python version by
 # Los Alamos National Security, LLC. 2010
@@ -56,7 +56,7 @@ function b_line(x::AbstractFloat, y::AbstractFloat; npoints=30)
 	try
 		theta = atan(x/y)
 	catch
-		println("ZeroDivisionError")
+		@warn "ZeroDivisionError"
 		theta = pi/2.0
 	end
 
@@ -76,7 +76,7 @@ function b_line(x::AbstractFloat, y::AbstractFloat; npoints=30)
 end
 
 """A quick test of the dipole field functions."""
-function test()
+function test_dipole()
 
    x = -100.0:5.0:101.0
    y = -100.0:5.0:101.0
@@ -102,7 +102,5 @@ function test()
    ax1.set_ylim([-100, 100])
    plt.title("Unit vectors for an arbitrary dipole field")
 
-   fig.show()
+   return true
 end
-
-#test()
