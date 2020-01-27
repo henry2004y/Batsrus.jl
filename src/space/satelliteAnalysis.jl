@@ -192,17 +192,19 @@ Static satellite analysis, contour plots of location and time.
 - `dir::String`: file directory.
 - `DoSave::Bool`: Save the plots.
 - `DoSubtractMean::Bool`: Subtract the average state for each variable.
+- `nLead::Int`: the number of points removing from the start.
+- `nTrail::Int`: the number of points removing from the end.
 """
 function multi_satellite_contour(filename="satellites_PIC.txt",
    dir="/Users/hyzhou/Documents/Computer/ParaView/data/"; DoSave=false,
-   DoSubtractMean = true)
+   DoSubtractMean = true, nLead=0, nTrail=0)
 
    header, data, satelliteNo = read_data(dir*filename)
 
-   # Remove the trailing satellites
-   #satelliteNo = satelliteNo[1:end-20]
+   # Remove the leading and trailing satellites
+   satelliteNo = satelliteNo[1+nLead:end-nTrail]
 
-   index_ = findall(x->x==satelliteNo[1], data[:,1])
+   index_ = findall(x->x==0.0f0, data[:,1])
 
    c = Array{Float32, 2}(undef, length(index_), length(satelliteNo))
 
@@ -211,8 +213,8 @@ function multi_satellite_contour(filename="satellites_PIC.txt",
       var_ = findfirst(x->x==var, header) + 1
       @show var, var_
 
-      for i in satelliteNo
-         c[:,Int(i+1)] = data[index_ .+ Int(i),var_]
+      for i in 1:length(satelliteNo)
+         c[:,i] = data[index_ .+ Int(satelliteNo[i]),var_]
       end
 
       cmean = mean(c, dims=1)
@@ -543,14 +545,16 @@ end
 #single_satellite_plot("satellites_PIC.txt",
 #   "/Users/hyzhou/Documents/Computer/ParaView/data/", 185)
 #multi_satellite_plot()
-#multi_satellite_contour("satellites_boundary_PIC.txt", DoSubtractMean=false)
+multi_satellite_contour("satellites_y0_PIC.txt", DoSubtractMean=true)
 
+#using Peaks
+#maxima(c[:,42])
 
 nShift = 185
 #single_satellite_plot("satellites_Hall.txt",
 #   "/Users/hyzhou/Documents/Computer/ParaView/data/", nShift)
-wave_analysis(nShift; DoPlot=true, filename="satellites_PIC.txt",
-   verbose=true)
+#wave_analysis(nShift; DoPlot=true, filename="satellites_PIC.txt",
+#   verbose=true)
 #fnew = check_wave_type()
 #check_wave_type()
 
