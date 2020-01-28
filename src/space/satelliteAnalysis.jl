@@ -197,7 +197,7 @@ Static satellite analysis, contour plots of location and time.
 """
 function multi_satellite_contour(filename="satellites_PIC.txt",
    dir="/Users/hyzhou/Documents/Computer/ParaView/data/"; DoSave=false,
-   DoSubtractMean = true, nLead=0, nTrail=0)
+   DoSubtractMean = true, nLead=10, nTrail=10)
 
    header, data, satelliteNo = read_data(dir*filename)
 
@@ -207,6 +207,14 @@ function multi_satellite_contour(filename="satellites_PIC.txt",
    index_ = findall(x->x==0.0f0, data[:,1])
 
    c = Array{Float32, 2}(undef, length(index_), length(satelliteNo))
+
+
+   crange = (-5.0,9.5)
+   clength= 40
+   vdisp = range(crange..., length=11)
+   vplot = range(crange..., length=clength)
+
+
 
    # Subtract the average
    for var in header[1:end-3]
@@ -219,16 +227,22 @@ function multi_satellite_contour(filename="satellites_PIC.txt",
 
       cmean = mean(c, dims=1)
 
-      figure()
+      figure(figsize=(4,8))
       if DoSubtractMean
-         contourf(c .- cmean, 50)
+         contourf(data[Int.(satelliteNo),end], 1:length(index_), c .- cmean, vplot)
+         #contourf(data[Int.(satelliteNo),end], 1:length(index_), c .- cmean, 50)
+         #contourf(c .- cmean)
       else
-         contourf(c, 50)
+         contourf(data[Int.(satelliteNo),end], 1:length(index_),c,50)
       end
 
+      xlabel(L"z\ [R_G]")
+      ylabel("simulation time [s]")
       plt.set_cmap("plasma")
-      colorbar()
+      #colorbar()
+      colorbar(boundaries=vplot, ticks=vdisp)
       title(var)
+      tight_layout()
 
       if DoSave
          if occursin("pic",lowercase(filename))
@@ -545,7 +559,7 @@ end
 #single_satellite_plot("satellites_PIC.txt",
 #   "/Users/hyzhou/Documents/Computer/ParaView/data/", 185)
 #multi_satellite_plot()
-multi_satellite_contour("satellites_y0_PIC.txt", DoSubtractMean=true)
+multi_satellite_contour("satellites_y0_PIC.txt", DoSubtractMean=true, DoSave=false)
 
 #using Peaks
 #maxima(c[:,42])
