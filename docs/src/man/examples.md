@@ -159,14 +159,16 @@ for i = 1:size(seeds)[2]
    xs = seeds[1,i]
    zs = seeds[2,i]
    # forward
-   x1, y1 = trace2d(bx, bz, xs, zs, x, z, ds=0.1, maxstep=1000, gridType="ndgrid")
+   x1, y1 = trace2d_eul(bx, bz, xs, zs, x, z, ds=0.1, maxstep=1000, gridType="ndgrid")
    plot(x1,y1,"--")
    # backward
-   x2, y2 = trace2d(-bx, -bz, xs, zs, x, z, ds=0.1, maxstep=1000, gridType="ndgrid")
+   x2, y2 = trace2d_rk4(-bx, -bz, xs, zs, x, z, ds=0.1, maxstep=1000, gridType="ndgrid")
    plot(x2,y2,"-")
 end
 axis("equal")
 ```
+which will display
+![SWMF_test1_noAMR](../images/BxBz_y0cut.png)
 
 ## Derived variables
 ```
