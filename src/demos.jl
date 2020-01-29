@@ -46,3 +46,35 @@ c = contourf(xi,yi,wi,50)
 colorbar()
 using MATLAB
 px, py = mxcall(:gradient, 2, wi)
+
+####################
+using VisAna, PyPlot
+
+include("../src/trace2d.jl")
+
+filename = "y=0_var_1_t00000000_n00000000.out"
+head, data, list = readdata(filename,dir="test")
+
+#streamplot(data[1], head[1], "bx;bz")
+
+bx = data[1].w[:,:,5]
+bz = data[1].w[:,:,7]
+x  = data[1].x[:,1,1]
+z  = data[1].x[1,:,2]
+
+#xstart = -120.0:10.0:10.
+#zstart = fill(10.0, size(xstart))
+
+seeds = select_seeds(x,z)
+
+for i = 1:size(seeds)[2]
+   xs = seeds[1,i]
+   zs = seeds[2,i]
+   # forward
+   x1, y1 = trace2d_eul(bx, bz, xs, zs, x, z, ds=0.1, maxstep=1000, gridType="ndgrid")
+   plot(x1,y1,"--")
+   # backward
+   x2, y2 = trace2d_rk4(-bx, -bz, xs, zs, x, z, ds=0.1, maxstep=1000, gridType="ndgrid")
+   plot(x2,y2,"-")
+end
+axis("equal")
