@@ -1,6 +1,6 @@
 # Examples
 
-IDL format output processing:
+## IDL format output processing
 
 - Read data
 ```
@@ -113,7 +113,32 @@ streamplot(data[1], filehead[1], "bx;bz", density=2.0, color="k", plotinterval=1
 
 ## Streamline tracing
 
-The built-in `streamplot` function in Matplotlib is not satisfactory for accurately tracing streamlines. Instead in VisAna we have native support field tracer:
+The built-in `streamplot` function in Matplotlib is not satisfactory for accurately tracing streamlines. Instead in VisAna we have native support field tracer.
+
+[dipole.jl](https://github.com/henry2004y/VisAnaJulia/blob/master/src/dipole.jl) is used for analytically generate a dipole field:
+```
+test_dipole()
+```
+which will show the following figure
+![dipole_plot](https://github.com/henry2004y/VisAnaJulia/tree/master/docs/src/images/dipole_plot.png "Dipole field")
+
+Tracing along an asymptotic line
+```
+test_trace_asymptote()
+```
+in turn gives
+![trace_asymptote](https://github.com/henry2004y/VisAnaJulia/tree/master/docs/src/images/trace_asymptote.png "Tracing in an asymptotic field")
+
+Tracing lines in a dipole field
+```
+test_trace_dipole()
+```
+in turn gives
+![trace_dipole](https://github.com/henry2004y/VisAnaJulia/tree/master/docs/src/images/trace_dipole.png "Tracing in a dipole field")
+
+Currently the tracing only works on a uniform structured grid.
+
+An example of tracing in a 2D cut and plot the field lines over contour:
 ```
 using VisAna, PyPlot
 
