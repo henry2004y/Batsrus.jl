@@ -111,6 +111,37 @@ streamplot(data[1], filehead[1], "bx;bz")
 streamplot(data[1], filehead[1], "bx;bz", density=2.0, color="k", plotinterval=1.0, plotrange=[-10,10,-Inf,Inf])
 ```
 
+## Streamline tracing
+
+The built-in `streamplot` function in Matplotlib is not satisfactory for accurately tracing streamlines. Instead in VisAna we have native support field tracer:
+```
+using VisAna, PyPlot
+
+include("../src/trace2d.jl")
+
+filename = "y=0_var_1_t00000000_n00000000.out"
+head, data, list = readdata(filename,dir="test")
+
+bx = data[1].w[:,:,5]
+bz = data[1].w[:,:,7]
+x  = data[1].x[:,1,1]
+z  = data[1].x[1,:,2]
+
+seeds = select_seeds(x,z) # randomly select the seeding points
+
+for i = 1:size(seeds)[2]
+   xs = seeds[1,i]
+   zs = seeds[2,i]
+   # forward
+   x1, y1 = trace2d(bx, bz, xs, zs, x, z, ds=0.1, maxstep=1000, gridType="ndgrid")
+   plot(x1,y1,"--")
+   # backward
+   x2, y2 = trace2d(-bx, -bz, xs, zs, x, z, ds=0.1, maxstep=1000, gridType="ndgrid")
+   plot(x2,y2,"-")
+end
+axis("equal")
+```
+
 ## Derived variables
 ```
 v = get_vars(data[1], filehead[1], ["Bx", "By", "Bz"])
