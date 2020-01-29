@@ -77,6 +77,10 @@ minimum variance of the field component along each vector.
 !!! note
     In practice, the ratio of intermediate to minimum variance should be larger than 5 to give good fit of LMN.
 
+A not so good example case is the Galileo G8 Ganymede flyby magnetometer data:
+![](../images/B_Galileo_G8_LMN.png)
+where the ratio between the intermediate and minimum eigenvalue is only about 2.
+
 ## ULF Wave Detection
 
 ULF waves are MHD waves: Alfvén wave, fast wave and slow wave. One basic approach to identify waves is to check the correlation of quantity perturbations.
