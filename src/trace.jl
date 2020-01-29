@@ -42,6 +42,14 @@ function DoBreak(iloc::Int, jloc::Int, iSize::Int, jSize::Int)
    return ibreak
 end
 
+function DoBreak(iloc::Int, jloc::Int, kloc::Int, iSize::Int, jSize::Int,
+   kSize::Int)
+   ibreak = false
+   if iloc ≥ iSize-1 || jloc ≥ jSize-1 || kloc ≥ kSize-1; ibreak = true end
+   if iloc < 0 || jloc < 0 || kloc < 0; ibreak = true end
+   return ibreak
+end
+
 """Create unit vectors of field."""
 function make_unit!(iSize::Int, jSize::Int, ux, uy)
    for i = 1:iSize*jSize
@@ -51,6 +59,14 @@ function make_unit!(iSize::Int, jSize::Int, ux, uy)
    end
 end
 
+function make_unit!(iSize::Int, jSize::Int, kSize::Int, ux, uy, uz)
+   for i = 1:iSize*jSize*kSize
+      magnitude = sqrt(ux[i]^2 + uy[i]^2 + uz[i]^2)
+      ux[i] /= magnitude
+      uy[i] /= magnitude
+      uz[i] /= magnitude
+   end
+end
 
 """
 	grid_interp!(x, y, field, xloc, yloc, xsize, ysize)
@@ -67,13 +83,12 @@ grid_interp!(x, y, field, xloc, yloc, xsize, ysize) =
 
 """
 	Euler!(iSize,jSize, maxstep, ds, xstart,ystart, xGrid,yGrid, ux,uy, x,y)
-Simple tracing using Euler's method.
-Super fast but not super accurate.
+Simple 2D tracing using Euler's method. Super fast but not super accurate.
 # Arguments
 - `iSize::Int,jSize::Int`: grid size.
 - `maxstep::Int`: max steps.
 - `ds::Float64`: step size.
-- `xstart::Float64, ystart::Float64`: starting locations.
+- `xstart::Float64, ystart::Float64`: starting location.
 - `xGrid::Array{Float64,2},yGrid::Array{Float64,2}`: actual coord system.
 - `ux::Array{Float64,2},uy::Array{Float64,2}`: field to trace through.
 - `x::Vector{Float64},y::Vector{Float64}`: x, y of result stream.
@@ -101,10 +116,7 @@ function Euler!(iSize::Int, jSize::Int, maxstep::Int, ds,
       if DoBreak(xloc, yloc, iSize, jSize)
          nstep = n; break
       end
-      if xloc > iSize - 2; xloc = iSize - 2 end
-      if xloc < 0;         xloc = 0 end
-      if yloc > iSize - 2; yloc = iSize - 2 end
-      if yloc < 0;         yloc = 0 end
+
       # Interpolate unit vectors to current location
       fx = grid_interp!(x[n], y[n], ux, xloc, yloc, iSize, jSize)
       fy = grid_interp!(x[n], y[n], uy, xloc, yloc, iSize, jSize)
@@ -131,12 +143,12 @@ function Euler!(iSize::Int, jSize::Int, maxstep::Int, ds,
 end
 
 """
-	Rk4!(iSize,jSize, maxstep, ds, xstart,ystart, xGrid,yGrid, ux,uy, x,y)
+	rk4!(iSize,jSize, maxstep, ds, xstart,ystart, xGrid,yGrid, ux,uy, x,y)
 
-Fast and reasonably accurate tracing with 4th order Runge-Kutta method and
+Fast and reasonably accurate 2D tracing with 4th order Runge-Kutta method and
 constant step size `ds`.
 """
-function Rk4!(iSize::Int, jSize::Int, maxstep::Int, ds,
+function rk4!(iSize::Int, jSize::Int, maxstep::Int, ds,
    xstart, ystart, xGrid, yGrid, ux, uy, x, y)
 
    # Get starting points in normalized/array coordinates
@@ -155,13 +167,7 @@ function Rk4!(iSize::Int, jSize::Int, maxstep::Int, ds,
       # SUBSTEP #1
       xloc = floor(Int, x[n])
       yloc = floor(Int, y[n])
-      if DoBreak(xloc, yloc, iSize, jSize)
-         nstep = n; break
-      end
-      if xloc > iSize-2; xloc = iSize-2 end
-      if xloc < 1;       xloc = 1 end
-      if yloc > iSize-2; yloc = iSize-2 end
-      if yloc < 1;       yloc = 1 end
+      if DoBreak(xloc, yloc, iSize, jSize); nstep = n; break end
 
       f1x = grid_interp!(x[n], y[n], ux, xloc, yloc, iSize, jSize)
       f1y = grid_interp!(x[n], y[n], uy, xloc, yloc, iSize, jSize)
@@ -173,11 +179,7 @@ function Rk4!(iSize::Int, jSize::Int, maxstep::Int, ds,
       ypos = y[n] + f1y*ds/2.0
       xloc = floor(Int, xpos)
       yloc = floor(Int, ypos)
-      if DoBreak(xloc, yloc, iSize, jSize); break; end
-      if xloc > iSize-2; xloc = iSize-2 end
-      if xloc < 1;       xloc = 1 end
-      if yloc > iSize-2; yloc = iSize-2 end
-      if yloc < 1;       yloc = 1 end
+      if DoBreak(xloc, yloc, iSize, jSize); nstep = n; break end
 
       f2x = grid_interp!(xpos, ypos, ux, xloc, yloc, iSize, jSize)
       f2y = grid_interp!(xpos, ypos, uy, xloc, yloc, iSize, jSize)
@@ -190,13 +192,7 @@ function Rk4!(iSize::Int, jSize::Int, maxstep::Int, ds,
       ypos = y[n] + f2y*ds/2.0
       xloc = floor(Int, xpos)
       yloc = floor(Int, ypos)
-      if DoBreak(xloc, yloc, iSize, jSize)
-         nstep = n; break
-      end
-      if xloc > iSize-2; xloc = iSize-2 end
-      if xloc < 1;       xloc = 1 end
-      if yloc > iSize-2; yloc = iSize-2 end
-      if yloc < 1;       yloc = 1 end
+      if DoBreak(xloc, yloc, iSize, jSize); nstep = n; break end
 
       f3x = grid_interp!(xpos, ypos, ux, xloc, yloc, iSize, jSize)
       f3y = grid_interp!(xpos, ypos, uy, xloc, yloc, iSize, jSize)
@@ -209,13 +205,7 @@ function Rk4!(iSize::Int, jSize::Int, maxstep::Int, ds,
       ypos = y[n] + f3y*ds
       xloc = floor(Int, xpos)
       yloc = floor(Int, ypos)
-      if DoBreak(xloc, yloc, iSize, jSize)
-         nstep = n; break
-      end
-      if xloc > iSize-2; xloc = iSize-2 end
-      if xloc < 1;       xloc = 1 end
-      if yloc > iSize-2; yloc = iSize-2 end
-      if yloc < 1;       yloc = 1 end
+      if DoBreak(xloc, yloc, iSize, jSize); nstep = n; break end
 
       f4x = grid_interp!(xpos, ypos, ux, xloc, yloc, iSize, jSize)
       f4y = grid_interp!(xpos, ypos, uy, xloc, yloc, iSize, jSize)
@@ -236,6 +226,74 @@ function Rk4!(iSize::Int, jSize::Int, maxstep::Int, ds,
       y[i] = y[i]*dy + yGrid[1]
    end
 
+   return nstep
+end
+
+"""
+	Euler!(iSize, jSize, kSize, maxstep, ds, xstart, ystart, zstart,
+      xGrid, yGrid, zGrid ux, uy, uz, x, y, z)
+Simple 3D tracing using Euler's method.
+# Arguments
+- `iSize::Int,jSize::Int,kSize::Int`: grid size.
+- `maxstep::Int`: max steps.
+- `ds::Float64`: step size.
+- `xstart::Float64, ystart::Float64, zstart::Float64`: starting location.
+- `xGrid::Array{Float64,2},yGrid::Array{Float64,2},yGrid::Array{Float64,2}`: actual coord system.
+- `ux::Array{Float64,2},uy::Array{Float64,2},uz::Array{Float64,2}`: field to trace through.
+- `x::Vector{Float64},y::Vector{Float64},z::Vector{Float64}`: x, y, z of result stream.
+"""
+function Euler!(iSize::Int, jSize::Int, kSize::Int, maxstep::Int, ds,
+   xstart, ystart, zstart, xGrid, yGrid, zGrid, ux, uy, uz, x, y, z)
+
+   # Get starting points in normalized/array coordinates
+   dx = xGrid[2] - xGrid[1]
+   dy = yGrid[2] - yGrid[1]
+   dz = zGrid[2] - zGrid[1]
+   x[1] = (xstart-xGrid[1]) / dx
+   y[1] = (ystart-yGrid[1]) / dy
+   z[1] = (zstart-zGrid[1]) / dz
+
+   # Create unit vectors from full vector field
+   make_unit!(iSize, jSize, kSize, ux, uy, uz)
+
+   nstep = 0
+   # Perform tracing using Euler's method
+   for n = 1:maxstep-1
+      # Find surrounding points
+      xloc = floor(Int, x[n])
+      yloc = floor(Int, y[n])
+      zloc = floor(Int, z[n])
+
+      # Break if we leave the domain
+      if DoBreak(xloc, yloc, zloc, iSize, jSize, kSize)
+         nstep = n; break
+      end
+
+      # Interpolate unit vectors to current location
+      fx = grid_interp!(x[n], y[n], z[n], ux, xloc,yloc,zloc, iSize,jSize,kSize)
+      fy = grid_interp!(x[n], y[n], z[n], uy, xloc,yloc,zloc, iSize,jSize,kSize)
+      fy = grid_interp!(x[n], y[n], z[n], uz, xloc,yloc,zloc, iSize,jSize,kSize)
+
+      # Detect NaNs in function values
+      if any(isnan,[fx, fy, fz]) || any(isinf, [fx, fy, fz])
+         nstep = n
+         break
+      end
+
+      # Perform single step
+      x[n+1] = x[n] + ds * fx
+      y[n+1] = y[n] + ds * fy
+      z[n+1] = z[n] + ds * fz
+
+      nstep = n
+   end
+
+   # Return traced points to original coordinate system.
+   for i = 1:nstep
+      x[i] = x[i]*dx + xGrid[1]
+      y[i] = y[i]*dy + yGrid[1]
+      z[i] = z[i]*dz + zGrid[1]
+   end
    return nstep
 end
 
@@ -287,7 +345,7 @@ function trace2d_rk4(fieldx, fieldy, xstart, ystart, gridx, gridy;
    end
    =#
 
-   npoints = Rk4!(nx, ny, maxstep, ds, xstart, ystart, gx, gy, fx, fy, xt, yt)
+   npoints = rk4!(nx, ny, maxstep, ds, xstart, ystart, gx, gy, fx, fy, xt, yt)
 
    return xt[1:npoints], yt[1:npoints]
 
@@ -298,11 +356,12 @@ end
 		maxstep=20000, ds=0.01)
 
 Given a 2D vector field, trace a streamline from a given point to the edge of
-the vector field.  The field is integrated using Euler"s method. While this is
+the vector field. The field is integrated using Euler's method. While this is
 faster than rk4, it is less accurate. Only valid for regular grid with
-coordinates gridx, gridy. If gridx and gridy are not given, assume that xstart
-and ystart are normalized coordinates (e.g. position in terms of array indices.)
- The field can be in both `meshgrid` (default) or `ndgrid` format.
+coordinates `gridx`, `gridy`. If gridx and gridy are not given, assume that
+`xstart` and `ystart` are normalized coordinates (e.g. position in terms of
+array indices.)??? The field can be in both `meshgrid` (default) or `ndgrid`
+format.
 """
 function trace2d_eul(fieldx, fieldy, xstart, ystart, gridx, gridy;
    maxstep=20000, ds=0.01, gridType="meshgrid")
@@ -337,13 +396,49 @@ function trace2d_eul(fieldx, fieldy, xstart, ystart, gridx, gridy;
    end
    =#
 
-   npoints = Euler!(nx, ny, maxstep, ds, xstart, ystart, gx, gy, fx, fy, xt, yt)
+   npoints = Euler!(nx,ny, maxstep, ds, xstart,ystart, gx, gy, fx, fy, xt, yt)
 
    return xt[1:npoints], yt[1:npoints]
 end
 
 trace2d(fieldx, fieldy, xstart, ystart, gridx, gridy) =
    trace2d_rk4(fieldx, fieldy, xstart, ystart, gridx, gridy)
+
+"""
+	trace3d_eul(fieldx, fieldy, fieldz, xstart, ystart, zstart, gridx, gridy,
+      gridz; maxstep=20000, ds=0.01)
+
+Given a 3D vector field, trace a streamline from a given point to the edge of
+the vector field. The field is integrated using Euler's method. Only valid for
+regular grid with coordinates `gridx`, `gridy`, `gridz`.
+The field can be in both `meshgrid` (default) or `ndgrid` format.
+"""
+function trace3d_eul(fieldx, fieldy, fieldz, xstart, ystart, zstart, gridx,
+   gridy, gridz; maxstep=20000, ds=0.01, gridType="meshgrid")
+
+   xt = Vector{eltype(fieldx)}(undef,maxstep) # output x
+   yt = Vector{eltype(fieldy)}(undef,maxstep) # output y
+   zt = Vector{eltype(fieldz)}(undef,maxstep) # output z
+
+   nx, ny, nz = size(gridx)[1], size(gridy)[1], size(gridz)[1]
+
+   gx, gy, gz = collect(gridx), collect(gridy), collect(gridz)
+
+   if gridType == "ndgrid" # ndgrid
+      fx, fy, fz = fieldx, fieldy, fieldz
+   else # meshgrid
+      fx, fy, fz = permutedims(fieldx), permutedims(fieldy), permutedims(fieldz)
+   end
+
+   npoints = Euler!(nx,ny,nz maxstep, ds, xstart,ystart,zstart, gx,gy,gz,
+      fx,fy,fz, xt, yt,zt)
+
+   return xt[1:npoints], yt[1:npoints], zt[1:npoints]
+end
+
+trace3d(fieldx, fieldy, fieldz, xstart, ystart, zstart, gridx, gridy, gridz) =
+   trace3d_eul(fieldx, fieldy, fieldz, xstart, ystart, zstart,
+   gridx, gridy, gridz)
 
 """
 	select_seeds(x, y, nSeed=100)
