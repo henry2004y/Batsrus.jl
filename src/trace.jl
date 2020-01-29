@@ -409,13 +409,11 @@ end
 
 Given a 2D vector field, trace a streamline from a given point to the edge of
 the vector field. The field is integrated using Runge Kutta 4. Slower than
-Euler, but more accurate. The higher accuracy allows for larger step sizes
-(ds kwarg). For a demonstration of the improved accuracy, run test_asymtote and
-test_dipole, bouth found in the pybats.trace2d module.
-Only valid for regular grid with coordinates gridx, gridy. If gridx and gridy
-are not given, assume that xstart and ystart are normalized coordinates
-(e.g., position in terms of array indices.)
- The field can be in both `meshgrid` (default) or `ndgrid` format.
+Euler, but more accurate. The higher accuracy allows for larger step sizes `ds`.
+ Only valid for regular grid with coordinates `gridx`, `gridy`. If `gridx` and
+`gridy` are not given, assume that `xstart` and `ystart` are normalized
+coordinates (e.g., position in terms of array indices.???)
+The field can be in both `meshgrid` (default) or `ndgrid` format.
 """
 function trace2d_rk4(fieldx, fieldy, xstart, ystart, gridx, gridy;
    maxstep=20000, ds=0.01, gridType="meshgrid")
@@ -582,13 +580,13 @@ function select_seeds(x, y, z, nSeed=100)
 end
 
 """
-   test_trace_asymtote(IsSingle)
+   test_trace_asymptote(IsSingle)
 
 Test streamline tracing by plotting vectors and associated streamlines
 through a simple velocity field where Vx=x, Vy=-y.
 Support test for single and double precision.
 """
-function test_trace_asymtote(IsSingle=false)
+function test_trace_asymptote(IsSingle=false)
 
    # Start by creating a velocity vector field.
    if IsSingle
@@ -645,9 +643,9 @@ function test_trace_asymtote(IsSingle=false)
    ax1.plot(x6, y6, "g:",  label="Euler ds=1.0", linewidth=.75)
    ax1.legend(loc="upper right")
    if IsSingle
-      ax1.set_title("Runge Kutta 4 vs Euler's: Asymtotic Field, Single Precision")
+      ax1.set_title("Runge Kutta 4 vs Euler's: Asymptotic Field, Single Precision")
    else
-      ax1.set_title("Runge Kutta 4 vs Euler's: Asymtotic Field, Double Precision")
+      ax1.set_title("Runge Kutta 4 vs Euler's: Asymptotic Field, Double Precision")
    end
    ax1.set_xlabel("Normalized X Coordinate")
    ax1.set_ylabel("Normalized Y Coordinate")
