@@ -121,21 +121,21 @@ test_dipole()
 ```
 which will show the following figure
 
-![dipole_plot](https://github.com/henry2004y/VisAnaJulia/blob/master/docs/src/images/dipole_plot.png)
+![](../images/dipole_plot.png)
 
 Tracing along an asymptotic line
 ```
 test_trace_asymptote()
 ```
 in turn gives
-![trace_asymptote](https://github.com/henry2004y/VisAnaJulia/blob/master/docs/src/images/trace_asymptote.png)
+![trace_asymptote](../images/trace_asymptote.png)
 
 Tracing lines in a dipole field
 ```
 test_trace_dipole()
 ```
 in turn gives
-![trace_dipole](https://github.com/henry2004y/VisAnaJulia/blob/master/docs/src/images/trace_dipole.png)
+![trace_dipole](../images/trace_dipole.png)
 
 Currently the tracing only works on a uniform structured grid.
 
