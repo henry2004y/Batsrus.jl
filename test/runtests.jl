@@ -90,7 +90,7 @@ end
    println("Our trace starts at ", round(xt[1],digits=2), " ", round(yt[1],digits=2))
    println("...and ends at ", round(xt[npoints],digits=2), " ",round(yt[npoints],digits=2))
 
-   @time npoints = Rk4!(nx, ny, maxstep, ds, 1.0, 10.0, xgrid, ygrid,
+   @time npoints = RK4!(nx, ny, maxstep, ds, 1.0, 10.0, xgrid, ygrid,
  		 ux, uy, xt, yt)
 
    #= This will cause error if libtrace.so not in path!
