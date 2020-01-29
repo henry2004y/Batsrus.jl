@@ -215,12 +215,12 @@ end
 
 
 """
-	rk4!(iSize,jSize, maxstep, ds, xstart,ystart, xGrid,yGrid, ux,uy, x,y)
+	Rk4!(iSize,jSize, maxstep, ds, xstart,ystart, xGrid,yGrid, ux,uy, x,y)
 
 Fast and reasonably accurate 2D tracing with 4th order Runge-Kutta method and
 constant step size `ds`.
 """
-function rk4!(iSize::Int, jSize::Int, maxstep::Int, ds,
+function Rk4!(iSize::Int, jSize::Int, maxstep::Int, ds,
    xstart, ystart, xGrid, yGrid, ux, uy, x, y)
 
    # Get starting points in normalized/array coordinates
@@ -302,13 +302,13 @@ end
 
 
 """
-	rk4!(iSize,jSize,kSize, maxstep, ds, xstart,ystart,zstart, xGrid,yGrid,zGrid,
+	Rk4!(iSize,jSize,kSize, maxstep, ds, xstart,ystart,zstart, xGrid,yGrid,zGrid,
       ux,uy,uz, x,y,z)
 
 Fast and reasonably accurate 3D tracing with 4th order Runge-Kutta method and
 constant step size `ds`.
 """
-function rk4!(iSize::Int, jSize::Int, kSize::Int, maxstep::Int, ds,
+function Rk4!(iSize::Int, jSize::Int, kSize::Int, maxstep::Int, ds,
    xstart, ystart, zstart, xGrid, yGrid, zGrid, ux, uy, uz, x, y, z)
 
    # Get starting points in normalized/array coordinates
