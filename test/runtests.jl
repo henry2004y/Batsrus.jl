@@ -105,8 +105,8 @@ end
    println("Our trace starts at ", round(xt[1],digits=2), " ", round(yt[1],digits=2))
    println("...and ends at ", round(xt[npoints],digits=2), " ",round(yt[npoints],digits=2))
 
-   @test test_trace_asymtote()    # single precision
-   @test test_trace_asymtote(true)# double precision
+   @test test_trace_asymptote()    # single precision
+   @test test_trace_asymptote(true)# double precision
 
    @test test_dipole()            # dipole field plotting in 2D
    @test test_trace_dipole()      # dipole tracing in 2D
