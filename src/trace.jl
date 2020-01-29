@@ -9,6 +9,8 @@
 # Calling the native functions in Julia is about 5 times faster than calling the
 # dynmic C library.
 #
+# The next step is to merge this into the module.
+#
 # Modified from [SpacePy](https://github.com/spacepy/spacepy)
 # Hongyang Zhou, hyzhou@umich.edu 01/26/2020
 
@@ -142,6 +144,76 @@ function Euler!(iSize::Int, jSize::Int, maxstep::Int, ds,
    return nstep
 end
 
+
+"""
+	Euler!(iSize, jSize, kSize, maxstep, ds, xstart, ystart, zstart,
+      xGrid, yGrid, zGrid ux, uy, uz, x, y, z)
+Simple 3D tracing using Euler's method.
+# Arguments
+- `iSize::Int,jSize::Int,kSize::Int`: grid size.
+- `maxstep::Int`: max steps.
+- `ds::Float64`: step size.
+- `xstart::Float64, ystart::Float64, zstart::Float64`: starting location.
+- `xGrid::Array{Float64,2},yGrid::Array{Float64,2},yGrid::Array{Float64,2}`: actual coord system.
+- `ux::Array{Float64,2},uy::Array{Float64,2},uz::Array{Float64,2}`: field to trace through.
+- `x::Vector{Float64},y::Vector{Float64},z::Vector{Float64}`: x, y, z of result stream.
+"""
+function Euler!(iSize::Int, jSize::Int, kSize::Int, maxstep::Int, ds,
+   xstart, ystart, zstart, xGrid, yGrid, zGrid, ux, uy, uz, x, y, z)
+
+   # Get starting points in normalized/array coordinates
+   dx = xGrid[2] - xGrid[1]
+   dy = yGrid[2] - yGrid[1]
+   dz = zGrid[2] - zGrid[1]
+   x[1] = (xstart-xGrid[1]) / dx
+   y[1] = (ystart-yGrid[1]) / dy
+   z[1] = (zstart-zGrid[1]) / dz
+
+   # Create unit vectors from full vector field
+   make_unit!(iSize, jSize, kSize, ux, uy, uz)
+
+   nstep = 0
+   # Perform tracing using Euler's method
+   for n = 1:maxstep-1
+      # Find surrounding points
+      xloc = floor(Int, x[n])
+      yloc = floor(Int, y[n])
+      zloc = floor(Int, z[n])
+
+      # Break if we leave the domain
+      if DoBreak(xloc, yloc, zloc, iSize, jSize, kSize)
+         nstep = n; break
+      end
+
+      # Interpolate unit vectors to current location
+      fx = grid_interp!(x[n], y[n], z[n], ux, xloc,yloc,zloc, iSize,jSize,kSize)
+      fy = grid_interp!(x[n], y[n], z[n], uy, xloc,yloc,zloc, iSize,jSize,kSize)
+      fy = grid_interp!(x[n], y[n], z[n], uz, xloc,yloc,zloc, iSize,jSize,kSize)
+
+      # Detect NaNs in function values
+      if any(isnan,[fx, fy, fz]) || any(isinf, [fx, fy, fz])
+         nstep = n
+         break
+      end
+
+      # Perform single step
+      x[n+1] = x[n] + ds * fx
+      y[n+1] = y[n] + ds * fy
+      z[n+1] = z[n] + ds * fz
+
+      nstep = n
+   end
+
+   # Return traced points to original coordinate system.
+   for i = 1:nstep
+      x[i] = x[i]*dx + xGrid[1]
+      y[i] = y[i]*dy + yGrid[1]
+      z[i] = z[i]*dz + zGrid[1]
+   end
+   return nstep
+end
+
+
 """
 	rk4!(iSize,jSize, maxstep, ds, xstart,ystart, xGrid,yGrid, ux,uy, x,y)
 
@@ -225,24 +297,18 @@ function rk4!(iSize::Int, jSize::Int, maxstep::Int, ds,
       x[i] = x[i]*dx + xGrid[1]
       y[i] = y[i]*dy + yGrid[1]
    end
-
    return nstep
 end
 
+
 """
-	Euler!(iSize, jSize, kSize, maxstep, ds, xstart, ystart, zstart,
-      xGrid, yGrid, zGrid ux, uy, uz, x, y, z)
-Simple 3D tracing using Euler's method.
-# Arguments
-- `iSize::Int,jSize::Int,kSize::Int`: grid size.
-- `maxstep::Int`: max steps.
-- `ds::Float64`: step size.
-- `xstart::Float64, ystart::Float64, zstart::Float64`: starting location.
-- `xGrid::Array{Float64,2},yGrid::Array{Float64,2},yGrid::Array{Float64,2}`: actual coord system.
-- `ux::Array{Float64,2},uy::Array{Float64,2},uz::Array{Float64,2}`: field to trace through.
-- `x::Vector{Float64},y::Vector{Float64},z::Vector{Float64}`: x, y, z of result stream.
+	rk4!(iSize,jSize,kSize, maxstep, ds, xstart,ystart,zstart, xGrid,yGrid,zGrid,
+      ux,uy,uz, x,y,z)
+
+Fast and reasonably accurate 3D tracing with 4th order Runge-Kutta method and
+constant step size `ds`.
 """
-function Euler!(iSize::Int, jSize::Int, kSize::Int, maxstep::Int, ds,
+function rk4!(iSize::Int, jSize::Int, kSize::Int, maxstep::Int, ds,
    xstart, ystart, zstart, xGrid, yGrid, zGrid, ux, uy, uz, x, y, z)
 
    # Get starting points in normalized/array coordinates
@@ -257,33 +323,72 @@ function Euler!(iSize::Int, jSize::Int, kSize::Int, maxstep::Int, ds,
    make_unit!(iSize, jSize, kSize, ux, uy, uz)
 
    nstep = 0
-   # Perform tracing using Euler's method
+   # Perform tracing using RK4
    for n = 1:maxstep-1
-      # Find surrounding points
+      # See Euler's method for more descriptive comments.
+      # SUBSTEP #1
       xloc = floor(Int, x[n])
       yloc = floor(Int, y[n])
       zloc = floor(Int, z[n])
+      if DoBreak(xloc, yloc, zloc, iSize, jSize, kSize); nstep = n; break end
 
-      # Break if we leave the domain
-      if DoBreak(xloc, yloc, zloc, iSize, jSize, kSize)
+      f1x = grid_interp!(x[n],y[n],z[n], ux, xloc,yloc,zloc, iSize,jSize,kSize)
+      f1y = grid_interp!(x[n],y[n],z[n], uy, xloc,yloc,zloc, iSize,jSize,kSize)
+      f1z = grid_interp!(x[n],y[n],z[n], uz, xloc,yloc,zloc, iSize,jSize,kSize)
+      if any(isnan,[f1x, f1y, f1z]) || any(isinf, [f1x, f1y, f1z])
+         nstep = n; break
+      end
+      # SUBSTEP #2
+      xpos = x[n] + f1x*ds/2.0
+      ypos = y[n] + f1y*ds/2.0
+      zpos = z[n] + f1z*ds/2.0
+      xloc = floor(Int, xpos)
+      yloc = floor(Int, ypos)
+      zloc = floor(Int, zpos)
+      if DoBreak(xloc, yloc, zloc, iSize, jSize, kSize); nstep = n; break end
+
+      f2x = grid_interp!(xpos,ypos,zpos, ux, xloc,yloc,zloc, iSize,jSize,kSize)
+      f2y = grid_interp!(xpos,ypos,zpos, uy, xloc,yloc,zloc, iSize,jSize,kSize)
+      f2z = grid_interp!(xpos,ypos,zpos, uz, xloc,yloc,zloc, iSize,jSize,kSize)
+      if any(isnan,[f2x, f2y, f2z]) || any(isinf, [f2x, f2y, f2z])
+         nstep = n; break
+      end
+      # SUBSTEP #3
+      xpos = x[n] + f2x*ds/2.0
+      ypos = y[n] + f2y*ds/2.0
+      zpos = z[n] + f2z*ds/2.0
+      xloc = floor(Int, xpos)
+      yloc = floor(Int, ypos)
+      zloc = floor(Int, zpos)
+      if DoBreak(xloc, yloc, zloc, iSize, jSize, kSize); nstep = n; break end
+
+      f3x = grid_interp!(xpos,ypos,zpos, ux, xloc,yloc,zloc, iSize,jSize,kSize)
+      f3y = grid_interp!(xpos,ypos,zpos, uy, xloc,yloc,zloc, iSize,jSize,kSize)
+      f3z = grid_interp!(xpos,ypos,zpos, uz, xloc,yloc,zloc, iSize,jSize,kSize)
+      if any(isnan,[f3x, f3y, f3z]) || any(isinf, [f3x, f3y, f3z])
          nstep = n; break
       end
 
-      # Interpolate unit vectors to current location
-      fx = grid_interp!(x[n], y[n], z[n], ux, xloc,yloc,zloc, iSize,jSize,kSize)
-      fy = grid_interp!(x[n], y[n], z[n], uy, xloc,yloc,zloc, iSize,jSize,kSize)
-      fy = grid_interp!(x[n], y[n], z[n], uz, xloc,yloc,zloc, iSize,jSize,kSize)
+      # SUBSTEP #4
+      xpos = x[n] + f3x*ds
+      ypos = y[n] + f3y*ds
+      zpos = z[n] + f3z*ds
+      xloc = floor(Int, xpos)
+      yloc = floor(Int, ypos)
+      zloc = floor(Int, zpos)
+      if DoBreak(xloc, yloc, zloc, iSize, jSize, kSize); nstep = n; break end
 
-      # Detect NaNs in function values
-      if any(isnan,[fx, fy, fz]) || any(isinf, [fx, fy, fz])
-         nstep = n
-         break
+      f4x = grid_interp!(xpos,ypos,zpos, ux, xloc,yloc,zloc, iSize,jSize,kSize)
+      f4y = grid_interp!(xpos,ypos,zpos, uy, xloc,yloc,zloc, iSize,jSize,kSize)
+      f4z = grid_interp!(xpos,ypos,zpos, uz, xloc,yloc,zloc, iSize,jSize,kSize)
+      if any(isnan,[f4x, f4y, f4z]) || any(isinf, [f4x, f4y, f4z])
+         nstep = n; break
       end
 
-      # Perform single step
-      x[n+1] = x[n] + ds * fx
-      y[n+1] = y[n] + ds * fy
-      z[n+1] = z[n] + ds * fz
+      # Peform the full step using all substeps
+      x[n+1] = x[n] + ds/6.0 * (f1x + f2x*2.0 + f3x*2.0 + f4x)
+      y[n+1] = y[n] + ds/6.0 * (f1y + f2y*2.0 + f3y*2.0 + f4y)
+      z[n+1] = z[n] + ds/6.0 * (f1z + f2z*2.0 + f3z*2.0 + f4z)
 
       nstep = n
    end
