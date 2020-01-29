@@ -13,13 +13,17 @@ In principle, I could also try some multi-block (VTM) type for conversion.
 - Because of the embarrassing parallelism nature of postprocessing, it is quite easy to take advantage of parallel approaches to process the data.
 - The built-in streamline function of Matplotlib is not proper for scientifically visualizing field information. The solution is to trace field lines with ODEs and plot the line series, similar to what has been done by [Spacepy](https://github.com/spacepy/spacepy/blob/master/spacepy/pybats/trace2d.py).
 
+## Streamline Tracing
+
+2D streamline tracing is almost finished. 3D streamline tracing is on the way.
+
 ##
 
 A real open-source project is a collaborated work not only from a bunch of people, but also a group of languages. In Julia, this can be achieved with the help of the [Package manager](https://julialang.github.io/Pkg.jl/dev/).
 
 I want to have some C dependencies in my code instead of rewriting everything in Julia. This would serve as an attempt to quickly make things work.
 
-Right now this seems to be a little bit difficult for me. I need to learn from experts. The tracing scheme in C is rewritten in Julia so I don't need to bother for now. 
+Right now this seems to be a little bit difficult for me. I need to learn from experts. The tracing scheme in C is rewritten in Julia so I don't need to bother for now.
 Checkout [BinaryBuilder](https://juliapackaging.github.io/BinaryBuilder.jl/latest/#Project-flow-1) for more information.
 
 
@@ -58,7 +62,9 @@ Vector naming is messed up if you are using Tecplot VTK reader. For example, "B 
 
 There is a unit package in Julia [unitful](https://github.com/PainterQubits/Unitful.jl) for handling units. Take a look at that one if you really want to solve the unit problems.
 
-I have encountered a very bad problem of corrupting binary *.vtu files. It turned out that the issue is the starting position of data is wrong because of the way I skip the header AUXDATA part. Sometimes the binary numbers may contain newline character that confuses the reader. It is now fixed.
+I have encountered a very bad problem of corrupting binary *.vtu files. It turned out that the issue is the starting position of data is wrong because of the way I skip the header AUXDATA part. Sometimes the binary numbers may contain newline character that confuses the reader. It is now fixed. Later on the reading of the header part is completely rewritten to provide better support for a variety of Tecplot Ascii headers.
+
+I have already made a lot of mistakes by mixing the row-major and column-major codes. Explicitly list all the parts that require extra care!
 
 For quickly scanning through data, I need a GUI.
 
@@ -68,7 +74,7 @@ For quickly scanning through data, I need a GUI.
 - [x] Cuts from 3D data visualization besides contour
 - [ ] Switch to Makie for 3D plotting and animation
 - [ ] GUI
-- [ ] PyBase support for manipulating data directly in Python
+- [ ] PyJulia support for manipulating data directly in Python
 - [x] Field tracer 2D in Julia
 - [x] Derived variable support
 - [x] General postprocessing script for concatenating and converting files.
@@ -77,3 +83,4 @@ For quickly scanning through data, I need a GUI.
 - [ ] Find a substitution of triangulation in Julia
 - [ ] Allow dot syntax to get dictionary contents (Base.convert?)
 - [ ] Binary library support
+- [ ] Macros for quickly looking at data

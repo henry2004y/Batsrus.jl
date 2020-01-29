@@ -84,7 +84,7 @@ end
              Ptr{Cdouble},Ptr{Cdouble},Ptr{Cdouble},Ptr{Cdouble}),
              nx, ny, maxstep, ds, 1.0, 10.0, xgrid, ygrid, ux, uy, xt, yt)
    =#
-   @test npoints == 801
+   @test npoints == 800
    println("Npoints = ", npoints)
    println("Grid goes from ", round(xgrid[1],digits=2), " to ", round(xgrid[nx],digits=2))
    println("Our trace starts at ", round(xt[1],digits=2), " ", round(yt[1],digits=2))
@@ -99,7 +99,7 @@ end
              Ptr{Cdouble},Ptr{Cdouble},Ptr{Cdouble},Ptr{Cdouble}),
              nx, ny, maxstep, ds, 1.0, 10.0, xgrid, ygrid, ux, uy, xt, yt)
    =#
-   @test npoints == 799
+   @test npoints == 798
    println("Npoints = ", npoints)
    println("Grid goes from ", round(xgrid[1],digits=2), " to ", round(xgrid[nx],digits=2))
    println("Our trace starts at ", round(xt[1],digits=2), " ", round(yt[1],digits=2))
@@ -110,6 +110,29 @@ end
 
    @test test_dipole()            # dipole field plotting in 2D
    @test test_trace_dipole()      # dipole tracing in 2D
+
+   # field tracing using dipole+background uniform field in BATSRUS
+   filename = "y=0_var_1_t00000000_n00000000.out"
+   head, data, list = readdata(filename)
+
+   streamplot(data[1], head[1], "bx;bz")
+
+   bx = data[1].w[:,:,5]
+   bz = data[1].w[:,:,7]
+   x  = data[1].x[:,1,1]
+   z  = data[1].x[1,:,2]
+
+   #xstart = -120.0:10.0:10.
+   #zstart = fill(10.0, size(xstart))
+
+   seeds = select_seeds(x,z)
+   xs, zs = seeds[1,end], seeds[2,end]
+   # Forward
+   x1, z1 = trace2d_eul(bx, bz, xs, zs, x, z, ds=0.1, gridType="ndgrid")
+   # Backward
+   x2, z2 = trace2d_rk4(-bx, -bz, xs, zs, x, z, ds=0.1, gridType="ndgrid")
+   @test length(x1) == 54
+   @test length(x2) == 24
 end
 
 @testset "log" begin

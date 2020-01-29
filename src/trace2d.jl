@@ -12,7 +12,7 @@
 # Modified from [SpacePy](https://github.com/spacepy/spacepy)
 # Hongyang Zhou, hyzhou@umich.edu 01/26/2020
 
-using PyPlot
+using PyPlot, Random
 
 include("dipole.jl")
 
@@ -34,12 +34,11 @@ end
 	DoBreak(iloc, jloc, iSize, jSize)
 
 Check to see if we should break out of an integration.
-As set now, code will extrapolate up to 1 point outside of current block.
 """
 function DoBreak(iloc::Int, jloc::Int, iSize::Int, jSize::Int)
    ibreak = false
-   if iloc ≥ iSize || jloc ≥ jSize; ibreak = true end
-   if iloc < -1 || jloc < -1; ibreak = true end
+   if iloc ≥ iSize-1 || jloc ≥ jSize-1; ibreak = true end
+   if iloc < 0 || jloc < 0; ibreak = true end
    return ibreak
 end
 
@@ -57,7 +56,7 @@ end
 	grid_interp!(x, y, field, xloc, yloc, xsize, ysize)
 
 Interpolate a value at (x,y) in a field. `xloc` and `yloc` are indexes for x,y
-locations. `xsize` and `ysize` are the sizes of field in X and Y.
+locations (zero-based). `xsize` and `ysize` are the sizes of field in X and Y.
 """
 grid_interp!(x, y, field, xloc, yloc, xsize, ysize) =
    bilin_reg(x-xloc, y-yloc,
@@ -95,7 +94,6 @@ function Euler!(iSize::Int, jSize::Int, maxstep::Int, ds,
    # Perform tracing using Euler's method
    for n = 1:maxstep-1
       # Find surrounding points
-      #@show n, maxstep, x[n]
       xloc = floor(Int, x[n])
       yloc = floor(Int, y[n])
 
@@ -113,9 +111,6 @@ function Euler!(iSize::Int, jSize::Int, maxstep::Int, ds,
 
       # Detect NaNs in function values
       if isnan(fx) || isnan(fy) || isinf(fx) || isinf(fy)
-         #@show n, x[n], y[n], fx,fy, xloc, yloc, iSize, jSize
-         #@show (yloc+1)*iSize+xloc+1, sizeof(ux), ux[(yloc+1)*iSize+xloc+1]
-         #error("debug")
          nstep = n
          break
       end
@@ -124,7 +119,7 @@ function Euler!(iSize::Int, jSize::Int, maxstep::Int, ds,
       x[n+1] = x[n] + ds * fx
       y[n+1] = y[n] + ds * fy
 
-      nstep = maxstep
+      nstep = n
    end
 
    # Return traced points to original coordinate system.
@@ -257,9 +252,10 @@ test_dipole, bouth found in the pybats.trace2d module.
 Only valid for regular grid with coordinates gridx, gridy. If gridx and gridy
 are not given, assume that xstart and ystart are normalized coordinates
 (e.g., position in terms of array indices.)
+ The field can be in both `meshgrid` (default) or `ndgrid` format.
 """
 function trace2d_rk4(fieldx, fieldy, xstart, ystart, gridx, gridy;
-   maxstep=20000, ds=0.01)
+   maxstep=20000, ds=0.01, gridType="meshgrid")
 
    xt = Vector{eltype(fieldx)}(undef,maxstep) # output x
    yt = Vector{eltype(fieldy)}(undef,maxstep) # output y
@@ -268,8 +264,13 @@ function trace2d_rk4(fieldx, fieldy, xstart, ystart, gridx, gridy;
 
    gx, gy = collect(gridx), collect(gridy)
 
-   fx = permutedims(fieldx) # C is row-major
-   fy = permutedims(fieldy) # C is row-major
+   if gridType == "ndgrid" # ndgrid
+      fx = fieldx
+      fy = fieldy
+   else # meshgrid
+      fx = permutedims(fieldx)
+      fy = permutedims(fieldy)
+   end
 
    #=
    if eltype(fieldx) == Float64
@@ -294,16 +295,17 @@ end
 
 """
 	trace2d_eul(fieldx, fieldy, xstart, ystart, gridx, gridy;
-		maxstep=20000, ds=0.01
+		maxstep=20000, ds=0.01)
 
 Given a 2D vector field, trace a streamline from a given point to the edge of
 the vector field.  The field is integrated using Euler"s method. While this is
 faster than rk4, it is less accurate. Only valid for regular grid with
 coordinates gridx, gridy. If gridx and gridy are not given, assume that xstart
-and ystart are normalized coordinates (e.g., position in terms of array indices.
+and ystart are normalized coordinates (e.g. position in terms of array indices.)
+ The field can be in both `meshgrid` (default) or `ndgrid` format.
 """
 function trace2d_eul(fieldx, fieldy, xstart, ystart, gridx, gridy;
-   maxstep=20000, ds=0.01)
+   maxstep=20000, ds=0.01, gridType="meshgrid")
 
    xt = Vector{eltype(fieldx)}(undef,maxstep) # output x
    yt = Vector{eltype(fieldy)}(undef,maxstep) # output y
@@ -312,8 +314,13 @@ function trace2d_eul(fieldx, fieldy, xstart, ystart, gridx, gridy;
 
    gx, gy = collect(gridx), collect(gridy)
 
-   fx = permutedims(fieldx) # C is row-major
-   fy = permutedims(fieldy) # C is row-major
+   if gridType == "ndgrid" # ndgrid
+      fx = fieldx
+      fy = fieldy
+   else # meshgrid
+      fx = permutedims(fieldx)
+      fy = permutedims(fieldy)
+   end
 
    #=
    if eltype(fieldx) == Float64
@@ -335,6 +342,44 @@ function trace2d_eul(fieldx, fieldy, xstart, ystart, gridx, gridy;
    return xt[1:npoints], yt[1:npoints]
 end
 
+trace2d(fieldx, fieldy, xstart, ystart, gridx, gridy) =
+   trace2d_rk4(fieldx, fieldy, xstart, ystart, gridx, gridy)
+
+"""
+	select_seeds(x, y, nSeed=100)
+
+Generate seeding point randomly in the grid range.
+"""
+function select_seeds(x, y, nSeed=100)
+   xmin,xmax = extrema(x)
+   ymin,ymax = extrema(y)
+
+   xstart = rand(MersenneTwister(0),nSeed)*(xmax-xmin) .+ xmin
+   ystart = rand(MersenneTwister(1),nSeed)*(ymax-ymin) .+ ymin
+   seeds = zeros(2,length(xstart))
+   for i = 1:length(xstart)
+      seeds[1,i] = xstart[i]
+      seeds[2,i] = ystart[i]
+   end
+   return seeds
+end
+
+function select_seeds(x, y, z, nSeed=100)
+   xmin,xmax = extrema(x)
+   ymin,ymax = extrema(y)
+   zmin,zmax = extrema(y)
+
+   xstart = rand(MersenneTwister(0),nSeed)*(xmax-xmin) .+ xmin
+   ystart = rand(MersenneTwister(1),nSeed)*(ymax-ymin) .+ ymin
+   zstart = rand(MersenneTwister(2),nSeed)*(zmax-zmin) .+ zmin
+   seeds = zeros(3,length(xstart))
+   for i = 1:length(xstart)
+      seeds[1,i] = xstart[i]
+      seeds[2,i] = ystart[i]
+      seeds[3,i] = zstart[i]
+   end
+   return seeds
+end
 
 """
    test_trace_asymtote(IsSingle)
@@ -398,7 +443,7 @@ function test_trace_asymtote(IsSingle=false)
    ax1.plot(x4, y4, "g", label="Euler ds=0.1", linewidth=.75)
    ax1.plot(x5, y5, "g--", label="Euler ds=0.5", linewidth=.75)
    ax1.plot(x6, y6, "g:",  label="Euler ds=1.0", linewidth=.75)
-   ax1.legend()
+   ax1.legend(loc="upper right")
    if IsSingle
       ax1.set_title("Runge Kutta 4 vs Euler's: Asymtotic Field, Single Precision")
    else

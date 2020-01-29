@@ -12,23 +12,25 @@ For a position `x`, `y` in units of planetary radius, return the strength of the
  dipole magnetic field in nT.
 """
 function b_mag(x::AbstractFloat, y::AbstractFloat)
-
 	r = @. √(x^2 + y^2)
 	cosy = y./r
-
 	B = @. 30400. * sqrt(1+3*cosy^2)/r^3
 end
 
 """
 	b_hat(x, y)
-For given parameters, return two arrays, x and y, corresponding to the x and y
-components of b_hat for a dipole field. Plotting these two matrices using
-MatPlotLib's quiver function will create a beautiful dipole field for tracing
-and other stuff.
+For given parameters, return two arrays, `x` and `y`, corresponding to the x and
+ y components of b_hat for a dipole field. The grid is organized in meshgrid
+(default) or ndgrid format.
 """
-function b_hat(x, y)
-	xgrid = [i for j in y, i in x]
-   ygrid = [j for j in y, i in x]
+function b_hat(x, y; gridType="meshgrid")
+   if gridType == "meshgrid"
+	   xgrid = [i for j in y, i in x]
+      ygrid = [j for j in y, i in x]
+   else
+      xgrid = [i for i in x, j in y]
+      ygrid = [j for i in x, j in y]
+   end
 
 	r = @. sqrt(xgrid^2 + ygrid^2)
 	cosy = ygrid./r
@@ -89,13 +91,13 @@ function test_dipole()
    ax1.quiver(x, y, x_vec, y_vec)
 
    for i in -120:10:121
-      (x,y) = b_line(float(i), 0.0, npoints=100)
+      x,y = b_line(float(i), 0.0, npoints=100)
       ax1.plot(x, y, "b")
    end
    for theta in π/2.0:π/100.0:3.0π/2.0
       x = sin(theta)
       y = cos(theta)
-      (x,y) = b_line(x, y, npoints=100)
+      x,y = b_line(x, y, npoints=100)
       ax1.plot(x, y, "r")
    end
    ax1.set_xlim([-100, 100])
