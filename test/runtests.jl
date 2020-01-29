@@ -99,7 +99,7 @@ end
              Ptr{Cdouble},Ptr{Cdouble},Ptr{Cdouble},Ptr{Cdouble}),
              nx, ny, maxstep, ds, 1.0, 10.0, xgrid, ygrid, ux, uy, xt, yt)
    =#
-   @test npoints == 798
+   @test npoints == 799
    println("Npoints = ", npoints)
    println("Grid goes from ", round(xgrid[1],digits=2), " to ", round(xgrid[nx],digits=2))
    println("Our trace starts at ", round(xt[1],digits=2), " ", round(yt[1],digits=2))
@@ -132,7 +132,7 @@ end
    # Backward
    x2, z2 = trace2d_rk4(-bx, -bz, xs, zs, x, z, ds=0.1, gridType="ndgrid")
    @test length(x1) == 54
-   @test length(x2) == 24
+   @test length(x2) == 25
 end
 
 @testset "log" begin
