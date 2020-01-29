@@ -430,8 +430,8 @@ function trace3d_eul(fieldx, fieldy, fieldz, xstart, ystart, zstart, gridx,
       fx, fy, fz = permutedims(fieldx), permutedims(fieldy), permutedims(fieldz)
    end
 
-   npoints = Euler!(nx,ny,nz maxstep, ds, xstart,ystart,zstart, gx,gy,gz,
-      fx,fy,fz, xt, yt,zt)
+   npoints = Euler!(nx,ny,nz, maxstep, ds, xstart,ystart,zstart, gx,gy,gz,
+      fx,fy,fz, xt,yt,zt)
 
    return xt[1:npoints], yt[1:npoints], zt[1:npoints]
 end
