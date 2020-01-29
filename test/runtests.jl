@@ -43,7 +43,7 @@ end
 end
 
 @testset "2D field tracing" begin
-   include("../src/trace2d.jl")
+   include("../src/trace.jl")
 
    # Test for the bilinear interpolation function
    x, y = 0.1, 0.2
