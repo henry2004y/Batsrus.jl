@@ -17,6 +17,14 @@ In principle, I could also try some multi-block (VTM) type for conversion.
 
 2D streamline tracing is almost finished. 3D streamline tracing is on the way.
 
+## Particle Tracing
+
+I have a plan of incorporating particle tracing into this module. WIP
+
+## Support for more complicated grid structures
+
+For the plotting, streamline tracing and particle tracing, a common problem is the grid and related interpolation process. I am envisioning a more general approach to deal with block-based and unstructured grid to provide fundamental support for all of these.
+
 ##
 
 A real open-source project is a collaborated work not only from a bunch of people, but also a group of languages. In Julia, this can be achieved with the help of the [Package manager](https://julialang.github.io/Pkg.jl/dev/).
