@@ -113,7 +113,7 @@ end
 
    # field tracing using dipole+background uniform field in BATSRUS
    filename = "y=0_var_1_t00000000_n00000000.out"
-   head, data, list = readdata(filename)
+   head, data = readdata(filename)
 
    streamplot(data[1], head[1], "bx;bz")
 
