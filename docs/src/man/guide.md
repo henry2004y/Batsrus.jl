@@ -17,6 +17,8 @@ In principle, I could also try some multi-block (VTM) type for conversion.
 
 2D streamline tracing is almost finished. 3D streamline tracing is on the way.
 
+I need an adaptive step control integration scheme like rk45.
+
 ##
 
 A real open-source project is a collaborated work not only from a bunch of people, but also a group of languages. In Julia, this can be achieved with the help of the [Package manager](https://julialang.github.io/Pkg.jl/dev/).
@@ -66,8 +68,6 @@ I have encountered a very bad problem of corrupting binary *.vtu files. It turne
 
 I have already made a lot of mistakes by mixing the row-major and column-major codes. Explicitly list all the parts that require extra care!
 
-For quickly scanning through data, I need a GUI.
-
 - [x] Fixed colorbar control through Matplotlib
 - [x] Test suite for checking validity
 - [ ] Full coverage of tests
@@ -83,4 +83,6 @@ For quickly scanning through data, I need a GUI.
 - [ ] Find a substitution of triangulation in Julia
 - [ ] Allow dot syntax to get dictionary contents (Base.convert?)
 - [ ] Binary library support
-- [ ] Macros for quickly looking at data
+- [ ] Macros for quickly looking at data (GUI is the ideal solution!)
+- [ ] Magnetic field line plots from simulation
+- [ ] Particle phase space distribution plots

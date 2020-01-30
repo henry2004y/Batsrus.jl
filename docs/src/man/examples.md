@@ -5,10 +5,10 @@
 - Read data
 ```
 filename = "1d_bin.out";
-filehead, data, filelist = readdata(filename);
-filehead, data, filelist = readdata(filename, verbose=true);
-filehead, data, filelist = readdata(filename, npict=1);
-filehead, data, filelist = readdata(filename, dir=".");
+head, data = readdata(filename);
+head, data = readdata(filename, verbose=true);
+head, data, list = readdata(filename, npict=1);
+head, data, list = readdata(filename, dir=".");
 ```
 
 A general `plotdata` function is provided for quick visualizations. In addition to that, some plotting functions can be directly called as shown below, which allows for more control by the user.
@@ -54,13 +54,13 @@ plt.axis("scaled")
 - 3D structured spherical coordinates
 ```
 filename = "3d_structured.out";
-filehead, data, filelist = readdata(filename, verbose=false);
+head, data, list = readdata(filename, verbose=false);
 ```
 
 - log file
 ```
 logfilename = "shocktube.log";
-filehead, data = readlogdata(logfilename)
+head, data = readlogdata(logfilename)
 ```
 
 ## Multiple dispatch for matplotlib functions
@@ -128,14 +128,14 @@ Tracing along an asymptotic line
 test_trace_asymptote()
 ```
 in turn gives
-![trace_asymptote](../images/trace_asymptote.png)
+![](../images/trace_asymptote.png)
 
 Tracing lines in a dipole field
 ```
 test_trace_dipole()
 ```
 in turn gives
-![trace_dipole](../images/trace_dipole.png)
+![](../images/trace_dipole.png)
 
 Currently the tracing only works on a uniform structured grid.
 
