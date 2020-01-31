@@ -421,8 +421,7 @@ end
 Extract subset of 2D surface dataset.
 This is a simplified version of subvolume.
 """
-function subsurface(x::Array{Float64,2}, y::Array{Float64,2},
-   data::Array{Float64,2}, limits::Vector{Float64})
+function subsurface(x, y, data, limits)
 
    if length(limits)!=4
       error("Reduction must be [xmin xmax ymin ymax]")
@@ -461,9 +460,7 @@ end
 
 Return the sliced data based on indexes.
 """
-function subdata(data::Array{Float64,2},
-   xind::Vector{Int64}, yind::Vector{Int64}, sz::Tuple{Int64,Int64})
-
+function subdata(data, xind::Vector{Int}, yind::Vector{Int}, sz::Tuple{Int,Int})
    newdata = data[xind, yind]
    newsz = size(newdata)
 
