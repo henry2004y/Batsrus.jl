@@ -15,38 +15,38 @@ A general `plotdata` function is provided for quick visualizations. In addition 
 
 - 1D binary
 ```
-plotdata(data[1], filehead[1], "p", plotmode="line")
-plotdata(data[1], filehead[1], "p", plotmode="linegrid")
+plotdata(data[1], head[1], "p", plotmode="line")
+plotdata(data[1], head[1], "p", plotmode="linegrid")
 ```
 
 - 2D Cartesian (structured)
 ```
-plotdata(data[1], filehead[1], "p bx;by", plotmode="contbar streamover")
-plotdata(data[1], filehead[1], "p bx;by", plotmode="contbar quiverover")
-plotdata(data[1], filehead[1], "p bx;by", plotmode="contbar streamover", density=2.0)
-plotdata(data[1], filehead[1], "p", plotmode="grid")
-plotdata(data[1], filehead[1], "p", plotmode="contbar", plotrange=[-50., 50., -1., 1.])
-plotdata(data[1], filehead[1], "p", plotmode="contbar")
-plotdata(data[1], filehead[1], "p", plotmode="contbarlog")
-plotdata(data[1], filehead[1], "p", plotmode="surfbar")
+plotdata(data[1], head[1], "p bx;by", plotmode="contbar streamover")
+plotdata(data[1], head[1], "p bx;by", plotmode="contbar quiverover")
+plotdata(data[1], head[1], "p bx;by", plotmode="contbar streamover", density=2.0)
+plotdata(data[1], head[1], "p", plotmode="grid")
+plotdata(data[1], head[1], "p", plotmode="contbar", plotrange=[-50., 50., -1., 1.])
+plotdata(data[1], head[1], "p", plotmode="contbar")
+plotdata(data[1], head[1], "p", plotmode="contbarlog")
+plotdata(data[1], head[1], "p", plotmode="surfbar")
 ```
 
 - 2D unstructured
 ```
-plotdata(data[1], filehead[1], "rho", plotmode="contbar")
-plotdata(data[1], filehead[1], "rho", plotmode="trimesh")
-plotdata(data[1], filehead[1], "rho", plotmode="tricont")
+plotdata(data[1], head[1], "rho", plotmode="contbar")
+plotdata(data[1], head[1], "rho", plotmode="trimesh")
+plotdata(data[1], head[1], "rho", plotmode="tricont")
 ```
 
 - 2D structured spherical coordinates
 ```
-plotdata(data[1], filehead[1], "rho", plotmode="contbar")
+plotdata(data[1], head[1], "rho", plotmode="contbar")
 ```
 
 - 3D box
 ```
-plotdata(data[1], filehead[1], "bx", plotmode="contbar", cut="y", cutPlaneIndex=1, level=20)
-plotdata(data[1], filehead[1], "bx", plotmode="contbar", cut="y", plotrange=[-1.4,-1.1,0.70,0.78])
+plotdata(data[1], head[1], "bx", plotmode="contbar", cut="y", cutPlaneIndex=1, level=20)
+plotdata(data[1], head[1], "bx", plotmode="contbar", cut="y", plotrange=[-1.4,-1.1,0.70,0.78])
 using PyPlot
 plt.axis("scaled")
 ```
@@ -66,49 +66,49 @@ head, data = readlogdata(logfilename)
 ## Multiple dispatch for matplotlib functions
 - line plot
 ```
-plot(data[1], filehead[1], "p", linewidth=2, color="green")
-c = plot(data[1], filehead[1], "p")
+plot(data[1], head[1], "p", linewidth=2, color="green")
+c = plot(data[1], head[1], "p")
 plt.setp(c, linestyle="--", linewidth=2);
 ```
 
 - scatter plot
 ```
-scatter(data[1], filehead[1], "p")
+scatter(data[1], head[1], "p")
 ```
 
 - contour
 ```
 # 2D contour
-contour(data[1], filehead[1], "p")
+contour(data[1], head[1], "p")
 ```
 
 - filled contour
 ```
 # 2D contourf
-contourf(data[1], filehead[1], "p")
-contourf(data[1], filehead[1], "p", levels, plotrange=[-10,10,-Inf,Inf], plotinterval=0.1)
+contourf(data[1], head[1], "p")
+contourf(data[1], head[1], "p", levels, plotrange=[-10,10,-Inf,Inf], plotinterval=0.1)
 ```
 
 - surface plot
 ```
 # surface
-plot_surface(data[1], filehead[1], "p")
+plot_surface(data[1], head[1], "p")
 ```
 
 - triangle surface plot
 ```
-plot_trisurf(data[1], filehead[1], "p")
+plot_trisurf(data[1], head[1], "p")
 ```
 
 - triangle filled contour plot
 ```
-tricontourf(data[1], filehead[1], "p")
+tricontourf(data[1], head[1], "p")
 ```
 
 - streamline
 ```
-streamplot(data[1], filehead[1], "bx;bz")
-streamplot(data[1], filehead[1], "bx;bz", density=2.0, color="k", plotinterval=1.0, plotrange=[-10,10,-Inf,Inf])
+streamplot(data[1], head[1], "bx;bz")
+streamplot(data[1], head[1], "bx;bz", density=2.0, color="k", plotinterval=1.0, plotrange=[-10,10,-Inf,Inf])
 ```
 
 ## Streamline tracing
@@ -172,7 +172,7 @@ which will display
 
 ## Derived variables
 ```
-v = get_vars(data[1], filehead[1], ["Bx", "By", "Bz"])
+v = get_vars(data[1], head[1], ["Bx", "By", "Bz"])
 B = @. sqrt(v.Bx^2 + v.By^2 + v.Bz^2)
 ```
 
