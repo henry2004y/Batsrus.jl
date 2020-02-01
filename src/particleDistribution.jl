@@ -130,37 +130,40 @@ end
 ParticleType = 'e'
 PlotVType = 1
 
-@time region, particle = dist_select("cut_particles0_region0_1_t00001520_n00004093.out")
-@time dist_plot(region, particle, ParticleType, PlotVType)
+#@time region, particle = dist_select("cut_particles0_region0_1_t00001520_n00004093.out")
+#@time dist_plot(region, particle, ParticleType, PlotVType)
 
-
-
+filename = "3d_var_region0_0_t00001520_n00004093.out"
 # Sample region plot over contour
-head, data = read_data(fnameField, dir=dir)
+head, data = readdata(filename, dir="/Users/hyzhou/Documents/Computer/Julia/BATSRUS/VisAnaJulia/")
 
-# Choose your cut
-cut = "y"
-PlaneIndex = 128
+# Define regions
+xC = -1.80   # center of boxes
+yC = 0.0
+zC = -0.25
+xL = 0.005 # box length in x
+yL = 0.2   # box length in y
+zL = 0.07  # box length in z
 plotrange = [xC-xL*16, xC+xL*16, zC-zL*5, zC+zL*5]
 
-x = data[1].x[:,:,:,1]
-y = data[1].x[:,:,:,2]
-z = data[1].x[:,:,:,3]
-
-ux_ = findfirst(x->x=="bx", head[1][:wnames])
-Bx = data[1].w[:,:,:,bx_]
+bx_ = findfirst(x->x=="Bx", head[1][:wnames])
+Bx = @view data[1].w[:,:,:,bx_]
 #Bx = permute(Bx,[2 1 3])
 
-ex_ = findfirst(x->x=="ex", head[1][:wnames])
-Ex = data[1].w[:,:,:,ex_]
-#Ex = permute(Ex,[2 1 3])
+ex_ = findfirst(x->x=="Ex", head[1][:wnames])
+Ex = @view data[1].w[:,:,:,ex_]
 
-bz_ = strcmpi(func,head[1][:wnames])
-Bz = data.[1].w[:,:,:,bz_]
-#Bz = permute(Bz,[2 1 3])
+bz_ = findfirst(x->x=="Bz", head[1][:wnames])
+Bz = @view data[1].w[:,:,:,bz_]
 
-subplot(3,4,(1,9))
-contourf(cut1,cut2,Ex,50)
+subplot(3,4,(3,11))
+cutplot(data[1],head[1],"Ex",cut='y',cutPlaneIndex=128,plotrange=plotrange)
+#plotdata(data[1], head[1], "Ex", plotmode="contbar", cut="y", cutPlaneIndex=128,
+#   level=20,plotrange=plotrange,multifigure=false)
+#=
+
+#contourf(cut1,cut2,Ex,50)
+contourf(x,z,Ex,50)
 colorbar()
 set_cmap("*RdBu")
 #caxis([-9e4,9e4])
@@ -168,6 +171,7 @@ axis("equal")
 xlabel("x [R_G]", fontsize=16)
 ylabel("z [R_G]", fontsize=16)
 title(L"Ex [\mu V/m]")
+=#
 #=
 # streamline function requires the meshgrid format strictly
 s = streamslice(cut1",cut2",Bx",Bz",1,"linear")
