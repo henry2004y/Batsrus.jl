@@ -49,6 +49,9 @@ plotdata(data[1], head[1], "bx", plotmode="contbar", cut="y", cutPlaneIndex=1, l
 plotdata(data[1], head[1], "bx", plotmode="contbar", cut="y", plotrange=[-1.4,-1.1,0.70,0.78])
 using PyPlot
 plt.axis("scaled")
+
+subplot(2,2,(1,3))
+cutplot(data[1],head[1],"Ex", cut='y', cutPlaneIndex=128, plotrange=plotrange)
 ```
 
 - 3D structured spherical coordinates
@@ -84,14 +87,12 @@ contour(data[1], head[1], "p")
 
 - filled contour
 ```
-# 2D contourf
 contourf(data[1], head[1], "p")
 contourf(data[1], head[1], "p", levels, plotrange=[-10,10,-Inf,Inf], plotinterval=0.1)
 ```
 
 - surface plot
 ```
-# surface
 plot_surface(data[1], head[1], "p")
 ```
 
