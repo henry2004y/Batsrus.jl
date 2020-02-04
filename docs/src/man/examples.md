@@ -144,7 +144,7 @@ An example of tracing in a 2D cut and plot the field lines over contour:
 ```
 using VisAna, PyPlot
 
-include("../src/trace2d.jl")
+include("../src/trace.jl")
 
 filename = "y=0_var_1_t00000000_n00000000.out"
 head, data, list = readdata(filename,dir="test")
@@ -154,7 +154,7 @@ bz = data[1].w[:,:,7]
 x  = data[1].x[:,1,1]
 z  = data[1].x[1,:,2]
 
-seeds = select_seeds(x,z) # randomly select the seeding points
+seeds = select_seeds(x,z; nSeed=100) # randomly select the seeding points
 
 for i = 1:size(seeds)[2]
    xs = seeds[1,i]
