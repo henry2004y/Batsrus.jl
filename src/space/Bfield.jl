@@ -101,7 +101,8 @@ function plotBSteady(flyby=8; filename="box_var_4_n00080000.out", DoSave=false,
 end
 
 """
-	plotBTimeAccurate()
+	plotBTimeAccurate(filename, flyby=8, firstpict=1, lastpict=1;
+   	DoSave=false, IsOneFile=false, ObsDir, SimDir)
 
 Plot time-accurate magnetic field comparisons.
 This function is able to handle any npict number of snapshots. If the simulation
@@ -112,13 +113,12 @@ snapshot ipict=npict. In this way, I avoid the jump due to periodic
 interpolation.
 `flyby` and `time_start` need to be modified when switching between flybys.
 """
-function plotBTimeAccurate(flyby=8, firstpict=1, lastpict=1; DoSave=false,
-   IsOneFile=false, ObsDir="/Users/hyzhou/Documents/research/Ganymede/Galileo",
-   SimDir="/Users/hyzhou/Documents/Computer/Julia/BATSRUS/VisAnaJulia",
-   filename="box_var_4_n00080000.out")
+function plotBTimeAccurate(filename::String, flyby=8, firstpict=1, lastpict=1;
+   DoSave=false, IsOneFile=false,
+   ObsDir="/Users/hyzhou/Documents/research/Ganymede/Galileo",
+   SimDir="/Users/hyzhou/Documents/Computer/Julia/BATSRUS/VisAnaJulia")
 
    # Read observation data
-
    Obsfile = "Galileo_G"*string(flyby)*"_flyby_MAG.dat"
 
    df = CSV.File(joinpath(ObsDir,Obsfile);header=2,delim=" ",ignorerepeated=true)
@@ -187,8 +187,8 @@ function plotBTimeAccurate(flyby=8, firstpict=1, lastpict=1; DoSave=false,
 
    # Extract the magnetic field along the trajectory from multiple snapshot
    for ipict = 1:npict-1
-      println("ipict=$(round(ipict,2))",)
-      head, data = readdata(filename, npict=firstpict+ipict)
+      println("ipict=$(round(ipict,digits=2))")
+      head, data = readdata(filename, dir=SimDir, npict=firstpict+ipict)
       # Interpolate simulation data to observation data
       x = data[1].x[:,1,1,1]
       y = data[1].x[1,:,1,2]
@@ -198,7 +198,7 @@ function plotBTimeAccurate(flyby=8, firstpict=1, lastpict=1; DoSave=false,
       By = @view data[1].w[:,:,:,by_]
       Bz = @view data[1].w[:,:,:,bz_]
 
-      k = argmin( abs(timesim(kStart+ipict) - t) )
+      k = argmin( abs.(tSim[kStart+ipict] .- t) )
 
       itpBx = interpolate(knots, Bx, Gridded(Linear()))
       BxSim[kStart+ipict] = itpBx(df.X[k],df.Y[k],df.Z[k])
@@ -222,27 +222,27 @@ function plotBTimeAccurate(flyby=8, firstpict=1, lastpict=1; DoSave=false,
    formatter = matplotlib.dates.DateFormatter("%H:%M")
    ax1 = subplot(411)
    plot(t, df.Bx, label=L"B_x")
-   plot(t, BxSim)
+   plot(tSim, BxSim)
    ax1.xaxis.set_major_formatter(formatter)
    legend()
    ax2 = subplot(412)
    plot(t, df.By, label=L"B_y")
-   plot(t, BySim)
+   plot(tSim, BySim)
    ax2.xaxis.set_major_formatter(formatter)
    legend()
    ax3 = subplot(413)
    plot(t, df.Bz, label=L"B_z")
-   plot(t, BzSim)
+   plot(tSim, BzSim)
    ax3.xaxis.set_major_formatter(formatter)
    legend()
    ax4 = subplot(414)
    plot(t, BobsStrength, label=L"B")
-   plot(t, BsimStrength)
+   plot(tSim, BsimStrength)
    ax4.xaxis.set_major_formatter(formatter)
    legend()
    tight_layout()
 
-   # Save simulation line data
+   # Save plots
    if DoSave
 
    end
@@ -259,4 +259,5 @@ function timelinspace(d1::DateTime, d2::DateTime; n=2)
    return d1:δ:d2
 end
 
-plotBTimeAccurate()
+plotBTimeAccurate(;ObsDir="/Users/hyzhou/Ganymede/GalileoData/galileomagdata",
+   SimDir="/Users/hyzhou/Ganymede/Hall_AMR3/GM", filename="box_Hall_B_1200.outs")
