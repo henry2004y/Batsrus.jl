@@ -16,26 +16,19 @@ const nBox = 9            # number of box regions
 	dist_select(fnameParticle; ParticleType='e', dir=".")
 
 Select particle in regions.
-ParticleType: {'e','i'}
+`ParticleType` in ['e','i'].
+xC, yC, zC are the central box center position.
 """
-function dist_select(fnameParticle; ParticleType='e',
+function dist_select(fnameParticle, xC=-1.90, yC=0.0, zC=-0.1; ParticleType='e',
    dir="/Users/hyzhou/Documents/Computer/Julia/BATSRUS/VisAnaJulia/",)
 
    if ParticleType == 'i'
-      fnameParticle = "cut_particles1_region0_2_t00001520_n00004093.out"
+      !occursin("region0_2", fnameParticle) && @error "Check filename!"
    elseif ParticleType == 'e'
-      fnameParticle = "cut_particles0_region0_1_t00001520_n00004093.out"
+      !occursin("region0_1", fnameParticle) && @error "Check filename!"
    end
 
    fnameField = "3d_var_region0_0_"*fnameParticle[end-22:end]
-
-   # Define regions
-   xC = -1.80   # center of boxes
-   yC = 0.0
-   zC = -0.25
-   xL = 0.005 # box length in x
-   yL = 0.2   # box length in y
-   zL = 0.07  # box length in z
 
    # Classify particles based on locations
    region = Array{Float32,2}(undef,6,nBox)
@@ -87,22 +80,32 @@ PlotVType: 1: v_par vs. v_perp1 2: v_perp1 vs. v_perp2
 """
 function dist_plot(region, particle, ParticleType='i', PlotVType=1)
 
-   figure(figsize=(11,7))
-   for ipict = 1:nBox
-      ux = particle[ipict][1,:] ./ cAlfven
-      uy = particle[ipict][2,:] ./ cAlfven
-      uz = particle[ipict][3,:] ./ cAlfven
+   if ParticleType == 'i'
+      binRange = [[-3.,3.], [-3.,3.]]
+   elseif ParticleType == 'e'
+      binRange = [[-10.,12.], [-10.,10.]]
+   end
 
-      ax = subplot(3,4,ipict+ceil(ipict/3))
+   figure(figsize=(11,6))
+   for iB = 1:nBox
+      ux = particle[iB][1,:] ./ cAlfven
+      uy = particle[iB][2,:] ./ cAlfven
+      uz = particle[iB][3,:] ./ cAlfven
+
+      ax = subplot(3,4,iB+ceil(iB/3))
       if PlotVType==1
          h = hist2D(uy, ux, bins=60,
-            norm=matplotlib.colors.LogNorm(),range=[[-10.,12.], [-10.,12.]])
+            norm=matplotlib.colors.LogNorm(),density=true, range=binRange)
       elseif PlotVType==2
          h = hist2D(ux, uz, bins=60,
-            norm=matplotlib.colors.LogNorm(),range=[[-3.,3.], [-3.,3.]])
+            norm=matplotlib.colors.LogNorm(),density=true, range=binRange)
+      elseif PlotVType==3
+         h = hist2D(uy, uz, bins=60,
+            norm=matplotlib.colors.LogNorm(),density=true, range=binRange)
       else
          @error "Unknown PlotVType!"
       end
+      grid(true)
       axis("equal")
 
       if PlotVType==1
@@ -111,9 +114,12 @@ function dist_plot(region, particle, ParticleType='i', PlotVType=1)
       elseif PlotVType==2
          xlabel(L"u_x",FontSize=14)
          ylabel(L"u_z",FontSize=14)
+      elseif PlotVType==3
+         xlabel(L"u_y",FontSize=14)
+         ylabel(L"u_x",FontSize=14)
       end
-      title(@sprintf("%d, x[%3.3f,%3.3f], z[%3.3f,%3.3f]",ipict,region[1,ipict],
-         region[1,ipict],region[5,ipict],region[6,ipict]))
+      title(@sprintf("%d, x[%3.3f,%3.3f], z[%3.3f,%3.3f]",iB,region[1,iB],
+         region[2,iB],region[5,iB],region[6,iB]))
       colorbar()
       plt.set_cmap("hot")
 
@@ -127,58 +133,69 @@ function dist_plot(region, particle, ParticleType='i', PlotVType=1)
 
 end
 
-ParticleType = 'e'
-PlotVType = 1
-
-@time region, particle = dist_select("cut_particles0_region0_1_t00001520_n00004093.out",dir="/Users/hyzhou")
-@time dist_plot(region, particle, ParticleType, PlotVType)
-
-filename = "3d_var_region0_0_t00001520_n00004093.out"
-# Sample region plot over contour
-head, data = readdata(fnameField, dir="/Users/hyzhou")
-
-# Choose your cut
-cut = "y"
-PlaneIndex = 128
-
-# Define regions
-xC = -1.80   # center of boxes
-yC = 0.0
-zC = -0.25
-xL = 0.005 # box length in x
-yL = 0.2   # box length in y
-zL = 0.07  # box length in z
-plotrange = [xC-xL*16, xC+xL*16, zC-zL*5, zC+zL*5]
-
-bx_ = findfirst(x->x=="Bx", head[1][:wnames])
-bz_ = findfirst(x->x=="Bz", head[1][:wnames])
-ex_ = findfirst(x->x=="Ex", head[1][:wnames])
-
-Bx = @view data[1].w[:,:,:,bx_]
-Bz = @view data[1].w[:,:,:,bz_]
-Ex = @view data[1].w[:,:,:,ex_]
 
 
-subplot(3,4,(1,9))
-cutplot(data[1],head[1],"Ex",cut='y',cutPlaneIndex=128,plotrange=plotrange)
-colorbar()
-axis("equal")
-set_cmap("*RdBu")
-#caxis([-9e4,9e4])
-xlabel("x [R_G]", fontsize=16)
-ylabel("z [R_G]", fontsize=16)
-title(L"Ex [\mu V/m]")
-#=
-# streamline function requires the meshgrid format strictly
-s = streamslice(cut1",cut2",Bx",Bz",1,"linear")
-for is = 1:length(s)
+function plotExCut(fnameField::String, region, xC, yC, zC, xL, yL, zL;
+   dir="/Users/hyzhou")
+
+   plotrange = [xC-xL*16, xC+xL*16, zC-zL*5, zC+zL*5]
+   # Sample region plot over contour
+   @time head, data = readdata(fnameField, dir=dir)
+
+   bx_ = findfirst(x->x=="Bx", head[1][:wnames])
+   bz_ = findfirst(x->x=="Bz", head[1][:wnames])
+   #ex_ = findfirst(x->x=="Ex", head[1][:wnames])
+
+   Bx = @view data[1].w[:,:,:,bx_]
+   Bz = @view data[1].w[:,:,:,bz_]
+   #Ex = @view data[1].w[:,:,:,ex_]
+
+   subplot(3,4,(1,9))
+   cutplot(data[1],head[1],"Ex",cut='y',cutPlaneIndex=128,plotrange=plotrange)
+   colorbar()
+   axis("scaled")
+   plt.set_cmap("RdBu_r")
+   clim(-9e4,9e4)
+   xlabel(L"x [R_G]", fontsize=16)
+   ylabel(L"z [R_G]", fontsize=16)
+   title(L"Ex [\mu V/m]")
+
+   for iB = 1:nBox
+      rect = matplotlib.patches.Rectangle( (region[1,iB], region[5,iB]),
+      region[2,iB]-region[1,iB], region[6,iB]-region[5,iB],
+      ec="r", lw=1.2, fill=false) # facecolor="none"
+      ax = gca()
+      #ax = subplot(3,4,(1,9))
+      ax.add_patch(rect)
+   end
+
+
+
+   #=
+   # streamline function requires the meshgrid format strictly
+   s = streamslice(cut1",cut2",Bx",Bz",1,"linear")
+   for is = 1:length(s)
    s(is).Color = "k"
    s(is).LineWidth = 1.3
 end
 
-for ipict = 1:nBox
-   rectangle("Position",[Region{ipict}(1) Region{ipict}(5) ...
-      Region{ipict}(2)-Region{ipict}(1) ...
-      Region{ipict}(6)-Region{ipict}(5)],"EdgeColor","r","LineWidth",1.5)
-end
+
 =#
+tight_layout()
+
+end
+
+
+PType = 'e'
+PlotVType = 1
+# Define regions
+xC, yC, zC = -1.90, 0.0, -0.1
+xL, yL, zL = 0.005, 0.2, 0.07 # box length in x,y,z
+
+@time region, particle = dist_select(
+   "cut_particles0_region0_1_t00001640_n00020369.out", xC, yC, zC, xL, yL, zL,
+   dir="/Users/hyzhou", ParticleType=PType)
+@time dist_plot(region, particle, PType, PlotVType)
+
+@time plotExCut("3d_var_region0_0_t00001640_n00020369.out", region,
+   xC,yC,zC,xL,yL,zL, dir="/Users/hyzhou")
