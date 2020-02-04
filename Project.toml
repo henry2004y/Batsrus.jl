@@ -1,7 +1,7 @@
 name = "VisAna"
 uuid = "3da60289-db0e-42b3-9214-5194de249930"
 authors = ["hyzhou <hyzhou@umich.edu>"]
-version = "0.5.0"
+version = "0.5.1"
 
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"

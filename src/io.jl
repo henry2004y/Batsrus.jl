@@ -225,10 +225,10 @@ function readtecdata(filename::String; IsBinary=false, verbose=false)
 
    if IsBinary
 	   @inbounds for i = 1:nNode
-		   read!(f, view(data,:,i))
+		   read!(f, @view data[:,i])
 	   end
 	   @inbounds for i = 1:nCell
-         read!(f, view(connectivity,:,i))
+         read!(f, @view connectivity[:,i])
       end
    else
    	@inbounds for i = 1:nNode
