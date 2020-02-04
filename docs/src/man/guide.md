@@ -37,7 +37,7 @@ Checkout [BinaryBuilder](https://juliapackaging.github.io/BinaryBuilder.jl/lates
 
 ## Issues
 
-`readdata` function in Matlab for large data is 2 times faster than that in Julia. I must investigate this.
+Before v0.5.1, `readdata` function in Matlab for large data is 2 times faster than that in Julia. The reason is simply using `read` or `unsafe_read` in the lower level. The latter one is much faster. After the fix, Julia version performs 5 times faster than the Matlab version in reading binary data.
 
 At first I forgot to export the Data struct, so everytime when I modified the code and rerun plotdata, it will shout error at me, saying no type was found for the input type.
 
