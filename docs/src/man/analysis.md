@@ -111,9 +111,21 @@ Thus generally the Alfvén wave is identified by the correlations between veloci
 
 For the magnetosonic waves, consider using ``\delta \mathbf{E}`` and ``\delta \mathbf{B}`` for identifying speed. The slopes of the curves ``\delta E∕\delta B`` correspond to the wave propagation speed in the spacecraft frame.
 
-About the specific names: transverse and shear Alfvén wave refer to actually the same thing.
+Transverse and shear Alfvén wave refer to actually the same thing: the descriptions arise from  ``\mathbf{k}\cdot\mathbf{V}=0`` and ``\mathbf{V}\cdot\mathbf{B}_0=0``.
 
-It is possible for a static satellite to encounter first one wave and then another wave?
+The fast and slow magnetosonic waves are associated with non-zero perturbations in the plasma density and pressure, and also involve plasma motion parallel, as well as perpendicular, to the magnetic field. The latter observation suggests that the dispersion relations ``\omega=kV_{\pm}`` are likely to undergo significant modification in collisionless plasmas. In order to better understand the nature of the fast and slow waves, let us consider the cold-plasma limit, which is obtained by letting the sound speed ``V_S`` tend to zero. In this limit, the slow wave ceases to exist (in fact, its phase velocity tends to zero) whereas the dispersion relation for the fast wave reduces to
+```math
+\omega = kV_A
+```
+This can be identified as the dispersion relation for the compressional-Alfvén wave. Thus, we can identify the fast wave as the compressional-Alfvén wave modified by a non-zero plasma pressure.
+
+In the limit ``V_A\gg V_S``, which is appropriate to low-``\beta`` plasmas, the dispersion relation for the slow wave reduces to
+```math
+\omega \simeq k\,V_S\,\cos\theta.
+```
+This is actually the dispersion relation of a sound wave propagating along magnetic field-lines. Thus, in low-``\beta`` plasmas the slow wave is a sound wave modified by the presence of the magnetic field.
+
+In reality, waves can be mixed together with mode conversions. Also, notice that the classical wave theory is based on spatially homogeneous plasma assumption, which is rarely the case in nature such as the magnetosphere.
 
 A tricky part in practice is how to get the average through smoothing. Note that a real satellite moves both in time and space. Usually people do moving-box-average to get an average state within a short period.
 
