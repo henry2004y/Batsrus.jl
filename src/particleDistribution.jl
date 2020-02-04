@@ -130,13 +130,13 @@ end
 ParticleType = 'e'
 PlotVType = 1
 
-@time region, particle = dist_select("cut_particles0_region0_1_t00001520_n00004093.out")
+@time region, particle = dist_select("cut_particles0_region0_1_t00001520_n00004093.out",dir="/Users/hyzhou")
 @time dist_plot(region, particle, ParticleType, PlotVType)
 
 
 
 # Sample region plot over contour
-head, data = read_data(fnameField, dir=dir)
+head, data = readdata(fnameField, dir="/Users/hyzhou")
 
 # Choose your cut
 cut = "y"
