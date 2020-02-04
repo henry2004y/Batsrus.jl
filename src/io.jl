@@ -873,27 +873,27 @@ end
 
 Displaying file header information.
 """
-function showhead(file::FileList, ifile::Int, filehead::Dict)
+function showhead(file::FileList, ifile::Int, head::Dict)
 
    println("----------------------")
    println("ifile     = $(ifile)")
    println("filename  = $(file.name)")
    println("filetype  = $(file.type)")
-   println("headline  = $(filehead[:headline])")
-   println("it        = $(filehead[:it])")
-   println("time      = $(filehead[:time])")
-   println("gencoord  = $(filehead[:gencoord])")
-   println("ndim      = $(filehead[:ndim])")
-   println("neqpar    = $(filehead[:neqpar])")
-   println("nw        = $(filehead[:nw])")
-   println("nx        = $(filehead[:nx])")
+   println("headline  = $(head[:headline])")
+   println("it        = $(head[:it])")
+   println("time      = $(head[:time])")
+   println("gencoord  = $(head[:gencoord])")
+   println("ndim      = $(head[:ndim])")
+   println("neqpar    = $(head[:neqpar])")
+   println("nw        = $(head[:nw])")
+   println("nx        = $(head[:nx])")
    println("----------------------")
 
-   if filehead[:neqpar] > 0
-      println("parameters = $(filehead[:eqpar])")
-      println("coord names= $(filehead[:variables][1:filehead[:ndim]])")
-      println("var   names= $(filehead[:variables][filehead[:ndim]+1:filehead[:ndim]+filehead[:nw]])")
-      println("param names= $(filehead[:variables][filehead[:ndim]+filehead[:nw]+1:end])")
+   if head[:neqpar] > 0
+      println("parameters = $(head[:eqpar])")
+      println("coord names= $(head[:variables][1:head[:ndim]])")
+      println("var   names= $(head[:variables][head[:ndim]+1:head[:ndim]+head[:nw]])")
+      println("param names= $(head[:variables][head[:ndim]+head[:nw]+1:end])")
       println("=======================")
    end
 
