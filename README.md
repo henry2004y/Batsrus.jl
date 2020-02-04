@@ -1,7 +1,7 @@
 # VisAna
 [![](https://travis-ci.com/henry2004y/VisAnaJulia.svg?branch=master)][travis-url]
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![](https://img.shields.io/badge/docs-stable-blue.svg)][VisAna-doc]
+[![](https://img.shields.io/badge/docs-latest-blue.svg)][VisAna-doc]
 [![][codecov-img]][codecov-url]
 
 SWMF data reader and visualization using Julia.
