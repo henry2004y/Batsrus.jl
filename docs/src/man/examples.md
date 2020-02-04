@@ -154,7 +154,7 @@ bz = data[1].w[:,:,7]
 x  = data[1].x[:,1,1]
 z  = data[1].x[1,:,2]
 
-seeds = select_seeds(x,z) # randomly select the seeding points
+seeds = select_seeds(x,z; nSeed=100) # randomly select the seeding points
 
 for i = 1:size(seeds)[2]
    xs = seeds[1,i]
