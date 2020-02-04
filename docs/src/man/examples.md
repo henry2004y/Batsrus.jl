@@ -144,7 +144,7 @@ An example of tracing in a 2D cut and plot the field lines over contour:
 ```
 using VisAna, PyPlot
 
-include("../src/trace2d.jl")
+include("../src/trace.jl")
 
 filename = "y=0_var_1_t00000000_n00000000.out"
 head, data, list = readdata(filename,dir="test")
