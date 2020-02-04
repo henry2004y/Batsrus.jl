@@ -54,11 +54,11 @@ function readdata( filenamesIn::String; dir::String=".", npict::Int=1,
       if fileType == "ascii"
          x,w = getpictascii(fileID[ifile], fileheads[ifile])
       elseif fileType == "binary"
-         x,w = getpictbinary(fileID[ifile], fileheads[ifile])
+         x,w = getpictbinary(fileID[ifile], fileheads[ifile], Float64)
       elseif fileType == "real4"
-         x,w = getpictreal(fileID[ifile], fileheads[ifile])
+         x,w = getpictreal(fileID[ifile], fileheads[ifile], Float32)
       else
-         error("get_pict: unknown filetype: $(filelist[ifile].type)")
+         @error "get_pict: unknown filetype: $(filelist[ifile].type)"
       end
 
       setunits(fileheads[ifile],"")
@@ -492,20 +492,20 @@ function getfilesize(fileID::IOStream, type::String)
 end
 
 # There are plan to include this into Julia's base. See github for more info.
+
 import Base: read!
+
 
 """
 	read!(s,a)
 
 Read slices of arrays using subarrays, in addition to the built-in methods.
 """
-function read!(s::IO, a::SubArray{T}) where T
-
-   for i in eachindex(a)
-      a[i] = read(s, T)
-   end
+function read!(s::IO, a::AbstractArray{T}) where T
+   GC.@preserve a unsafe_read(s, pointer(a), sizeof(a))
    return a
 end
+
 
 """
 	getpictascii(fileID, filehead)
@@ -553,64 +553,13 @@ function getpictascii(fileID::IOStream, filehead::Dict)
    return x, w
 end
 
-"""
-	getpictbinary(fileID, filehead)
-
-Read binary format data.
-"""
-function getpictbinary(fileID::IOStream, filehead::Dict)
-
-   ndim = filehead[:ndim]
-   nw   = filehead[:nw]
-
-   # Read coordinates & values
-   if filehead[:ndim] == 1 # 1D
-      n1 = filehead[:nx][1]
-      x  = Array{Float64,2}(undef,n1,ndim)
-      w  = Array{Float64,2}(undef,n1,nw)
-      skip(fileID,4) # skip record start tag.
-      read!(fileID,x)
-      skip(fileID,8) # skip record end/start tags.
-      for iw=1:nw
-         read!(fileID, view(w,:,iw))
-         skip(fileID,8) # skip record end/start tags.
-      end
-   elseif filehead[:ndim] == 2 # 2D
-      n1 = filehead[:nx][1]
-      n2 = filehead[:nx][2]
-      x  = Array{Float64,3}(undef,n1,n2,ndim)
-      w  = Array{Float64,3}(undef,n1,n2,nw)
-      skip(fileID,4) # skip record start tag.
-      read!(fileID,x)
-      skip(fileID,8) # skip record end/start tags.
-      for iw=1:nw
-         read!(fileID, view(w,:,:,iw))
-         skip(fileID,8) # skip record end/start tags.
-      end
-   elseif filehead[:ndim] == 3 # 3D
-      n1 = filehead[:nx][1]
-      n2 = filehead[:nx][2]
-      n3 = filehead[:nx][3]
-      x  = Array{Float64,4}(undef,n1,n2,n3,ndim)
-      w  = Array{Float64,4}(undef,n1,n2,n3,nw)
-      skip(fileID,4) # skip record start tag.
-      read!(fileID,x)
-      skip(fileID,8) # skip record end/start tags.
-      for iw=1:nw
-         read!(fileID, view(w,:,:,:,iw))
-         skip(fileID,8) # skip record end/start tags.
-      end
-   end
-
-   return x,w
-end
 
 """
 	getpictreal(fileID, filehead)
 
-Read real4 format data.
+Read real4/read8 format data.
 """
-function getpictreal(fileID::IOStream, filehead::Dict)
+function getpictreal(fileID::IOStream, filehead::Dict, T::DataType)
 
    ndim = filehead[:ndim]
    nw   = filehead[:nw]
@@ -618,38 +567,38 @@ function getpictreal(fileID::IOStream, filehead::Dict)
    # Read coordinates & values
    if filehead[:ndim] == 1 # 1D
       n1 = filehead[:nx][1]
-      x  = Array{Float32,2}(undef,n1,ndim)
-      w  = Array{Float32,2}(undef,n1,nw)
+      x  = Array{T,2}(undef,n1,ndim)
+      w  = Array{T,2}(undef,n1,nw)
       skip(fileID,4) # skip record start tag.
       read!(fileID,x)
       skip(fileID,8) # skip record end/start tags.
-      for iw=1:nw
-         read!(fileID, view(w,:,iw))
+      for iw = 1:nw
+         read!(fileID, @view w[:,iw])
          skip(fileID,8) # skip record end/start tags.
       end
    elseif filehead[:ndim] == 2 # 2D
       n1 = filehead[:nx][1]
       n2 = filehead[:nx][2]
-      x  = Array{Float32,3}(undef,n1,n2,ndim)
-      w  = Array{Float32,3}(undef,n1,n2,nw)
+      x  = Array{T,3}(undef,n1,n2,ndim)
+      w  = Array{T,3}(undef,n1,n2,nw)
       skip(fileID,4) # skip record start tag.
       read!(fileID,x)
       skip(fileID,8) # skip record end/start tags.
-      for iw=1:nw
-         read!(fileID, view(w,:,:,iw))
+      for iw = 1:nw
+         read!(fileID, @view w[:,:,iw])
          skip(fileID,8) # skip record end/start tags.
       end
    elseif filehead[:ndim] == 3 # 3D
       n1 = filehead[:nx][1]
       n2 = filehead[:nx][2]
       n3 = filehead[:nx][3]
-      x  = Array{Float32,4}(undef,n1,n2,n3,ndim)
-      w  = Array{Float32,4}(undef,n1,n2,n3,nw)
+      x  = Array{T,4}(undef,n1,n2,n3,ndim)
+      w  = Array{T,4}(undef,n1,n2,n3,nw)
       skip(fileID,4) # skip record start tag.
       read!(fileID,x)
       skip(fileID,8) # skip record end/start tags.
-      for iw=1:nw
-         read!(fileID, view(w,:,:,:,iw))
+      for iw = 1:nw
+         read!(fileID, @view w[:,:,:,iw])
          skip(fileID,8) # skip record end/start tags.
       end
    end
