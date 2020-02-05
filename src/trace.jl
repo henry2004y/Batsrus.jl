@@ -16,6 +16,9 @@
 
 using PyPlot, Random
 
+export trace2d, trace2d_rk4, trace2d_eul, trace3d, trace3d_eul,
+   test_trace_asymptote, test_trace_dipole, select_seeds
+
 include("dipole.jl")
 
 """

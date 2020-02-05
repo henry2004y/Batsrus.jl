@@ -1,12 +1,11 @@
 module VisAna
-# Reimplementation of BATSRUS data reader in Julia.
+# BATSRUS data reader and analyzer.
 #
 # Hongyang Zhou, hyzhou@umich.edu
 
 using Glob, Printf, PyCall, Dierckx, WriteVTK
 
-export readdata, readlogdata, readtecdata, Data, FileList, convertVTK,
-       plot
+export Data, FileList
 
 struct Data{T}
    x::Array{T}
@@ -26,6 +25,7 @@ end
 
 include("io.jl")
 include("visual.jl")
+include("trace.jl")
 #include("visual_plot.jl")
 
 end

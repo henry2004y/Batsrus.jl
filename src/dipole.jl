@@ -5,11 +5,13 @@
 
 using PyPlot
 
+export test_dipole
+
 """
 	b_mag(x, y)
 
 For a position `x`, `y` in units of planetary radius, return the strength of the
- dipole magnetic field in nT.
+dipole magnetic field in nT.
 """
 function b_mag(x::AbstractFloat, y::AbstractFloat)
 	r = @. √(x^2 + y^2)
@@ -20,7 +22,7 @@ end
 """
 	b_hat(x, y)
 For given parameters, return two arrays, `x` and `y`, corresponding to the x and
- y components of b_hat for a dipole field. The grid is organized in meshgrid
+y components of b_hat for a dipole field. The grid is organized in meshgrid
 (default) or ndgrid format.
 """
 function b_hat(x, y; gridType="meshgrid")

@@ -1,4 +1,6 @@
-# All the IO related functionalities.
+# All the IO related APIs.
+
+export readdata, readlogdata, readtecdata, convertVTK
 
 """
 	readdata(filenames,(, dir=".", npict=1, verbose=false))
@@ -279,7 +281,7 @@ function getFileTypes(nfile::Int, filenames::Array{String,1})
          type = "log"
          npictinfiles = 1
       elseif occursin(r"^.*\.(dat)$", filenames[ifile])
-         # tecplot ascii format
+         # Tecplot ascii format
          type = "dat"
          npictinfiles = 1
       else
