@@ -452,13 +452,13 @@ end
 
 """
 	subvolume(x, y, z, data, limits)
+	subvolume(x, y, z, u, v, w, limits)
 
 Extract subset of 3D dataset in ndgrid format.
 """
 function subvolume(x, y, z, data, limits)
-
-   if length(limits)!=4
-      @error "Reduction must be [xmin xmax ymin ymax]"
+   if length(limits)!=6
+      @error "Reduction must be [xmin xmax ymin ymax zmin zmax]"
    end
 
    if limits[1] > limits[2] || limits[3] > limits[4] || limits[5] > limits[6]
@@ -473,7 +473,7 @@ function subvolume(x, y, z, data, limits)
 
    if isinf(limits[1]) limits[1] = minimum(hx) end
    if isinf(limits[3]) limits[3] = minimum(hy) end
-   if isinf(limits[5]) limits[5] = maximum(hz) end
+   if isinf(limits[5]) limits[5] = minimum(hz) end
    if isinf(limits[2]) limits[2] = maximum(hx) end
    if isinf(limits[4]) limits[4] = maximum(hy) end
    if isinf(limits[6]) limits[6] = maximum(hz) end
@@ -484,11 +484,48 @@ function subvolume(x, y, z, data, limits)
 
    newdata = subdata(data, xind, yind, zind, sz)
 
-   newx = x[xind, yind, zind]
-   newy = y[xind, yind, zind]
-   newz = z[xind, yind, zind]
+   newx = x[xind,yind,zind]
+   newy = y[xind,yind,zind]
+   newz = z[xind,yind,zind]
 
    return newx, newy, newz, newdata
+end
+
+function subvolume(x, y, z, u, v, w, limits)
+   if length(limits)!=6
+      @error "Reduction must be [xmin xmax ymin ymax zmin zmax]"
+   end
+
+   if limits[1] > limits[2] || limits[3] > limits[4] || limits[5] > limits[6]
+      @error "subvolume:InvalidReductionXRange"
+   end
+
+   sz = size(u)
+
+   hx = x[:,1,1]
+   hy = y[1,:,1]
+   hz = z[1,1,:]
+
+   if isinf(limits[1]) limits[1] = minimum(hx) end
+   if isinf(limits[3]) limits[3] = minimum(hy) end
+   if isinf(limits[5]) limits[5] = minimum(hz) end
+   if isinf(limits[2]) limits[2] = maximum(hx) end
+   if isinf(limits[4]) limits[4] = maximum(hy) end
+   if isinf(limits[6]) limits[6] = maximum(hz) end
+
+   xind = findall(limits[1] .≤ hx .≤ limits[2])
+   yind = findall(limits[3] .≤ hy .≤ limits[4])
+   zind = findall(limits[5] .≤ hz .≤ limits[6])
+
+   newu = subdata(u, xind, yind, zind, sz)
+   newv = subdata(v, xind, yind, zind, sz)
+   neww = subdata(w, xind, yind, zind, sz)
+
+   newx = x[xind,yind,zind]
+   newy = y[xind,yind,zind]
+   newz = z[xind,yind,zind]
+
+   return newx, newy, newz, newu, newv, neww
 end
 
 """
