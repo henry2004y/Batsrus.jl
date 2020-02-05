@@ -3,7 +3,7 @@
 #
 # Hongyang Zhou, hyzhou@umich.edu 01/30/2020
 
-using VisAna, PyPlot, Printf
+using VisAna, PyPlot, Printf, LinearAlgebra, Statistics
 
 ## Parameters
 const cAlfven = 253       # average Alfven speed in G8, [km/s]
@@ -79,7 +79,8 @@ end
 Velocity distribution plot in 9 regions.
 PlotVType: 1: v_par vs. v_perp1 2: v_perp1 vs. v_perp2
 """
-function dist_plot(region, particle, ParticleType='i', PlotVType=1)
+function dist_plot(region, particle, ParticleType='i', PlotVType=1; dir=".",
+   fnameField::String, nbin=60, fs=10)
 
    if ParticleType == 'i'
       binRange = [[-3.,3.], [-3.,3.]]
@@ -89,19 +90,40 @@ function dist_plot(region, particle, ParticleType='i', PlotVType=1)
 
    figure(figsize=(11,6))
    for iB = 1:nBox
-      ux = particle[iB][1,:] ./ cAlfven
-      uy = particle[iB][2,:] ./ cAlfven
-      uz = particle[iB][3,:] ./ cAlfven
+      if PlotVType ≤ 3
+         ux = particle[iB][1,:] ./ cAlfven
+         uy = particle[iB][2,:] ./ cAlfven
+         uz = particle[iB][3,:] ./ cAlfven
+      else
+         dBx, dBy, dBz = GetMeanField(fnameField, region[:,iB]; dir=dir)
+
+         dPar = [dBx; dBy; dBz] # Parallel direction
+         dPerpI = cross([0; -1; 0], dPar) # Perpendicular direction in-plane
+         dPerpO = cross(dPar, dPerpI) # Perpendicular direction out-of-plane
+
+         uPar = transpose(particle[iB][1:3,:])*dPar ./ cAlfven
+         uPerpI = transpose(particle[iB][1:3,:])*dPerpI ./ cAlfven
+         uPerpO = transpose(particle[iB][1:3,:])*dPerpO ./ cAlfven
+      end
 
       ax = subplot(3,4,iB+ceil(iB/3))
       if PlotVType==1
-         h = hist2D(uy, ux, bins=60,
+         h = hist2D(uy, ux, bins=nbin,
             norm=matplotlib.colors.LogNorm(),density=true, range=binRange)
       elseif PlotVType==2
-         h = hist2D(ux, uz, bins=60,
+         h = hist2D(ux, uz, bins=nbin,
             norm=matplotlib.colors.LogNorm(),density=true, range=binRange)
       elseif PlotVType==3
-         h = hist2D(uy, uz, bins=60,
+         h = hist2D(uy, uz, bins=nbin,
+            norm=matplotlib.colors.LogNorm(),density=true, range=binRange)
+      elseif PlotVType==4
+         h = hist2D(uPerpO, uPerpI, bins=nbin,
+            norm=matplotlib.colors.LogNorm(),density=true, range=binRange)
+      elseif PlotVType==5
+         h = hist2D(uPerpI, uPar, bins=nbin,
+            norm=matplotlib.colors.LogNorm(),density=true, range=binRange)
+      elseif PlotVType==6
+         h = hist2D(uPerpO, uPar, bins=nbin,
             norm=matplotlib.colors.LogNorm(),density=true, range=binRange)
       else
          @error "Unknown PlotVType!"
@@ -110,88 +132,50 @@ function dist_plot(region, particle, ParticleType='i', PlotVType=1)
       axis("equal")
 
       if PlotVType==1
-         xlabel(L"u_y",fontsize=14)
-         ylabel(L"u_x",fontsize=14)
+         xlabel(L"u_y",fontsize=fs)
+         ylabel(L"u_x",fontsize=fs)
       elseif PlotVType==2
-         xlabel(L"u_x",FontSize=14)
-         ylabel(L"u_z",FontSize=14)
+         xlabel(L"u_x",FontSize=fs)
+         ylabel(L"u_z",FontSize=fs)
       elseif PlotVType==3
-         xlabel(L"u_y",FontSize=14)
-         ylabel(L"u_x",FontSize=14)
+         xlabel(L"u_y",FontSize=fs)
+         ylabel(L"u_x",FontSize=fs)
+      elseif PlotVType==4
+         xlabel(L"u_{\perp Out}",fontsize=fs)
+         ylabel(L"u_{\perp In}",fontsize=fs)
+      elseif PlotVType==5
+         xlabel(L"u_{\perp In}",FontSize=fs)
+         ylabel(L"u_\parallel",FontSize=fs)
+      elseif PlotVType==6
+         xlabel(L"u_{\perp Out}",FontSize=fs)
+         ylabel(L"u_\parallel",FontSize=fs)
       end
       title(@sprintf("%d, x[%3.3f,%3.3f], z[%3.3f,%3.3f]",iB,region[1,iB],
          region[2,iB],region[5,iB],region[6,iB]))
       colorbar()
       plt.set_cmap("hot")
+      clim(1e-2,10^0.3)
 
       if ParticleType == 'e'
          str = "electron"
       elseif ParticleType == 'i'
          str = "ion"
       end
-      text(0.05,0.05,str, FontSize=14, transform=ax.transAxes)
+      text(0.05,0.05,str, FontSize=fs, transform=ax.transAxes)
    end
-
-end
-
-
-
-function plotExCut(fnameField::String, region, xC, yC, zC, xL, yL, zL;
-   dir="/Users/hyzhou")
-
-   plotrange = [xC-xL*16, xC+xL*16, zC-zL*5, zC+zL*5]
-   # Sample region plot over contour
-   @time head, data = readdata(fnameField, dir=dir)
-
-   bx_ = findfirst(x->x=="Bx", head[1][:wnames])
-   bz_ = findfirst(x->x=="Bz", head[1][:wnames])
-   #ex_ = findfirst(x->x=="Ex", head[1][:wnames])
-
-   Bx = @view data[1].w[:,:,:,bx_]
-   Bz = @view data[1].w[:,:,:,bz_]
-   #Ex = @view data[1].w[:,:,:,ex_]
-
-   subplot(3,4,(1,9))
-   cutplot(data[1],head[1],"Ex",cut='y',cutPlaneIndex=128,plotrange=plotrange)
-   colorbar()
-   axis("scaled")
-   plt.set_cmap("RdBu_r")
-   clim(-9e4,9e4)
-   xlabel(L"x [R_G]", fontsize=16)
-   ylabel(L"z [R_G]", fontsize=16)
-   title(L"Ex [\mu V/m]")
-
-   for iB = 1:nBox
-      rect = matplotlib.patches.Rectangle( (region[1,iB], region[5,iB]),
-      region[2,iB]-region[1,iB], region[6,iB]-region[5,iB],
-      ec="r", lw=1.2, fill=false) # facecolor="none"
-      ax = gca()
-      #ax = subplot(3,4,(1,9))
-      ax.add_patch(rect)
-   end
-
-   #=
-   # streamline function requires the meshgrid format strictly
-   s = streamslice(cut1",cut2",Bx",Bz",1,"linear")
-   for is = 1:length(s)
-   s(is).Color = "k"
-   s(is).LineWidth = 1.3
-   end
-   =#
-tight_layout()
 
 end
 
 """
-	GetMeanField(Dir, fnameParticle, fnameField, limits)
+	GetMeanField(fnameField, limits; dir=".")
 
 GetMeanField Get the average field direction in limited region.
    * Extract the average field from field data
 """
-function GetMeanField(fnameField::String, limits; Dir=".")
+function GetMeanField(fnameField::String, limits; dir=".")
 
    # Get the average field direction in limited region
-   head, data = readdata(filename, dir=Dir)
+   head, data = readdata(fnameField, dir=dir)
 
    x = data[1].x[:,:,:,1]
    y = data[1].x[:,:,:,2]
@@ -205,29 +189,74 @@ function GetMeanField(fnameField::String, limits; Dir=".")
    By = @view data[1].w[:,:,:,by_]
    Bz = @view data[1].w[:,:,:,bz_]
 
-   Bx,By,Bz = subvolume(x,y,z, Bx,By,Bz, limits)
+   xnew, ynew, znew, BxNew, ByNew, BzNew = subvolume(x,y,z, Bx,By,Bz, limits)
 
    # Average over the selected volume
-   B̄x, B̄y, B̄z = mean(Bx), mean(By), mean(Bz)
+   B̄x, B̄y, B̄z = mean(BxNew), mean(ByNew), mean(BzNew)
 
    # Normalize vector
    Length = √(B̄x^2 + B̄y^2 + B̄z^2)
-   dBx, dBy, dBz = Bx/Length, By/Length, Bz/Length
+   dBx, dBy, dBz = B̄x/Length, B̄y/Length, B̄z/Length
 
    return dBx, dBy, dBz
 end
 
 
-PType = 'e'
-PlotVType = 1
+
+function plotExCut(fnameField::String, region, xC, yC, zC, xL, yL, zL;
+   dir="/Users/hyzhou", fs=16)
+
+   plotrange = [xC-xL*16, xC+xL*16, zC-zL*5, zC+zL*5]
+   # Sample region plot over contour
+   head, data = readdata(fnameField, dir=dir)
+
+   bx_ = findfirst(x->x=="Bx", head[1][:wnames])
+   bz_ = findfirst(x->x=="Bz", head[1][:wnames])
+
+   Bx = @view data[1].w[:,:,:,bx_]
+   Bz = @view data[1].w[:,:,:,bz_]
+
+   subplot(3,4,(1,9))
+   cutplot(data[1],head[1],"Ex",cut='y',cutPlaneIndex=128,plotrange=plotrange)
+   colorbar()
+   axis("scaled")
+   plt.set_cmap("RdBu_r")
+   clim(-9e4,9e4)
+   xlabel(L"x [R_G]", fontsize=fs)
+   ylabel(L"z [R_G]", fontsize=fs)
+   title(L"Ex [\mu V/m]")
+
+   for iB = 1:nBox
+      rect = matplotlib.patches.Rectangle( (region[1,iB], region[5,iB]),
+      region[2,iB]-region[1,iB], region[6,iB]-region[5,iB],
+      ec="r", lw=1.2, fill=false) # facecolor="none"
+      ax = gca()
+      ax.add_patch(rect)
+   end
+
+   #=
+   # streamline function requires the meshgrid format strictly
+   s = streamslice(cut1",cut2",Bx",Bz",1,"linear")
+   for is = 1:length(s)
+   s(is).Color = "k"
+   s(is).LineWidth = 1.3
+   end
+   =#
+end
+
+dir = "/Users/hyzhou"
+fnameField = "3d_var_region0_0_t00001640_n00020369.out"
+#fnameParticle = "cut_particles0_region0_1_t00001640_n00020369.out"
+fnameParticle = "cut_particles1_region0_2_t00001640_n00020369.out"
+PType = 'i'
+PlotVType = 6
 # Define regions
-xC, yC, zC = -1.90, 0.0, -0.1
-xL, yL, zL = 0.008, 0.2, 0.07 # box length in x,y,z
+xC, yC, zC = -1.86, 0.0, -0.28
+xL, yL, zL = 0.008, 0.2, 0.03 # box length in x,y,z
 
 @time region, particle = dist_select(
-   "cut_particles0_region0_1_t00001640_n00020369.out", xC, yC, zC, xL, yL, zL,
-   dir="/Users/hyzhou", ParticleType=PType)
-@time dist_plot(region, particle, PType, PlotVType)
+   fnameParticle, xC, yC, zC, xL, yL, zL,
+   dir=dir, ParticleType=PType)
+@time dist_plot(region, particle, PType, PlotVType; dir=dir, fnameField=fnameField)
 
-@time plotExCut("3d_var_region0_0_t00001640_n00020369.out", region,
-   xC,yC,zC,xL,yL,zL, dir="/Users/hyzhou")
+@time plotExCut(fnameField, region, xC,yC,zC,xL,yL,zL, dir=dir)
