@@ -4,7 +4,7 @@ using PyPlot
 
 export plotdata, plotlogdata, animatedata, get_vars, cutplot,
        plot, scatter, contour, contourf, plot_surface, tricontourf,
-       plot_trisurf, streamplot
+       plot_trisurf, streamplot, subvolume, subsurface
 
 import PyPlot.plot, PyPlot.scatter, PyPlot.contour, PyPlot.contourf,
        PyPlot.plot_surface, PyPlot.tricontourf, PyPlot.plot_trisurf,
@@ -422,14 +422,11 @@ This is a simplified version of subvolume.
 function subsurface(x, y, data, limits)
 
    if length(limits)!=4
-      error("Reduction must be [xmin xmax ymin ymax]")
+      @error "Reduction must be [xmin xmax ymin ymax]"
    end
 
-   if limits[1] > limits[2]
-      error("subvolume:InvalidReductionXRange")
-   end
-   if limits[3] > limits[4]
-      error("subvolume:InvalidReductionYRange")
+   if limits[1] > limits[2] || limits[3] > limits[4]
+      @error "subsurface:InvalidReductionXRange"
    end
 
    sz = size(data)
@@ -454,15 +451,70 @@ function subsurface(x, y, data, limits)
 end
 
 """
+	subvolume(x, y, z, data, limits)
+
+Extract subset of 3D dataset in ndgrid format.
+"""
+function subvolume(x, y, z, data, limits)
+
+   if length(limits)!=4
+      @error "Reduction must be [xmin xmax ymin ymax]"
+   end
+
+   if limits[1] > limits[2] || limits[3] > limits[4] || limits[5] > limits[6]
+      @error "subvolume:InvalidReductionXRange"
+   end
+
+   sz = size(data)
+
+   hx = x[:,1,1]
+   hy = y[1,:,1]
+   hz = z[1,1,:]
+
+   if isinf(limits[1]) limits[1] = minimum(hx) end
+   if isinf(limits[3]) limits[3] = minimum(hy) end
+   if isinf(limits[5]) limits[5] = maximum(hz) end
+   if isinf(limits[2]) limits[2] = maximum(hx) end
+   if isinf(limits[4]) limits[4] = maximum(hy) end
+   if isinf(limits[6]) limits[6] = maximum(hz) end
+
+   xind = findall(limits[1] .≤ hx .≤ limits[2])
+   yind = findall(limits[3] .≤ hy .≤ limits[4])
+   zind = findall(limits[5] .≤ hy .≤ limits[6])
+
+   newdata = subdata(data, xind, yind, zind, sz)
+
+   newx = x[xind, yind, zind]
+   newy = y[xind, yind, zind]
+   newz = z[xind, yind, zind]
+
+   return newx, newy, newz, newdata
+end
+
+"""
 	subdata(data, xind, yind, sz)
+	subdata(data, xind, yind, zind, sz)
 
 Return the sliced data based on indexes.
 """
 function subdata(data, xind::Vector{Int}, yind::Vector{Int}, sz::Tuple{Int,Int})
-   newdata = data[xind, yind]
+   newdata = data[xind,yind]
    newsz = size(newdata)
 
    if length(sz) > 2
+      newdata = reshape(newdata, (newsz[1:2]..., sz[3:end]))
+   end
+
+   return newdata
+end
+
+function subdata(data, xind::Vector{Int}, yind::Vector{Int}, yind::Vector{Int},
+   sz::Tuple{Int,Int,Int})
+
+   newdata = data[xind,yind,zind]
+   newsz = size(newdata)
+
+   if length(sz) > 3
       newdata = reshape(newdata, (newsz[1:3]..., sz[4:end]))
    end
 
