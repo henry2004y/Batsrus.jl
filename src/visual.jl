@@ -508,7 +508,7 @@ function subdata(data, xind::Vector{Int}, yind::Vector{Int}, sz::Tuple{Int,Int})
    return newdata
 end
 
-function subdata(data, xind::Vector{Int}, yind::Vector{Int}, yind::Vector{Int},
+function subdata(data, xind::Vector{Int}, yind::Vector{Int}, zind::Vector{Int},
    sz::Tuple{Int,Int,Int})
 
    newdata = data[xind,yind,zind]
