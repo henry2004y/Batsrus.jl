@@ -19,7 +19,8 @@ Select particle in regions.
 `ParticleType` in ['e','i'].
 xC, yC, zC are the central box center position.
 """
-function dist_select(fnameParticle, xC=-1.90, yC=0.0, zC=-0.1; ParticleType='e',
+function dist_select(fnameParticle, xC=-1.90, yC=0.0, zC=-0.1,
+   xL=0.005, yL=0.2, zL=0.07; ParticleType='e',
    dir="/Users/hyzhou/Documents/Computer/Julia/BATSRUS/VisAnaJulia/",)
 
    if ParticleType == 'i'
