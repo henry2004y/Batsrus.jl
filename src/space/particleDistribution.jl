@@ -170,20 +170,51 @@ function plotExCut(fnameField::String, region, xC, yC, zC, xL, yL, zL;
       ax.add_patch(rect)
    end
 
-
-
    #=
    # streamline function requires the meshgrid format strictly
    s = streamslice(cut1",cut2",Bx",Bz",1,"linear")
    for is = 1:length(s)
    s(is).Color = "k"
    s(is).LineWidth = 1.3
-end
-
-
-=#
+   end
+   =#
 tight_layout()
 
+end
+
+"""
+	GetMeanField(Dir, fnameParticle, fnameField, limits)
+
+GetMeanField Get the average field direction in limited region.
+   * Extract the average field from field data
+"""
+function GetMeanField(fnameField::String, limits; Dir=".")
+
+   # Get the average field direction in limited region
+   head, data = readdata(filename, dir=Dir)
+
+   x = data[1].x[:,:,:,1]
+   y = data[1].x[:,:,:,2]
+   z = data[1].x[:,:,:,3]
+
+   bx_ = findfirst(x->x=="Bx", head[1][:wnames])
+   by_ = findfirst(x->x=="By", head[1][:wnames])
+   bz_ = findfirst(x->x=="Bz", head[1][:wnames])
+
+   Bx = @view data[1].w[:,:,:,bx_]
+   By = @view data[1].w[:,:,:,by_]
+   Bz = @view data[1].w[:,:,:,bz_]
+
+   Bx,By,Bz = subvolume(x,y,z, Bx,By,Bz, limits)
+
+   # Average over the selected volume
+   B̄x, B̄y, B̄z = mean(Bx), mean(By), mean(Bz)
+
+   # Normalize vector
+   Length = √(B̄x^2 + B̄y^2 + B̄z^2)
+   dBx, dBy, dBz = Bx/Length, By/Length, Bz/Length
+
+   return dBx, dBy, dBz
 end
 
 
@@ -191,7 +222,7 @@ PType = 'e'
 PlotVType = 1
 # Define regions
 xC, yC, zC = -1.90, 0.0, -0.1
-xL, yL, zL = 0.005, 0.2, 0.07 # box length in x,y,z
+xL, yL, zL = 0.008, 0.2, 0.07 # box length in x,y,z
 
 @time region, particle = dist_select(
    "cut_particles0_region0_1_t00001640_n00020369.out", xC, yC, zC, xL, yL, zL,
