@@ -76,12 +76,13 @@ I have encountered a very bad problem of corrupting binary *.vtu files. It turne
 
 I have already made a lot of mistakes by mixing the row-major and column-major codes. Explicitly list all the parts that require extra care!
 
+As for the GUI development, GTK seems to be an ideal candidate.
+
 - [x] Fixed colorbar control through Matplotlib
 - [x] Test suite for checking validity
 - [ ] Full coverage of tests
 - [x] Cuts from 3D data visualization besides contour
 - [ ] Switch to Makie for 3D plotting and animation
-- [ ] GUI
 - [ ] PyJulia support for manipulating data directly in Python
 - [x] Field tracer 2D in Julia
 - [x] Derived variable support
