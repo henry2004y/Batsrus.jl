@@ -9,14 +9,14 @@ Filenames can be provided with wildcards.
 
 # Examples
 ```jldoctest
-filenames = "1d__raw*"
-fileheads, data, filelist = readdata(filenames)
+filenames = "1d_raw*"
+head, data, list = readdata(filenames)
 ```
 """
 function readdata( filenamesIn::String; dir::String=".", npict::Int=1,
    verbose::Bool=false )
 
-   ## Check the existence of files
+   # Check the existence of files
    filenames = glob(filenamesIn, dir)
    if isempty(filenames)
       error("readdata: no matching filename was found for $(filenamesIn)")
@@ -27,22 +27,22 @@ function readdata( filenamesIn::String; dir::String=".", npict::Int=1,
    fileheads = Vector{Dict}(undef,0)
    data = Vector{Data}()
 
-   filelist, fileID, pictsize = getFileTypes(nfile,filenames)
+   filelist, fileID, pictsize = getFileTypes(nfile, filenames)
 
    if verbose
       [println("filename=$(filelist[i].name)\n"*
       "npict=$(filelist[i].npictinfiles)") for i in eachindex(filelist)]
    end
 
-   for ifile=1:nfile
-      if any(filelist[ifile].npictinfiles .- npict < 0)
-         error("file $(ifile): npict out of range!")
+   for ifile = 1:nfile
+      if any(filelist[ifile].npictinfiles - npict < 0)
+         @error "file $(ifile): npict out of range!"
       end
       seekstart(fileID[ifile])
    end
 
    ## Read data from files
-   for ifile=1:nfile
+   for ifile = 1:nfile
       # Skip npict-1 snapshots (because we only want npict snapshot)
       skip(fileID[ifile], pictsize[ifile]*(npict-1))
 
@@ -54,7 +54,7 @@ function readdata( filenamesIn::String; dir::String=".", npict::Int=1,
       if fileType == "ascii"
          x,w = getpictascii(fileID[ifile], fileheads[ifile])
       elseif fileType == "binary"
-         x,w = getpictbinary(fileID[ifile], fileheads[ifile], Float64)
+         x,w = getpictreal(fileID[ifile], fileheads[ifile], Float64)
       elseif fileType == "real4"
          x,w = getpictreal(fileID[ifile], fileheads[ifile], Float32)
       else
@@ -218,9 +218,9 @@ function readtecdata(filename::String; IsBinary=false, verbose=false)
    data = Array{Float32,2}(undef, length(VARS), nNode)
 
    if ndim == 3
-	   connectivity = Array{Int32,2}(undef, 8, nCell)
+	   connectivity = Array{Int32,2}(undef,8,nCell)
    elseif ndim == 2
-	   connectivity = Array{Int32,2}(undef, 4, nCell)
+	   connectivity = Array{Int32,2}(undef,4,nCell)
    end
 
    if IsBinary
@@ -261,12 +261,12 @@ Get the type of files.
 """
 function getFileTypes(nfile::Int, filenames::Array{String,1})
 
-   fileID   = Vector{IOStream}(undef, nfile)
-   pictsize = Vector{Int64}(undef, nfile)
+   fileID   = Vector{IOStream}(undef,nfile)
+   pictsize = Vector{Int64}(undef,nfile)
 
-   filelist = Vector{FileList}(undef, nfile)
+   filelist = Vector{FileList}(undef,nfile)
 
-   for ifile=1:nfile
+   for ifile = 1:nfile
       f = filenames[ifile]
       fileID[ifile] = open(f,"r")
 
@@ -275,7 +275,6 @@ function getFileTypes(nfile::Int, filenames::Array{String,1})
 
       # Check the appendix of file names
       # Gabor uses a trick: the first 4 bytes decides the file type()
-
       if occursin(r"^.*\.(log)$", filenames[ifile])
          type = "log"
          npictinfiles = 1
@@ -290,7 +289,7 @@ function getFileTypes(nfile::Int, filenames::Array{String,1})
          if lenhead!=79 && lenhead!=500
             type = "ascii"
          else
-            # The length of the 2nd line decides between real4 & binary
+            # The length of the 2nd line decides between real4 & real8
             # since it contains the time; which is real*8 | real*4
             skip(fileID[ifile],lenhead+4)
             len = read(fileID[ifile],Int32)
@@ -299,11 +298,11 @@ function getFileTypes(nfile::Int, filenames::Array{String,1})
             elseif len == 24
                type = "binary"
             else
-               error("Error in getFileTypes: strange unformatted file:
-                  $(filelist[ifile].name)")
+               @error "Error in getFileTypes: strange unformatted file:
+                  $(filelist[ifile].name)"
             end
 
-            if lenhead==500
+            if lenhead == 500
                type = uppercase(type)
             end
          end
@@ -349,9 +348,7 @@ function getfilehead(fileID::IOStream, type::String)
    # Read header
    pointer0 = position(fileID)
 
-   if ftype == "log"
-      # This part is done in the main readdata function.
-   elseif ftype == "ascii"
+   if ftype == "ascii"
       head[:headline] = readline(fileID)
       line = readline(fileID)
       line = split(line)
@@ -367,7 +364,6 @@ function getfilehead(fileID::IOStream, type::String)
          head[:eqpar] = parse.(Float64, split(readline(fileID)))
       end
       varname = readline(fileID)
-
    elseif ftype ∈ ["real4","binary"]
       skip(fileID,4) # skip record start tag.
       head[:headline] = String(read(fileID, lenstr))
@@ -410,7 +406,7 @@ function getfilehead(fileID::IOStream, type::String)
    end
 
    # Set variables array
-   head[:variables] = split(varname)     # returns a string array
+   head[:variables] = split(varname) # returns a string array
    return head
 end
 
@@ -431,9 +427,7 @@ function getfilesize(fileID::IOStream, type::String)
    # Read header
    pointer0 = position(fileID)
 
-   if ftype == "log"
-      # This part is done in the main readdata function.
-   elseif ftype == "ascii"
+   if ftype == "ascii"
       headline = readline(fileID)
       line = readline(fileID)
       line = split(line)
@@ -491,10 +485,8 @@ function getfilesize(fileID::IOStream, type::String)
    return pictsize
 end
 
-# There are plan to include this into Julia's base. See github for more info.
-
+# This will be supported in Julia v1.4. Remove it then.
 import Base: read!
-
 
 """
 	read!(s,a)
@@ -522,7 +514,7 @@ function getpictascii(fileID::IOStream, filehead::Dict)
       n1 = filehead[:nx][1]
       x  = Array{Float64,2}(undef,n1,ndim)
       w  = Array{Float64,2}(undef,n1,nw)
-      for ix=1:n1
+      for ix = 1:n1
          temp = parse.(Float64, split(readline(fileID)))
          x[ix,:] .= temp[1]
          w[ix,:] .= temp[2:end]
@@ -532,7 +524,7 @@ function getpictascii(fileID::IOStream, filehead::Dict)
       n2 = filehead[:nx][2]
       x  = Array{Float64,3}(undef,n1,n2,ndim)
       w  = Array{Float64,3}(undef,n1,n2,nw)
-      for ix1=1:n1, ix2=1:n2
+      for ix1 = 1:n1, ix2 = 1:n2
          temp = parse.(Float64, split(readline(fileID)))
          x[ix1,ix2,:] .= temp[1:2]
          w[ix1,ix2,:] .= temp[3:end]
@@ -543,7 +535,7 @@ function getpictascii(fileID::IOStream, filehead::Dict)
       n3 = filehead[:nx][3]
       x  = Array{Float64,4}(undef,n1,n2,n3,ndim)
       w  = Array{Float64,4}(undef,n1,n2,n3,nw)
-      for ix1=1:n1, ix2=1:n2, ix3=1:n3
+      for ix1 = 1:n1, ix2 = 1:n2, ix3 = 1:n3
          temp = parse.(Float64, split(readline(fileID)))
          x[ix1,ix2,ix3,:] .= temp[1:3]
          w[ix1,ix2,ix3,:] .= temp[4:end]
@@ -565,7 +557,7 @@ function getpictreal(fileID::IOStream, filehead::Dict, T::DataType)
    nw   = filehead[:nw]
 
    # Read coordinates & values
-   if filehead[:ndim] == 1 # 1D
+   if ndim == 1 # 1D
       n1 = filehead[:nx][1]
       x  = Array{T,2}(undef,n1,ndim)
       w  = Array{T,2}(undef,n1,nw)
@@ -576,7 +568,7 @@ function getpictreal(fileID::IOStream, filehead::Dict, T::DataType)
          read!(fileID, @view w[:,iw])
          skip(fileID,8) # skip record end/start tags.
       end
-   elseif filehead[:ndim] == 2 # 2D
+   elseif ndim == 2 # 2D
       n1 = filehead[:nx][1]
       n2 = filehead[:nx][2]
       x  = Array{T,3}(undef,n1,n2,ndim)
@@ -588,7 +580,7 @@ function getpictreal(fileID::IOStream, filehead::Dict, T::DataType)
          read!(fileID, @view w[:,:,iw])
          skip(fileID,8) # skip record end/start tags.
       end
-   elseif filehead[:ndim] == 3 # 3D
+   elseif ndim == 3 # 3D
       n1 = filehead[:nx][1]
       n2 = filehead[:nx][2]
       n3 = filehead[:nx][3]
@@ -611,17 +603,17 @@ end
 
 Set the units for the output files。
 If type is given as "SI", "CGS", "NORMALIZED", "PIC", "PLANETARY", "SOLAR", set
-typeunit = type otherwise try to guess from the fileheader.
-Based on typeunit set units for distance [xSI], time [tSI], density [rhoSI],
+`typeunit = type`, otherwise try to guess from the fileheader.
+Based on `typeunit` set units for distance [xSI], time [tSI], density [rhoSI],
 pressure [pSI], magnetic field [bSI] and current density [jSI] in SI units.
-Distance unit [rplanet | rstar], ion & electron mass in amu can be set with
+Distance unit [rplanet | rstar], ion & electron mass in [amu] can be set with
 optional distunit, Mion and Melectron.
 
 Also calculate convenient constants ti0, cs0 ... for typical formulas.
 This function needs to be improved!
 """
-function setunits( filehead::Dict,type::String; distunit::Float64=1.0,
-   Mion::Float64=1.0, Melectron::Float64=1.0)
+function setunits( filehead::Dict,type::String; distunit=1.0,
+   Mion=1.0, Melectron=1.0)
 
    # This is currently not used, so return here
    return
@@ -633,7 +625,7 @@ function setunits( filehead::Dict,type::String; distunit::Float64=1.0,
    eqpar     = filehead[:eqpar]
    variables = filehead[:variables]
 
-   mu0SI = 4*pi*1e-7      # H/m
+   mu0SI = 4π*1e-7      # H/m
    cSI   = 2.9978e8       # speed of light, [m/s]
    mpSI  = 1.6726e-27     # kg
    eSI   = 1.602e-19      # elementary charge, [C]
@@ -728,7 +720,7 @@ function setunits( filehead::Dict,type::String; distunit::Float64=1.0,
       jSI   = 1e-6            # muA/m^2
       c0    = cSI/uSI         # speed of light in velocity units
    else
-      error("invalid typeunit=$(typeunit)")
+      @error "invalid typeunit=$(typeunit)"
    end
 
    # Overwrite values if given by eqpar
@@ -787,7 +779,7 @@ function setunits( filehead::Dict,type::String; distunit::Float64=1.0,
       uH0  = Mi                # uH     = j/rho*Mi           = uH0*j/rho
       op0  = 1.0/Mi            # omegap = sqrt(rho)/Mi       = op0*sqrt(rho)
       oc0  = 1.0/Mi            # omegac = b/Mi               = oc0*b
-      rg0  = sqrt(Mi)          # rg = sqrt(p/rho)/b*sqrt(Mi) = rg0*sqrt(p/rho)/b
+      rg0  = √Mi               # rg = sqrt(p/rho)/b*sqrt(Mi) = rg0*sqrt(p/rho)/b
       di0  = c0*Mi             # di = c0/sqrt(rho)*Mi        = di0/sqrt(rho)
       ld0  = Mi                # ld = sqrt(p)/(rho*c0)*Mi    = ld0*sqrt(p)/rho
    elseif typeunit == "PIC"
@@ -796,11 +788,11 @@ function setunits( filehead::Dict,type::String; distunit::Float64=1.0,
       mu0A = 4*pi              # vA     = sqrt(b/(4*!pi*rho))= sqrt(bb/mu0A/rho)
       mu0  = 4*pi              # beta   = p/(bb/(8*!pi))     = p/(bb/(2*mu0))
       uH0  = Mi                # uH     = j/rho*Mi           = uH0*j/rho
-      op0  = sqrt(4*pi)/Mi     # omegap = sqrt(4*!pi*rho)/Mi = op0*sqrt(rho)
+      op0  = √(4π)/Mi          # omegap = sqrt(4*!pi*rho)/Mi = op0*sqrt(rho)
       oc0  = 1.0/Mi            # omegac = b/Mi               = oc0*b
-      rg0  = sqrt(Mi)          # rg = sqrt(p/rho)/b*sqrt(Mi) = rg0*sqrt(p/rho)/b
-      di0  = 1.0/sqrt(4*pi)    # di = 1/sqrt(4*!pi*rho)*Mi   = di0/sqrt(rho)
-      ld0  = 1.0/sqrt(4*pi)    # ld = sqrt(p/(4*!pi))/rho*Mi = ld0*sqrt(p)/rho
+      rg0  = √Mi               # rg = sqrt(p/rho)/b*sqrt(Mi) = rg0*sqrt(p/rho)/b
+      di0  = 1.0/√(4π)         # di = 1/sqrt(4*!pi*rho)*Mi   = di0/sqrt(rho)
+      ld0  = 1.0/√(4π)         # ld = sqrt(p/(4*!pi))/rho*Mi = ld0*sqrt(p)/rho
    else
       qom  = eSI/(Mi*mpSI); moq = 1/qom
       ti0  = mpSI/kbSI*pSI/rhoSI*Mi       # T[K]=p/(nk) = ti0*p/rho
@@ -808,11 +800,11 @@ function setunits( filehead::Dict,type::String; distunit::Float64=1.0,
       mu0A = uSI^2*mu0SI*rhoSI*bSI^(-2)   # vA          = sqrt(bb/(mu0A*rho))
       mu0  = mu0SI*pSI*bSI^(-2)           # beta        = p/(bb/(2*mu0))
       uH0  = moq*jSI/rhoSI/uSI            # uH=j/(ne)   = uH0*j/rho
-      op0  = qom*sqrt(rhoSI/e0SI)*tSI     # omegap      = op0*sqrt(rho)
+      op0  = qom*√(rhoSI/e0SI)*tSI        # omegap      = op0*sqrt(rho)
       oc0  = qom*bSI*tSI                  # omegac      = oc0*b
-      rg0  = moq*sqrt(pSI/rhoSI)/bSI/xSI/sqrt(Mi) # rg     = rg0*sqrt(p/rho)/b
-      di0  = cSI/(op0/tSI)/xSI                    # di=c/omegap = di0/sqrt(rho)
-      ld0  = moq*sqrt(pSI)/rhoSI/xSI              # ld          = ld0*sqrt(p)/rho
+      rg0  = moq*√(pSI/rhoSI)/bSI/xSI/√(Mi)    # rg     = rg0*sqrt(p/rho)/b
+      di0  = cSI/(op0/tSI)/xSI                 # di=c/omegap = di0/sqrt(rho)
+      ld0  = moq*√(pSI)/rhoSI/xSI              # ld          = ld0*sqrt(p)/rho
    end
 
 end
