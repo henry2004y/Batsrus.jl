@@ -9,8 +9,6 @@
 # Calling the native functions in Julia is about 5 times faster than calling the
 # dynmic C library.
 #
-# The next step is to merge this into the module.
-#
 # Modified from [SpacePy](https://github.com/spacepy/spacepy)
 # Hongyang Zhou, hyzhou@umich.edu 01/26/2020
 
