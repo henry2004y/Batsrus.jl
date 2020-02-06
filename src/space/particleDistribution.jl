@@ -77,7 +77,7 @@ end
 	dist_plot(region, particle, ParticleType='i', PlotVType=1)
 
 Velocity distribution plot in 9 regions.
-PlotVType: 1: v_par vs. v_perp1 2: v_perp1 vs. v_perp2
+`PlotVType`: 1: uy-ux; 2: ux-uz; 3:uy-uz; 4:u⟂O-u⟂I; 5:u⟂I-u∥; 5:u⟂O-u∥
 """
 function dist_plot(region, particle, ParticleType='i', PlotVType=1; dir=".",
    fnameField::String, nbin=60, fs=10)
@@ -139,7 +139,7 @@ function dist_plot(region, particle, ParticleType='i', PlotVType=1; dir=".",
          ylabel(L"u_z",FontSize=fs)
       elseif PlotVType==3
          xlabel(L"u_y",FontSize=fs)
-         ylabel(L"u_x",FontSize=fs)
+         ylabel(L"u_z",FontSize=fs)
       elseif PlotVType==4
          xlabel(L"u_{\perp Out}",fontsize=fs)
          ylabel(L"u_{\perp In}",fontsize=fs)
@@ -154,7 +154,7 @@ function dist_plot(region, particle, ParticleType='i', PlotVType=1; dir=".",
          region[2,iB],region[5,iB],region[6,iB]))
       colorbar()
       plt.set_cmap("hot")
-      clim(1e-2,10^0.3)
+      #clim(1e-2,10^0.3)
 
       if ParticleType == 'e'
          str = "electron"
@@ -222,6 +222,10 @@ function plotExCut(fnameField::String, region, xC, yC, zC, xL, yL, zL;
    axis("scaled")
    plt.set_cmap("RdBu_r")
    clim(-9e4,9e4)
+
+   streamslice(data[1],head[1],"Bx;Bz",cut='y',cutPlaneIndex=128, color="k",
+      density=1.0, plotrange=plotrange)
+
    xlabel(L"x [R_G]", fontsize=fs)
    ylabel(L"z [R_G]", fontsize=fs)
    title(L"Ex [\mu V/m]")
@@ -246,12 +250,18 @@ end
 
 dir = "/Users/hyzhou"
 fnameField = "3d_var_region0_0_t00001640_n00020369.out"
-#fnameParticle = "cut_particles0_region0_1_t00001640_n00020369.out"
-fnameParticle = "cut_particles1_region0_2_t00001640_n00020369.out"
 PType = 'i'
-PlotVType = 6
+PlotVType = 3
+
+if PType == 'e'
+   fnameParticle = "cut_particles0_region0_1_t00001640_n00020369.out"
+elseif PType == 'i'
+   fnameParticle = "cut_particles1_region0_2_t00001640_n00020369.out"
+end
+
+
 # Define regions
-xC, yC, zC = -1.86, 0.0, -0.28
+xC, yC, zC = -1.90, 0.0, -0.25
 xL, yL, zL = 0.008, 0.2, 0.03 # box length in x,y,z
 
 @time region, particle = dist_select(
