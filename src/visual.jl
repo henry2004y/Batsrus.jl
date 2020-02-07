@@ -2,7 +2,7 @@
 
 using PyPlot
 
-export plotdata, plotlogdata, animatedata, get_vars, cutplot,
+export plotdata, plotlogdata, animatedata, get_vars, cutplot, cutdata,
        plot, scatter, contour, contourf, plot_surface, tricontourf,
        plot_trisurf, streamplot, streamslice, subvolume, subsurface
 
@@ -593,10 +593,51 @@ end
 
 
 """
+	cutdata(data, head, var; plotrange=[-Inf,Inf,-Inf,Inf], cut=' ',
+		cutPlaneIndex=1)
+
+Get 2D plane cut data of 3D box data.
+"""
+function cutdata(data::Data, head::Dict, var::String;
+   plotrange=[-Inf,Inf,-Inf,Inf], cut=' ', cutPlaneIndex=1)
+
+   x,w = data.x, data.w
+   VarIndex_ = findfirst(x->x==lowercase(var), lowercase.(head[:wnames]))
+   isempty(VarIndex_) && error("$(var) not found in header variables!")
+
+   X = @view x[:,:,:,1]
+   Y = @view x[:,:,:,2]
+   Z = @view x[:,:,:,3]
+
+   W = w[:,:,:,VarIndex_]
+
+   if cut ∈ ('x',' ')
+      cut1 = @view X[cutPlaneIndex,:,:]
+      cut2 = @view Y[cutPlaneIndex,:,:]
+      W    = @view W[cutPlaneIndex,:,:]
+   elseif cut ==  'y'
+      cut1 = @view X[:,cutPlaneIndex,:]
+      cut2 = @view Z[:,cutPlaneIndex,:]
+      W    = @view W[:,cutPlaneIndex,:]
+   elseif cut == 'z'
+      cut1 = @view X[:,:,cutPlaneIndex]
+      cut2 = @view Y[:,:,cutPlaneIndex]
+      W    = @view W[:,:,cutPlaneIndex]
+   end
+
+   if !all(isinf.(plotrange))
+      cut1, cut2, W = subsurface(cut1, cut2, W, plotrange)
+   end
+
+   return cut1, cut2, W
+end
+
+
+"""
 	cutplot(data, head, var; plotrange=[-Inf,Inf,-Inf,Inf], cut=' ',
 		plotinterval=0.1, density=1.0, cutPlaneIndex=1,level=20)
 
-2D plane cut of 3D box data.
+2D plane cut contourf of 3D box data.
 """
 function cutplot(data::Data, head::Dict, var::String;
    plotrange=[-Inf,Inf,-Inf,Inf], cut=' ',
