@@ -4,7 +4,7 @@ using PyPlot
 
 export plotdata, plotlogdata, animatedata, get_vars, cutplot,
        plot, scatter, contour, contourf, plot_surface, tricontourf,
-       plot_trisurf, streamplot, subvolume, subsurface
+       plot_trisurf, streamplot, streamslice, subvolume, subsurface
 
 import PyPlot.plot, PyPlot.scatter, PyPlot.contour, PyPlot.contourf,
        PyPlot.plot_surface, PyPlot.tricontourf, PyPlot.plot_trisurf,
@@ -362,7 +362,7 @@ function plotdata(data::Data, head::Dict, func::String; cut::String="",
          end
 
          if !all(isinf.(plotrange))
-            cut1, cut2, W = subsurface(cut1, cut2, W, plotrange)
+            cut1, cut2, v1, v2 = subsurface(cut1, cut2, v1, v2, plotrange)
          end
 
          if plotmode[ivar] ∈ ("surf","surfbar","surfbarlog","cont","contbar",
@@ -415,6 +415,7 @@ end
 
 """
 	subsurface(x, y, data, limits)
+	subsurface(x, y, u, v, limits)
 
 Extract subset of 2D surface dataset.
 This is a simplified version of subvolume.
@@ -448,6 +449,38 @@ function subsurface(x, y, data, limits)
    newy = y[xind, yind]
 
    return newx, newy, newdata
+end
+
+function subsurface(x, y, u, v, limits)
+
+   if length(limits)!=4
+      @error "Reduction must be [xmin xmax ymin ymax]"
+   end
+
+   if limits[1] > limits[2] || limits[3] > limits[4]
+      @error "subsurface:InvalidReductionXRange"
+   end
+
+   sz = size(u)
+
+   hx = x[:,1]
+   hy = y[1,:]
+
+   if isinf(limits[1]) limits[1] = minimum(hx) end
+   if isinf(limits[3]) limits[3] = minimum(hy) end
+   if isinf(limits[2]) limits[2] = maximum(hx) end
+   if isinf(limits[4]) limits[4] = maximum(hy) end
+
+   xind = findall(limits[1] .≤ hx .≤ limits[2])
+   yind = findall(limits[3] .≤ hy .≤ limits[4])
+
+   newu = subdata(u, xind, yind, sz)
+   newv = subdata(v, xind, yind, sz)
+
+   newx = x[xind, yind]
+   newy = y[xind, yind]
+
+   return newx, newy, newu, newv
 end
 
 """
@@ -610,6 +643,77 @@ function cutplot(data::Data, head::Dict, var::String;
    end
 
    return c::PyCall.PyObject
+end
+
+
+"""
+	streamslice(data::Data, head::Dict, var::String;
+      plotrange=[-Inf,Inf,-Inf,Inf], cut=' ',
+      plotinterval=0.1, density=1.0, cutPlaneIndex=1,color="w")
+
+Plot streamlines on 2D slices of 3D box data. Variable string must be separated
+with `;`. Right now there are many annoying tranposes because of `meshgrid` and
+`ndgrid`. Try to remove that later!
+"""
+function streamslice(data::Data, head::Dict, var::String;
+   plotrange=[-Inf,Inf,-Inf,Inf], cut=' ',
+   plotinterval=0.1, density=1.0, cutPlaneIndex=1, color="w")
+
+   x,w = data.x, data.w
+   VarStream  = split(var,";")
+   VarIndex1_ = findfirst(x->x==lowercase(VarStream[1]),
+      lowercase.(head[:wnames]))
+   VarIndex2_ = findfirst(x->x==lowercase(VarStream[2]),
+      lowercase.(head[:wnames]))
+   (isempty(VarIndex1_) || isempty(VarIndex2_)) &&
+      @error "$(VarStream) not found in header variables!"
+
+   X = @view x[:,:,:,1]
+   Y = @view x[:,:,:,2]
+   Z = @view x[:,:,:,3]
+
+   v1 = @view w[:,:,:,VarIndex1_]
+   v2 = @view w[:,:,:,VarIndex2_]
+
+   if cut ∈ ('x',' ')
+      cut1 = @view X[cutPlaneIndex,:,:]
+      cut2 = @view Y[cutPlaneIndex,:,:]
+      v1   = v1[cutPlaneIndex,:,:]
+      v2   = v2[cutPlaneIndex,:,:]
+   elseif cut ==  'y'
+      cut1 = @view X[:,cutPlaneIndex,:]
+      cut2 = @view Z[:,cutPlaneIndex,:]
+      v1   = v1[:,cutPlaneIndex,:]
+      v2   = v2[:,cutPlaneIndex,:]
+   elseif cut == 'z'
+      cut1 = @view X[:,:,cutPlaneIndex]
+      cut2 = @view Y[:,:,cutPlaneIndex]
+      v1   = v1[:,:,cutPlaneIndex]
+      v2   = v2[:,:,cutPlaneIndex]
+   end
+
+   if !all(isinf.(plotrange))
+      cut1, cut2, v1, v2 = subsurface(cut1, cut2, v1, v2, plotrange)
+   end
+
+   xi = range(cut1[1,1], stop=cut1[end,1],
+   step = (cut1[end,1]-cut1[1,1])/(size(cut1,1)-1))
+   yi = range(cut2[1,1], stop=cut2[1,end],
+   step = (cut2[1,end]-cut2[1,1])/(size(cut2,2)-1))
+
+   Xi = [i for j in yi, i in xi]
+   Yi = [j for j in yi, i in xi]
+
+   s = streamplot(Xi,Yi,v1',v2',color=color,linewidth=1.0,density=density)
+
+   if cut == 'x'
+      xlabel("y"); ylabel("z")
+   elseif cut == 'y'
+      xlabel("x"); ylabel("z")
+   elseif cut == 'z'
+      xlabel("x"); ylabel("y")
+   end
+
 end
 
 
@@ -870,8 +974,8 @@ function getdata(data, head, var, plotrange, plotinterval)
          yi = x[:,:,2]
          wi = w[:,:,VarIndex_]
       else
-		   X = x[:,1,1]
-		   Y = x[1,:,2]
+         X = x[:,1,1]
+         Y = x[1,:,2]
          if plotrange[1] == -Inf plotrange[1] = minimum(X) end
          if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
          if plotrange[3] == -Inf plotrange[3] = minimum(Y) end
