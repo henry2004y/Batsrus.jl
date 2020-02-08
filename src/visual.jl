@@ -693,8 +693,7 @@ end
       plotinterval=0.1, density=1.0, cutPlaneIndex=1,color="w")
 
 Plot streamlines on 2D slices of 3D box data. Variable string must be separated
-with `;`. Right now there are many annoying tranposes because of `meshgrid` and
-`ndgrid`. Try to remove that later!
+with `;`. Tranposes aree needed because of `meshgrid` and `ndgrid` conversion.
 """
 function streamslice(data::Data, head::Dict, var::String;
    plotrange=[-Inf,Inf,-Inf,Inf], cut=' ',
