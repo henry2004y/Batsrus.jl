@@ -406,7 +406,7 @@ end
 
 """
 	trace2d_rk4(fieldx, fieldy, xstart, ystart, gridx, gridy;
-		maxstep=20000, ds=0.01
+		maxstep=20000, ds=0.01, gridType="meshgrid", direction="both")
 
 Given a 2D vector field, trace a streamline from a given point to the edge of
 the vector field. The field is integrated using Runge Kutta 4. Slower than
@@ -415,9 +415,10 @@ Euler, but more accurate. The higher accuracy allows for larger step sizes `ds`.
 `gridy` are not given, assume that `xstart` and `ystart` are normalized
 coordinates (e.g., position in terms of array indices.???)
 The field can be in both `meshgrid` (default) or `ndgrid` format.
+Supporting `direction` for {"both","forward","backward"}.
 """
 function trace2d_rk4(fieldx, fieldy, xstart, ystart, gridx, gridy;
-   maxstep=20000, ds=0.01, gridType="meshgrid")
+   maxstep=20000, ds=0.01, gridType="meshgrid", direction="both")
 
    xt = Vector{eltype(fieldx)}(undef,maxstep) # output x
    yt = Vector{eltype(fieldy)}(undef,maxstep) # output y
@@ -449,10 +450,24 @@ function trace2d_rk4(fieldx, fieldy, xstart, ystart, gridx, gridy;
    end
    =#
 
-   npoints = RK4!(nx, ny, maxstep, ds, xstart, ystart, gx, gy, fx, fy, xt, yt)
+   if direction == "forward"
+      npoints = RK4!(nx,ny, maxstep, ds, xstart,ystart, gx,gy, fx,fy, xt,yt)
+   elseif direction == "backward"
+      npoints = RK4!(nx,ny, maxstep, ds, xstart,ystart, gx,gy, -fx,-fy, xt,yt)
+   else
+      n1 = RK4!(nx,ny, maxstep, ds, xstart,ystart, gx,gy,-fx,-fy, xt,yt)
+      xt[n1:-1:1] = xt[1:n1]
+      yt[n1:-1:1] = yt[1:n1]
+
+      x2 = Vector{eltype(fieldx)}(undef,maxstep-n1)
+      y2 = Vector{eltype(fieldx)}(undef,maxstep-n1)
+      n2 = RK4!(nx,ny, maxstep-n1, ds, xstart,ystart, gx,gy, fx,fy, x2,y2)
+      xt[n1+1:n1+n2-1] = x2[2:n2]
+      yt[n1+1:n1+n2-1] = y2[2:n2]
+      npoints = n1 + n2 - 1
+   end
 
    return xt[1:npoints], yt[1:npoints]
-
 end
 
 """
@@ -466,9 +481,10 @@ coordinates `gridx`, `gridy`. If gridx and gridy are not given, assume that
 `xstart` and `ystart` are normalized coordinates (e.g. position in terms of
 array indices.)??? The field can be in both `meshgrid` (default) or `ndgrid`
 format.
+Supporting `direction` for {"both","forward","backward"}.
 """
 function trace2d_eul(fieldx, fieldy, xstart, ystart, gridx, gridy;
-   maxstep=20000, ds=0.01, gridType="meshgrid")
+   maxstep=20000, ds=0.01, gridType="meshgrid", direction="both")
 
    xt = Vector{eltype(fieldx)}(undef,maxstep) # output x
    yt = Vector{eltype(fieldy)}(undef,maxstep) # output y
@@ -500,7 +516,22 @@ function trace2d_eul(fieldx, fieldy, xstart, ystart, gridx, gridy;
    end
    =#
 
-   npoints = Euler!(nx,ny, maxstep, ds, xstart,ystart, gx, gy, fx, fy, xt, yt)
+   if direction == "forward"
+      npoints = Euler!(nx,ny, maxstep, ds, xstart,ystart, gx,gy, fx,fy, xt,yt)
+   elseif direction == "backward"
+      npoints = Euler!(nx,ny, maxstep, ds, xstart,ystart, gx,gy, -fx,-fy, xt,yt)
+   else
+      n1 = Euler!(nx,ny, maxstep, ds, xstart,ystart, gx,gy,-fx,-fy, xt,yt)
+      xt[n1:-1:1] = xt[1:n1]
+      yt[n1:-1:1] = yt[1:n1]
+
+      x2 = Vector{eltype(fieldx)}(undef,maxstep-n1)
+      y2 = Vector{eltype(fieldx)}(undef,maxstep-n1)
+      n2 = Euler!(nx,ny, maxstep-n1, ds, xstart,ystart, gx,gy, fx,fy, x2,y2)
+      xt[n1+1:n1+n2-1] = x2[2:n2]
+      yt[n1+1:n1+n2-1] = y2[2:n2]
+      npoints = n1 + n2 - 1
+   end
 
    return xt[1:npoints], yt[1:npoints]
 end
