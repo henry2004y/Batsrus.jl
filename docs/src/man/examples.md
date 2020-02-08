@@ -144,8 +144,6 @@ An example of tracing in a 2D cut and plot the field lines over contour:
 ```
 using VisAna, PyPlot
 
-include("../src/trace.jl")
-
 filename = "y=0_var_1_t00000000_n00000000.out"
 head, data, list = readdata(filename,dir="test")
 
@@ -159,17 +157,16 @@ seeds = select_seeds(x,z; nSeed=100) # randomly select the seeding points
 for i = 1:size(seeds)[2]
    xs = seeds[1,i]
    zs = seeds[2,i]
-   # forward
-   x1, y1 = trace2d_eul(bx, bz, xs, zs, x, z, ds=0.1, maxstep=1000, gridType="ndgrid")
-   plot(x1,y1,"--")
-   # backward
-   x2, y2 = trace2d_rk4(-bx, -bz, xs, zs, x, z, ds=0.1, maxstep=1000, gridType="ndgrid")
-   plot(x2,y2,"-")
+   # Tracing in both direction. Check the document for more options.
+   x1, z1 = trace2d_eul(bx, bz, xs, zs, x, z, ds=0.1, maxstep=1000, gridType="ndgrid")
+   plot(x1,z1,"--")
 end
 axis("equal")
 ```
 which will display
 ![SWMF_test1_noAMR](../images/BxBz_y0cut.png)
+
+Currently the `select_seeds` function uses pseudo random number generator that produces the same seeds every time.
 
 ## Derived variables
 ```
@@ -177,15 +174,15 @@ v = get_vars(data[1], head[1], ["Bx", "By", "Bz"])
 B = @. sqrt(v.Bx^2 + v.By^2 + v.Bz^2)
 ```
 
-## Output Format Conversion
-ASCII tecplot file:
+## Output format conversion
+ASCII Tecplot file:
 ```
 filename = "3d_ascii.dat"
 head, data, connectivity  = readtecdata(filename, IsBinary=false)
 convertVTK(head, data, connectivity, outname)
 ```
 
-Binary tecplot file (`DOSAVETECBINARY=TRUE`):
+Binary Tecplot file (`DOSAVETECBINARY=TRUE`):
 ```
 filename = "3d_bin.dat"
 head, data, connectivity  = readtecdata(filename,true)
@@ -239,3 +236,7 @@ filenames = vcat(filenames, filesfound)
    convertVTK(head, data, connectivity, outname[1:end-4])
 end
 ```
+
+## Space data analysis
+
+In the [space](../../../src/space) folder, you can find scripts for comparing magnetic field with observations, cross polar cap potential analysis, diamagnetic current calculation, 1D data frequency analysis, minimum variance analysis, particle phase space distribution plots, cut plots near the X-line reconnection site, and static satellite analysis.
