@@ -472,7 +472,7 @@ end
 
 """
 	trace2d_eul(fieldx, fieldy, xstart, ystart, gridx, gridy;
-		maxstep=20000, ds=0.01)
+		maxstep=20000, ds=0.01, gridType="meshgrid", direction="both")
 
 Given a 2D vector field, trace a streamline from a given point to the edge of
 the vector field. The field is integrated using Euler's method. While this is
