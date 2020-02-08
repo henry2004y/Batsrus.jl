@@ -128,9 +128,9 @@ end
    seeds = select_seeds(x,z)
    xs, zs = seeds[1,end], seeds[2,end]
    # Forward
-   x1, z1 = trace2d_eul(bx, bz, xs, zs, x, z, ds=0.1, gridType="ndgrid")
+   x1, z1 = trace2d_eul(bx, bz, xs, zs, x, z, ds=0.1, gridType="ndgrid", direction="forward")
    # Backward
-   x2, z2 = trace2d_rk4(-bx, -bz, xs, zs, x, z, ds=0.1, gridType="ndgrid")
+   x2, z2 = trace2d_rk4(bx, bz, xs, zs, x, z, ds=0.1, gridType="ndgrid", direction="backward")
    @test length(x1) == 54
    @test length(x2) == 25
 end
