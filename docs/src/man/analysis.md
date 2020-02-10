@@ -9,13 +9,13 @@ Magnetic reconnection occurs in a small diffusion region around the X-line but i
 
 [A measure of non-gyrotropy](https://aip.scitation.org/doi/full/10.1063/1.4820953) ``D_{ng}`` of a specific population can be think of a ratio between off-diagonal terms and diagonal terms of the pressure tensor:
 ```math
-D_{ng} = \frac{2\sqrt{\sum_{i,j}N_{i,j}^2}}{Tr(\overline{\overline{P_s}})}
+D_{ng} = \frac{2\sqrt{\sum_{i,j}N_{i,j}^2}}{Tr(\leftrightarrow{P_s})}
 ```
 where
+```math
+\leftrightarrow{P_s} = \leftrightarrow{G} + \leftrightarrow{N},
 ```
-\overline{\overline{P_s}} = \overline{\overline{G}} + \overline{\overline{N}},
-```
-``\overline{\overline{G}}`` is the gyrotropic term and ``\overline{\overline{N}}`` is the nongyrotropic term. Note that this is frame dependent and population specific.
+``\leftrightarrow{G}`` is the gyrotropic term and ``\leftrightarrow{N}`` is the nongyrotropic term. Note that this is frame dependent and population specific.
 
 A frame independent [dissipation measure](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.106.195003#fulltext)
 ```math
