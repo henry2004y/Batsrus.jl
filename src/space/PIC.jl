@@ -1,4 +1,4 @@
-# Plotting PIC variables from box outputs
+# Plotting PIC variables from box outputs.
 #
 # Hongyang Zhou, hyzhou@umich.edu 02/06/2020
 
@@ -11,30 +11,26 @@ fnameField = "3d_var_region0_0_t00001640_n00020369.out"
 
 head, data = readdata(fnameField, dir=dir)
 
-#=
-pxxe_ = findfirst(x->x=="pXXS0",head[1][:wnames])
-pyye_ = findfirst(x->x=="pYYS0",head[1][:wnames])
-pzze_ = findfirst(x->x=="pZZS0",head[1][:wnames])
-pxye_ = findfirst(x->x=="pXYS0",head[1][:wnames])
-pxze_ = findfirst(x->x=="pXZS0",head[1][:wnames])
-pyze_ = findfirst(x->x=="pYZS0",head[1][:wnames])
-pxxi_ = findfirst(x->x=="pXXS1",head[1][:wnames])
-pyyi_ = findfirst(x->x=="pYYS1",head[1][:wnames])
-pzzi_ = findfirst(x->x=="pZZS1",head[1][:wnames])
-pxyi_ = findfirst(x->x=="pXYS1",head[1][:wnames])
-pxzi_ = findfirst(x->x=="pXZS1",head[1][:wnames])
-pyzi_ = findfirst(x->x=="pYZS1",head[1][:wnames])
-=#
-
-plotrange = [-2.05, -1.75, -0.5, 0.5]
-#plotrange=[-Inf, Inf, -Inf, Inf]
-cI = 129
-
 # E: [μV/m]
 # B: [nT]
 # V: [km/s]
 # ρ: [amu/cc]
 # P: [nPa]
+
+me = head[1][:eqpar][1]
+qe = head[1][:eqpar][2]
+mi = head[1][:eqpar][3]
+qi = head[1][:eqpar][4]
+const vAlfven = 253. # reference Alfven velocity, [km/s]
+const B₀ = √((-10.)^2+(-6.)^2+(-86.)^2)
+const E₀ = 140.0*√((-6.)^2+(-86.)^2) # [μV/m]
+const ρ₀ = 56.0     # [amu/cc]
+const J₀ = 4.0*140.0
+
+plotrange = [-2.05, -1.75, -0.5, 0.5]
+#plotrange=[-Inf, Inf, -Inf, Inf]
+cI = 129 # plane cut index
+
 
 X, Z, ρe = cutdata(data[1],head[1],"rhoS0",cut='y',cutPlaneIndex=cI,
 	plotrange=plotrange)
@@ -97,19 +93,14 @@ z  = Z[1,:]
 # [A/m^2]
 #Jy = @. (qi*ρi*Uyi+qe*ρe*Uye)*1e3/mp*1e6
 #Jz = @. (qi*ρi*Uzi+qe*ρe*Uze)*1e3/mp*1e6
-
-me = head[1][:eqpar][1]
-qe = head[1][:eqpar][2]
-mi = head[1][:eqpar][3]
-qi = head[1][:eqpar][4]
-const vAlfven = 253. # reference Alfven velocity, [km/s]
-const B₀ = √((-10.)^2+(-6.)^2+(-86.)^2)
-const E₀ = 140.0*B₀ # [μV/m]
-const ρ₀ = 56.0     # [amu/cc]
-
-Jx = @. qi*ρi/mi*Uxi+qe*ρe/me*Uxe
-Jy = @. qi*ρi/mi*Uyi+qe*ρe/me*Uye
-Jz = @. qi*ρi/mi*Uzi+qe*ρe/me*Uze
+const q = 1.6021765e-19 # [C]
+# [/cc] --> [/mc], [km] --> [m]
+Jx = @. (qi*ρi/mi*Uxi+qe*ρe/me*Uxe)*1e9*q
+Jy = @. (qi*ρi/mi*Uyi+qe*ρe/me*Uye)*1e9*q
+Jz = @. (qi*ρi/mi*Uzi+qe*ρe/me*Uze)*1e9*q
+#Jx = @. qi*ρi/mi*Uxi+qe*ρe/me*Uxe
+#Jy = @. qi*ρi/mi*Uyi+qe*ρe/me*Uye
+#Jz = @. qi*ρi/mi*Uzi+qe*ρe/me*Uze
 
 #=
 qi = q
@@ -123,9 +114,26 @@ qe = qS0 =  -1.0
 'jpz', 'qi*{n1}*{uzs1}+qe*{n0}*{uzs0}'
 =#
 
+using PyCall
+inset_locator = pyimport("mpl_toolkits.axes_grid1.inset_locator")
+inset_axes = inset_locator.inset_axes
 
-# Should I normalize all the values?
-figure(figsize=(10,8))
+# Should I normalize all the values? How?
+fig, ax = plt.subplots(8,2,figsize=(8,10))
+
+axin = Vector{PyObject}(undef,16)
+for i in 1:length(ax)
+	axin[i] = inset_axes(ax[i],
+      width="5%",  # width = 5% of parent_bbox width
+      height="100%",  # height : 50%
+      loc="lower left",
+      bbox_to_anchor=(1.02, 0., 1.0, 1.0),
+      bbox_transform=ax[i].transAxes,
+      borderpad=0,)
+   axin[i].tick_params(axis="y", direction="in")
+
+   ax[i].tick_params(which="both", direction="in")
+end
 
 # Set plotting parameters
 levels = 40
@@ -133,194 +141,112 @@ plt.set_cmap("seismic")
 labelPos = (0.4, 0.05)
 zstart = collect(range(z[10],stop=z[end-10],length=8))
 xstart = fill(-2.0,size(zstart))
-
 zstart = append!(zstart, collect(range(-0.21,0.31,length=3)))
 xstart = append!(xstart, fill(-1.82,3))
 
-f = subplot(8,2,1)
-contourf(Z,X,Bz./B₀,levels) #
-colorbar()
-#streamplot(Z,X,Bz,Bx, color="k",density=0.5)
+# Bz
+c = ax[1].contourf(Z,X,Bz./B₀,levels) #
+colorbar(c, cax=axin[1]) # , ticks=[-1, 1]
 
 xl = [Vector{Float32}(undef,0) for _ in 1:length(xstart)]
 zl = [Vector{Float32}(undef,0) for _ in 1:length(xstart)]
 for i = 1:length(xstart)
    xs,zs = xstart[i],zstart[i]
-   xl[i], zl[i] = trace2d_rk4(Bx, Bz, xs, zs, x, z, ds=0.02, maxstep=10000, gridType="ndgrid")
-   plot(zl[i],xl[i],"-",color="k")
+   xl[i], zl[i] = trace2d_rk4(Bx, Bz, xs, zs, x, z, ds=0.02, maxstep=10000,
+   gridType="ndgrid")
 end
 
-plt.gca().invert_yaxis()
-axis("scaled")
-f.axes.xaxis.set_ticklabels([])
-contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
-annotate(L"B_z", xy=labelPos, xycoords="axes fraction",color="w")
+ax[1].contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
+ax[1].annotate(L"B_z", xy=labelPos, xycoords="axes fraction",color="w")
 
+# By
+c = ax[2].contourf(Z,X,By./B₀,levels) #
+colorbar(c, cax=axin[2])
+ax[2].contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
+ax[2].annotate(L"B_y", xy=labelPos, xycoords="axes fraction")
 
-f = subplot(8,2,3)
-contourf(Z,X,By./B₀,levels) #
-colorbar().ax.tick_params(axis="y", direction="in")
-[plot(zl[i],xl[i],"-",color="k") for i in 1:length(xstart)]
-axis("scaled")
-plt.gca().invert_yaxis()
-contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
-annotate(L"B_y", xy=labelPos, xycoords="axes fraction")
-f.axes.xaxis.set_ticklabels([])
-f.axes.yaxis.set_ticklabels([])
+# Ex
+c = ax[3].contourf(Z,X,Ex./E₀,levels)
+colorbar(c, cax=axin[3])
+ax[3].contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
+ax[3].annotate(L"E_x", xy=labelPos, xycoords="axes fraction")
 
+# Uzi
+c = ax[4].contourf(Z,X,Uzi./vAlfven,levels)
+colorbar(c, cax=axin[4])
+ax[4].contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
+ax[4].annotate(L"v_{iz}", xy=labelPos, xycoords="axes fraction")
 
-f = subplot(8,2,5)
-contourf(Z,X,Ex./E₀,levels)
-#colorbar()
-#colorbar(boundaries=vplot, ticks=vdisp)
-colorbar().ax.tick_params(axis="y", direction="in")
-#cbaxes = fig.add_axes([0.8, 0.1, 0.03, 0.8])
-#b = plt.colorbar(f, cax=[0.8, 0.1, 0.03, 0.8])
-[plot(zl[i],xl[i],"-",color="k") for i in 1:length(xstart)]
-axis("scaled")
-plt.gca().invert_yaxis()
-contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
-annotate(L"E_x", xy=labelPos, xycoords="axes fraction")
-f.axes.xaxis.set_ticklabels([])
-f.axes.yaxis.set_ticklabels([])
+# Uyi
+c = ax[5].contourf(Z,X,Uyi./vAlfven,levels)
+colorbar(c, cax=axin[5])
+ax[5].contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
+ax[5].annotate(L"v_{iy}", xy=labelPos, xycoords="axes fraction")
 
+# Uze
+c = ax[6].contourf(Z,X,Uze./vAlfven,levels)
+colorbar(c, cax=axin[6])
+ax[6].contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
+ax[6].annotate(L"v_{ez}", xy=labelPos, xycoords="axes fraction")
 
-f = subplot(8,2,7)
-contourf(Z,X,Uzi./vAlfven,levels)
-colorbar().ax.tick_params(axis="y", direction="in")
-[plot(zl[i],xl[i],"-",color="k") for i in 1:length(xstart)]
-axis("scaled")
-plt.gca().invert_yaxis()
-contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
-annotate(L"v_{iz}", xy=labelPos, xycoords="axes fraction")
-f.axes.xaxis.set_ticklabels([])
-f.axes.yaxis.set_ticklabels([])
+# Uye
+c = ax[7].contourf(Z,X,Uye./vAlfven,levels)
+colorbar(c, cax=axin[7])
+ax[7].contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
+ax[7].annotate(L"v_{ey}", xy=labelPos, xycoords="axes fraction",color="w")
 
-f = subplot(8,2,9)
-contourf(Z,X,Uyi./vAlfven,levels)
-colorbar().ax.tick_params(axis="y", direction="in")
-[plot(zl[i],xl[i],"-",color="k") for i in 1:length(xstart)]
-axis("scaled")
-plt.gca().invert_yaxis()
-contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
-annotate(L"v_{iy}", xy=labelPos, xycoords="axes fraction")
-f.axes.xaxis.set_ticklabels([])
-f.axes.yaxis.set_ticklabels([])
+# ρi
+c = ax[8].contourf(Z,X,ρi./ρ₀,levels)
+colorbar(c, cax=axin[8])
+ax[8].contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
+ax[8].annotate(L"\rho_i", xy=labelPos, xycoords="axes fraction",color="w")
 
-f = subplot(8,2,11)
-contourf(Z,X,Uze./vAlfven,levels)
-colorbar().ax.tick_params(axis="y", direction="in")
-[plot(zl[i],xl[i],"-",color="k") for i in 1:length(xstart)]
-axis("scaled")
-plt.gca().invert_yaxis()
-contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
-annotate(L"v_{ez}", xy=labelPos, xycoords="axes fraction")
-f.axes.xaxis.set_ticklabels([])
-f.axes.yaxis.set_ticklabels([])
+# Jz
+c = ax[9].contourf(Z,X,Jz,levels)
+colorbar(c, cax=axin[9])
+ax[9].contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
+ax[9].annotate(L"J_z", xy=labelPos, xycoords="axes fraction", color="w")
 
-f = subplot(8,2,13)
-contourf(Z,X,Uye./vAlfven,levels)
-colorbar().ax.tick_params(axis="y", direction="in")
-[plot(zl[i],xl[i],"-",color="k") for i in 1:length(xstart)]
-axis("scaled")
-plt.gca().invert_yaxis()
-contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
-annotate(L"v_{ey}", xy=labelPos, xycoords="axes fraction",color="w")
-f.axes.xaxis.set_ticklabels([])
-f.axes.yaxis.set_ticklabels([])
+# Jy
+c = ax[10].contourf(Z,X,Jy,levels)
+colorbar(c, cax=axin[10])
+ax[10].contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
+ax[10].annotate(L"J_y", xy=labelPos, xycoords="axes fraction", color="w")
 
-f = subplot(8,2,15)
-contourf(Z,X,ρi./ρ₀,levels)
-colorbar().ax.tick_params(axis="y", direction="in")
-[plot(zl[i],xl[i],"-",color="k") for i in 1:length(xstart)]
-axis("scaled")
-plt.gca().invert_yaxis()
-contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
-annotate(L"\rho_i", xy=labelPos, xycoords="axes fraction",color="w")
-f.axes.xaxis.set_ticklabels([])
-f.axes.yaxis.set_ticklabels([])
+# Deviation from ideal MHD
+c = ax[11].contourf(Z,X, (Ex.+Uyi.*Bz.-Uzi.*By)./E₀, levels)
+colorbar(c, cax=axin[11])
+ax[11].contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
+ax[11].annotate(L"(E+v_i\times B)_x", xy=labelPos, xycoords="axes fraction",
+   color="w")
 
+# Deviation from Hall MHD
+c = ax[12].contourf(Z,X, (Ex.+Uye.*Bz.-Uze.*By)./E₀, levels)
+colorbar(c, cax=axin[12])
+ax[12].contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
+ax[12].annotate(L"(E+v_e \times B)_x", xy=labelPos, xycoords="axes fraction",
+   color="w")
 
-f = subplot(8,2,2)
-contourf(Z,X,Jz,levels)
-colorbar().ax.tick_params(axis="y", direction="in")
-[plot(zl[i],xl[i],"-",color="k") for i in 1:length(xstart)]
-axis("scaled")
-plt.gca().invert_yaxis()
-contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
-annotate(L"J_z", xy=labelPos, xycoords="axes fraction")
-f.axes.xaxis.set_ticklabels([])
-f.axes.yaxis.set_ticklabels([])
+# Deviation from ideal MHD
+c = ax[13].contourf(Z,X, (Ey.+Uzi.*Bx.-Uxi.*Bz)./E₀, levels)
+colorbar(c, cax=axin[13])
+ax[13].contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
+ax[13].annotate(L"(E+v_i\times B)_y", xy=labelPos, xycoords="axes fraction")
 
-f = subplot(8,2,4)
-contourf(Z,X,Jy,levels)
-colorbar().ax.tick_params(axis="y", direction="in")
-[plot(zl[i],xl[i],"-",color="k") for i in 1:length(xstart)]
-axis("scaled")
-plt.gca().invert_yaxis()
-contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
-annotate(L"J_y", xy=labelPos, xycoords="axes fraction")
-f.axes.xaxis.set_ticklabels([])
-f.axes.yaxis.set_ticklabels([])
-
-f = subplot(8,2,6)
-contourf(Z,X, (Ex.+Uyi.*Bz.-Uzi.*By)./E₀, levels)
-colorbar().ax.tick_params(axis="y", direction="in")
-[plot(zl[i],xl[i],"-",color="k") for i in 1:length(xstart)]
-axis("scaled")
-plt.gca().invert_yaxis()
-contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
-annotate(L"(E+v_i\times B)_x", xy=labelPos, xycoords="axes fraction")
-f.axes.xaxis.set_ticklabels([])
-f.axes.yaxis.set_ticklabels([])
-
-f = subplot(8,2,8)
-contourf(Z,X, (Ex.+Uye.*Bz.-Uze.*By)./E₀, levels)
-colorbar().ax.tick_params(axis="y", direction="in")
-[plot(zl[i],xl[i],"-",color="k") for i in 1:length(xstart)]
-axis("scaled")
-plt.gca().invert_yaxis()
-contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
-annotate(L"(E+v_e \times B)_x", xy=labelPos, xycoords="axes fraction")
-f.axes.xaxis.set_ticklabels([])
-f.axes.yaxis.set_ticklabels([])
-
-f = subplot(8,2,10)
-contourf(Z,X, (Ey.+Uzi.*Bx.-Uxi.*Bz)./E₀, levels)
-colorbar().ax.tick_params(axis="y", direction="in")
-[plot(zl[i],xl[i],"-",color="k") for i in 1:length(xstart)]
-axis("scaled")
-plt.gca().invert_yaxis()
-contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
-annotate(L"(E+v_i\times B)_y", xy=labelPos, xycoords="axes fraction")
-f.axes.xaxis.set_ticklabels([])
-f.axes.yaxis.set_ticklabels([])
-
-f = subplot(8,2,12)
-contourf(Z,X, (Ey.+Uze.*Bx.-Uxe.*Bz)./E₀, levels)
-colorbar().ax.tick_params(axis="y", direction="in")
-[plot(zl[i],xl[i],"-",color="k") for i in 1:length(xstart)]
-axis("scaled")
-plt.gca().invert_yaxis()
-contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
-annotate(L"(E+v_e\times B)_y", xy=labelPos, xycoords="axes fraction")
-f.axes.xaxis.set_ticklabels([])
-f.axes.yaxis.set_ticklabels([])
+# Deviation from Hall MHD
+c = ax[14].contourf(Z,X, (Ey.+Uze.*Bx.-Uxe.*Bz)./E₀, levels)
+colorbar(c, cax=axin[14])
+ax[14].contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
+ax[14].annotate(L"(E+v_e\times B)_y", xy=labelPos, xycoords="axes fraction")
 
 # non-gyrotropy index Dng
 Dng = @. √(Pxye^2 + Pxze^2 + Pyze^2 + Pxyi^2 + Pxzi^2 + Pyzi^2) /
 	(Pxxe + Pyye + Pzze + Pxxi + Pyyi + Pzzi)
 
-f = subplot(8,2,14)
-contourf(Z,X,Dng, levels)
-colorbar().ax.tick_params(axis="y", direction="in")
-[plot(zl[i],xl[i],"-",color="k") for i in 1:length(xstart)]
-axis("scaled")
-plt.gca().invert_yaxis()
-contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
-annotate(L"D_{ng}", xy=labelPos, xycoords="axes fraction",color="w")
-f.axes.xaxis.set_ticklabels([])
-f.axes.yaxis.set_ticklabels([])
+c = ax[15].contourf(Z,X,Dng, levels)
+colorbar(c, cax=axin[15])
+ax[15].contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
+ax[15].annotate(L"D_{ng}", xy=labelPos, xycoords="axes fraction", color="w")
 
 
 # Dissipation measure De
@@ -330,15 +256,23 @@ Dₑ = @. Jx*(Ex + Uye*Bz - Uze*By) +
 		Jz*(Ez + Uxe*By - Uye*Bx) -
 		(ρi/mi - ρe/me)*(Uxe*Ex + Uye*Ey + Uze*Ez)
 
-f = subplot(8,2,16)
-contourf(Z,X,Dₑ, levels)
-colorbar().ax.tick_params(axis="y", direction="in")
-[plot(zl[i],xl[i],"-",color="k") for i in 1:length(xstart)]
-axis("scaled")
-plt.gca().invert_yaxis()
-contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
-annotate(L"D_e", xy=labelPos, xycoords="axes fraction")
-#f.axes.xaxis.set_ticklabels([])
-f.axes.yaxis.set_ticklabels([])
+c = ax[16].contourf(Z,X,Dₑ, levels)
+colorbar(c, cax=axin[16])
+ax[16].contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
+ax[16].annotate(L"D_e", xy=labelPos, xycoords="axes fraction")
 
-#tight_layout()
+
+for i in 1:length(ax)
+   [ax[i].plot(zl[j],xl[j],"-",color="k") for j in 1:length(xstart)]
+   ax[i].set_aspect("equal", "box")
+   ax[i].invert_yaxis()
+   if i != 8 && i != 16
+      ax[i].axes.xaxis.set_ticklabels([])
+   end
+   #a.axes.yaxis.set_ticklabels([])
+   ax[i].tick_params(which="both",top=true, right=true)
+   ax[i].minorticks_on()
+   #ax[i].tick_params(which="minor", length=4, color="r")
+end
+
+tight_layout()
