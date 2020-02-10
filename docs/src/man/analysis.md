@@ -13,9 +13,9 @@ D_{ng} = \frac{2\sqrt{\sum_{i,j}N_{i,j}^2}}{Tr(\leftrightarrow{P_s})}
 ```
 where
 ```math
-\leftrightarrow{P_s} = \leftrightarrow{G} + \leftrightarrow{N},
+\overleftrightarrow{P_s} = \overleftrightarrow{G} + \overleftrightarrow{N},
 ```
-``\leftrightarrow{G}`` is the gyrotropic term and ``\leftrightarrow{N}`` is the nongyrotropic term. Note that this is frame dependent and population specific.
+``\overleftrightarrow{G}`` is the gyrotropic term and ``\overleftrightarrow{N}`` is the nongyrotropic term. Note that this is frame dependent and population specific.
 
 It has been found from PIC simulations that especially in asymmetric reconnection, ``E_M^\ast\neq 0`` where ``\mathbf{E}^\ast=\mathbf{E}+\mathbf{V}_e\times\mathbf{B}`` is not a good enough indicator. Following [the principle ideas of finding a measure](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.106.195003#fulltext):
 - dissipation should be related to non-ideal energy conversion;
