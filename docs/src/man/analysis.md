@@ -17,11 +17,18 @@ where
 ```
 ``\leftrightarrow{G}`` is the gyrotropic term and ``\leftrightarrow{N}`` is the nongyrotropic term. Note that this is frame dependent and population specific.
 
-A frame independent [dissipation measure](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.106.195003#fulltext)
+It has been found from PIC simulations that especially in asymmetric reconnection, ``E_M^\ast\neq 0`` where ``\mathbf{E}^\ast=\mathbf{E}+\mathbf{V}_e\times\mathbf{B}`` is not a good enough indicator. Following [the principle ideas of finding a measure](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.106.195003#fulltext):
+- dissipation should be related to non-ideal energy conversion;
+- scalar indicator;
+- insensitive to the relative motion,
+
+a frame independent [dissipation measure](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.106.195003#fulltext) is constructed,
 ```math
-D_e = \mathbf{J}\cdot(\mathbf{E}+\mathbf{V}_e\times\mathbf{B}) - (n_i - n_e)(\mathbf{V}_e\times\mathbf{E})
+D_e = \gamma_e\big[\mathbf{J}\cdot(\mathbf{E}+\mathbf{V}_e\times\mathbf{B}) - (n_i - n_e)(\mathbf{V}_e\times\mathbf{E})\big]
 ```
-is another good indicator of the electron diffusion region, although slightly enhanced along the separatrices as well.
+which is a Lorentz-invariant scalar representing the energy conversion rate in the frame of electron bulk motion. In the nonrelativistic limit, one can simplify the equation by setting ``\gamma_e\rightarrow 1``. This can be easily confirmed by multiplying ``\mathbf{j}^\prime=qn_i\mathbf{V}_i=\mathbf{j}-\rho_c\mathbf{V}_e`` and ``\mathbf{E}^\prime = \mathbf{E}+\mathbf{V}\times\mathbf{B}``.
+
+This is another good indicator of the electron diffusion region, although slightly enhanced along the separatrices as well.
 
 [An alternative and complementary approach](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2016GL069034) is to identify diffusion region candidates by a combination of representative properties. In practice for reconnection with no guide field for instance, the overlapped region of ``B_L=0`` and ``E_N`` peak, where some researchers call 'shoulder', is already good enough for the identification.
 
