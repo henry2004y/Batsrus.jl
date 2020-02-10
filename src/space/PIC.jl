@@ -31,7 +31,7 @@ mi = head[1][:eqpar][3]
 qi = head[1][:eqpar][4]
 const vAlfven = 253. # reference Alfven velocity, [km/s]
 const B₀ = √((-10.)^2+(-6.)^2+(-86.)^2)
-const E₀ = 140.0*√((-6.)^2+(-86.)^2) # [μV/m]
+const E₀ = vAlfven*B₀ # [μV/m]
 const ρ₀ = 56.0     # [amu/cc]
 const J₀ = 4.0*vAlfven
 
@@ -252,11 +252,10 @@ ax[15].annotate(L"D_{ng}", xy=labelPos, xycoords="axes fraction", color="w")
 
 
 # Dissipation measure De
-# Unit???
 Dₑ = @. (Jx*(Ex + Uye*Bz - Uze*By) +
 		Jy*(Ey + Uze*Bx - Uxe*Bz) +
 		Jz*(Ez + Uxe*By - Uye*Bx) -
-		(ρi/mi - ρe/me)*(Uxe*Ex + Uye*Ey + Uze*Ez)) / (J₀*E₀)
+		(ρi/mi - ρe/me)*(Uxe*Ex + Uye*Ey + Uze*Ez)) / (J₀*B₀*vAlfven)
 
 c = ax[16].contourf(Z,X,Dₑ, levels, norm=DN(0))
 colorbar(c, cax=axin[16])
@@ -280,3 +279,5 @@ for i in 1:length(ax)
 end
 
 #tight_layout()
+
+# T∥ and T⟂

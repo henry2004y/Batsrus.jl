@@ -1,5 +1,30 @@
 # Data Analysis in Space Physics
 
+## Diffusion Region Detection
+
+Magnetic reconnection occurs in a small diffusion region around the X-line but its consequences are large scale. There are different approaches to determine whether or not we have encountered the diffusion region. The expected kinetic signatures of diffusion region:
+- enhanced dissipation
+- non-gyrotropic behavior
+- electron distribution functions
+
+[A measure of non-gyrotropy](https://aip.scitation.org/doi/full/10.1063/1.4820953) ``D_{ng}`` of a specific population can be think of a ratio between off-diagonal terms and diagonal terms of the pressure tensor:
+```math
+D_{ng} = \frac{2\sqrt{\sum_{i,j}N_{i,j}^2}}{Tr(\overline{\overline{P_s}})}
+```
+where
+```
+\overline{\overline{P_s}} = \overline{\overline{G}} + \overline{\overline{N}},
+```
+``\overline{\overline{G}}`` is the gyrotropic term and ``\overline{\overline{N}}`` is the nongyrotropic term. Note that this is frame dependent and population specific.
+
+A frame independent [dissipation measure](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.106.195003#fulltext)
+```math
+D_e = \mathbf{J}\cdot(\mathbf{E}+\mathbf{V}_e\times\mathbf{B}) - (n_i - n_e)(\mathbf{V}_e\times\mathbf{E})
+```
+is another good indicator of the electron diffusion region, although slightly enhanced along the separatrices as well.
+
+[An alternative and complementary approach](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2016GL069034) is to identify diffusion region candidates by a combination of representative properties. In practice for reconnection with no guide field for instance, the overlapped region of ``B_L=0`` and ``E_N`` peak, where some researchers call 'shoulder', is already good enough for the identification.
+
 ## Spectral Analysis
 
 ### FFT
