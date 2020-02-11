@@ -54,21 +54,25 @@ function DoBreak(iloc::Int, jloc::Int, kloc::Int, iSize::Int, jSize::Int,
 end
 
 """Create unit vectors of field."""
-function make_unit!(iSize::Int, jSize::Int, ux, uy)
-   for i = 1:iSize*jSize
+function make_unit(iSize::Int, jSize::Int, ux, uy)
+   fx, fy = similar(ux), similar(uy)
+   @inbounds for i = 1:iSize*jSize
       magnitude = sqrt(ux[i]^2 + uy[i]^2)
-      ux[i] /= magnitude
-      uy[i] /= magnitude
+      fx[i] = ux[i] / magnitude
+      fy[i] = uy[i] / magnitude
    end
+   return fx,fy
 end
 
-function make_unit!(iSize::Int, jSize::Int, kSize::Int, ux, uy, uz)
-   for i = 1:iSize*jSize*kSize
+function make_unit(iSize::Int, jSize::Int, kSize::Int, ux, uy, uz)
+   fx, fy, fz = similar(ux), similar(uy), similar(uz)
+   @inbounds for i = 1:iSize*jSize*kSize
       magnitude = sqrt(ux[i]^2 + uy[i]^2 + uz[i]^2)
-      ux[i] /= magnitude
-      uy[i] /= magnitude
-      uz[i] /= magnitude
+      fx[i] = ux[i] / magnitude
+      fy[i] = uy[i] / magnitude
+      fx[i] = uz[i] / magntitude
    end
+   return fx,fy,fz
 end
 
 """
@@ -106,7 +110,7 @@ function Euler!(iSize::Int, jSize::Int, maxstep::Int, ds,
    y[1] = (ystart-yGrid[1]) / dy
 
    # Create unit vectors from full vector field
-   make_unit!(iSize, jSize, ux, uy)
+   f1, f2 = make_unit(iSize, jSize, ux, uy)
 
    nstep = 0
    # Perform tracing using Euler's method
@@ -121,8 +125,8 @@ function Euler!(iSize::Int, jSize::Int, maxstep::Int, ds,
       end
 
       # Interpolate unit vectors to current location
-      fx = grid_interp!(x[n], y[n], ux, xloc, yloc, iSize, jSize)
-      fy = grid_interp!(x[n], y[n], uy, xloc, yloc, iSize, jSize)
+      fx = grid_interp!(x[n], y[n], f1, xloc, yloc, iSize, jSize)
+      fy = grid_interp!(x[n], y[n], f2, xloc, yloc, iSize, jSize)
 
       # Detect NaNs in function values
       if isnan(fx) || isnan(fy) || isinf(fx) || isinf(fy)
@@ -171,7 +175,7 @@ function Euler!(iSize::Int, jSize::Int, kSize::Int, maxstep::Int, ds,
    z[1] = (zstart-zGrid[1]) / dz
 
    # Create unit vectors from full vector field
-   make_unit!(iSize, jSize, kSize, ux, uy, uz)
+   f1, f2, f3 =  make_unit(iSize, jSize, kSize, ux, uy, uz)
 
    nstep = 0
    # Perform tracing using Euler's method
@@ -187,9 +191,9 @@ function Euler!(iSize::Int, jSize::Int, kSize::Int, maxstep::Int, ds,
       end
 
       # Interpolate unit vectors to current location
-      fx = grid_interp!(x[n], y[n], z[n], ux, xloc,yloc,zloc, iSize,jSize,kSize)
-      fy = grid_interp!(x[n], y[n], z[n], uy, xloc,yloc,zloc, iSize,jSize,kSize)
-      fy = grid_interp!(x[n], y[n], z[n], uz, xloc,yloc,zloc, iSize,jSize,kSize)
+      fx = grid_interp!(x[n], y[n], z[n], f1, xloc,yloc,zloc, iSize,jSize,kSize)
+      fy = grid_interp!(x[n], y[n], z[n], f2, xloc,yloc,zloc, iSize,jSize,kSize)
+      fy = grid_interp!(x[n], y[n], z[n], f3, xloc,yloc,zloc, iSize,jSize,kSize)
 
       # Detect NaNs in function values
       if any(isnan,[fx, fy, fz]) || any(isinf, [fx, fy, fz])
@@ -231,7 +235,7 @@ function RK4!(iSize::Int, jSize::Int, maxstep::Int, ds,
    y[1] = (ystart-yGrid[1]) / dy
 
    # Create unit vectors from full vector field
-   make_unit!(iSize, jSize, ux, uy)
+   fx, fy = make_unit(iSize, jSize, ux, uy)
 
    nstep = 0
    # Perform tracing using RK4
@@ -242,8 +246,8 @@ function RK4!(iSize::Int, jSize::Int, maxstep::Int, ds,
       yloc = floor(Int, y[n])
       if DoBreak(xloc, yloc, iSize, jSize); nstep = n; break end
 
-      f1x = grid_interp!(x[n], y[n], ux, xloc, yloc, iSize, jSize)
-      f1y = grid_interp!(x[n], y[n], uy, xloc, yloc, iSize, jSize)
+      f1x = grid_interp!(x[n], y[n], fx, xloc, yloc, iSize, jSize)
+      f1y = grid_interp!(x[n], y[n], fy, xloc, yloc, iSize, jSize)
       if isnan(f1x) || isnan(f1y) || isinf(f1x) || isinf(f1y)
          nstep = n; break
       end
@@ -254,8 +258,8 @@ function RK4!(iSize::Int, jSize::Int, maxstep::Int, ds,
       yloc = floor(Int, ypos)
       if DoBreak(xloc, yloc, iSize, jSize); nstep = n; break end
 
-      f2x = grid_interp!(xpos, ypos, ux, xloc, yloc, iSize, jSize)
-      f2y = grid_interp!(xpos, ypos, uy, xloc, yloc, iSize, jSize)
+      f2x = grid_interp!(xpos, ypos, fx, xloc, yloc, iSize, jSize)
+      f2y = grid_interp!(xpos, ypos, fy, xloc, yloc, iSize, jSize)
 
       if isnan(f2x) || isnan(f2y) || isinf(f2x) || isinf(f2y)
          nstep = n; break
@@ -267,8 +271,8 @@ function RK4!(iSize::Int, jSize::Int, maxstep::Int, ds,
       yloc = floor(Int, ypos)
       if DoBreak(xloc, yloc, iSize, jSize); nstep = n; break end
 
-      f3x = grid_interp!(xpos, ypos, ux, xloc, yloc, iSize, jSize)
-      f3y = grid_interp!(xpos, ypos, uy, xloc, yloc, iSize, jSize)
+      f3x = grid_interp!(xpos, ypos, fx, xloc, yloc, iSize, jSize)
+      f3y = grid_interp!(xpos, ypos, fy, xloc, yloc, iSize, jSize)
       if isnan(f3x) || isnan(f3y) || isinf(f3x) || isinf(f3y)
          nstep = n; break
       end
@@ -280,8 +284,8 @@ function RK4!(iSize::Int, jSize::Int, maxstep::Int, ds,
       yloc = floor(Int, ypos)
       if DoBreak(xloc, yloc, iSize, jSize); nstep = n; break end
 
-      f4x = grid_interp!(xpos, ypos, ux, xloc, yloc, iSize, jSize)
-      f4y = grid_interp!(xpos, ypos, uy, xloc, yloc, iSize, jSize)
+      f4x = grid_interp!(xpos, ypos, fx, xloc, yloc, iSize, jSize)
+      f4y = grid_interp!(xpos, ypos, fy, xloc, yloc, iSize, jSize)
       if isnan(f4x) || isnan(f4y) || isinf(f4x) || isinf(f4y)
          nstep = n; break
       end
@@ -321,7 +325,7 @@ function RK4!(iSize::Int, jSize::Int, kSize::Int, maxstep::Int, ds,
    z[1] = (zstart-zGrid[1]) / dz
 
    # Create unit vectors from full vector field
-   make_unit!(iSize, jSize, kSize, ux, uy, uz)
+   fx, fy, fz = make_unit(iSize, jSize, kSize, ux, uy, uz)
 
    nstep = 0
    # Perform tracing using RK4
@@ -333,9 +337,9 @@ function RK4!(iSize::Int, jSize::Int, kSize::Int, maxstep::Int, ds,
       zloc = floor(Int, z[n])
       if DoBreak(xloc, yloc, zloc, iSize, jSize, kSize); nstep = n; break end
 
-      f1x = grid_interp!(x[n],y[n],z[n], ux, xloc,yloc,zloc, iSize,jSize,kSize)
-      f1y = grid_interp!(x[n],y[n],z[n], uy, xloc,yloc,zloc, iSize,jSize,kSize)
-      f1z = grid_interp!(x[n],y[n],z[n], uz, xloc,yloc,zloc, iSize,jSize,kSize)
+      f1x = grid_interp!(x[n],y[n],z[n], fx, xloc,yloc,zloc, iSize,jSize,kSize)
+      f1y = grid_interp!(x[n],y[n],z[n], fy, xloc,yloc,zloc, iSize,jSize,kSize)
+      f1z = grid_interp!(x[n],y[n],z[n], fz, xloc,yloc,zloc, iSize,jSize,kSize)
       if any(isnan,[f1x, f1y, f1z]) || any(isinf, [f1x, f1y, f1z])
          nstep = n; break
       end
@@ -348,9 +352,9 @@ function RK4!(iSize::Int, jSize::Int, kSize::Int, maxstep::Int, ds,
       zloc = floor(Int, zpos)
       if DoBreak(xloc, yloc, zloc, iSize, jSize, kSize); nstep = n; break end
 
-      f2x = grid_interp!(xpos,ypos,zpos, ux, xloc,yloc,zloc, iSize,jSize,kSize)
-      f2y = grid_interp!(xpos,ypos,zpos, uy, xloc,yloc,zloc, iSize,jSize,kSize)
-      f2z = grid_interp!(xpos,ypos,zpos, uz, xloc,yloc,zloc, iSize,jSize,kSize)
+      f2x = grid_interp!(xpos,ypos,zpos, fx, xloc,yloc,zloc, iSize,jSize,kSize)
+      f2y = grid_interp!(xpos,ypos,zpos, fy, xloc,yloc,zloc, iSize,jSize,kSize)
+      f2z = grid_interp!(xpos,ypos,zpos, fz, xloc,yloc,zloc, iSize,jSize,kSize)
       if any(isnan,[f2x, f2y, f2z]) || any(isinf, [f2x, f2y, f2z])
          nstep = n; break
       end
@@ -363,9 +367,9 @@ function RK4!(iSize::Int, jSize::Int, kSize::Int, maxstep::Int, ds,
       zloc = floor(Int, zpos)
       if DoBreak(xloc, yloc, zloc, iSize, jSize, kSize); nstep = n; break end
 
-      f3x = grid_interp!(xpos,ypos,zpos, ux, xloc,yloc,zloc, iSize,jSize,kSize)
-      f3y = grid_interp!(xpos,ypos,zpos, uy, xloc,yloc,zloc, iSize,jSize,kSize)
-      f3z = grid_interp!(xpos,ypos,zpos, uz, xloc,yloc,zloc, iSize,jSize,kSize)
+      f3x = grid_interp!(xpos,ypos,zpos, fx, xloc,yloc,zloc, iSize,jSize,kSize)
+      f3y = grid_interp!(xpos,ypos,zpos, fy, xloc,yloc,zloc, iSize,jSize,kSize)
+      f3z = grid_interp!(xpos,ypos,zpos, fz, xloc,yloc,zloc, iSize,jSize,kSize)
       if any(isnan,[f3x, f3y, f3z]) || any(isinf, [f3x, f3y, f3z])
          nstep = n; break
       end
@@ -379,9 +383,9 @@ function RK4!(iSize::Int, jSize::Int, kSize::Int, maxstep::Int, ds,
       zloc = floor(Int, zpos)
       if DoBreak(xloc, yloc, zloc, iSize, jSize, kSize); nstep = n; break end
 
-      f4x = grid_interp!(xpos,ypos,zpos, ux, xloc,yloc,zloc, iSize,jSize,kSize)
-      f4y = grid_interp!(xpos,ypos,zpos, uy, xloc,yloc,zloc, iSize,jSize,kSize)
-      f4z = grid_interp!(xpos,ypos,zpos, uz, xloc,yloc,zloc, iSize,jSize,kSize)
+      f4x = grid_interp!(xpos,ypos,zpos, fx, xloc,yloc,zloc, iSize,jSize,kSize)
+      f4y = grid_interp!(xpos,ypos,zpos, fy, xloc,yloc,zloc, iSize,jSize,kSize)
+      f4z = grid_interp!(xpos,ypos,zpos, fz, xloc,yloc,zloc, iSize,jSize,kSize)
       if any(isnan,[f4x, f4y, f4z]) || any(isinf, [f4x, f4y, f4z])
          nstep = n; break
       end
