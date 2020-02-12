@@ -526,10 +526,10 @@ function getpictascii(fileID::IOStream, filehead::Dict)
       n2 = filehead[:nx][2]
       x  = Array{Float64,3}(undef,n1,n2,ndim)
       w  = Array{Float64,3}(undef,n1,n2,nw)
-      for ix1 = 1:n1, ix2 = 1:n2
+      for i = 1:n1, j = 1:n2
          temp = parse.(Float64, split(readline(fileID)))
-         x[ix1,ix2,:] .= temp[1:2]
-         w[ix1,ix2,:] .= temp[3:end]
+         x[i,j,:] .= temp[1:2]
+         w[i,j,:] .= temp[3:end]
       end
    elseif ndim == 3 # 3D
       n1 = filehead[:nx][1]
@@ -537,10 +537,10 @@ function getpictascii(fileID::IOStream, filehead::Dict)
       n3 = filehead[:nx][3]
       x  = Array{Float64,4}(undef,n1,n2,n3,ndim)
       w  = Array{Float64,4}(undef,n1,n2,n3,nw)
-      for ix1 = 1:n1, ix2 = 1:n2, ix3 = 1:n3
+      for i = 1:n1, j = 1:n2, k = 1:n3
          temp = parse.(Float64, split(readline(fileID)))
-         x[ix1,ix2,ix3,:] .= temp[1:3]
-         w[ix1,ix2,ix3,:] .= temp[4:end]
+         x[i,j,k,:] .= temp[1:3]
+         w[i,j,k,:] .= temp[4:end]
       end
    end
 
@@ -817,7 +817,6 @@ end
 Displaying file header information.
 """
 function showhead(file::FileList, ifile::Int, head::Dict)
-
    println("----------------------")
    println("ifile     = $(ifile)")
    println("filename  = $(file.name)")
@@ -839,5 +838,4 @@ function showhead(file::FileList, ifile::Int, head::Dict)
       println("param names= $(head[:variables][head[:ndim]+head[:nw]+1:end])")
       println("=======================")
    end
-
 end
