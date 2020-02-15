@@ -15,7 +15,8 @@ DN = matplotlib.colors.DivergingNorm
 
 #dir = "/Users/hyzhou/Documents/Computer/Julia/BATSRUS/VisAnaJulia"
 dir = "/Users/hyzhou"
-fnameField = "3d_var_region0_0_t00001640_n00020369.out"
+#fnameField = "3d_var_region0_0_t00001640_n00020369.out"
+fnameField = "3d_var_region0_0_t00001520_n00004093.out"
 
 head, data = readdata(fnameField, dir=dir)
 
@@ -115,9 +116,9 @@ Jy = @. qi*ρi/mi*Uyi+qe*ρe/me*Uye
 Jz = @. qi*ρi/mi*Uzi+qe*ρe/me*Uze
 
 # Normalized quantities
-fig, ax = plt.subplots(8,2,figsize=(9.5,9.5))
-c = Vector{PyObject}(undef,16)
-axin = Vector{PyObject}(undef,16)
+fig, ax = plt.subplots(9,2,figsize=(9.0,10.0))
+c = Vector{PyObject}(undef,length(ax))
+axin = Vector{PyObject}(undef,length(ax))
 for i in 1:length(ax)
 	axin[i] = inset_axes(ax[i],
       width="5%",  # width = 5% of parent_bbox width
@@ -135,11 +136,15 @@ end
 levels = 40
 plt.set_cmap("seismic")
 vPos = (0.4, 0.05)
-lPos = (-0.1, 0.91)
+lPos = (-0.1, 0.92)
 yPos = (-0.17,0.35)
-zstart = collect(range(z[10],stop=z[end-10],length=8))
-xstart = fill(-2.0,size(zstart))
-zstart = append!(zstart, collect(range(-0.21,0.31,length=3)))
+#vm = [1.63, .75, 5.0, 0.56, nothing, 1.7, 6.5, 5., nothing, 2.4, 5.3, 3.8, 5.6,
+#   1.5, 3.0, 1.3, nothing, 5.0] # 1640
+vm = [1.63, .80, 4.0, 0.50, 0.80, 2.5, 5.6, 5., nothing, 5.0, 6.0, 5.0, 3.4,
+   1.28, 1.65, 5.0, nothing, 8.0] # 1520
+zstart = collect(range(z[10],stop=z[end-10],length=14))
+xstart = fill(-1.92,size(zstart))
+zstart = append!(zstart, collect(range(-0.3,0.4,length=3)))
 xstart = append!(xstart, fill(-1.82,3))
 
 xl = [Vector{Float32}(undef,0) for _ in 1:length(xstart)]
@@ -151,82 +156,96 @@ for i = 1:length(xstart)
 end
 
 # Bz
-c[1] = ax[1].contourf(Z,X,Bz./B₀,levels, norm=DN(0)) #
+c[1] = ax[1].contourf(Z,X,Bz./B₀,levels, norm=DN(0), vmin=-vm[1], vmax=vm[1]) #
 #colorbar(c, cax=axin[1]).ax.locator_params(nbins=5)
 ax[1].annotate(L"B_z", xy=vPos, xycoords="axes fraction",color="w")
 ax[1].annotate("(a)", xy=lPos, xycoords="axes fraction")
 
 # By
-c[2] = ax[2].contourf(Z,X,By./B₀,levels, norm=DN(0)) #
+c[2] = ax[2].contourf(Z,X,By./B₀,levels, norm=DN(0), vmin=-vm[2], vmax=vm[2]) #
 ax[2].annotate(L"B_y", xy=vPos, xycoords="axes fraction")
 ax[2].annotate("(b)", xy=lPos, xycoords="axes fraction")
 
 # Ex
-c[3] = ax[3].contourf(Z,X,Ex./E₀,levels, norm=DN(0))
+c[3] = ax[3].contourf(Z,X,Ex./E₀,levels, norm=DN(0), vmin=-vm[3], vmax=vm[3])
 ax[3].annotate(L"E_x", xy=vPos, xycoords="axes fraction")
 ax[3].annotate("(c)", xy=lPos, xycoords="axes fraction")
 
-# Uzi
-c[4] = ax[4].contourf(Z,X,Uzi./vAlfven,levels, norm=DN(0))
-ax[4].annotate(L"v_{iz}", xy=vPos, xycoords="axes fraction")
+# Uyi
+c[4] = ax[4].contourf(Z,X,Uyi./vAlfven,levels, norm=DN(0), vmin=-vm[4], vmax=vm[4])
+ax[4].annotate(L"v_{iy}", xy=vPos, xycoords="axes fraction", color="w")
 ax[4].annotate("(d)", xy=lPos, xycoords="axes fraction")
 
-# Uyi
-c[5] = ax[5].contourf(Z,X,Uyi./vAlfven,levels, norm=DN(0))
-ax[5].annotate(L"v_{iy}", xy=vPos, xycoords="axes fraction", color="w")
+# Uzi
+c[5] = ax[5].contourf(Z,X,Uzi./vAlfven,levels, norm=DN(0))
+ax[5].annotate(L"v_{iz}", xy=vPos, xycoords="axes fraction")
 ax[5].annotate("(e)", xy=lPos, xycoords="axes fraction")
 
-# Uze
-c[6] = ax[6].contourf(Z,X,Uze./vAlfven,levels, norm=DN(0))
-ax[6].annotate(L"v_{ez}", xy=vPos, xycoords="axes fraction")
+# Uxe
+c[6] = ax[6].contourf(Z,X,Uxe./vAlfven,levels, norm=DN(0), vmin=-vm[6], vmax=vm[6])
+ax[6].annotate(L"v_{ex}", xy=vPos, xycoords="axes fraction")
 ax[6].annotate("(f)", xy=lPos, xycoords="axes fraction")
 
 # Uye
-c[7] = ax[7].contourf(Z,X,Uye./vAlfven,levels, norm=DN(0))
+c[7] = ax[7].contourf(Z,X,Uye./vAlfven,levels, norm=DN(0), vmin=-vm[7], vmax=vm[7])
 ax[7].annotate(L"v_{ey}", xy=vPos, xycoords="axes fraction")
 ax[7].annotate("(g)", xy=lPos, xycoords="axes fraction")
 
-# ρi
-c[8] = ax[8].contourf(Z,X,ρi./ρ₀,levels, cmap="jet")
-ax[8].annotate(L"\rho_i", xy=vPos, xycoords="axes fraction",color="w")
+# Uze
+c[8] = ax[8].contourf(Z,X,Uze./vAlfven,levels, norm=DN(0), vmin=-vm[8], vmax=vm[8])
+ax[8].annotate(L"v_{ez}", xy=vPos, xycoords="axes fraction")
 ax[8].annotate("(h)", xy=lPos, xycoords="axes fraction")
 
-# Jz
-c[9] = ax[9].contourf(Z,X,Jz./J₀,levels, norm=DN(0))
-ax[9].annotate(L"J_z", xy=vPos, xycoords="axes fraction")
+# ρi
+c[9] = ax[9].contourf(Z,X,ρi./ρ₀,levels, cmap="jet")
+ax[9].annotate(L"\rho_i", xy=vPos, xycoords="axes fraction",color="w")
 ax[9].annotate("(i)", xy=lPos, xycoords="axes fraction")
 
-# Jy
-c[10] = ax[10].contourf(Z,X,Jy./J₀,levels, norm=DN(0))
-ax[10].annotate(L"J_y", xy=vPos, xycoords="axes fraction")
+# Jx
+c[10] = ax[10].contourf(Z,X,Jx./J₀,levels, norm=DN(0), vmin=-vm[10], vmax=vm[10])
+ax[10].annotate(L"J_x", xy=vPos, xycoords="axes fraction")
 ax[10].annotate("(j)", xy=lPos, xycoords="axes fraction")
 
-# Deviation from ideal MHD
-c[11] = ax[11].contourf(Z,X, (Ex.+Uyi.*Bz.-Uzi.*By)./E₀, levels, norm=DN(0))
-ax[11].annotate(L"(E+v_i\times B)_x", xy=vPos, xycoords="axes fraction")
+# Jy
+c[11] = ax[11].contourf(Z,X,Jy./J₀,levels, norm=DN(0), vmin=-vm[11], vmax=vm[11])
+ax[11].annotate(L"J_y", xy=vPos, xycoords="axes fraction")
 ax[11].annotate("(k)", xy=lPos, xycoords="axes fraction")
 
-# Deviation from Hall MHD
-c[12] = ax[12].contourf(Z,X, (Ex.+Uye.*Bz.-Uze.*By)./E₀, levels, norm=DN(0))
-ax[12].annotate(L"(E+v_e \times B)_x", xy=vPos, xycoords="axes fraction")
+# Jz
+c[12] = ax[12].contourf(Z,X,Jz./J₀,levels, norm=DN(0), vmin=-vm[12], vmax=vm[12])
+ax[12].annotate(L"J_z", xy=vPos, xycoords="axes fraction")
 ax[12].annotate("(l)", xy=lPos, xycoords="axes fraction")
 
 # Deviation from ideal MHD
-c[13] = ax[13].contourf(Z,X, (Ey.+Uzi.*Bx.-Uxi.*Bz)./E₀, levels, norm=DN(0))
-ax[13].annotate(L"(E+v_i\times B)_y", xy=vPos, xycoords="axes fraction")
+c[13] = ax[13].contourf(Z,X, (Ex.+Uyi.*Bz.-Uzi.*By)./E₀, levels, norm=DN(0),
+   vmin=-vm[13], vmax=vm[13])
+ax[13].annotate(L"(E+v_i\times B)_x", xy=vPos, xycoords="axes fraction")
 ax[13].annotate("(m)", xy=lPos, xycoords="axes fraction")
 
 # Deviation from Hall MHD
-c[14] = ax[14].contourf(Z,X, (Ey.+Uze.*Bx.-Uxe.*Bz)./E₀, levels, norm=DN(0))
-ax[14].annotate(L"(E+v_e\times B)_y", xy=vPos, xycoords="axes fraction")
+c[14] = ax[14].contourf(Z,X, (Ex.+Uye.*Bz.-Uze.*By)./E₀, levels, norm=DN(0),
+   vmin=-vm[14], vmax=vm[14])
+ax[14].annotate(L"(E+v_e \times B)_x", xy=vPos, xycoords="axes fraction")
 ax[14].annotate("(n)", xy=lPos, xycoords="axes fraction")
+
+# Deviation from ideal MHD
+c[15] = ax[15].contourf(Z,X, (Ey.+Uzi.*Bx.-Uxi.*Bz)./E₀, levels, norm=DN(0),
+   vmin=-vm[15], vmax=vm[15])
+ax[15].annotate(L"(E+v_i\times B)_y", xy=vPos, xycoords="axes fraction")
+ax[15].annotate("(o)", xy=lPos, xycoords="axes fraction")
+
+# Deviation from Hall MHD
+c[16] = ax[16].contourf(Z,X, (Ey.+Uze.*Bx.-Uxe.*Bz)./E₀, levels, norm=DN(0),
+   vmin=-vm[16], vmax=vm[16])
+ax[16].annotate(L"(E+v_e\times B)_y", xy=vPos, xycoords="axes fraction")
+ax[16].annotate("(p)", xy=lPos, xycoords="axes fraction")
 
 # non-gyrotropy index Dng (for electron, not for electron+ion!)
 Dng = @. 2*√(Pxye^2 + Pxze^2 + Pyze^2) / (Pxxe + Pyye + Pzze)
 
-c[15] = ax[15].contourf(Z,X,Dng, levels, cmap="jet")
-ax[15].annotate(L"D_{ng}", xy=vPos, xycoords="axes fraction", color="w")
-ax[15].annotate("(o)", xy=lPos, xycoords="axes fraction")
+c[17] = ax[17].contourf(Z,X,Dng, levels, cmap="jet")
+ax[17].annotate(L"D_{ng}", xy=vPos, xycoords="axes fraction", color="w")
+ax[17].annotate("(q)", xy=lPos, xycoords="axes fraction")
 
 # Dissipation measure De
 Dₑ = @. (Jx*(Ex + Uye*Bz - Uze*By) +
@@ -234,31 +253,34 @@ Dₑ = @. (Jx*(Ex + Uye*Bz - Uze*By) +
 		Jz*(Ez + Uxe*By - Uye*Bx) -
 		(ρi/mi - ρe/me)*(Uxe*Ex + Uye*Ey + Uze*Ez)) / (J₀*B₀*vAlfven)
 
-c[16] = ax[16].contourf(Z,X,Dₑ, levels, norm=DN(0))
-ax[16].annotate(L"D_e", xy=vPos, xycoords="axes fraction")
-ax[16].annotate("(p)", xy=lPos, xycoords="axes fraction")
+c[18] = ax[18].contourf(Z,X,Dₑ, levels, norm=DN(0), vmin=-vm[18], vmax=vm[18])
+ax[18].annotate(L"D_e", xy=vPos, xycoords="axes fraction")
+ax[18].annotate("(r)", xy=lPos, xycoords="axes fraction")
 
 for i in 1:length(ax)
-   colorbar(c[i], cax=axin[i])#.ax.locator_params(nbins=5)
-   i < 9 &&
+   #.ax.locator_params(nbins=5) does not work together with norm(0)!
+   colorbar(c[i], cax=axin[i]).ax.tick_params(labelsize=6)
+   #if i == 2
+   #   ax[i].set_clim(-.75,.75)
+   #   #plt.clim(-.75,.75)
+	#end
+   i ≤ length(ax)/2 &&
    ax[i].annotate(L"x [R_G]", xy=yPos, xycoords="axes fraction",rotation=90)
-   i % 8 == 0 && ax[i].set_xlabel(L"y [R_G]")
-   if i < 15
+   i % (length(ax)/2) == 0 && ax[i].set_xlabel(L"z [R_G]")
+   if i < length(ax)-1
       [ax[i].plot(zl[j],xl[j],"-",color="k",lw=0.4) for j in 1:length(xstart)]
    end
    ax[i].contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
    ax[i].set_aspect("equal", "box")
    ax[i].invert_yaxis()
-   if i != 8 && i != 16
-      ax[i].axes.xaxis.set_ticklabels([])
-   end
+   i % (length(ax)/2) != 0 && ax[i].axes.xaxis.set_ticklabels([])
    #a.axes.yaxis.set_ticklabels([])
    ax[i].tick_params(which="both",top=true, right=true)
    ax[i].minorticks_on()
    #ax[i].tick_params(which="minor", length=4, color="r")
 end
 
-fig.subplots_adjust(wspace=0.1, hspace=0.1)
+fig.subplots_adjust(wspace=0.02, hspace=0.07)
 #tight_layout()
 
 
