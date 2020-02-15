@@ -139,7 +139,7 @@ function readtecdata(filename::String; IsBinary=false, verbose=false)
    # Read Tecplot header
    ln = readline(f) |> strip
    if startswith(ln, "TITLE")
-      title = match(r"\"(.*?)\"", split(ln,'=')[2])[1]
+      title = match(r"\"(.*?)\"", split(ln,'=', keepempty=false)[2])[1]
    else
       @warn "No title provided."
    end
@@ -176,13 +176,13 @@ function readtecdata(filename::String; IsBinary=false, verbose=false)
          end
 
          if !startswith(ln, "ZONE")
-            zoneline = split(ln, ", ")
+            zoneline = split(ln, ", ", keepempty=false)
          else # if the ZONE line has nothing, this won't work!
-            zoneline = split(ln[6:end], ", ")
+            zoneline = split(ln[6:end], ", ", keepempty=false)
             replace(zoneline[1], '"'=>"") # Remove the quotes in T
          end
          for zline in zoneline
-            name, value = split(zline,'=')
+            name, value = split(zline,'=', keepempty=false)
             name = uppercase(name)
             if name == "T" # ZONE title
                T = value
