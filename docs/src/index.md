@@ -11,12 +11,13 @@ This package is the inherited from its predecessor in IDL (developed by G.Toth) 
 It can be combined with the VTK format converter [writeVTK](https://github.com/jipolanco/WriteVTK.jl) to generate files for Paraview and Tecplot.
 By default the file size will be reduced with compression level 6, but the actual compression ratio depends on the original data.
 
-This package consists of five parts:
+This package provides the following functionalities:
   * simulation data reader
   * simulation data visualization
   * data format conversion
   * programming language interoperability
   * data analysis in space physics
+  * test particle tracing (WIP)
 
 The data analysis part includes spectral analysis, minimum variance analysis and
 many functions for aiding the interpretation of data.
@@ -40,6 +41,7 @@ Pages = [
     "man/functions.md",
     "man/types.md",
     "man/analysis.md"
+    "man/testparticle.md"
 ]
 Depth = 1
 ```
