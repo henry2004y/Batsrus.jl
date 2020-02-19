@@ -161,7 +161,7 @@ In reality, waves can be mixed together with mode conversions. Also, notice that
 
 A tricky part in practice is how to get the average through smoothing. Note that a real satellite moves both in time and space. Usually people do moving-box-average to get an average state within a short period.
 
-A more careful analysis is called Walen test.
+A more careful analysis is called Walén test.
 
 However, always keep in mind that the most reliable way of identifying waves is to calculate the dispersion relation.
 
