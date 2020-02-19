@@ -28,12 +28,13 @@ See the [examples](docs/src/man/examples.md).
 
 ## Guides
 
-This package consists of five parts:
+This package provides the following functionalities:
   * simulation data reader
   * simulation data visualization
   * data format conversion
   * programming language interoperability
   * data analysis in space physics
+  * test particle tracking
 
 The data analysis part includes spectral analysis, minimum variance analysis and
 many functions for aiding the interpretation of data.
