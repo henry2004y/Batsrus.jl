@@ -459,8 +459,7 @@ function trace2d_rk4(fieldx, fieldy, xstart, ystart, gridx, gridy;
    elseif direction == "backward"
       npoints = RK4!(nx,ny, maxstep, ds, xstart,ystart, gx,gy, -fx,-fy, xt,yt)
    else
-      # This does not work properly if n1 reaches maxstep (e.g. in a flux rope)
-      n1 = RK4!(nx,ny, maxstep, ds, xstart,ystart, gx,gy,-fx,-fy, xt,yt)
+      n1 = RK4!(nx,ny,floor(Int,maxstep/2),ds,xstart,ystart,gx,gy,-fx,-fy,xt,yt)
       xt[n1:-1:1] = xt[1:n1]
       yt[n1:-1:1] = yt[1:n1]
 
@@ -526,7 +525,8 @@ function trace2d_eul(fieldx, fieldy, xstart, ystart, gridx, gridy;
    elseif direction == "backward"
       npoints = Euler!(nx,ny, maxstep, ds, xstart,ystart, gx,gy, -fx,-fy, xt,yt)
    else
-      n1 = Euler!(nx,ny, maxstep, ds, xstart,ystart, gx,gy,-fx,-fy, xt,yt)
+      n1 = Euler!(nx,ny, floor(Int,maxstep/2), ds, xstart,ystart, gx,gy,-fx,-fy,
+         xt,yt)
       xt[n1:-1:1] = xt[1:n1]
       yt[n1:-1:1] = yt[1:n1]
 
