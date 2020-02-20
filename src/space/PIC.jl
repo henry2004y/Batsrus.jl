@@ -1,5 +1,11 @@
 # Plotting PIC variables from box outputs.
 #
+# E: [μV/m]
+# B: [nT]
+# V: [km/s]
+# ρ: [amu/cc]
+# P: [nPa]
+#
 # Hongyang Zhou, hyzhou@umich.edu 02/06/2020
 
 using VisAna, PyPlot
@@ -11,16 +17,14 @@ inset_axes = inset_locator.inset_axes
 # For specifying the zero point in the colorbar
 DN = matplotlib.colors.DivergingNorm
 
-#include("/Users/hyzhou/Documents/Computer/Julia/BATSRUS/VisAnaJulia/src/constants.jl")
-
 #dir = "/Users/hyzhou/Documents/Computer/Julia/BATSRUS/VisAnaJulia"
 dir = "/Users/hyzhou"
-#fnameField = "3d_var_region0_0_t00001640_n00020369.out"
+fnameField = "3d_var_region0_0_t00001640_n00020369.out"
 #fnameField = "3d_var_region0_0_t00001520_n00004093.out"
 #fnameField = "3d_var_region0_0_t00001523_n00004732.out"
 #fnameField = "3d_var_region0_0_t00001524_n00004933.out"
 #fnameField = "3d_var_region0_0_t00001525_n00005126.out"
-fnameField = "3d_var_region0_0_t00001527_n00005528.out"
+#fnameField = "3d_var_region0_0_t00001527_n00005528.out"
 #fnameField = "3d_var_region0_0_t00001740_n00032921.out"
 #fnameField = "3d_var_region0_0_t00001750_n00035011.out"
 #fnameField = "3d_var_region0_0_t00001800_n00037224.out"
@@ -33,12 +37,6 @@ fnameField = "3d_var_region0_0_t00001527_n00005528.out"
 #fnameField = "3d_var_region0_0_t00001910_n00051301.out"
 
 head, data = readdata(fnameField, dir=dir)
-
-# E: [μV/m]
-# B: [nT]
-# V: [km/s]
-# ρ: [amu/cc]
-# P: [nPa]
 
 me = head[1][:eqpar][1]
 qe = head[1][:eqpar][2]
@@ -53,8 +51,8 @@ const J₀ = 4.0*vAlfven
 #const T₀ = vAlfven^2
 const T₀ = 0.2/4 # Pe/n₀
 
-#plotrange = [-2.05, -1.75, -0.5, 0.5]
-plotrange = [-2.12, -1.75, -0.65, 0.6]
+plotrange = [-2.05, -1.75, -0.5, 0.5]
+#plotrange = [-2.12, -1.75, -0.65, 0.6]
 #plotrange=[-Inf, Inf, -Inf, Inf]
 cI = 129 # plane cut index
 
@@ -150,20 +148,18 @@ end
 # Set plotting parameters
 levels = 40
 plt.set_cmap("seismic")
-vPos, vPos2 = (0.8, 0.8), (0.7,0.8)
+vPos, vPos2 = (0.4, 0.8), (0.28,0.8)
+#vPos, vPos2 = (0.8, 0.8), (0.65,0.8)
 lPos = (-0.1, 0.92)
 yPos = (-0.17,0.35)
-# May be automated in the future?
-#vm = [1.63, .75, 5.0, 0.56, nothing, 1.7, 6.5, 5., nothing, 2.4, 5.3, 3.8, 5.6,
-#   1.5, 3.0, 1.3, nothing, 5.0] # 1640
-#vm = [1.63, .80, 4.0, 0.50, 0.80, 2.5, 5.6, 5., nothing, 5.0, 6.0, 5.0, 3.4,
-#   1.28, 1.65, 5.0, nothing, 8.0] # 1520
-#vm = [1.63, .80, 4.0, 0.60, 0.55, 1.7, 5.0, 3., nothing, 1.8, 6.0, 3.5, 4.0,
-#   1.80, 2.0, 1.7, nothing, 5.0] # 1525
-#vm = [1.63, .90, 4.1, 0.50, 0.65, 2.0, 5.7, 3.2, nothing, 3.0, 6.0, 3.5, 4.2,
-#   1.80, 2.0, 1.7, nothing, 6.0] # 1527
+
+labels = [L"B_z", L"B_y", L"E_x", L"v_{iy}", L"v_{iz}", L"v_{ex}", L"v_{ey}",
+	L"v_{ez}", L"\rho_i", L"J_x", L"J_y", L"J_z", L"(E+v_i\times B)_x",
+	L"(E+v_e \times B)_x", L"(E+v_i\times B)_y", L"(E+v_e\times B)_y",
+	L"D_{ng}", L"D_e"]
+
 vm = ones(18)
-const ϵ = 0.02
+const ϵ = 0.05 # allow room for extreme colors
 vm[1] = max(abs.(extrema(Bz./B₀))...)+ϵ
 vm[2] = max(abs.(extrema(By./B₀))...)+ϵ
 vm[3] = max(abs.(extrema(Ex./E₀))...)+ϵ
@@ -200,96 +196,61 @@ for i = 1:length(xstart)
 end
 
 # Bz
-c[1] = ax[1].contourf(Z,X,Bz./B₀,levels, norm=DN(0), vmin=-vm[1], vmax=vm[1]) #
-#colorbar(c, cax=axin[1]).ax.locator_params(nbins=5)
-ax[1].annotate(L"B_z", xy=vPos, xycoords="axes fraction",color="w")
-ax[1].annotate("(a)", xy=lPos, xycoords="axes fraction")
+c[1] = ax[1].contourf(Z,X,Bz./B₀,levels, norm=DN(0), vmin=-vm[1], vmax=vm[1])
 
 # By
 c[2] = ax[2].contourf(Z,X,By./B₀,levels, norm=DN(0), vmin=-vm[2], vmax=vm[2]) #
-ax[2].annotate(L"B_y", xy=vPos, xycoords="axes fraction")
-ax[2].annotate("(b)", xy=lPos, xycoords="axes fraction")
 
 # Ex
 c[3] = ax[3].contourf(Z,X,Ex./E₀,levels, norm=DN(0), vmin=-vm[3], vmax=vm[3])
-ax[3].annotate(L"E_x", xy=vPos, xycoords="axes fraction")
-ax[3].annotate("(c)", xy=lPos, xycoords="axes fraction")
 
 # Uyi
 c[4] = ax[4].contourf(Z,X,Uyi./vAlfven,levels, norm=DN(0), vmin=-vm[4], vmax=vm[4])
-ax[4].annotate(L"v_{iy}", xy=vPos, xycoords="axes fraction")
-ax[4].annotate("(d)", xy=lPos, xycoords="axes fraction")
 
 # Uzi
 c[5] = ax[5].contourf(Z,X,Uzi./vAlfven,levels, norm=DN(0))
-ax[5].annotate(L"v_{iz}", xy=vPos, xycoords="axes fraction")
-ax[5].annotate("(e)", xy=lPos, xycoords="axes fraction")
 
 # Uxe
 c[6] = ax[6].contourf(Z,X,Uxe./vAlfven,levels, norm=DN(0), vmin=-vm[6], vmax=vm[6])
-ax[6].annotate(L"v_{ex}", xy=vPos, xycoords="axes fraction")
-ax[6].annotate("(f)", xy=lPos, xycoords="axes fraction")
 
 # Uye
 c[7] = ax[7].contourf(Z,X,Uye./vAlfven,levels, norm=DN(0), vmin=-vm[7], vmax=vm[7])
-ax[7].annotate(L"v_{ey}", xy=vPos, xycoords="axes fraction")
-ax[7].annotate("(g)", xy=lPos, xycoords="axes fraction")
 
 # Uze
 c[8] = ax[8].contourf(Z,X,Uze./vAlfven,levels, norm=DN(0), vmin=-vm[8], vmax=vm[8])
-ax[8].annotate(L"v_{ez}", xy=vPos, xycoords="axes fraction")
-ax[8].annotate("(h)", xy=lPos, xycoords="axes fraction")
 
 # ρi
 c[9] = ax[9].contourf(Z,X,ρi./ρ₀,levels, cmap="jet")
-ax[9].annotate(L"\rho_i", xy=vPos, xycoords="axes fraction",color="w")
-ax[9].annotate("(i)", xy=lPos, xycoords="axes fraction")
 
 # Jx
 c[10] = ax[10].contourf(Z,X,Jx./J₀,levels, norm=DN(0), vmin=-vm[10], vmax=vm[10])
-ax[10].annotate(L"J_x", xy=vPos, xycoords="axes fraction")
-ax[10].annotate("(j)", xy=lPos, xycoords="axes fraction")
 
 # Jy
 c[11] = ax[11].contourf(Z,X,Jy./J₀,levels, norm=DN(0), vmin=-vm[11], vmax=vm[11])
-ax[11].annotate(L"J_y", xy=vPos, xycoords="axes fraction")
-ax[11].annotate("(k)", xy=lPos, xycoords="axes fraction")
 
 # Jz
 c[12] = ax[12].contourf(Z,X,Jz./J₀,levels, norm=DN(0), vmin=-vm[12], vmax=vm[12])
-ax[12].annotate(L"J_z", xy=vPos, xycoords="axes fraction")
-ax[12].annotate("(l)", xy=lPos, xycoords="axes fraction")
 
 # Deviation from ideal MHD
 c[13] = ax[13].contourf(Z,X, (Ex.+Uyi.*Bz.-Uzi.*By)./E₀, levels, norm=DN(0),
    vmin=-vm[13], vmax=vm[13])
-ax[13].annotate(L"(E+v_i\times B)_x", xy=vPos2, xycoords="axes fraction")
-ax[13].annotate("(m)", xy=lPos, xycoords="axes fraction")
 
 # Deviation from Hall MHD
 c[14] = ax[14].contourf(Z,X, (Ex.+Uye.*Bz.-Uze.*By)./E₀, levels, norm=DN(0),
    vmin=-vm[14], vmax=vm[14])
-ax[14].annotate(L"(E+v_e \times B)_x", xy=vPos2, xycoords="axes fraction")
-ax[14].annotate("(n)", xy=lPos, xycoords="axes fraction")
 
 # Deviation from ideal MHD
 c[15] = ax[15].contourf(Z,X, (Ey.+Uzi.*Bx.-Uxi.*Bz)./E₀, levels, norm=DN(0),
    vmin=-vm[15], vmax=vm[15])
-ax[15].annotate(L"(E+v_i\times B)_y", xy=vPos2, xycoords="axes fraction")
-ax[15].annotate("(o)", xy=lPos, xycoords="axes fraction")
 
 # Deviation from Hall MHD
 c[16] = ax[16].contourf(Z,X, (Ey.+Uze.*Bx.-Uxe.*Bz)./E₀, levels, norm=DN(0),
    vmin=-vm[16], vmax=vm[16])
-ax[16].annotate(L"(E+v_e\times B)_y", xy=vPos2, xycoords="axes fraction")
-ax[16].annotate("(p)", xy=lPos, xycoords="axes fraction")
 
 # non-gyrotropy index Dng (for electron, not for electron+ion!)
 Dng = @. 2*√(Pxye^2 + Pxze^2 + Pyze^2) / (Pxxe + Pyye + Pzze)
 
 c[17] = ax[17].contourf(Z,X,Dng, levels, cmap="jet")
-ax[17].annotate(L"D_{ng}", xy=vPos, xycoords="axes fraction", color="w")
-ax[17].annotate("(q)", xy=lPos, xycoords="axes fraction")
 
 # Dissipation measure De
 Dₑ = @. (Jx*(Ex + Uye*Bz - Uze*By) +
@@ -300,16 +261,18 @@ Dₑ = @. (Jx*(Ex + Uye*Bz - Uze*By) +
 vm[18] = max(abs.(Dₑ)...)+ϵ
 
 c[18] = ax[18].contourf(Z,X,Dₑ, levels, norm=DN(0), vmin=-vm[18], vmax=vm[18])
-ax[18].annotate(L"D_e", xy=vPos, xycoords="axes fraction")
-ax[18].annotate("(r)", xy=lPos, xycoords="axes fraction")
 
 for i in 1:length(ax)
    #.ax.locator_params(nbins=5) does not work together with norm(0)!
    colorbar(c[i], cax=axin[i]).ax.tick_params(labelsize=6)
-   #if i == 2
-   #   ax[i].set_clim(-.75,.75)
-   #   #plt.clim(-.75,.75)
-	#end
+   if i in (1,9,17) #(1,4,17)
+	   ax[i].annotate(labels[i], xy=vPos, xycoords="axes fraction",color="w")
+   elseif i in (13,14,15,16)
+      ax[i].annotate(labels[i], xy=vPos2, xycoords="axes fraction")
+   else
+      ax[i].annotate(labels[i], xy=vPos, xycoords="axes fraction")
+   end
+   ax[i].annotate("($('a'+i-1))", xy=lPos, xycoords="axes fraction")
    i ≤ length(ax)/2 &&
    ax[i].annotate(L"x [R_G]", xy=yPos, xycoords="axes fraction",rotation=90)
    i % (length(ax)/2) == 0 && ax[i].set_xlabel(L"z [R_G]")
@@ -320,10 +283,8 @@ for i in 1:length(ax)
    ax[i].set_aspect("equal", "box")
    ax[i].invert_yaxis()
    i % (length(ax)/2) != 0 && ax[i].axes.xaxis.set_ticklabels([])
-   #a.axes.yaxis.set_ticklabels([])
    ax[i].tick_params(which="both",top=true, right=true)
    ax[i].minorticks_on()
-   #ax[i].tick_params(which="minor", length=4, color="r")
 end
 
 fig.subplots_adjust(wspace=0.02, hspace=0.07)
