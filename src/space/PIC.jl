@@ -16,7 +16,21 @@ DN = matplotlib.colors.DivergingNorm
 #dir = "/Users/hyzhou/Documents/Computer/Julia/BATSRUS/VisAnaJulia"
 dir = "/Users/hyzhou"
 #fnameField = "3d_var_region0_0_t00001640_n00020369.out"
-fnameField = "3d_var_region0_0_t00001520_n00004093.out"
+#fnameField = "3d_var_region0_0_t00001520_n00004093.out"
+#fnameField = "3d_var_region0_0_t00001523_n00004732.out"
+#fnameField = "3d_var_region0_0_t00001524_n00004933.out"
+#fnameField = "3d_var_region0_0_t00001525_n00005126.out"
+fnameField = "3d_var_region0_0_t00001527_n00005528.out"
+#fnameField = "3d_var_region0_0_t00001740_n00032921.out"
+#fnameField = "3d_var_region0_0_t00001750_n00035011.out"
+#fnameField = "3d_var_region0_0_t00001800_n00037224.out"
+#fnameField = "3d_var_region0_0_t00001810_n00039298.out"
+#fnameField = "3d_var_region0_0_t00001820_n00041392.out"
+#fnameField = "3d_var_region0_0_t00001830_n00043324.out"
+#fnameField = "3d_var_region0_0_t00001840_n00045319.out"
+#fnameField = "3d_var_region0_0_t00001850_n00047357.out"
+#fnameField = "3d_var_region0_0_t00001900_n00049293.out"
+#fnameField = "3d_var_region0_0_t00001910_n00051301.out"
 
 head, data = readdata(fnameField, dir=dir)
 
@@ -39,7 +53,8 @@ const J₀ = 4.0*vAlfven
 #const T₀ = vAlfven^2
 const T₀ = 0.2/4 # Pe/n₀
 
-plotrange = [-2.05, -1.75, -0.5, 0.5]
+#plotrange = [-2.05, -1.75, -0.5, 0.5]
+plotrange = [-2.12, -1.75, -0.65, 0.6]
 #plotrange=[-Inf, Inf, -Inf, Inf]
 cI = 129 # plane cut index
 
@@ -135,23 +150,52 @@ end
 # Set plotting parameters
 levels = 40
 plt.set_cmap("seismic")
-vPos = (0.4, 0.05)
+vPos, vPos2 = (0.8, 0.8), (0.7,0.8)
 lPos = (-0.1, 0.92)
 yPos = (-0.17,0.35)
+# May be automated in the future?
 #vm = [1.63, .75, 5.0, 0.56, nothing, 1.7, 6.5, 5., nothing, 2.4, 5.3, 3.8, 5.6,
 #   1.5, 3.0, 1.3, nothing, 5.0] # 1640
-vm = [1.63, .80, 4.0, 0.50, 0.80, 2.5, 5.6, 5., nothing, 5.0, 6.0, 5.0, 3.4,
-   1.28, 1.65, 5.0, nothing, 8.0] # 1520
-zstart = collect(range(z[10],stop=z[end-10],length=14))
+#vm = [1.63, .80, 4.0, 0.50, 0.80, 2.5, 5.6, 5., nothing, 5.0, 6.0, 5.0, 3.4,
+#   1.28, 1.65, 5.0, nothing, 8.0] # 1520
+#vm = [1.63, .80, 4.0, 0.60, 0.55, 1.7, 5.0, 3., nothing, 1.8, 6.0, 3.5, 4.0,
+#   1.80, 2.0, 1.7, nothing, 5.0] # 1525
+#vm = [1.63, .90, 4.1, 0.50, 0.65, 2.0, 5.7, 3.2, nothing, 3.0, 6.0, 3.5, 4.2,
+#   1.80, 2.0, 1.7, nothing, 6.0] # 1527
+vm = ones(18)
+const ϵ = 0.02
+vm[1] = max(abs.(extrema(Bz./B₀))...)+ϵ
+vm[2] = max(abs.(extrema(By./B₀))...)+ϵ
+vm[3] = max(abs.(extrema(Ex./E₀))...)+ϵ
+vm[4] = max(abs.(extrema(Uyi./vAlfven))...)+ϵ
+vm[5] = max(abs.(extrema(Uzi./vAlfven))...)+ϵ
+vm[6] = max(abs.(extrema(Uxe./vAlfven))...)+ϵ
+vm[7] = max(abs.(extrema(Uye./vAlfven))...)+ϵ
+vm[8] = max(abs.(extrema(Uze./vAlfven))...)+ϵ
+
+vm[10] = max(abs.(extrema(Jx./J₀))...)+ϵ
+vm[11] = max(abs.(extrema(Jy./J₀))...)+ϵ
+vm[12] = max(abs.(extrema(Jz./J₀))...)+ϵ
+vm[13] = max(abs.(extrema((Ex.+Uyi.*Bz.-Uzi.*By)./E₀))...)+ϵ
+vm[14] = max(abs.(extrema((Ex.+Uye.*Bz.-Uze.*By)./E₀))...)+ϵ
+vm[15] = max(abs.(extrema((Ey.+Uzi.*Bx.-Uxi.*Bz)./E₀))...)+ϵ
+vm[16] = max(abs.(extrema((Ey.+Uze.*Bx.-Uxe.*Bz)./E₀))...)+ϵ
+#=
+zstart = collect(range(z[10],stop=z[end-10],length=10))
 xstart = fill(-1.92,size(zstart))
-zstart = append!(zstart, collect(range(-0.3,0.4,length=3)))
-xstart = append!(xstart, fill(-1.82,3))
+append!(zstart, collect(range(-0.3,0.4,length=3)))
+append!(xstart, fill(-1.82,3))
+=#
+seeds = select_seeds(x[10:end-10],z[10:end-10]; nSeed=5)
+xstart, zstart = seeds[1,:], seeds[2,:]
+append!(xstart, [-1.9, -1.9, -1.95, -1.97, -1.95, -1.9, -1.95, -1.95, -1.95])
+append!(zstart, [-0.4, -0.5, -0.4, 0.3, 0.4, 0.2, 0.05, -0.1, -0.2])
 
 xl = [Vector{Float32}(undef,0) for _ in 1:length(xstart)]
 zl = [Vector{Float32}(undef,0) for _ in 1:length(xstart)]
 for i = 1:length(xstart)
    xs,zs = xstart[i],zstart[i]
-   xl[i], zl[i] = trace2d_rk4(Bx, Bz, xs, zs, x, z, ds=0.02, maxstep=20000,
+   xl[i], zl[i] = trace2d_rk4(Bx, Bz, xs, zs, x, z, ds=0.03, maxstep=10000,
    gridType="ndgrid")
 end
 
@@ -173,7 +217,7 @@ ax[3].annotate("(c)", xy=lPos, xycoords="axes fraction")
 
 # Uyi
 c[4] = ax[4].contourf(Z,X,Uyi./vAlfven,levels, norm=DN(0), vmin=-vm[4], vmax=vm[4])
-ax[4].annotate(L"v_{iy}", xy=vPos, xycoords="axes fraction", color="w")
+ax[4].annotate(L"v_{iy}", xy=vPos, xycoords="axes fraction")
 ax[4].annotate("(d)", xy=lPos, xycoords="axes fraction")
 
 # Uzi
@@ -219,25 +263,25 @@ ax[12].annotate("(l)", xy=lPos, xycoords="axes fraction")
 # Deviation from ideal MHD
 c[13] = ax[13].contourf(Z,X, (Ex.+Uyi.*Bz.-Uzi.*By)./E₀, levels, norm=DN(0),
    vmin=-vm[13], vmax=vm[13])
-ax[13].annotate(L"(E+v_i\times B)_x", xy=vPos, xycoords="axes fraction")
+ax[13].annotate(L"(E+v_i\times B)_x", xy=vPos2, xycoords="axes fraction")
 ax[13].annotate("(m)", xy=lPos, xycoords="axes fraction")
 
 # Deviation from Hall MHD
 c[14] = ax[14].contourf(Z,X, (Ex.+Uye.*Bz.-Uze.*By)./E₀, levels, norm=DN(0),
    vmin=-vm[14], vmax=vm[14])
-ax[14].annotate(L"(E+v_e \times B)_x", xy=vPos, xycoords="axes fraction")
+ax[14].annotate(L"(E+v_e \times B)_x", xy=vPos2, xycoords="axes fraction")
 ax[14].annotate("(n)", xy=lPos, xycoords="axes fraction")
 
 # Deviation from ideal MHD
 c[15] = ax[15].contourf(Z,X, (Ey.+Uzi.*Bx.-Uxi.*Bz)./E₀, levels, norm=DN(0),
    vmin=-vm[15], vmax=vm[15])
-ax[15].annotate(L"(E+v_i\times B)_y", xy=vPos, xycoords="axes fraction")
+ax[15].annotate(L"(E+v_i\times B)_y", xy=vPos2, xycoords="axes fraction")
 ax[15].annotate("(o)", xy=lPos, xycoords="axes fraction")
 
 # Deviation from Hall MHD
 c[16] = ax[16].contourf(Z,X, (Ey.+Uze.*Bx.-Uxe.*Bz)./E₀, levels, norm=DN(0),
    vmin=-vm[16], vmax=vm[16])
-ax[16].annotate(L"(E+v_e\times B)_y", xy=vPos, xycoords="axes fraction")
+ax[16].annotate(L"(E+v_e\times B)_y", xy=vPos2, xycoords="axes fraction")
 ax[16].annotate("(p)", xy=lPos, xycoords="axes fraction")
 
 # non-gyrotropy index Dng (for electron, not for electron+ion!)
@@ -252,6 +296,8 @@ Dₑ = @. (Jx*(Ex + Uye*Bz - Uze*By) +
 		Jy*(Ey + Uze*Bx - Uxe*Bz) +
 		Jz*(Ez + Uxe*By - Uye*Bx) -
 		(ρi/mi - ρe/me)*(Uxe*Ex + Uye*Ey + Uze*Ez)) / (J₀*B₀*vAlfven)
+
+vm[18] = max(abs.(Dₑ)...)+ϵ
 
 c[18] = ax[18].contourf(Z,X,Dₑ, levels, norm=DN(0), vmin=-vm[18], vmax=vm[18])
 ax[18].annotate(L"D_e", xy=vPos, xycoords="axes fraction")
