@@ -81,12 +81,12 @@ function dist_select(fnameParticle, xC=-1.90, yC=0.0, zC=-0.1,
 end
 
 """
-	dist_plot(region, particle, ParticleType='i', PlotVType=1)
+	dist_scan(region, particle, ParticleType='i', PlotVType=1)
 
 Velocity distribution plot in 9 regions.
 `PlotVType`: 1: uy-ux; 2: ux-uz; 3:uy-uz; 4:u⟂O-u⟂I; 5:u⟂I-u∥; 5:u⟂O-u∥
 """
-function dist_plot(region, particle, ParticleType='i', PlotVType=1; dir=".",
+function dist_scan(region, particle, ParticleType='i', PlotVType=1; dir=".",
    fnameField::String, nbin=60, fs=10)
 
    if ParticleType == 'i'
@@ -260,187 +260,260 @@ function plotExCut(fnameField::String, region, xC, yC, zC, xL, yL, zL;
    =#
 end
 
-function NicePlot()
-   dir = "/Users/hyzhou"
-   fnameField = "3d_var_region0_0_t00001640_n00020369.out"
-   PlotVType = 1
-   nBox = 8
+function dist_plot(pType='e')
+   #dir = "/Users/hyzhou/Documents/Computer/Julia/BATSRUS/VisAnaJulia"
+   dir = "/Users/hyzhou/"
+   nBox = 4
    nbin = 60
    fs = 10
+   subplotlist = [1,2,3,4,1,2,3,4]
+   PlotVType = (1,1,1,1,3,3,3,3)
 
    fnameE = "cut_particles0_region0_1_t00001640_n00020369.out"
    fnameI = "cut_particles1_region0_2_t00001640_n00020369.out"
 
    fnameField = "3d_var_region0_0_"*fnameE[end-22:end]
 
+   binRangeI = [[-3.,3.], [-3.,3.]]
+   binRangeE = [[-7.,13.], [-10.,10.]]
+
    # Classify particles based on locations
    region = Array{Float32,2}(undef,6,nBox)
-   region[:,1] = [-1.930, -1.925, -0.08, 0.08, -0.10, -0.06]
-   region[:,2] = [-1.915, -1.910, -0.08, 0.08, -0.10, -0.06]
-   region[:,3] = [-1.905, -1.900, -0.08, 0.08, -0.10, -0.06]
-   region[:,4] = [-1.890, -1.885, -0.08, 0.08, -0.10, -0.06]
-
-   region[:,5] = [-1.905, -1.900, -0.08, 0.08, -0.10, -0.06]
-   region[:,6] = [-1.900, -1.895, -0.08, 0.08, -0.10, -0.06]
-   region[:,7] = [-1.895, -1.890, -0.08, 0.08, -0.10, -0.06]
-   region[:,8] = [-1.890, -1.885, -0.08, 0.08, -0.10, -0.06]
-
    particle = [Array{Float32}(undef, 3, 0) for _ in 1:nBox]
 
    # Electron
-   head, data = readdata(fnameE, dir=dir)
+   if pType == 'e'
+      region[:,1] = [-1.950, -1.945, -0.08, 0.08, -0.10, -0.06]
+      region[:,2] = [-1.915, -1.910, -0.08, 0.08, -0.10, -0.06]
+      region[:,3] = [-1.905, -1.900, -0.08, 0.08, -0.10, -0.06]
+      region[:,4] = [-1.895, -1.890, -0.08, 0.08, -0.10, -0.06]
 
-   x = @view data[1].x[:,:,:,1]
-   y = @view data[1].x[:,:,:,2]
-   z = @view data[1].x[:,:,:,3]
+      head, data = readdata(fnameE, dir=dir)
 
-   ux_ = findfirst(x->x=="ux", head[1][:wnames])
-   uy_ = findfirst(x->x=="uy", head[1][:wnames])
-   uz_ = findfirst(x->x=="uz", head[1][:wnames])
+      x = @view data[1].x[:,:,:,1]
+      y = @view data[1].x[:,:,:,2]
+      z = @view data[1].x[:,:,:,3]
 
-   ux = @view data[1].w[:,:,:,ux_]
-   uy = @view data[1].w[:,:,:,uy_]
-   uz = @view data[1].w[:,:,:,uz_]
+      ux_ = findfirst(x->x=="ux", head[1][:wnames])
+      uy_ = findfirst(x->x=="uy", head[1][:wnames])
+      uz_ = findfirst(x->x=="uz", head[1][:wnames])
 
-   for ip = 1:length(x)
-      for iR = 1:Int(nBox/2)
-         if region[1,iR] < x[ip] < region[2,iR] &&
-            region[3,iR] < y[ip] < region[4,iR] &&
-            region[5,iR] < z[ip] < region[6,iR]
+      ux = @view data[1].w[:,:,:,ux_]
+      uy = @view data[1].w[:,:,:,uy_]
+      uz = @view data[1].w[:,:,:,uz_]
 
-            particle[iR] = hcat(particle[iR], [ux[ip]; uy[ip]; uz[ip]])
-            break
+      for ip = 1:length(x)
+         for iR = 1:nBox
+            if region[1,iR] < x[ip] < region[2,iR] &&
+               region[3,iR] < y[ip] < region[4,iR] &&
+               region[5,iR] < z[ip] < region[6,iR]
+
+               particle[iR] = hcat(particle[iR], [ux[ip]; uy[ip]; uz[ip]])
+               break
+            end
          end
       end
-   end
 
-   # Ion
-   head, data = readdata(fnameI, dir=dir)
+      binRange = binRangeE
+   elseif pType == 'i'
+      region[:,1] = [-1.865, -1.855, -0.08, 0.08, -0.29, -0.25]
+      region[:,2] = [-1.910, -1.900, -0.08, 0.08, 0.11, 0.15]
+      region[:,3] = [-1.970, -1.960, -0.08, 0.08, -0.10, -0.06]
+      region[:,4] = [-1.850, -1.840, -0.08, 0.08, -0.10, -0.06]
 
-   x = @view data[1].x[:,:,:,1]
-   y = @view data[1].x[:,:,:,2]
-   z = @view data[1].x[:,:,:,3]
+      head, data = readdata(fnameI, dir=dir)
 
-   ux_ = findfirst(x->x=="ux", head[1][:wnames])
-   uy_ = findfirst(x->x=="uy", head[1][:wnames])
-   uz_ = findfirst(x->x=="uz", head[1][:wnames])
+      x = @view data[1].x[:,:,:,1]
+      y = @view data[1].x[:,:,:,2]
+      z = @view data[1].x[:,:,:,3]
 
-   ux = @view data[1].w[:,:,:,ux_]
-   uy = @view data[1].w[:,:,:,uy_]
-   uz = @view data[1].w[:,:,:,uz_]
+      ux_ = findfirst(x->x=="ux", head[1][:wnames])
+      uy_ = findfirst(x->x=="uy", head[1][:wnames])
+      uz_ = findfirst(x->x=="uz", head[1][:wnames])
 
-   for ip = 1:length(x)
-      for iR = Int(nBox/2)+1:nBox
-         if region[1,iR] < x[ip] < region[2,iR] &&
-            region[3,iR] < y[ip] < region[4,iR] &&
-            region[5,iR] < z[ip] < region[6,iR]
+      ux = @view data[1].w[:,:,:,ux_]
+      uy = @view data[1].w[:,:,:,uy_]
+      uz = @view data[1].w[:,:,:,uz_]
 
-            particle[iR] = hcat(particle[iR], [ux[ip]; uy[ip]; uz[ip]])
-            break
+      for ip = 1:length(x)
+         for iR = 1:nBox
+            if region[1,iR] < x[ip] < region[2,iR] &&
+               region[3,iR] < y[ip] < region[4,iR] &&
+               region[5,iR] < z[ip] < region[6,iR]
+
+               particle[iR] = hcat(particle[iR], [ux[ip]; uy[ip]; uz[ip]])
+               break
+            end
          end
       end
+
+      binRange = binRangeI
    end
 
+   # Normalized quantities
+   fig, ax = plt.subplots(4,2,figsize=(4.2,8.0))
+   if pType == 'e'
+      fig.suptitle("electron", fontsize=14, fontweight="bold")
+   elseif pType == 'i'
+      fig.suptitle("ion", fontsize=14, fontweight="bold")
+   end
 
-   binRangeI = [[-3.,3.], [-3.,3.]]
-   binRangeE = [[-10.,12.], [-10.,10.]]
+   xlPos = (0.50, -0.10)
+   ylPos = (-0.25, 0.50)
+   c = Vector{PyObject}(undef,nBox)
+   plt.set_cmap("jet")
 
-   figure(figsize=(4,10))
-   for iB = 1:nBox
-      if PlotVType ≤ 3
+   for i = 1:nBox*2
+      ax[i].tick_params(which="both", direction="in", top=true, right=true)
+      ax[i].minorticks_on()
+      iB = subplotlist[i]
+      if PlotVType[i] ≤ 3
          ux = particle[iB][1,:] ./ cAlfven
          uy = particle[iB][2,:] ./ cAlfven
          uz = particle[iB][3,:] ./ cAlfven
       else
          dBx, dBy, dBz = GetMeanField(fnameField, region[:,iB]; dir=dir)
 
-         dPar = [dBx; dBy; dBz] # Parallel direction
+         dPar   = [dBx; dBy; dBz]         # Parallel direction
          dPerpI = cross([0; -1; 0], dPar) # Perpendicular direction in-plane
-         dPerpO = cross(dPar, dPerpI) # Perpendicular direction out-of-plane
+         dPerpO = cross(dPar, dPerpI)     # Perpendicular direction out-of-plane
 
-         uPar = transpose(particle[iB][1:3,:])*dPar ./ cAlfven
+         uPar   = transpose(particle[iB][1:3,:])*dPar   ./ cAlfven
          uPerpI = transpose(particle[iB][1:3,:])*dPerpI ./ cAlfven
          uPerpO = transpose(particle[iB][1:3,:])*dPerpO ./ cAlfven
       end
 
-      ax = subplot(5,2,2+iB)
-      if iB ≤ nBox/2
-         binRange = binRangeE
-      else
-         binRange = binRangeI
-      end
-      if PlotVType==1
-         h = hist2D(uy, ux, bins=nbin,
+      if PlotVType[i]==1
+         h = ax[i].hist2d(uy, ux, bins=nbin,
             norm=matplotlib.colors.LogNorm(),density=true, range=binRange)
-      elseif PlotVType==2
-         h = hist2D(ux, uz, bins=nbin,
+      elseif PlotVType[i]==2
+         h = ax[i].hist2d(ux, uz, bins=nbin,
             norm=matplotlib.colors.LogNorm(),density=true, range=binRange)
-      elseif PlotVType==3
-         h = hist2D(uy, uz, bins=nbin,
+      elseif PlotVType[i]==3
+         h = ax[i].hist2d(uy, uz, bins=nbin,
             norm=matplotlib.colors.LogNorm(),density=true, range=binRange)
-      elseif PlotVType==4
-         h = hist2D(uPerpO, uPerpI, bins=nbin,
+      elseif PlotVType[i]==4
+         h = ax[i].hist2d(uPerpO, uPerpI, bins=nbin,
             norm=matplotlib.colors.LogNorm(),density=true, range=binRange)
-      elseif PlotVType==5
-         h = hist2D(uPerpI, uPar, bins=nbin,
+      elseif PlotVType[i]==5
+         h = ax[i].hist2d(uPerpI, uPar, bins=nbin,
             norm=matplotlib.colors.LogNorm(),density=true, range=binRange)
-      elseif PlotVType==6
-         h = hist2D(uPerpO, uPar, bins=nbin,
+      elseif PlotVType[i]==6
+         h = ax[i].hist2d(uPerpO, uPar, bins=nbin,
             norm=matplotlib.colors.LogNorm(),density=true, range=binRange)
       else
          @error "Unknown PlotVType!"
       end
-      grid(true)
-      ax.set_aspect("equal", "box")
-      #axis("equal")
+      ax[i].set_aspect("equal", "box")
+      #ax[i].grid(true)
+      ax[i].axvline(x=0.0, ls="--", linewidth=0.5, color="k")
+      ax[i].axhline(y=0.0, ls="--", linewidth=0.5, color="k")
+      (i % 4 != 0) && ax[i].axes.xaxis.set_ticklabels([])
 
-      if PlotVType==1
-         xlabel(L"u_y",fontsize=fs)
-         ylabel(L"u_x",fontsize=fs)
-      elseif PlotVType==2
-         xlabel(L"u_x",FontSize=fs)
-         ylabel(L"u_z",FontSize=fs)
-      elseif PlotVType==3
-         xlabel(L"u_y",FontSize=fs)
-         ylabel(L"u_z",FontSize=fs)
-      elseif PlotVType==4
-         xlabel(L"u_{\perp Out}",fontsize=fs)
-         ylabel(L"u_{\perp In}",fontsize=fs)
-      elseif PlotVType==5
-         xlabel(L"u_{\perp In}",FontSize=fs)
-         ylabel(L"u_\parallel",FontSize=fs)
-      elseif PlotVType==6
-         xlabel(L"u_{\perp Out}",FontSize=fs)
-         ylabel(L"u_\parallel",FontSize=fs)
+      if PlotVType[i]==1
+         if i in (4,8)
+            ax[i].annotate(L"u_y", xy=(0.50, -0.20),xycoords="axes fraction",
+               fontsize=fs)
+         else
+            ax[i].annotate(L"u_y", xy=xlPos,xycoords="axes fraction",
+               fontsize=fs)
+         end
+         ax[i].annotate(L"u_x", xy=ylPos,xycoords="axes fraction",
+            fontsize=fs)
+      elseif PlotVType[i]==2
+         ax[i].annotate(L"u_x", xy=xlPos,xycoords="axes fraction",
+            fontsize=fs)
+         ax[i].annotate(L"u_z", xy=ylPos,xycoords="axes fraction",
+            fontsize=fs)
+      elseif PlotVType[i]==3
+         if i in (4,8)
+            ax[i].annotate(L"u_y", xy=(0.50, -0.20),xycoords="axes fraction",
+               fontsize=fs)
+         else
+            ax[i].annotate(L"u_y", xy=xlPos,xycoords="axes fraction",
+               fontsize=fs)
+         end
+         ax[i].annotate(L"u_z", xy=ylPos,xycoords="axes fraction",
+            fontsize=fs)
+      elseif PlotVType[i]==4
+         ax[i].annotate(L"u_{\perp Out}", xy=xlPos,xycoords="axes fraction",
+            fontsize=fs)
+         ax[i].annotate(L"u_{\perp In}", xy=ylPos,xycoords="axes fraction",
+            fontsize=fs)
+      elseif PlotVType[i]==5
+         ax[i].annotate(L"u_{\perp In}", xy=xlPos,xycoords="axes fraction",
+            fontsize=fs)
+         ax[i].annotate(L"u_\parallel", xy=ylPos,xycoords="axes fraction",
+            fontsize=fs)
+      elseif PlotVType[i]==6
+         ax[i].annotate(L"u_{\perp Out}", xy=xlPos,xycoords="axes fraction",
+            fontsize=fs)
+         ax[i].annotate(L"u_\parallel", xy=ylPos,xycoords="axes fraction",
+            fontsize=fs)
       end
-      title(@sprintf("%d, x[%3.3f,%3.3f], z[%3.3f,%3.3f]",iB,region[1,iB],
-         region[2,iB],region[5,iB],region[6,iB]))
-      colorbar()
-      plt.set_cmap("jet")
-      #clim(1e-2,10^0.3)
 
-      if iB ≤ 4
-         text(0.05,0.05,"electron", FontSize=fs, transform=ax.transAxes)
-      else
-         text(0.05,0.05,"ion", FontSize=fs, transform=ax.transAxes)
+      if pType == 'e'
+         ax[i].text(-0.05,1.02, @sprintf("x[%3.3f,%3.3f], z[%3.3f,%3.3f]",
+            region[1,iB],region[2,iB],region[5,iB],region[6,iB]), FontSize=7,
+            transform=ax[i].transAxes)
+         ax[i].text(0.05,0.05,string(iB), FontSize=fs, color="r",
+            transform=ax[i].transAxes)
+      elseif pType == 'i'
+         ax[i].text(-0.05,1.02, @sprintf("x[%3.3f,%3.3f], z[%3.3f,%3.3f]",
+            region[1,iB],region[2,iB],region[5,iB],region[6,iB]),
+            FontSize=7, transform=ax[i].transAxes)
+         ax[i].text(0.83,0.05,string(iB+4), FontSize=fs, color="c",
+            transform=ax[i].transAxes)
       end
    end
 
-   plotrange = [-2.05, -1.75, -0.5, 0.5]
+   im = plt.gca().get_children()[1]
+   cax = fig.add_axes([0.1,0.93,0.8,0.02])
+   colorbar(im, ax=ax, cax=cax, orientation="horizontal")
+   cax.tick_params(which="both", axis="x", direction="out",color="k")
+
+   return ax
+end
+
+function show_box_region()
+   #dir = "/Users/hyzhou/Documents/Computer/Julia/BATSRUS/VisAnaJulia"
+   dir = "/Users/hyzhou/"
+   fnameE = "cut_particles0_region0_1_t00001640_n00020369.out"
+   fnameI = "cut_particles1_region0_2_t00001640_n00020369.out"
+
+   fnameField = "3d_var_region0_0_"*fnameE[end-22:end]
+
+   fs = 10
+   plotrange = [-2.0, -1.8, -0.35, 0.35]
    cutPlane = 129
 
    head, data = readdata(fnameField, dir=dir)
 
    X, Z, Bx = cutdata(data[1],head[1],"Bx",cut='y',cutPlaneIndex=cutPlane,
-   	plotrange=plotrange)
+      plotrange=plotrange)
    X, Z, Bz = cutdata(data[1],head[1],"Bz",cut='y',cutPlaneIndex=cutPlane,
       plotrange=plotrange)
-
-   ax = subplot(5,2,(1,2))
    X, Z, Ex = cutdata(data[1],head[1],"Ex",cut='y',cutPlaneIndex=cutPlane,
-   	plotrange=plotrange)
-   c = contourf(Z,X,Ex, 40, norm=matplotlib.colors.DivergingNorm(0), vmin=-12e4,
-      vmax=12e4)
+      plotrange=plotrange)
+
+   fig, ax = plt.subplots(1,1,figsize=(8.0,4.0))
+   #plt.set_cmap("RdBu_r")
+   plt.set_cmap("seismic")
+
+   region = Array{Float32,2}(undef,6,8)
+   region[:,1] = [-1.950, -1.945, -0.08, 0.08, -0.10, -0.06]
+   region[:,2] = [-1.915, -1.910, -0.08, 0.08, -0.10, -0.06]
+   region[:,3] = [-1.905, -1.900, -0.08, 0.08, -0.10, -0.06]
+   region[:,4] = [-1.895, -1.890, -0.08, 0.08, -0.10, -0.06]
+
+   region[:,5] = [-1.865, -1.855, -0.08, 0.08, -0.29, -0.25]
+   region[:,6] = [-1.910, -1.900, -0.08, 0.08, 0.11, 0.15]
+   region[:,7] = [-1.970, -1.960, -0.08, 0.08, -0.10, -0.06]
+   region[:,8] = [-1.850, -1.840, -0.08, 0.08, -0.10, -0.06]
+
+   c = ax.contourf(Z,X,Ex./1e3, 100, norm=matplotlib.colors.DivergingNorm(0),
+      vmin=-12e1, vmax=12e1)
+
 
    # create an axes on the right side of ax. The width of cax will be 5%
    # of ax and the padding between cax and ax will be fixed at 0.05 inch.
@@ -449,19 +522,18 @@ function NicePlot()
    colorbar(c, cax=cax)
    ax.invert_yaxis()
    ax.set_aspect("equal", "box")
-   plt.set_cmap("RdBu_r")
-   #clim(-9e4,9e4)
 
-   ax.set_xlabel(L"z [R_G]", fontsize=fs)
-   ax.set_ylabel(L"x [R_G]", fontsize=fs)
-   ax.set_title(L"Ex [\mu V/m]")
+   ax.set_xlabel(L"z [R_G]", fontsize=14)
+   ax.set_ylabel(L"x [R_G]", fontsize=14)
+   ax.set_title(L"Ex [mV/m]", fontsize=14)
 
    x  = @view X[:,1]
    z  = @view Z[1,:]
-   zstart = collect(range(z[10],stop=z[end-10],length=14))
-   xstart = fill(-1.92,size(zstart))
-   zstart = append!(zstart, collect(range(-0.3,0.4,length=3)))
-   xstart = append!(xstart, fill(-1.82,3))
+
+   seeds = select_seeds(x[10:end-10],z[10:end-10]; nSeed=1)
+   xstart, zstart = seeds[1,:], seeds[2,:]
+   append!(xstart, [-1.87, -1.97, -1.93, -1.93, -1.93, -1.95, -1.82, -1.93, -1.93, -1.93])
+   append!(zstart, [-0.1, -0.1, -0.15, 0.0, 0.2, -0.25, -0.1, -0.08, -0.095, 0.116])
 
    xl = [Vector{Float32}(undef,0) for _ in 1:length(xstart)]
    zl = [Vector{Float32}(undef,0) for _ in 1:length(xstart)]
@@ -470,316 +542,67 @@ function NicePlot()
       xl[i], zl[i] = trace2d_rk4(Bx, Bz, xs, zs, x, z, ds=0.02, maxstep=20000,
       gridType="ndgrid")
    end
-   [ax.plot(zl[j],xl[j],"-",color="k",lw=0.4) for j in 1:length(xstart)]
+   [ax.plot(zl[j],xl[j],"-",color="k",lw=1.0) for j in 1:length(xstart)]
 
-   for iB = 1:nBox
-      if iB ≤ nBox/2
-         rect = matplotlib.patches.Rectangle( (region[5,iB], region[1,iB]),
-            region[6,iB]-region[5,iB], region[2,iB]-region[1,iB],
-            ec="r", lw=1.2, fill=false) # facecolor="none"
-      else
-         rect = matplotlib.patches.Rectangle( (region[5,iB], region[1,iB]),
-            region[6,iB]-region[5,iB], region[2,iB]-region[1,iB],
-            ec="b", lw=1.2, fill=false) # facecolor="none"
-      end
+   for iB = 1:4
+      rect = matplotlib.patches.Rectangle( (region[5,iB], region[1,iB]),
+         region[6,iB]-region[5,iB], region[2,iB]-region[1,iB],
+         lw=1.0, fill=true, alpha=0.9, fc="r") # facecolor="none"
       ax.add_patch(rect)
    end
 
+   for iB = 5:8
+      rect = matplotlib.patches.Rectangle( (region[5,iB], region[1,iB]),
+         region[6,iB]-region[5,iB], region[2,iB]-region[1,iB],
+         lw=1.0, fill=true, alpha=0.9, fc="c") # facecolor="none"
+      ax.add_patch(rect)
+   end
+
+   ax.annotate("1", (region[5,1]-2e-2,region[2,1]), fontsize=10, color="r")
+   ax.annotate("2", (region[5,2]-2e-2,region[2,2]), fontsize=10, color="r")
+   ax.annotate("3", (region[5,3]-2e-2,region[2,3]+0.5e-2),fontsize=10,color="r")
+   ax.annotate("4", (region[5,4]-2e-2,region[2,4]+1e-2), fontsize=10,color="r")
+
+   for i = 5:8
+      ax.annotate(string(i), (region[5,i]-2e-2, region[2,i]+0.2e-2), fontsize=10,
+         color="c")
+   end
+
+   return ax
 end
 
-function NicePlot2()
-   dir = "/Users/hyzhou"
-   nBox = 8
-   nbin = 60
-   fs = 10
-
+function HF_velocity()
+   #dir = "/Users/hyzhou/Documents/Computer/Julia/BATSRUS/VisAnaJulia"
+   dir = "/Users/hyzhou/"
    fnameE = "cut_particles0_region0_1_t00001640_n00020369.out"
    fnameI = "cut_particles1_region0_2_t00001640_n00020369.out"
 
    fnameField = "3d_var_region0_0_"*fnameE[end-22:end]
 
-   # Classify particles based on locations
-   region = Array{Float32,2}(undef,6,nBox)
-   region[:,1] = [-1.930, -1.925, -0.08, 0.08, -0.10, -0.06]
-   region[:,2] = [-1.915, -1.910, -0.08, 0.08, -0.10, -0.06]
-   region[:,3] = [-1.905, -1.900, -0.08, 0.08, -0.10, -0.06]
-   region[:,4] = [-1.890, -1.885, -0.08, 0.08, -0.10, -0.06]
-
-   region[:,5] = [-1.905, -1.900, -0.08, 0.08, -0.10, -0.06]
-   region[:,6] = [-1.900, -1.895, -0.08, 0.08, -0.10, -0.06]
-   region[:,7] = [-1.895, -1.890, -0.08, 0.08, -0.10, -0.06]
-   region[:,8] = [-1.890, -1.885, -0.08, 0.08, -0.10, -0.06]
-
-   particle = [Array{Float32}(undef, 3, 0) for _ in 1:nBox]
-
-   # Electron
-   head, data = readdata(fnameE, dir=dir)
-
-   x = @view data[1].x[:,:,:,1]
-   y = @view data[1].x[:,:,:,2]
-   z = @view data[1].x[:,:,:,3]
-
-   ux_ = findfirst(x->x=="ux", head[1][:wnames])
-   uy_ = findfirst(x->x=="uy", head[1][:wnames])
-   uz_ = findfirst(x->x=="uz", head[1][:wnames])
-
-   ux = @view data[1].w[:,:,:,ux_]
-   uy = @view data[1].w[:,:,:,uy_]
-   uz = @view data[1].w[:,:,:,uz_]
-
-   for ip = 1:length(x)
-      for iR = 1:Int(nBox/2)
-         if region[1,iR] < x[ip] < region[2,iR] &&
-            region[3,iR] < y[ip] < region[4,iR] &&
-            region[5,iR] < z[ip] < region[6,iR]
-
-            particle[iR] = hcat(particle[iR], [ux[ip]; uy[ip]; uz[ip]])
-            break
-         end
-      end
-   end
-
-   # Ion
-   head, data = readdata(fnameI, dir=dir)
-
-   x = @view data[1].x[:,:,:,1]
-   y = @view data[1].x[:,:,:,2]
-   z = @view data[1].x[:,:,:,3]
-
-   ux_ = findfirst(x->x=="ux", head[1][:wnames])
-   uy_ = findfirst(x->x=="uy", head[1][:wnames])
-   uz_ = findfirst(x->x=="uz", head[1][:wnames])
-
-   ux = @view data[1].w[:,:,:,ux_]
-   uy = @view data[1].w[:,:,:,uy_]
-   uz = @view data[1].w[:,:,:,uz_]
-
-   for ip = 1:length(x)
-      for iR = Int(nBox/2)+1:nBox
-         if region[1,iR] < x[ip] < region[2,iR] &&
-            region[3,iR] < y[ip] < region[4,iR] &&
-            region[5,iR] < z[ip] < region[6,iR]
-
-            particle[iR] = hcat(particle[iR], [ux[ip]; uy[ip]; uz[ip]])
-            break
-         end
-      end
-   end
-
-
-   binRangeI = [[-3.,3.], [-3.,3.]]
-   binRangeE = [[-10.,12.], [-10.,10.]]
-
-   # Normalized quantities
-   fig, ax = plt.subplots(4,3,figsize=(10.0,10.0))
-   xlPos = (0.5, -0.12)
-   ylPos = (-0.15, 0.5)
-   subplotlist = (5,6,9,10,7,8,11,12)
-   PlotVType = (1,1,3,3,1,1,3,3)
-   c = Vector{PyObject}(undef,nBox)
-   axin = Vector{PyObject}(undef,nBox)
-   for iB in 1:nBox
-   	axin[iB] = inset_axes(ax[subplotlist[iB]],
-         width="5%",  # width = 5% of parent_bbox width
-         height="100%",  # height : 50%
-         loc="lower left",
-         bbox_to_anchor=(1.02, 0., 1.0, 1.0),
-         bbox_transform=ax[subplotlist[iB]].transAxes,
-         borderpad=0,)
-      axin[iB].tick_params(axis="y", direction="in")
-      
-      ax[subplotlist[iB]].tick_params(which="both", direction="in",
-         top=true, right=true)
-   end
-
-
-   plt.set_cmap("jet")
-   for iB = 1:nBox
-      if PlotVType[iB] ≤ 3
-         ux = particle[iB][1,:] ./ cAlfven
-         uy = particle[iB][2,:] ./ cAlfven
-         uz = particle[iB][3,:] ./ cAlfven
-      else
-         dBx, dBy, dBz = GetMeanField(fnameField, region[:,iB]; dir=dir)
-
-         dPar = [dBx; dBy; dBz] # Parallel direction
-         dPerpI = cross([0; -1; 0], dPar) # Perpendicular direction in-plane
-         dPerpO = cross(dPar, dPerpI) # Perpendicular direction out-of-plane
-
-         uPar = transpose(particle[iB][1:3,:])*dPar ./ cAlfven
-         uPerpI = transpose(particle[iB][1:3,:])*dPerpI ./ cAlfven
-         uPerpO = transpose(particle[iB][1:3,:])*dPerpO ./ cAlfven
-      end
-
-      #ax = subplot(4,3,subplotlist[iB])
-
-      if iB ≤ nBox/2
-         binRange = binRangeE
-      else
-         binRange = binRangeI
-      end
-      if PlotVType[iB]==1
-         h = ax[subplotlist[iB]].hist2d(uy, ux, bins=nbin,
-            norm=matplotlib.colors.LogNorm(),density=true, range=binRange)
-      elseif PlotVType[iB]==2
-         h = ax[subplotlist[iB]].hist2d(ux, uz, bins=nbin,
-            norm=matplotlib.colors.LogNorm(),density=true, range=binRange)
-      elseif PlotVType[iB]==3
-         h = ax[subplotlist[iB]].hist2d(uy, uz, bins=nbin,
-            norm=matplotlib.colors.LogNorm(),density=true, range=binRange)
-      elseif PlotVType[iB]==4
-         h = ax[subplotlist[iB]].hist2d(uPerpO, uPerpI, bins=nbin,
-            norm=matplotlib.colors.LogNorm(),density=true, range=binRange)
-      elseif PlotVType[iB]==5
-         h = ax[subplotlist[iB]].hist2d(uPerpI, uPar, bins=nbin,
-            norm=matplotlib.colors.LogNorm(),density=true, range=binRange)
-      elseif PlotVType[iB]==6
-         h = ax[subplotlist[iB]].hist2d(uPerpO, uPar, bins=nbin,
-            norm=matplotlib.colors.LogNorm(),density=true, range=binRange)
-      else
-         @error "Unknown PlotVType!"
-      end
-      colorbar(h[4], cax=axin[iB])
-      #clim(1e-2,10^0.3)
-      ax[subplotlist[iB]].set_aspect("equal", "box")
-      #axis("equal")
-      ax[subplotlist[iB]].grid(true)
-
-      if PlotVType[iB]==1
-         ax[subplotlist[iB]].annotate(L"u_y", xy=xlPos,xycoords="axes fraction",
-            fontsize=fs)
-         ax[subplotlist[iB]].annotate(L"u_x", xy=ylPos,xycoords="axes fraction",
-            fontsize=fs)
-      elseif PlotVType[iB]==2
-         ax[subplotlist[iB]].annotate(L"u_x", xy=xlPos,xycoords="axes fraction",
-            fontsize=fs)
-         ax[subplotlist[iB]].annotate(L"u_z", xy=ylPos,xycoords="axes fraction",
-            fontsize=fs)
-      elseif PlotVType[iB]==3
-         ax[subplotlist[iB]].annotate(L"u_y", xy=xlPos,xycoords="axes fraction",
-            fontsize=fs)
-         ax[subplotlist[iB]].annotate(L"u_z", xy=ylPos,xycoords="axes fraction",
-            fontsize=fs)
-      elseif PlotVType[iB]==4
-         ax[subplotlist[iB]].set_xlabel(L"u_{\perp Out}",fontsize=fs)
-         ax[subplotlist[iB]].set_ylabel(L"u_{\perp In}",fontsize=fs)
-      elseif PlotVType[iB]==5
-         ax[subplotlist[iB]].set_xlabel(L"u_{\perp In}",FontSize=fs)
-         ax[subplotlist[iB]].set_ylabel(L"u_\parallel",FontSize=fs)
-      elseif PlotVType[iB]==6
-         ax[subplotlist[iB]].set_xlabel(L"u_{\perp Out}",FontSize=fs)
-         ax[subplotlist[iB]].set_ylabel(L"u_\parallel",FontSize=fs)
-      end
-      ax[subplotlist[iB]].set_title(@sprintf("%d, x[%3.3f,%3.3f], z[%3.3f,%3.3f]",iB,region[1,iB],
-         region[2,iB],region[5,iB],region[6,iB]), FontSize=5)
-
-      if iB ≤ 4
-         ax[subplotlist[iB]].text(0.05,0.05,"electron", FontSize=fs,
-            transform=ax[subplotlist[iB]].transAxes)
-      else
-         ax[subplotlist[iB]].text(0.05,0.05,"ion", FontSize=fs,
-            transform=ax[subplotlist[iB]].transAxes)
-      end
-   end
-
-   plotrange = [-2.05, -1.75, -0.5, 0.5]
-   cutPlane = 129
-
    head, data = readdata(fnameField, dir=dir)
 
-   X, Z, Bx = cutdata(data[1],head[1],"Bx",cut='y',cutPlaneIndex=cutPlane,
-   	plotrange=plotrange)
-   X, Z, Bz = cutdata(data[1],head[1],"Bz",cut='y',cutPlaneIndex=cutPlane,
-      plotrange=plotrange)
-   X, Z, Ex = cutdata(data[1],head[1],"Ex",cut='y',cutPlaneIndex=cutPlane,
-   	plotrange=plotrange)
+   x = data[1].x[:,:,:,1]
+   y = data[1].x[:,:,:,2]
+   z = data[1].x[:,:,:,3]
 
-   plt.set_cmap("RdBu_r")
-   ax = subplot(4,3,(1,4))
-   c = contourf(X,Z,Ex./1e3, 40, norm=matplotlib.colors.DivergingNorm(0), vmin=-12e1,
-      vmax=12e1)
+   ux_ = findfirst(x->x=="uxs1", lowercase.(head[1][:wnames]))
+   uy_ = findfirst(x->x=="uys1", lowercase.(head[1][:wnames]))
+   uz_ = findfirst(x->x=="uzs1", lowercase.(head[1][:wnames]))
 
-   # create an axes on the right side of ax. The width of cax will be 5%
-   # of ax and the padding between cax and ax will be fixed at 0.05 inch.
-   divider = axes_grid1.make_axes_locatable(ax)
-   cax = divider.append_axes("right", size="5%", pad=0.05)
-   colorbar(c, cax=cax)
-   #ax.invert_yaxis()
-   ax.set_aspect("equal", "box")
-   #clim(-9e4,9e4)
+   Ux = @view data[1].w[:,:,:,ux_]
+   Uy = @view data[1].w[:,:,:,uy_]
+   Uz = @view data[1].w[:,:,:,uz_]
 
-   ax.set_xlabel(L"z [R_G]", fontsize=fs)
-   ax.set_ylabel(L"x [R_G]", fontsize=fs)
-   ax.set_title(L"Ex [mV/m]")
+   #region[:,5] = [-1.850, -1.840, -0.08, 0.08, -0.29, -0.25]
+   #region[:,6] = [-1.910, -1.900, -0.08, 0.08, 0.11, 0.15]
+   limits = [-1.910, -1.900, -0.08, 0.08, 0.11, 0.15]
+   xnew, ynew, znew, UxNew, UyNew, UzNew = subvolume(x,y,z, Ux,Uy,Uz, limits)
 
-   x  = @view X[:,1]
-   z  = @view Z[1,:]
-   zstart = collect(range(z[10],stop=z[end-10],length=14))
-   xstart = fill(-1.92,size(zstart))
-   zstart = append!(zstart, collect(range(-0.3,0.4,length=3)))
-   xstart = append!(xstart, fill(-1.82,3))
+   # Average over the selected volume
+   Ūx, Ūy, Ūz = mean(UxNew), mean(UyNew), mean(UzNew)
 
-   xl = [Vector{Float32}(undef,0) for _ in 1:length(xstart)]
-   zl = [Vector{Float32}(undef,0) for _ in 1:length(xstart)]
-   for i = 1:length(xstart)
-      xs,zs = xstart[i],zstart[i]
-      xl[i], zl[i] = trace2d_rk4(Bx, Bz, xs, zs, x, z, ds=0.02, maxstep=20000,
-      gridType="ndgrid")
-   end
-   [ax.plot(xl[j],zl[j],"-",color="k",lw=0.4) for j in 1:length(xstart)]
-
-   for iB = 1:Int(nBox/2)
-      rect = matplotlib.patches.Rectangle( (region[1,iB], region[5,iB]),
-         region[2,iB]-region[1,iB], region[6,iB]-region[5,iB],
-         ec="r", lw=1.2, fill=false) # facecolor="none"
-      ax.add_patch(rect)
-   end
-
-   ax = subplot(4,3,(7,10))
-   X, Z, Ex = cutdata(data[1],head[1],"Ex",cut='y',cutPlaneIndex=cutPlane,
-      plotrange=plotrange)
-   c = contourf(X,Z,Ex./1e3, 40, norm=matplotlib.colors.DivergingNorm(0), vmin=-12e1,
-      vmax=12e1)
-
-   # create an axes on the right side of ax. The width of cax will be 5%
-   # of ax and the padding between cax and ax will be fixed at 0.05 inch.
-   divider = axes_grid1.make_axes_locatable(ax)
-   cax = divider.append_axes("right", size="5%", pad=0.05)
-   colorbar(c, cax=cax)
-   #ax.invert_yaxis()
-   ax.set_aspect("equal", "box")
-   plt.set_cmap("RdBu_r")
-   #clim(-9e4,9e4)
-
-   ax.set_xlabel(L"z [R_G]", fontsize=fs)
-   ax.set_ylabel(L"x [R_G]", fontsize=fs)
-   ax.set_title(L"Ex [mV/m]")
-
-   x  = @view X[:,1]
-   z  = @view Z[1,:]
-   zstart = collect(range(z[10],stop=z[end-10],length=14))
-   xstart = fill(-1.92,size(zstart))
-   zstart = append!(zstart, collect(range(-0.3,0.4,length=3)))
-   xstart = append!(xstart, fill(-1.82,3))
-
-   xl = [Vector{Float32}(undef,0) for _ in 1:length(xstart)]
-   zl = [Vector{Float32}(undef,0) for _ in 1:length(xstart)]
-   for i = 1:length(xstart)
-      xs,zs = xstart[i],zstart[i]
-      xl[i], zl[i] = trace2d_rk4(Bx, Bz, xs, zs, x, z, ds=0.02, maxstep=20000,
-      gridType="ndgrid")
-   end
-   [ax.plot(xl[j],zl[j],"-",color="k",lw=0.4) for j in 1:length(xstart)]
-
-   for iB = Int(nBox/2)+1:nBox
-      rect = matplotlib.patches.Rectangle( (region[1,iB], region[5,iB]),
-         region[2,iB]-region[1,iB], region[6,iB]-region[5,iB],
-         ec="b", lw=1.2, fill=false) # facecolor="none"
-      ax.add_patch(rect)
-   end
-
+   return Ūx, Ūy, Ūz
 end
-
 
 #=
 dir = "/Users/hyzhou"
@@ -804,9 +627,11 @@ xL, yL, zL = 0.008, 0.2, 0.03 # box length in x,y,z
    fnameParticle, xC, yC, zC, xL, yL, zL,
    dir=dir, ParticleType=PType)
 
-@time dist_plot(region, particle, PType, PlotVType; dir=dir, fnameField=fnameField)
+@time dist_scan(region, particle, PType, PlotVType; dir=dir, fnameField=fnameField)
 
 @time plotExCut(fnameField, region, xC,yC,zC,xL,yL,zL, dir=dir)
 =#
 
-NicePlot2()
+ax = dist_plot('i')
+#ux, uy, uz = HF_velocity()
+#show_box_region() # horizontal
