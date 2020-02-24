@@ -19,12 +19,12 @@ DN = matplotlib.colors.DivergingNorm
 
 #dir = "/Users/hyzhou/Documents/Computer/Julia/BATSRUS/VisAnaJulia"
 dir = "/Users/hyzhou"
-#fnameField = "3d_var_region0_0_t00001640_n00020369.out"
+fnameField = "3d_var_region0_0_t00001640_n00020369.out"
 #fnameField = "3d_var_region0_0_t00001520_n00004093.out"
 #fnameField = "3d_var_region0_0_t00001523_n00004732.out"
 #fnameField = "3d_var_region0_0_t00001524_n00004933.out"
 #fnameField = "3d_var_region0_0_t00001525_n00005126.out"
-fnameField = "3d_var_region0_0_t00001527_n00005528.out"
+#fnameField = "3d_var_region0_0_t00001527_n00005528.out"
 #fnameField = "3d_var_region0_0_t00001740_n00032921.out"
 #fnameField = "3d_var_region0_0_t00001750_n00035011.out"
 #fnameField = "3d_var_region0_0_t00001800_n00037224.out"
@@ -51,8 +51,8 @@ const J₀ = 4.0*vAlfven
 #const T₀ = vAlfven^2
 const T₀ = 0.2/4 # Pe/n₀
 
-#plotrange = [-2.05, -1.75, -0.5, 0.5]
-plotrange = [-2.12, -1.75, -0.65, 0.6]
+plotrange = [-2.05, -1.75, -0.5, 0.5]
+#plotrange = [-2.12, -1.75, -0.65, 0.6]
 #plotrange=[-Inf, Inf, -Inf, Inf]
 cI = 129 # plane cut index
 
@@ -129,7 +129,7 @@ Jy = @. qi*ρi/mi*Uyi+qe*ρe/me*Uye
 Jz = @. qi*ρi/mi*Uzi+qe*ρe/me*Uze
 
 # Normalized quantities
-fig, ax = plt.subplots(9,2,figsize=(9.0,10.0))
+fig, ax = plt.subplots(9,2,figsize=(8.4,8.7))
 c = Vector{PyObject}(undef,length(ax))
 axin = Vector{PyObject}(undef,length(ax))
 for i in 1:length(ax)
@@ -148,10 +148,10 @@ end
 # Set plotting parameters
 levels = 40
 plt.set_cmap("seismic")
-#vPos, vPos2 = (0.4, 0.8), (0.28,0.8)
-vPos, vPos2 = (0.8, 0.8), (0.65,0.8)
-lPos = (-0.1, 0.92)
-yPos = (-0.17,0.35)
+vPos, vPos2 = (0.4, 0.8), (0.28,0.8)
+#vPos, vPos2 = (0.8, 0.8), (0.65,0.8)
+lPos = (-0.1, 0.94)
+yPos = (-0.22,0.33)
 
 labels = [L"B_z", L"B_y", L"E_x", L"v_{iy}", L"v_{iz}", L"v_{ex}", L"v_{ey}",
 	L"v_{ez}", L"\rho_i", L"J_x", L"J_y", L"J_z", L"(E+v_i\times B)_x",
@@ -211,7 +211,8 @@ c[4] = ax[4].contourf(Z,X,Uyi./vAlfven,levels, norm=DN(0), vmin=-vm[4], vmax=vm[
 c[5] = ax[5].contourf(Z,X,Uzi./vAlfven,levels, norm=DN(0))
 
 # Uxe
-c[6] = ax[6].contourf(Z,X,Uxe./vAlfven,levels, norm=DN(0), vmin=-vm[6], vmax=vm[6])
+#c[6] = ax[6].contourf(Z,X,Uxe./vAlfven,levels, norm=DN(0), vmin=-vm[6], vmax=vm[6])
+c[6] = ax[6].contourf(Z,X,Uxe./vAlfven,levels, norm=DN(0, vmin=-vm[6], vmax=vm[6]))
 
 # Uye
 c[7] = ax[7].contourf(Z,X,Uye./vAlfven,levels, norm=DN(0), vmin=-vm[7], vmax=vm[7])
@@ -265,8 +266,8 @@ c[18] = ax[18].contourf(Z,X,Dₑ, levels, norm=DN(0), vmin=-vm[18], vmax=vm[18])
 for i in 1:length(ax)
    #.ax.locator_params(nbins=5) does not work together with norm(0)!
    cb = colorbar(c[i], cax=axin[i])
-   cb.ax.tick_params(labelsize=6)
-   cb.ax.locator_params(nbins=5)
+   cb.ax.tick_params(labelsize=5)
+   #cb.ax.locator_params(nbins=5)
    if i in (1,9,17) #(1,4,17)
 	   ax[i].annotate(labels[i], xy=vPos, xycoords="axes fraction",color="w")
    elseif i in (13,14,15,16)
