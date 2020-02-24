@@ -19,12 +19,12 @@ DN = matplotlib.colors.DivergingNorm
 
 #dir = "/Users/hyzhou/Documents/Computer/Julia/BATSRUS/VisAnaJulia"
 dir = "/Users/hyzhou"
-fnameField = "3d_var_region0_0_t00001640_n00020369.out"
+#fnameField = "3d_var_region0_0_t00001640_n00020369.out"
 #fnameField = "3d_var_region0_0_t00001520_n00004093.out"
 #fnameField = "3d_var_region0_0_t00001523_n00004732.out"
 #fnameField = "3d_var_region0_0_t00001524_n00004933.out"
 #fnameField = "3d_var_region0_0_t00001525_n00005126.out"
-#fnameField = "3d_var_region0_0_t00001527_n00005528.out"
+fnameField = "3d_var_region0_0_t00001527_n00005528.out"
 #fnameField = "3d_var_region0_0_t00001740_n00032921.out"
 #fnameField = "3d_var_region0_0_t00001750_n00035011.out"
 #fnameField = "3d_var_region0_0_t00001800_n00037224.out"
@@ -51,8 +51,8 @@ const J₀ = 4.0*vAlfven
 #const T₀ = vAlfven^2
 const T₀ = 0.2/4 # Pe/n₀
 
-plotrange = [-2.05, -1.75, -0.5, 0.5]
-#plotrange = [-2.12, -1.75, -0.65, 0.6]
+#plotrange = [-2.05, -1.75, -0.5, 0.5]
+plotrange = [-2.12, -1.75, -0.65, 0.6]
 #plotrange=[-Inf, Inf, -Inf, Inf]
 cI = 129 # plane cut index
 
@@ -148,8 +148,8 @@ end
 # Set plotting parameters
 levels = 40
 plt.set_cmap("seismic")
-vPos, vPos2 = (0.4, 0.8), (0.28,0.8)
-#vPos, vPos2 = (0.8, 0.8), (0.65,0.8)
+#vPos, vPos2 = (0.4, 0.8), (0.28,0.8)
+vPos, vPos2 = (0.8, 0.8), (0.65,0.8)
 lPos = (-0.1, 0.92)
 yPos = (-0.17,0.35)
 
@@ -264,7 +264,9 @@ c[18] = ax[18].contourf(Z,X,Dₑ, levels, norm=DN(0), vmin=-vm[18], vmax=vm[18])
 
 for i in 1:length(ax)
    #.ax.locator_params(nbins=5) does not work together with norm(0)!
-   colorbar(c[i], cax=axin[i]).ax.tick_params(labelsize=6)
+   cb = colorbar(c[i], cax=axin[i])
+   cb.ax.tick_params(labelsize=6)
+   cb.ax.locator_params(nbins=5)
    if i in (1,9,17) #(1,4,17)
 	   ax[i].annotate(labels[i], xy=vPos, xycoords="axes fraction",color="w")
    elseif i in (13,14,15,16)
