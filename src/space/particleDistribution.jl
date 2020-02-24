@@ -476,8 +476,8 @@ function dist_plot(pType='e')
 end
 
 function show_box_region()
-   #dir = "/Users/hyzhou/Documents/Computer/Julia/BATSRUS/VisAnaJulia"
-   dir = "/Users/hyzhou/"
+   dir = "/Users/hyzhou/Documents/Computer/Julia/BATSRUS/VisAnaJulia"
+   #dir = "/Users/hyzhou/"
    fnameE = "cut_particles0_region0_1_t00001640_n00020369.out"
    fnameI = "cut_particles1_region0_2_t00001640_n00020369.out"
 
@@ -538,11 +538,13 @@ function show_box_region()
    xl = [Vector{Float32}(undef,0) for _ in 1:length(xstart)]
    zl = [Vector{Float32}(undef,0) for _ in 1:length(xstart)]
    for i = 1:length(xstart)
-      xs,zs = xstart[i],zstart[i]
+      xs, zs = xstart[i], zstart[i]
       xl[i], zl[i] = trace2d_rk4(Bx, Bz, xs, zs, x, z, ds=0.02, maxstep=20000,
-      gridType="ndgrid")
+         gridType="ndgrid")
    end
    [ax.plot(zl[j],xl[j],"-",color="k",lw=1.0) for j in 1:length(xstart)]
+
+   ax.contour(Z,X,Bz,[0.],colors="k",linestyles="dotted",linewidths=1.)
 
    for iB = 1:4
       rect = matplotlib.patches.Rectangle( (region[5,iB], region[1,iB]),
@@ -632,6 +634,6 @@ xL, yL, zL = 0.008, 0.2, 0.03 # box length in x,y,z
 @time plotExCut(fnameField, region, xC,yC,zC,xL,yL,zL, dir=dir)
 =#
 
-ax = dist_plot('i')
+#ax = dist_plot('i')
 #ux, uy, uz = HF_velocity()
-#show_box_region() # horizontal
+show_box_region() # horizontal
