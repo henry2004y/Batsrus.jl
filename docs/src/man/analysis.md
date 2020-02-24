@@ -9,7 +9,7 @@ Magnetic reconnection occurs in a small diffusion region around the X-line but i
 
 [A measure of non-gyrotropy](https://aip.scitation.org/doi/full/10.1063/1.4820953) ``D_{ng}`` of a specific population can be think of a ratio between off-diagonal terms and diagonal terms of the pressure tensor:
 ```math
-D_{ng} = \frac{2\sqrt{\sum_{i,j}N_{i,j}^2}}{Tr(\leftrightarrow{P_s})}
+D_{ng} = \frac{2\sqrt{\sum_{i,j}N_{i,j}^2}}{Tr(\overleftrightarrow{P_s})}
 ```
 where
 ```math
