@@ -1,11 +1,10 @@
 # Python calls Julia
-import julia
-j = julia.Julia()
-j.include('VisAna.jl')
-readdata = j.eval('VisAna.readdata')
-filename='1d_bin.out'
-filehead, data, filelist = readdata(filename,verbose=False);
+#
+# You may encounter many issues with the version and dependency libraries between Julia and Python.
+# An easy workaround is to use python-jl bundled with the PyJulia package.
+# The arrays are automatically recognized as numpy ndarrays.
 
-# It turns out that I was too optimistic about using Python here. Even is the
-# function calls are working, the data was saved as jlwrap object, which I
-# cannot do any operation on it in Python.
+from julia import VisAna
+filename = '1d__raw_2_t25.60000_n00000258.out'
+head, data, filelist = VisAna.readdata(filename);
+
