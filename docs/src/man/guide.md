@@ -78,6 +78,8 @@ I have encountered a very bad problem of corrupting binary *.vtu files. It turne
 
 I have already made a lot of mistakes by mixing the row-major and column-major codes. Explicitly list all the parts that require extra care!
 
+I have a new issue coming up with the interoperability with Python. I may need to split this package into pure IO and pure plotting to avoid the cross-dependency of Matplotlib. The idea is that PyPlot is only needed when I want to quickly scan through the data!
+
 As for the GUI development, GTK seems to be an ideal candidate.
 
 - [x] Fixed colorbar control through Matplotlib
