@@ -5,7 +5,7 @@
 !!! note
     This package is still under development, so be careful for any future breaking changes!
 
-SWMF data reader and visualization using Julia.
+SWMF data reading, converting, visualizing and analyzing using Julia.
 
 This package is the inherited from its predecessor in IDL (developed by G.Toth) and Matlab (developed by H.Zhou).
 It can be combined with the VTK format converter [writeVTK](https://github.com/jipolanco/WriteVTK.jl) to generate files for Paraview and Tecplot.
