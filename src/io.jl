@@ -14,20 +14,6 @@ function Base.show(io::IO, s::Data)
    println(io, "w = ", s.w)
 end
 
-if VERSION < v"1.4"
-   import Base: read!
-
-   """
-   	read!(s,a)
-
-   Read slices of arrays using subarrays, in addition to the built-in methods.
-   """
-   function read!(s::IO, a::AbstractArray{T}) where T
-      GC.@preserve a unsafe_read(s, pointer(a), sizeof(a))
-      return a
-   end
-end
-
 """
 	readdata(filenameIn, (, dir=".", npict=1, verbose=false))
 
