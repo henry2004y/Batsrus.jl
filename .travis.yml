@@ -5,19 +5,16 @@ os:
   - osx
 
 julia:
-  - 1.5
-  - nightly
+  - 1.6
 
 branches:
   only:
     - master
 
 jobs:
-  allow_failures:
-    - julia: nightly
   include:
     - stage: "Documentation"
-      julia: 1.5
+      julia: 1.6
       os: linux
       script:
         - julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()));
