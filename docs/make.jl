@@ -12,9 +12,9 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
-        "Example" => "examples.md",
-        "Internal" => "internal.md",
-        "Log" => "log.md",
+        "Example" => "man/examples.md",
+        "Internal" => "man/internal.md",
+        "Log" => "man/log.md",
     ],
 )
 
