@@ -1,16 +1,23 @@
-using Documenter, Batsrus
+using Batsrus, Documenter
 
-#push!(LOAD_PATH,"../src/")
-
-makedocs(
-    sitename="Batsrus",
-    format = Documenter.HTML(
-        prettyurls = get(ENV, "CI", nothing) == "true"
-    )
+makedocs(;
+    modules=[Batsrus],
+    authors="Hongyang Zhou <hyzhou@umich.edu>",
+    repo="https://github.com/henry2004y/Batsrus.jl/blob/{commit}{path}#L{line}",
+    sitename="Batsrus.jl",
+    format=Documenter.HTML(;
+        prettyurls=get(ENV, "CI", "false") == "true",
+        canonical="https://henry2004y.github.io/Batsrus.jl",
+        assets=String[],
+    ),
+    pages=[
+        "Home" => "index.md",
+        "Example" => "examples.md",
+        "Internal" => "internal.md",
+        "Log" => "log.md",
+    ],
 )
 
-deploydocs(
-    repo = "github.com/henry2004y/Batsrus.jl.git",
-    target = "build",
-    branch = "gh-pages"
+deploydocs(;
+    repo="github.com/henry2004y/Batsrus.jl",
 )

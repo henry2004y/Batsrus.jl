@@ -1,4 +1,4 @@
-# Batsrus.jl Documentation
+# Batsrus.jl
 
 ## Overview
 
