@@ -189,8 +189,8 @@ function subvolume(x, y, z, u, v, w, limits)
 end
 
 """
-	subdata(data, xind, yind, sz)
-	subdata(data, xind, yind, zind, sz)
+    subdata(data, xind, yind, sz)
+    subdata(data, xind, yind, zind, sz)
 
 Return the sliced data based on indexes.
 """
@@ -234,7 +234,12 @@ function getvar(data::Data, var::T) where T<:AbstractString
    w
 end
 
-"Return variables' data from string vector. See also: [`getvar`](@ref)"
+"""
+    getvars(data::Data, Names::Vector) -> Dict
+
+Return variables' data as a dictionary from string vector.
+See also: [`getvar`](@ref).
+"""
 function getvars(data::Data, Names::Vector{T}) where T<:AbstractString
 
    dict = Dict()
@@ -242,10 +247,8 @@ function getvars(data::Data, Names::Vector{T}) where T<:AbstractString
       dict[name] = getvar(data, name)
    end
 
-   Vars(dict)
+   dict
 end
-
-Base.getproperty(p::Vars, name::Symbol) = getfield(p, :data)[String(name)]
 
 
 const variables_predefined = Dict(
@@ -254,4 +257,3 @@ const variables_predefined = Dict(
    "U" => data -> sqrt.(getvar(data, "Ux").^2 .+ getvar(data, "Uy").^2 .+ getvar(data, "Uz").^2),
    #"beta" => data -> getvar(data, "P") ./ getvar(data, "B").^2 * 2μ,
 )
-

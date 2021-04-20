@@ -5,7 +5,7 @@ module Batsrus
 
 using Printf
 
-export Data, Vars
+export Data
 
 """
 	FileList
@@ -21,7 +21,7 @@ struct FileList
 end
 
 """
-	Data
+    Data
 
 Primary data storage type, with fields `head` of header info, grid `x`, value
 `w`, and file info `list`.
@@ -31,10 +31,6 @@ struct Data{T<:AbstractFloat}
    x::Array{T}
    w::Array{T}
    list::FileList
-end
-
-struct Vars
-   data::Dict{String, Array{Float32}}
 end
 
 include("io.jl")
