@@ -8,10 +8,16 @@ searchdir(path,key) = filter(x->occursin(key,x), readdir(path))
 
 function Base.show(io::IO, s::Data)
    showhead(s)
-   println(io, "filesize = ", s.list.bytes, " bytes")
-   println(io, "snapshots = ", s.list.npictinfiles)
-   println(io, "x = ", s.x)
-   println(io, "w = ", s.w)
+   if s.list.bytes ≥ 1e9
+      @info "filesize = $(s.list.bytes/1e9) GB"
+   elseif s.list.bytes ≥ 1e6
+      @info "filesize = $(s.list.bytes/1e6) MB"
+   elseif s.list.bytes ≥ 1e3
+      @info "filesize = $(s.list.bytes/1e3) KB"
+   else
+      @info "filesize = $(s.list.bytes) bytes"
+   end
+   @info "snapshots = $(s.list.npictinfiles)"
 end
 
 """
@@ -335,9 +341,9 @@ function getfilehead(fileID::IOStream, type::String)
          eqpar = parse.(Float64, split(readline(fileID)))
       end
       varname = readline(fileID)
-   elseif ftype ∈ ["real4","binary"]
+   elseif ftype ∈ ["real4", "binary"]
       skip(fileID, tag) # skip record start tag.
-      headline = String(read(fileID, lenstr))
+      headline = rstrip(String(read(fileID, lenstr)))
       skip(fileID, 2*tag) # skip record end/start tags.
       it = read(fileID, Int32)
       t = read(fileID, Float32)
