@@ -1,4 +1,4 @@
-export get_vars, cutdata, subvolume, subsurface
+export getvars, getvar, cutdata, subvolume, subsurface
 
 
 """
@@ -38,15 +38,14 @@ function cutdata(data::Data, var::AbstractString;
       cut1, cut2, W = subsurface(cut1, cut2, W, plotrange)
    end
 
-   return cut1, cut2, W
+   cut1, cut2, W
 end
 
 """
 	subsurface(x, y, data, limits)
 	subsurface(x, y, u, v, limits)
 
-Extract subset of 2D surface dataset.
-This is a simplified version of subvolume.
+Extract subset of 2D surface dataset. See also: [`subvolume`](@ref).
 """
 function subsurface(x, y, data, limits)
 
@@ -76,7 +75,7 @@ function subsurface(x, y, data, limits)
    newx = x[xind, yind]
    newy = y[xind, yind]
 
-   return newx, newy, newdata
+   newx, newy, newdata
 end
 
 function subsurface(x, y, u, v, limits)
@@ -108,14 +107,14 @@ function subsurface(x, y, u, v, limits)
    newx = x[xind, yind]
    newy = y[xind, yind]
 
-   return newx, newy, newu, newv
+   newx, newy, newu, newv
 end
 
 """
 	subvolume(x, y, z, data, limits)
 	subvolume(x, y, z, u, v, w, limits)
 
-Extract subset of 3D dataset in ndgrid format.
+Extract subset of 3D dataset in ndgrid format. See also: [`subsurface`](@ref).
 """
 function subvolume(x, y, z, data, limits)
    if length(limits)!=6
@@ -149,7 +148,7 @@ function subvolume(x, y, z, data, limits)
    newy = y[xind,yind,zind]
    newz = z[xind,yind,zind]
 
-   return newx, newy, newz, newdata
+   newx, newy, newz, newdata
 end
 
 function subvolume(x, y, z, u, v, w, limits)
@@ -186,7 +185,7 @@ function subvolume(x, y, z, u, v, w, limits)
    newy = y[xind,yind,zind]
    newz = z[xind,yind,zind]
 
-   return newx, newy, newz, newu, newv, neww
+   newx, newy, newz, newu, newv, neww
 end
 
 """
@@ -203,7 +202,7 @@ function subdata(data, xind::Vector{Int}, yind::Vector{Int}, sz::Tuple{Int,Int})
       newdata = reshape(newdata, (newsz[1:2]..., sz[3:end]))
    end
 
-   return newdata
+   newdata
 end
 
 function subdata(data, xind::Vector{Int}, yind::Vector{Int}, zind::Vector{Int},
@@ -216,11 +215,11 @@ function subdata(data, xind::Vector{Int}, yind::Vector{Int}, zind::Vector{Int},
       newdata = reshape(newdata, (newsz[1:3]..., sz[4:end]))
    end
 
-   return newdata
+   newdata
 end
 
-
-function get_var(data::Data, var::T) where T<:AbstractString	
+"Return variable data from string `var`."
+function getvar(data::Data, var::T) where T<:AbstractString	
    VarIndex_ = findfirst(x->x==lowercase(var), lowercase.(data.head.wnames))
    isnothing(VarIndex_) && error("$(var) not found in file header variables!")
 
@@ -235,12 +234,12 @@ function get_var(data::Data, var::T) where T<:AbstractString
    w
 end
 
-"Return data from input string vector."
-function get_vars(data::Data, Names::Vector{T}) where T<:AbstractString
+"Return variables' data from string vector. See also: [`getvar`](@ref)"
+function getvars(data::Data, Names::Vector{T}) where T<:AbstractString
 
    dict = Dict()
    for name in Names
-      dict[name] = get_var(data, name)
+      dict[name] = getvar(data, name)
    end
 
    Vars(dict)
@@ -250,9 +249,9 @@ Base.getproperty(p::Vars, name::Symbol) = getfield(p, :data)[String(name)]
 
 
 const variables_predefined = Dict(
-   "B" => data -> sqrt.(get_var(data, "Bx").^2 .+ get_var(data, "By").^2 .+ get_var(data, "Bz").^2),
-   "E" => data -> sqrt.(get_var(data, "Ex").^2 .+ get_var(data, "Ey").^2 .+ get_var(data, "Ez").^2),
-   "U" => data -> sqrt.(get_var(data, "Ux").^2 .+ get_var(data, "Uy").^2 .+ get_var(data, "Uz").^2),
-   #"beta" => data -> get_var(data, "P") ./ get_var(data, "B").^2 * 2μ,
+   "B" => data -> sqrt.(getvar(data, "Bx").^2 .+ getvar(data, "By").^2 .+ getvar(data, "Bz").^2),
+   "E" => data -> sqrt.(getvar(data, "Ex").^2 .+ getvar(data, "Ey").^2 .+ getvar(data, "Ez").^2),
+   "U" => data -> sqrt.(getvar(data, "Ux").^2 .+ getvar(data, "Uy").^2 .+ getvar(data, "Uz").^2),
+   #"beta" => data -> getvar(data, "P") ./ getvar(data, "B").^2 * 2μ,
 )
 
