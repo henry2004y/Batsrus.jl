@@ -21,10 +21,10 @@ function Base.show(io::IO, s::Data)
 end
 
 """
-	readdata(filenameIn, (, dir=".", npict=1, verbose=false))
+	readdata(filenameIn; dir=".", npict=1, verbose=false)
 
 Read data from BATSRUS output files. Stores the `npict` snapshot from an ascii
-or binary data file into the coordinates `x` and data `w` arrays.
+or binary data file into the arrays of coordinates `x` and data `w`.
 Filenames can be provided with wildcards.
 
 # Examples
@@ -83,11 +83,11 @@ function readdata(filenameIn::AbstractString; dir=".", npict=1, verbose=false)
 
    verbose && @info "Finished reading $(filelist.name)"
 
-   return data
+   data
 end
 
 "Read information from log file."
-function readlogdata( filename::AbstractString )
+function readlogdata(filename::AbstractString)
 
    f = open(filename, "r")
    nLine = countlines(f) - 2
@@ -112,11 +112,11 @@ function readlogdata( filename::AbstractString )
    head = (ndim=ndim, headline=headline, it=it, time=t, gencoord=gencoord,
       nw=nw, nx=nx, variables=variables)
 
-   return head, data
+   head, data
 end
 
 """
-	readtecdata(filename, verbose=false)
+	readtecdata(filename; verbose=false)
 
 Return header, data and connectivity from BATSRUS Tecplot outputs. Both 2D and
 3D binary and ASCII formats are supported.
@@ -250,7 +250,7 @@ function readtecdata(filename::AbstractString; verbose=false)
    head = (variables=VARS, nNode=nNode, nCell=nCell, nDim=nDim, ET=ET,
 		title=title, auxdataname=auxdataname, auxdata=auxdata)
 
-   return head, data, connectivity
+   head, data, connectivity
 end
 
 
@@ -302,7 +302,7 @@ function getfiletype(filename)
 
    filelist = FileList(filename, type, bytes, npictinfiles)
 
-   return filelist, fileID, pictsize
+   filelist, fileID, pictsize
 end
 
 """
@@ -384,11 +384,11 @@ function getfilehead(fileID::IOStream, type::String)
 end
 
 function skipline(s::IO)
-    while !eof(s)
-        c = read(s, Char)
-        c == '\n' && break
-    end
-    return nothing
+   while !eof(s)
+       c = read(s, Char)
+       c == '\n' && break
+   end
+   nothing
 end
 
 "Return the size in bytes for one snapshot."
@@ -451,7 +451,7 @@ function getfilesize(fileID::IOStream, type::String)
       pictsize = headlen + 8*(1+nw) + 8*(ndim+nw)*nxs
    end
 
-   return pictsize
+   pictsize
 end
 
 
@@ -472,7 +472,7 @@ function allocateBuffer(filehead::NamedTuple, T::DataType)
       w  = Array{T,4}(undef,n1,n2,n3,filehead.nw)
    end
 
-   return x, w
+   x, w
 end
 
 "Read ascii format data."
@@ -501,7 +501,7 @@ function getascii!(x, w, fileID::IOStream, filehead::NamedTuple)
       end
    end
 
-   return nothing
+   nothing
 end
 
 
@@ -535,7 +535,7 @@ function getbinary!(x, w, fileID::IOStream, filehead::NamedTuple, T::DataType)
       end
    end
 
-   return nothing
+   nothing
 end
 
 """
@@ -746,7 +746,7 @@ function setunits( filehead::NamedTuple, type::AbstractString; distunit=1.0,
       di0  = cSI/(op0/tSI)/xSI                 # di=c/omegap = di0/sqrt(rho)
       ld0  = moq*√(pSI)/rhoSI/xSI              # ld          = ld0*sqrt(p)/rho
    end
-
+   nothing
 end
 
 """
