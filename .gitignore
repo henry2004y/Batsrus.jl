@@ -4,6 +4,9 @@
 *.outs
 *.log
 *.dat
+*.tree
+*.info
+*.vtu
 *.eps
 *.png
 *.avi
