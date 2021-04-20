@@ -25,7 +25,7 @@ head, data = readlogdata(logfilename)
 
 ## Derived variables
 ```
-v = get_vars(data, ["Bx", "By", "Bz"])
+v = getvars(data, ["Bx", "By", "Bz"])
 B = @. sqrt(v.Bx^2 + v.By^2 + v.Bz^2)
 ```
 
@@ -49,7 +49,7 @@ convertIDLtoVTK(filename, gridType=1)
 
 3D unstructured IDL file together with header and tree file:
 ```
-filetag = "3d__var_1_n00002500"
+filetag = "3d_var_1_n00002500"
 convertIDLtoVTK(filetag)
 ```
 
