@@ -157,7 +157,7 @@ See [Multi-Resolution Rendering with Overlapping AMR](https://www.paraview.org/P
 ## Support on Derived Variables
 
 Right now the derived quantity plots are not supported. In order to achieve this, I may need:
-- [x] A new function `get_var(data, filehead, string)` returning the derived variable
+- [x] A new function `getvar(data::Data, var::String)` returning the derived variable
 - [ ] A new plotting function that understands the derived data type
 
 The first one is achieved by a trick I found on discourse, which basically identifies symbols as names to members in a struct.
@@ -170,7 +170,7 @@ This is actually pretty good both in terms of performance and conciseness.
 The idea is to create a dictionary of derived variable names as keys and anonymous functions as values, and if the input string is found in the dictionary, call the corresponding function to obtain the value.
 This has been successfully tested in my new scripts for processing Vlasiator outputs, and can be directly ported here for BATSRUS.
 
-## Extra Notes
+## Array Storage Ordering
 
 I have already made a lot of mistakes by mixing the row-major and column-major codes. Explicitly list all the parts that require extra care!
 
@@ -183,6 +183,3 @@ I have already made a lot of mistakes by mixing the row-major and column-major c
 - [x] Replace np.meshgrid with list comprehension
 - [x] Drop the support for a long string containing several filenames; substitute by an array of strings.
 - [ ] Find a substitution of triangulation in Julia
-- [ ] Allow dot syntax to get dictionary contents (Base.convert?)
-- [ ] Binary library support
-- [ ] VTK reader
