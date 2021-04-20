@@ -1,6 +1,6 @@
 # APIs
 
-## Public types in module `Batsrus`:
+## Public types:
 
 ```@autodocs
 Modules = [Batsrus]
@@ -8,7 +8,7 @@ Private = false
 Order = [:type]
 ```
 
-## Functions exported from `Batsrus`:
+## Functions:
 
 ```@autodocs
 Modules = [Batsrus]
