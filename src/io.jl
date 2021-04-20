@@ -25,7 +25,7 @@ end
 
 Read data from BATSRUS output files. Stores the `npict` snapshot from an ascii
 or binary data file into the arrays of coordinates `x` and data `w`.
-Filenames can be provided with wildcards.
+Filename can be provided with wildcards.
 
 # Examples
 ```jldoctest
@@ -36,27 +36,26 @@ data = readdata(filename)
 function readdata(filenameIn::AbstractString; dir=".", npict=1, verbose=false)
 
    # Check the existence of files
-   filenames = searchdir(dir, Regex(filenameIn)) # potential bugs
-   if isempty(filenames)
-      throw(ArgumentError(
-         "readdata: no matching filename was found for $(filenameIn)"))
-   elseif length(filenames) > 1
-      throw(ArgumentError("Ambiguous filenames!"))
+   filename = searchdir(dir, Regex(replace(filenameIn, s"*" => s".*")))
+   if isempty(filename)
+      throw(ArgumentError("No matching filename was found for $(filenameIn)"))
+   elseif length(filename) > 1
+      throw(ArgumentError("Ambiguous filename $(filenameIn)!"))
    end
 
-   filename = joinpath(dir, filenames[1])
+   filename = joinpath(dir, filename[1])
    filelist, fileID, pictsize = getfiletype(filename)
 
    verbose &&
       @info "filename=$(filelist.name)\n"*"npict=$(filelist.npictinfiles)"
 
-   if any(filelist.npictinfiles - npict < 0)
+   if filelist.npictinfiles - npict < 0
       throw(ArgumentError("npict out of range!"))
    end
    seekstart(fileID) # Rewind to start
 
    ## Read data from files
-   # Skip npict-1 snapshots (because we only want npict snapshot)
+   # Skip npict-1 snapshots (because we only want the npict-th snapshot)
    skip(fileID, pictsize*(npict-1))
 
    filehead = getfilehead(fileID, filelist.type)
