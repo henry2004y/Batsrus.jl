@@ -26,7 +26,7 @@ head, data = readlogdata(logfilename)
 ## Derived variables
 ```
 v = getvars(data, ["Bx", "By", "Bz"])
-B = @. sqrt(v.Bx^2 + v.By^2 + v.Bz^2)
+B = @. sqrt(v["Bx"]^2 + v["By"]^2 + v["Bz"]^2)
 ```
 
 ## Output format conversion

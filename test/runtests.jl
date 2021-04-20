@@ -53,7 +53,7 @@ end
       @test p[1] ≈ 0.560976f0
       @test p[2] ≈ 0.53704995f0
       vars = getvars(data, ["p"]) 
-      @test size(vars.p) == (8,8,8) 
+      @test size(vars["p"]) == (8,8,8) 
    end
 
    @testset "log" begin
