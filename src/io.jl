@@ -28,7 +28,7 @@ or binary data file into the arrays of coordinates `x` and data `w`.
 Filename can be provided with wildcards.
 
 # Examples
-```jldoctest
+```
 filename = "1d_raw*"
 data = readdata(filename)
 ```
@@ -120,7 +120,7 @@ end
 Return header, data and connectivity from BATSRUS Tecplot outputs. Both 2D and
 3D binary and ASCII formats are supported.
 # Examples
-```jldoctest
+```
 filename = "3d_ascii.dat"
 head, data, connectivity = readtecdata(filename)
 ```
