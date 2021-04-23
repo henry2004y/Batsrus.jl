@@ -1,26 +1,24 @@
 # BATSRUS
-[![](https://travis-ci.com/henry2004y/Batsrus.jl.svg?branch=master)][travis-url]
+
+[![Build Status](https://img.shields.io/github/workflow/status/henry2004y/Batsrus.jl/CI)](https://github.com/henry2004y/Batsrus.jl/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![](https://img.shields.io/badge/docs-latest-blue.svg)][Batsrus-doc]
 [![][codecov-img]][codecov-url]
 
-Fast BATSRUS data reader and converter using Julia, originates back to June 14th, 2017.
-
-This is originally part of the [VisAna.jl](https://github.com/henry2004y/VisAnaJulia) package.
-Later this was moved out and became a stand-alone package.
-Note that you must have Julia and this package installed to successfully use it in Python.
+Fast BATSRUS data reading, converting, and visualizing using Julia, originates back to June 14th 2017.
+It is related to [VisAnaMatlab](https://github.com/henry2004y/VisAnaMatlab) and the [VisAna.jl](https://github.com/henry2004y/VisAnaJulia) package.
 
 This package provides the following functionalities:
   * simulation data reader
   * 2D/3D region cut from the whole data
   * data format conversion to VTK
-  * programming language interoperability
+  * simulation data visualization
 
 For more details, please check the [document][Batsrus-doc].
 
 ## Prerequisites
 
-Julia 1.0+
+Julia 1.6+
 
 ## Installation
 ```
