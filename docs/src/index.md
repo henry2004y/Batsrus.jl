@@ -5,15 +5,13 @@
 !!! note
     This package is still under development, so be careful for any future breaking changes!
 
-BATSRUS data reader and converter in Julia.
-
-This package inherits the ideas and code structures from its predecessor in IDL (developed by Gábor Tóth) and MATLAB (developed by Hongyang Zhou), and was originally part of [VisAna](https://github.com/henry2004y/VisAnaJulia).
-It uses the VTK XML format writer [writeVTK](https://github.com/jipolanco/WriteVTK.jl) to generate files for Paraview and Tecplot.
+BATSRUS data reader, converter, and visualizer in Julia.
 
 This package provides the following functionalities:
   * simulation data reader
-  * data format conversion
-  * programming language interoperability
+  * 2D/3D region cut from the whole data
+  * data format conversion to VTK
+  * simulation data visualization
 
 The ultimate goal is to build a convenient tool of reading and analyzing simulation outputs which is easy to install and easy to use.
 
@@ -25,6 +23,11 @@ Install VisAna from the `julia REPL` prompt with
 ```julia
 using Pkg
 Pkg.add("Batsrus")
+```
+
+Or in the Pkg REPL
+```julia
+>pkg add Batsrus
 ```
 
 ```@contents
@@ -82,4 +85,6 @@ There you have it! Enjoy!
 
 ## Developers
 
-VisAna is developed by [Hongyang Zhou](https://github.com/henry2004y).
+This package inherits the ideas and code structures from its predecessor in [IDL](https://github.com/MSTEM-QUDA/share/tree/stable/IDL) (developed by Gábor Tóth) and [MATLAB](https://github.com/henry2004y/VisAnaMatlab).
+
+Batsrus.jl is developed and maintained by [Hongyang Zhou](https://github.com/henry2004y).
