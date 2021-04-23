@@ -1,4 +1,5 @@
 using Batsrus, Documenter, PyPlot
+using Batsrus.UnitfulBatsrus
 
 makedocs(;
     modules=[Batsrus],
