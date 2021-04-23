@@ -24,7 +24,7 @@ function filecmp(path1::AbstractString, path2::AbstractString)
 end
 
 @testset "Batsrus.jl" begin
-   @testset "reading 1D ascii" begin
+   @testset "Reading 1D ascii" begin
       filename = "1d__raw_2_t25.60000_n00000258.out"
       data = readdata(filename, dir="data", verbose=true)
       @test isa(data.head, NamedTuple)
@@ -32,7 +32,7 @@ end
       @test extrema(data.w) == (-0.79960780498, 1.9394335293)
    end
 
-   @testset "reading 2D structured binary" begin
+   @testset "Reading 2D structured binary" begin
       filename = "z=0_raw_1_t25.60000_n00000258.out"
       data = readdata(filename, dir="data")
       @test data.head.time == 25.6f0
@@ -40,12 +40,12 @@ end
       @test extrema(data.w) == (-0.79985905f0, 1.9399388f0)
    end
 
-   @testset "reading 2D unstructured binary" begin
+   @testset "Reading 2D unstructured binary" begin
       #filename = "z=0_raw_1_t25.60000_n00000258.out"
       #data = readdata(filename)
    end
 
-   @testset "reading 3D structured binary" begin
+   @testset "Reading 3D structured binary" begin
       filename = "3d_raw.out"
       data = readdata(filename, dir="data")
       plotrange = [-50.0, 50.0, -0.5, 0.5]
@@ -56,7 +56,7 @@ end
       @test size(vars["p"]) == (8,8,8) 
    end
 
-   @testset "log" begin
+   @testset "Log" begin
       logfilename = "data/log_n000001.log"
       head, data = readlogdata(logfilename)
       @test isa(head, NamedTuple)
@@ -82,5 +82,29 @@ end
       sha_str = bytes2hex(sha256(string(connectivity)))
       @test sha_str == "c6c5a65a46d86a9ba4096228c1516f89275e45e295cd305eb70c281a770ede74"
       rm("data/3d_mhd_amr", recursive=true)
+   end
+
+   @testset "Plotting" begin
+      using PyPlot
+      ENV["MPLBACKEND"]="agg" # no GUI
+      @testset "Plotting 1D ascii" begin
+         filename = "1d__raw_2_t25.60000_n00000258.out"
+         data = readdata(filename, dir="data", verbose=false)
+         plotdata(data, "p", plotmode="line")
+         line = gca().lines[1]
+         @test line.get_xdata() ≈ data.x
+         @test line.get_ydata() ≈ data.w[:,10]
+      end
+
+      @testset "Plotting 2D structured binary" begin
+         filename = "z=0_raw_1_t25.60000_n00000258.out"
+         data = readdata(filename, dir="data")
+         plotdata(data,"p bx;by", plotmode="contbar streamover")
+         ax = gca()
+         @test isa(ax, PyPlot.PyObject)
+         contourf(data,"p")
+         ax = gca()
+         @test isa(ax, PyPlot.PyObject)
+      end
    end
 end

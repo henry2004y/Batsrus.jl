@@ -58,7 +58,7 @@ convertIDLtoVTK(filetag)
 
 Multiple files:
 ```
-using Glob
+using Batsrus, Glob
 filenamesIn = "3d*.dat"
 dir = "."
 filenames = Vector{String}(undef,0)
@@ -72,7 +72,7 @@ end
 
 If each individual file size is large, consider using:
 ```
-using Glob
+using Batsrus, Glob
 filenamesIn = "3d*.dat"
 dir = "."
 filenames = Vector{String}(undef,0)
@@ -87,9 +87,7 @@ end
 Multiple files in parallel:
 ```
 using Distributed
-@everywhere using Pkg
-@everywhere Pkg.activate("VisAnaJulia");
-@everywhere using VisAna, Glob
+@everywhere using Batsrus, Glob
 
 filenamesIn = "cut*.dat"
 dir = "."
@@ -103,3 +101,176 @@ filenames = vcat(filenames, filesfound)
    convertTECtoVTU(head, data, connectivity, outname[1:end-4])
 end
 ```
+
+## Data visualzation
+
+We provide plot recipes for Plots.jl and wrappers for PyPlot.jl.
+
+The recipes for Plots.jl will work on all functions given the correct dimensions, e.g.
+```
+using Plots
+plot(data, "p")
+contourf(data, "Mx", xlabel="x")
+```
+
+See the official documentation for Plots.jl for more information.
+
+On the other hand, most common 1D and 2D plotting functions are wrapped over their Matplotlib equivalences through PyPlot.jl.
+To trigger the wrapper, `using PyPlot`.
+Check out the documentation for more details.
+
+### Quick exploration of data
+
+A general `plotdata` function is provided for quick visualizations using Matplotlib.
+
+- 1D binary
+```
+plotdata(data, "p", plotmode="line")
+plotdata(data, "p", plotmode="linegrid")
+```
+
+- 2D Cartesian (structured)
+```
+plotdata(data, "p bx;by", plotmode="contbar streamover")
+plotdata(data, "p bx;by", plotmode="contbar quiverover")
+plotdata(data, "p bx;by", plotmode="contbar streamover", density=2.0)
+plotdata(data, "p", plotmode="grid")
+plotdata(data, "p", plotmode="contbar", plotrange=[-50., 50., -1., 1.])
+plotdata(data, "p", plotmode="contbar")
+plotdata(data, "p", plotmode="contbarlog")
+plotdata(data, "p", plotmode="surfbar")
+```
+
+- 2D unstructured
+```
+plotdata(data, "rho", plotmode="contbar")
+plotdata(data, "rho", plotmode="trimesh")
+plotdata(data, "rho", plotmode="tricont")
+```
+
+- 2D structured spherical coordinates
+```
+plotdata(data, "rho", plotmode="contbar")
+```
+
+- 3D box
+```
+plotdata(data, "bx", plotmode="contbar", cut="y", cutPlaneIndex=1, level=20)
+plotdata(data, "bx", plotmode="contbar", cut="y", plotrange=[-1.4,-1.1,0.70,0.78])
+using PyPlot
+plt.axis("scaled")
+
+subplot(2,2,(1,3))
+cutplot(data, "Ex", cut='y', cutPlaneIndex=128, plotrange=plotrange)
+```
+
+#### Find indexes
+
+To get the index of a certain quantity, e.g. electron number density
+```
+ρe_= findfirst(x->x=="rhoS0", data.head.wnames)
+```
+
+### Multiple dispatch for Matplotlib functions
+
+Using the same plotting functions as in Matplotlib is allowed, and actually recommended.
+Some plotting functions can be directly called as shown below, which allows for more control from the user.
+`using PyPlot` to import the full capability of the package, etc. adding colorbar, changing line colors, setting colorbar range with `clim`.
+
+- line plot
+```
+plot(data, "p", linewidth=2, color="green")
+c = plot(data, "p")
+plt.setp(c, linestyle="--", linewidth=2);
+```
+
+- scatter plot
+```
+scatter(data, "p")
+```
+
+- contour
+```
+# 2D contour
+contour(data, "p")
+```
+
+- filled contour
+```
+contourf(data, "p")
+contourf(data, "p", levels, plotrange=[-10,10,-Inf,Inf], plotinterval=0.1)
+```
+
+- surface plot
+```
+plot_surface(data, "p")
+```
+
+- triangle surface plot
+```
+plot_trisurf(data, "p")
+```
+
+- triangle filled contour plot
+```
+tricontourf(data, "p")
+```
+
+- streamline
+```
+streamplot(data, "bx;bz")
+streamplot(data, "bx;bz", density=2.0, color="k", plotinterval=1.0, plotrange=[-10,10,-Inf,Inf])
+```
+
+- streamline + contourf
+```
+using Batsrus, PyPlot
+
+filename = "y*out"
+data = readdata(filename)
+
+DN = matplotlib.colors.DivergingNorm
+set_cmap("RdBu_r")
+
+contourf(data, "uxS0", 50, plotrange=[-3,3,-3,3], plotinterval=0.05, norm=DN(0))
+colorbar()
+streamplot(data, "uxS0;uzS0", density=2.0, color="g",plotrange=[-3,3,-3,3])
+xlabel("x"); ylabel("y"); title("Ux [km/s]")
+
+contourf(data,"uxS0", 50, plotinterval=0.05, norm=DN(0))
+colorbar()
+axis("scaled")
+xlabel("x"); ylabel("y"); title("uxS0")
+```
+
+### Tracing
+
+The built-in `streamplot` function in Matplotlib is not satisfactory for accurately tracing. Instead we recommend [FieldTracer.jl](https://github.com/henry2004y/FieldTracer.jl) for tracing fieldlines and streamlines.
+
+An example of tracing in a 2D cut and plot the field lines over contour:
+```
+using Batsrus, PyPlot
+
+filename = "y=0_var_1_t00000000_n00000000.out"
+data = readdata(filename, dir="test")
+
+bx = data.w[:,:,5]
+bz = data.w[:,:,7]
+x  = data.x[:,1,1]
+z  = data.x[1,:,2]
+
+seeds = select_seeds(x, z; nSeed=100) # randomly select the seeding points
+
+for i = 1:size(seeds)[2]
+   xs = seeds[1,i]
+   zs = seeds[2,i]
+   # Tracing in both direction. Check the document for more options.
+   x1, z1 = trace2d_eul(bx, bz, xs, zs, x, z, ds=0.1, maxstep=1000, gridType="ndgrid")
+   plot(x1,z1,"--")
+end
+axis("equal")
+```
+which will display
+![BATSRUS_test1_noAMR](../images/BxBz_y0cut.png)
+
+Currently the `select_seeds` function uses pseudo random number generator that produces the same seeds every time.
