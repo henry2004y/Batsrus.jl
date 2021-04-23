@@ -30,7 +30,7 @@ B = @. sqrt(v["Bx"]^2 + v["By"]^2 + v["Bz"]^2)
 ```
 
 ## Output format conversion
-We can convert 2D/3D BATSRUS outputs `*.dat` to VTK formats. The default converted filename is `out.vtu`.
+We can convert 2D/3D BATSRUS outputs `*.dat` to VTK formats. It uses the VTK XML format writer [writeVTK](https://github.com/jipolanco/WriteVTK.jl) to generate files for Paraview and Tecplot. The default converted filename is `out.vtu`.
 
 ASCII Tecplot file (supports both `tec` and `tcp`) and binary Tecplot file (set `DOSAVETECBINARY=TRUE` in BATSRUS `PARAM.in`):
 ```
