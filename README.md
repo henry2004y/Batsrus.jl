@@ -5,8 +5,8 @@
 [![](https://img.shields.io/badge/docs-latest-blue.svg)][Batsrus-doc]
 [![][codecov-img]][codecov-url]
 
-Fast BATSRUS data reading, converting, and visualizing using Julia, originates back to June 14th 2017.
-It is related to [VisAnaMatlab](https://github.com/henry2004y/VisAnaMatlab) and the [VisAna.jl](https://github.com/henry2004y/VisAnaJulia) package.
+Fast [BATSRUS](https://github.com/MSTEM-QUDA/BATSRUS) data reading, converting, and visualizing using Julia, originates back to June 14th 2017.
+It is the successor of [VisAnaMatlab](https://github.com/henry2004y/VisAnaMatlab).
 
 This package provides the following functionalities:
   * simulation data reader
