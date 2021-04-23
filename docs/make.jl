@@ -1,4 +1,4 @@
-using Batsrus, Documenter
+using Batsrus, Documenter, PyPlot
 
 makedocs(;
     modules=[Batsrus],

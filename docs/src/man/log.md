@@ -3,41 +3,9 @@
 All the workflows here is not restricted to one type of model output. After being familiar with new ideas and new models, one can easily make use of existing samples and create reader of their own.
 Because of the embarrassing parallelism nature of postprocessing, it is quite easy to take advantage of parallel approaches to process the data.
 
-This is the first time I use Julia for reading general ascii/binary files. It was a pain at first due to the lack of examples and documents using any basic function like read/read!, but fortunately I figured them out myself. One trick in reading binary array data is the usage of view, or subarrays, in Julia. In order to achieve that, I have to implement my own `read!` function in addition to the base ones.
-Before v0.5.1, `readdata` function in Matlab for large data is 2 times faster than that in Julia. The reason is simply using `read` or `unsafe_read` in the lower level. The latter one is much faster. After the fix, Julia version performs 5 times faster than the Matlab version in reading binary data.
+## Array Storage Ordering
 
-I am enlightened by the way SpacePy handles files. Instead of a separate header and data array, it may be better to build a more contained struct.
-Also, the header could use `NamedTuple` instead of `Dict`.
-
-## Reading Multiple Files
-
-And actually, by far there is no single use case where I need to read multiple files together. If you want to do so, just call the function twice.
-
-## Interoperability
-
-Demos are provided for calling Matlab/Python directly from Julia for debugging and testing. This part will later be separated out for potential Python and Matlab users. Currently the plotting and interpolation needed during plotting are done in Python. For instance, the 3D scatterred interpolation is done via `Interpolate` in Scipy. Hopefully these additional dependencies will be cut down.
-
-In the current version of PyCall and PyJulia, there is already direct support for accessing Julia struct objects (noted as `jlwrap`).
-
-I have a new issue coming up with the interoperability with Python. I may need to split this package into pure IO and pure plotting to avoid the cross-dependency of Matplotlib. The idea is that PyPlot is only needed when I want to quickly scan through the data!
-
-## Units
-
-There is a unit package in Julia [unitful](https://github.com/PainterQubits/Unitful.jl) for handling units.
-Take a look at that one if you really want to solve the unit problem.
-On top of that, [UnitfulRecipes.jl](https://github.com/jw3126/UnitfulRecipes.jl) provides integrity with [Plots.jl](http://docs.juliaplots.org/latest/).
-
-The ideas of how to make abstractions is more important than the unit conversion itself.
-
-## C Dependency
-
-A real open-source project is a collaborated work not only from a bunch of people, but also a group of languages. In Julia, this can be achieved with the help of the [Package manager](https://julialang.github.io/Pkg.jl/dev/).
-
-I want to have some C dependencies in my code instead of rewriting everything in Julia. This would serve as an attempt to quickly make things work.
-
-Right now this seems to be a little bit difficult for me. I need to learn from experts. The tracing scheme in C is rewritten in Julia so I don't need to bother for now.
-Checkout [BinaryBuilder](https://juliapackaging.github.io/BinaryBuilder.jl/latest/#Project-flow-1) for more information.
-A nice example is given in [this C package](https://github.com/jakubwro/SineWaves.jl).
+I have already made a lot of mistakes by mixing the row-major and column-major codes. Explicitly list all the parts that require extra care!
 
 ## VTK
 
@@ -81,30 +49,6 @@ Several issues worth noticing:
   * `fillCellNeighbors!` not only deals with coarsened neighbors, but also the refined neighbors. This means that literally we need to implement the `message_pass_cell` completely. We still do a two-round process, write everything without checking, and in the end before IO remove the duplicate rows. This may be even faster then implementing some complicated writing rules to avoid duplicating.
   *  Polish the writing rules even further. This requires me to consider all possible cases. As a first step, for the above example case, neither of the two face neighbor should write the connectivity, but instead the edge neighbor should write.
 * Many function names are inherited from BATL. I may consider rename them in the future if more general task is required.
-
-### Ordering of connectivity
-
-Tecplot and VTK unstructured data formats have the same connectivity ordering for hexahedron, but different ordering for voxel (in VTK). A function `swaprows` is implemented to switch the orderings.
-
-### Variable naming
-
-Vector naming is messed up if you are using Tecplot VTK reader. For example, "B [nT]" --> "B [nT]_X", "B [nT]_Y", "B [nT]_Z". Not a big issue, but annoying.
-
-### AUXDATA
-
-I have encountered a very bad problem of corrupting binary *.vtu files. It turned out that the issue is the starting position of data is wrong because of the way I skip the header AUXDATA part. Sometimes the binary numbers may contain newline character that confuses the reader. It is now fixed.
-Later on the reading of the header part is completely rewritten to provide better support for a variety of Tecplot Ascii headers.
-All the AXUDATA information is now stored into global VTK data.
-
-### Native VTK output
-
-In the future versions of BATSRUS, we should be able to output VTK files directly with [VTKFortran](https://github.com/szaghi/VTKFortran). I won't do it now.
-
-### Custom VTK reader
-
-ParaView allows for custom Python reader. Examples can be found in Chapter 12.4 in the official manual, and an example of full Python plugins can be found at Kiware's [gitlab](https://gitlab.kitware.com/paraview/paraview/blob/master/Examples/Plugins/PythonAlgorithm/PythonAlgorithmExamples.py) page.
-
-The XML package not only provide writing into XML files, but also reading XML structures. Therefore, if you want you can create a VTK reader.
 
 ### AMR Grid Structure
 
@@ -153,33 +97,3 @@ If we can directly tell ParaView that the mesh we have is a dual-mesh, then the 
 `AMRGaussianPulseSource`
 
 See [Multi-Resolution Rendering with Overlapping AMR](https://www.paraview.org/ParaView/index.php/Multi-Resolution_Rendering_with_Overlapping_AMR) for the implementation of C++ reader in VTK.
-
-## Support on Derived Variables
-
-Right now the derived quantity plots are not supported. In order to achieve this, I may need:
-- [x] A new function `getvar(data::Data, var::String)` returning the derived variable
-- [ ] A new plotting function that understands the derived data type
-
-The first one is achieved by a trick I found on discourse, which basically identifies symbols as names to members in a struct.
-This test feature is not ideal and will be dropped in later versions. 
-This looks like the Python Calculator in ParaView.
-I don't know how ParaView achieve this, but in Python it is pretty easy to parse a string and execute it as some new codes using `exec` function, as Yuxi did in his interface to the yt library.
-Julia has equivalent metaprogramming capabilities, but there are many restrictions to apply it in practice so it is generally adviced to avoid evaluating expressions inside functions during runtime.
-Another option is to create functions for derived variables.
-This is actually pretty good both in terms of performance and conciseness.
-The idea is to create a dictionary of derived variable names as keys and anonymous functions as values, and if the input string is found in the dictionary, call the corresponding function to obtain the value.
-This has been successfully tested in my new scripts for processing Vlasiator outputs, and can be directly ported here for BATSRUS.
-
-## Array Storage Ordering
-
-I have already made a lot of mistakes by mixing the row-major and column-major codes. Explicitly list all the parts that require extra care!
-
-## Todo List
-
-- [x] Full coverage of tests
-- [x] PyJulia support for manipulating data directly in Python
-- [x] Derived variable support
-- [x] General postprocessing script for concatenating and converting files.
-- [x] Replace np.meshgrid with list comprehension
-- [x] Drop the support for a long string containing several filenames; substitute by an array of strings.
-- [ ] Find a substitution of triangulation in Julia
