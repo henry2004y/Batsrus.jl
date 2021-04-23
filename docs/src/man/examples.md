@@ -270,7 +270,5 @@ for i = 1:size(seeds)[2]
 end
 axis("equal")
 ```
-which will display
-![BATSRUS_test1_noAMR](../images/BxBz_y0cut.png)
 
 Currently the `select_seeds` function uses pseudo random number generator that produces the same seeds every time.
