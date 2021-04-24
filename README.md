@@ -11,6 +11,7 @@ It is the successor of [VisAnaMatlab](https://github.com/henry2004y/VisAnaMatlab
 This package provides the following functionalities:
   * simulation data reader
   * 2D/3D region cut from the whole data
+  * interpolation from unstructured to structured data
   * data format conversion to VTK
   * simulation data visualization
 

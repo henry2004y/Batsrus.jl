@@ -1,6 +1,6 @@
 # Convert full BATSRUS AMR output to VTK.
 
-using FortranFiles, WriteVTK
+using FortranFiles, WriteVTK, Glob, LightXML
 
 export convertTECtoVTU, convertIDLtoVTK, readhead, readtree, getConnectivity
 export Batl
@@ -622,7 +622,7 @@ function find_neighbor_for_anynode(batl::Batl, iNode)
          z = z0
          Dj = round(Int8, (j - 1.5)/1.5)
          if nDim < 2
-            if j!=1 continue end
+            if j != 1 continue end
             y = 0.3
          else
             y = (iTree_IA[coord2_, iNode] + 0.4*j - 1.1)*Scale_D[2]
@@ -852,8 +852,21 @@ function getSibling(iNodeNei_III, iTree_IA)
 end
 
 
-"Fill neighbor cell indexes for the given block. Only tested for 3D. The faces,
-edges, and vertices are ordered from left to right in x-y-z sequentially."
+"""
+    fillCellNeighbors!(batl, iCell_G, DiLevelNei_III, iNodeNei_III, nBlock_P)
+
+Fill neighbor cell indexes for the given block. The faces, edges, and vertices
+are ordered from left (-) to right (+) in x-y-z sequentially.
+Vertices:        Edges: (10,11 ignored) 
+   7 ----- 8        . --4-- .
+ - .     - .      7 .     8 .
+5 ----- 6  .     . --3-- .  12
+.  .    .  .     .  .    .  .
+.  3 ----- 4     9  . --2-- .
+. -     . -      . 5     . 6
+1 ----- 2        . --1-- .
+Only tested for 3D.
+"""
 function fillCellNeighbors!(batl, iCell_G, DiLevelNei_III, iNodeNei_III, nBlock_P)
 
    iTree_IA = batl.iTree_IA
@@ -1809,5 +1822,52 @@ function fillCellNeighbors!(batl, iCell_G, DiLevelNei_III, iNodeNei_III, nBlock_
          iCell_G[end,end,end] = nIJK*(neiBlock-1) + 1
       end
    end
+   nothing
+end
 
+"""
+    create_pvd(filepattern)
+
+Generate PVD file for a time series collection of VTK data.
+# Example
+```
+create_pvd("*.vtu)
+```
+"""
+function create_pvd(filepattern)
+
+   filenames = glob(filepattern)
+
+   # create an empty XML document
+   xdoc = XMLDocument()
+
+   # create & attach a root node
+   xroot = create_root(xdoc, "VTKFile")
+
+   type = "Collection"
+   byte_order = "LittleEndian"
+   compressor = "vtkZLibDataCompressor"
+
+   set_attributes(xroot; type, byte_order, compressor)
+    
+   # create the first child
+   xs1 = new_child(xroot, "Collection")
+
+   for file in filenames
+      i_end  = findfirst("_n",file)[1] - 1
+
+      second = parse(Int32, file[i_end-1:i_end])
+      minute = parse(Int32, file[i_end-3:i_end-2])
+      timestep = 60*minute + second
+      @show timestep
+
+      e = new_child(xs1, "DataSet")
+
+      set_attributes(e; timestep, group="", part="0", file)
+   end
+
+   name_index = findfirst("_t",filenames[1])[1] - 1
+
+   save_file(xdoc, filenames[1][1:name_index]*".pvd")
+   nothing
 end
