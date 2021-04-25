@@ -10,6 +10,7 @@ BATSRUS data reader, converter, and visualizer in Julia.
 This package provides the following functionalities:
   * simulation data reader
   * 2D/3D region cut from the whole data
+  * interpolation from unstructured to structured data
   * data format conversion to VTK
   * simulation data visualization
 
@@ -28,16 +29,6 @@ Pkg.add("Batsrus")
 Or in the Pkg REPL
 ```julia
 >pkg add Batsrus
-```
-
-```@contents
-Pages = [
-    "man/log.md",
-    "man/examples.md",
-    "man/functions.md",
-    "man/types.md"
-]
-Depth = 1
 ```
 
 ## Benchmark
@@ -71,7 +62,7 @@ For dynamic languages, the first time when function gets executed is usually als
 ## Calling From Python
 
 In Python, you can easily take advantage of this package with the aid of [PyJulia](https://pyjulia.readthedocs.io/en/latest/).
-After the installation, in the Python repl:
+After the installation, in the Python REPL:
 ```python
 from julia import Batsrus
 dir = 'test'
