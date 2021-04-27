@@ -12,5 +12,6 @@
 *.avi
 *.vts
 *.tec
+*.gz
 *~
 docs/build/
