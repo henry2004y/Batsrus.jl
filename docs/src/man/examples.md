@@ -102,7 +102,7 @@ filenames = vcat(filenames, filesfound)
 end
 ```
 
-## Data visualzation
+## Data visualization
 
 We provide plot recipes for Plots.jl and wrappers for PyPlot.jl.
 
@@ -164,7 +164,7 @@ subplot(2,2,(1,3))
 cutplot(data, "Ex", cut='y', cutPlaneIndex=128, plotrange=plotrange)
 ```
 
-#### Find indexes
+#### Finding indexes
 
 To get the index of a certain quantity, e.g. electron number density
 ```
