@@ -5,11 +5,13 @@
 !!! note
     This package is still under development, so be careful for any future breaking changes!
 
-BATSRUS data reader, converter, and visualizer in Julia.
+[BATSRUS](https://github.com/MSTEM-QUDA/BATSRUS) and [SWMF](https://github.com/MSTEM-QUDA/SWMF) data reading, converting, visualizing and analyzing in Julia.
 
 This package provides the following functionalities:
   * simulation data reader
+  * run log plots
   * 2D/3D region cut from the whole data
+  * phase space distribution plots
   * interpolation from unstructured to structured data
   * data format conversion to VTK
   * simulation data visualization
@@ -57,7 +59,7 @@ Data loading speed of a 2.4GB 3D binary file, 317MB 3D binary file, and 65KB 2D 
 | MATLAB | 19273.25  |
 
 The Julia, IDL, and MATLAB version all shares the same kernel design. The timings are obtained for Julia v1.3.1, Python 3.7.6 + Numpy 1.18.1, IDL 8.5, and MATLAB R2018b.
-For dynamic languages, the first time when function gets executed is usually also the slowest. Currently [spacepy](https://github.com/spacepy/spacepy) performs slightly better because of the well-optimized numpy library in C. For small data sizes, Julia is much faster than others.
+For dynamic languages with JIT, the first time when function gets executed is also the slowest due to runtime compilation, as can be seen from tmax in the tables. [spacepy](https://github.com/spacepy/spacepy) reaches the same level of performance as Batsruls.jl because of the well-optimized numpy library written in C. However, for small data sizes Batsrus.jl is much faster than packages written in other languages.
 
 ## Calling From Python
 
