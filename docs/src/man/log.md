@@ -5,10 +5,6 @@ Because of the embarrassing parallelism nature of postprocessing, it is quite ea
 
 For the plotting, streamline tracing and particle tracing, a common problem is the grid and related interpolation process. Now I have [FieldTracer.jl](https://github.com/henry2004y/FieldTracer.jl) and [TestParticle.jl](https://github.com/henry2004y/TestParticle.jl) designed specifically for these tasks.
 
-## Array Storage Ordering
-
-I have already made a lot of mistakes by mixing the row-major and column-major codes. Explicitly list all the parts that require extra care!
-
 ### VTK AMR Grid Structure
 
 `vtkOverlappingAMR` implements a somewhat strict Berger-Collela AMR scheme:

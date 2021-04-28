@@ -1,6 +1,7 @@
 # Plotting functionalities.
 
 using PyPlot
+using Dierckx: Spline2D
 
 export plotdata, plotlogdata, animatedata, plot, scatter, contour, contourf,
 	   plot_surface, tricontourf, plot_trisurf, streamplot, streamslice, cutplot
@@ -11,7 +12,7 @@ import PyPlot: plot, scatter, contour, contourf, plot_surface, tricontourf,
 include("utility.jl")
 
 """
-    plotlogdata(data, head, func, plotmode="line")
+    plotlogdata(data, head, func; plotmode="line")
 
 Plot information from log file.
 # Input arguments
@@ -142,19 +143,19 @@ function plotdata(data::Data, func::AbstractString; cut="", plotmode="contbar",
          if plotmode[ivar] ∈ ("surf","surfbar","surfbarlog","cont","contbar",
             "contlog","contbarlog")
 
-            xi, yi, wi = getdata(data, var, plotrange, plotinterval)
+            Xi, Yi, Wi = getdata(data, var, plotrange, plotinterval)
 
             # More robust method needed!
             if plotmode[ivar] ∈ ["contbar", "contbarlog"]
                if level == 0
-                  c = contourf(xi, yi, wi')
+                  c = contourf(Xi, Yi, Wi)
                else
-                  c = contourf(xi, yi, wi', level)
+                  c = contourf(Xi, Yi, Wi, level)
                end
             elseif plotmode[ivar] ∈ ["cont", "contlog"]
-               c = contour(xi, yi, wi)
+               c = contour(Xi, Yi, Wi)
             elseif plotmode[ivar] ∈ ["surfbar", "surfbarlog"]
-               c = plot_surface(xi, yi, wi)
+               c = plot_surface(Xi, Yi, Wi)
             end
 
             occursin("bar", plotmode[ivar]) && colorbar()
@@ -196,12 +197,13 @@ function plotdata(data::Data, func::AbstractString; cut="", plotmode="contbar",
             VarIndex2_ = findindex(data, VarStream[2])
 
             if data.head.gencoord # Generalized coordinates
-               X, Y = vec(x[:,:,1]), vec(x[:,:,2])
+               xrange = @view x[:,:,1]
+               yrange = @view x[:,:,2]
                if any(isinf.(plotrange))
-                  if plotrange[1] == -Inf plotrange[1] = minimum(X) end
-                  if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
-                  if plotrange[3] == -Inf plotrange[3] = minimum(Y) end
-                  if plotrange[4] ==  Inf plotrange[4] = maximum(Y) end
+                  if plotrange[1] == -Inf plotrange[1] = minimum(xrange) end
+                  if plotrange[2] ==  Inf plotrange[2] = maximum(xrange) end
+                  if plotrange[3] == -Inf plotrange[3] = minimum(yrange) end
+                  if plotrange[4] ==  Inf plotrange[4] = maximum(yrange) end
                end
 
                # Create grid values first.
@@ -210,9 +212,9 @@ function plotdata(data::Data, func::AbstractString; cut="", plotmode="contbar",
 
                # The PyCall here can be potentially replaced with Spline2D.
                # Perform linear interpolation of the data (x,y) on grid(xi,yi)
-               triang = matplotlib.tri.Triangulation(X,Y)
-               Xi = [y for _ in xi, y in yi]
-	            Yi = [x for x in xi, _ in yi]
+               triang = matplotlib.tri.Triangulation(xrange[:], yrange[:])
+
+               Xi, Yi = meshgrid(xi, yi)
 
                W = w[:,1,VarIndex1_]
                interpolator = matplotlib.tri.LinearTriInterpolator(triang, W)
@@ -223,32 +225,31 @@ function plotdata(data::Data, func::AbstractString; cut="", plotmode="contbar",
                v2 = interpolator(Xi, Yi)
 
             else # Cartesian coordinates
-               X = x[:,1,1]
-               Y = x[1,:,2]
+               xrange = @view x[:,1,1]
+               yrange = @view x[1,:,2]
                if all(isinf.(plotrange))
-                  Xi, Yi = X, Y
+                  Xi, Yi = meshgrid(xrange, yrange)
                   v1, v2 = w[:,:,VarIndex1_]', w[:,:,VarIndex2_]'
                else
-                  if plotrange[1] == -Inf plotrange[1] = minimum(X) end
-                  if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
-                  if plotrange[3] == -Inf plotrange[3] = minimum(Y) end
-                  if plotrange[4] ==  Inf plotrange[4] = maximum(Y) end
+                  if plotrange[1] == -Inf plotrange[1] = minimum(xrange) end
+                  if plotrange[2] ==  Inf plotrange[2] = maximum(xrange) end
+                  if plotrange[3] == -Inf plotrange[3] = minimum(yrange) end
+                  if plotrange[4] ==  Inf plotrange[4] = maximum(yrange) end
 
                   w1, w2 = w[:,:,VarIndex1_], w[:,:,VarIndex2_]
 
                   xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
                   yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
 
-                  Xi = [i for i in xi, _ in yi]
-                  Yi = [j for _ in xi, j in yi]
+                  Xi, Yi = meshgrid(xi, yi)
 
-                  spline = Spline2D(X, Y, w1)
+                  spline = Spline2D(xrange, yrange, w1)
                   v1 = spline(Xi[:], Yi[:])
-                  v1 = reshape(v1, size(Xi))'
+                  v1 = reshape(v1, size(Xi))
 
-                  spline = Spline2D(X, Y, w2)
+                  spline = Spline2D(xrange, yrange, w2)
                   v2 = spline(Xi[:], Yi[:])
-                  v2 = reshape(v2, size(Xi))'
+                  v2 = reshape(v2, size(Xi))
                end
             end
 
@@ -360,12 +361,11 @@ function plotdata(data::Data, func::AbstractString; cut="", plotmode="contbar",
             #yi = range(cut2[1,1], stop=cut2[end,1], length=size(cut2)[1])
 
             xi = range(cut1[1,1], stop=cut1[1,end],
-            step=(cut1[1,end]-cut1[1,1])/(size(cut1,2)-1))
+            step=(cut1[1,end] - cut1[1,1]) / (size(cut1,2) - 1))
             yi = range(cut2[1,1], stop=cut2[end,1],
-            step=(cut2[end,1]-cut2[1,1])/(size(cut2,1)-1))
+            step=(cut2[end,1] - cut2[1,1]) / (size(cut2,1) - 1))
 
-            Xi = [i for _ in yi, i in xi]
-            Yi = [j for j in yi, _ in xi]
+            Xi, Yi = meshgrid(xi, yi)
 
             s = streamplot(Xi,Yi,v1,v2; color="w", linewidth=1.0, density)
          end
@@ -492,12 +492,11 @@ function streamslice(data::Data, var::AbstractString;
    end
 
    xi = range(cut1[1,1], stop=cut1[end,1],
-   step = (cut1[end,1]-cut1[1,1])/(size(cut1,1)-1))
+   step = (cut1[end,1] - cut1[1,1]) / (size(cut1,1) - 1))
    yi = range(cut2[1,1], stop=cut2[1,end],
-   step = (cut2[1,end]-cut2[1,1])/(size(cut2,2)-1))
+   step = (cut2[1,end] - cut2[1,1]) / (size(cut2,2) - 1))
 
-   Xi = [i for _ in yi, i in xi]
-   Yi = [j for j in yi, _ in xi]
+   Xi, Yi = meshgrid(xi, yi)
 
    s = streamplot(Xi,Yi,v1',v2'; kwargs...)
 
@@ -548,15 +547,13 @@ Wrapper over the contour function in matplotlib.
 function contour(data::Data, var::AbstractString, levels=0;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, kwargs...)
 
-   xi, yi, wi = getdata(data, var, plotrange, plotinterval)
+   Xi, Yi, Wi = getdata(data, var, plotrange, plotinterval)
 
    if levels != 0
-      c = plt.contour(xi, yi, wi', levels; kwargs...)
+      c = plt.contour(Xi, Yi, Wi, levels; kwargs...)
    else
-      c = plt.contour(xi, yi, wi'; kwargs...)
+      c = plt.contour(Xi, Yi, Wi; kwargs...)
    end
-
-   return c::PyCall.PyObject
 end
 
 """
@@ -567,12 +564,12 @@ Wrapper over the contourf function in matplotlib.
 function contourf(data::Data, var::AbstractString, levels=0;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, kwargs...)
 
-   xi, yi, wi = getdata(data, var, plotrange, plotinterval)
+   Xi, Yi, Wi = getdata(data, var, plotrange, plotinterval)
 
    if levels != 0
-      c = plt.contourf(xi, yi, wi', levels; kwargs...)
+      c = plt.contourf(Xi, Yi, Wi, levels; kwargs...)
    else
-      c = plt.contourf(xi, yi, wi'; kwargs...)
+      c = plt.contourf(Xi, Yi, Wi; kwargs...)
    end
 end
 
@@ -600,7 +597,7 @@ function tricontourf(data::Data, var::AbstractString;
       W = W[xyIndex]
    end
 
-   c = tricontourf(X, Y, W)
+   tricontourf(X, Y, W)
 end
 
 """
@@ -628,7 +625,7 @@ function plot_trisurf(data::Data, var::AbstractString;
       W = W[xyIndex]
    end
 
-   c = plot_trisurf(X, Y, W)
+   plot_trisurf(X, Y, W)
 end
 
 
@@ -640,12 +637,9 @@ Wrapper over the plot_surface function in matplotlib.
 function plot_surface(data::Data, var::AbstractString;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, kwargs=Dict())
 
-   xi, yi, wi = getdata(data, var, plotrange, plotinterval)
+   Xi, Yi, Wi = getdata(data, var, plotrange, plotinterval)
 
-   Xi = [y for _ in xi, y in yi]
-   Yi = [x for x in xi, _ in yi]
-
-   c = plot_surface(Xi, Yi, wi; kwargs...)
+   plot_surface(Xi, Yi, Wi; kwargs...)
 end
 
 """
@@ -679,8 +673,7 @@ function streamplot(data::Data, var::AbstractString;
 
       # Is there a triangulation method in Julia?
       tr = matplotlib.tri.Triangulation(X, Y)
-      Xi = [y for _ in xi, y in yi]
-      Yi = [x for x in xi, _ in yi]
+      Xi, Yi = meshgrid(xi, yi)
 
       interpolator = matplotlib.tri.LinearTriInterpolator(tr, w[:,1,VarIndex1_])
       v1 = interpolator(Xi, Yi)
@@ -689,34 +682,33 @@ function streamplot(data::Data, var::AbstractString;
       v2 = interpolator(Xi, Yi)
 
    else # Cartesian coordinates
-      X = x[:,1,1]
-      Y = x[1,:,2]
+      xrange = @view x[:,1,1]
+      yrange = @view x[1,:,2]
       if all(isinf.(plotrange))
-         Xi, Yi = X, Y
+         Xi, Yi = x[:,:,1]', x[:,:,2]'
          v1, v2 = w[:,:,VarIndex1_]', w[:,:,VarIndex2_]'
       else
-	      if plotrange[1] == -Inf plotrange[1] = minimum(X) end
-	      if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
-         if plotrange[3] == -Inf plotrange[3] = minimum(Y) end
-         if plotrange[4] ==  Inf plotrange[4] = maximum(Y) end
+	      if plotrange[1] == -Inf plotrange[1] = minimum(xrange) end
+	      if plotrange[2] ==  Inf plotrange[2] = maximum(xrange) end
+         if plotrange[3] == -Inf plotrange[3] = minimum(yrange) end
+         if plotrange[4] ==  Inf plotrange[4] = maximum(yrange) end
 
 	      w1, w2 = w[:,:,VarIndex1_], w[:,:,VarIndex2_]
 
          xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
          yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
 
-         Xi = [i for i in xi, _ in yi]
-	      Yi = [j for _ in xi, j in yi]
+         Xi, Yi = meshgrid(xi, yi)
 
-         spline = Spline2D(X, Y, w1)
+         spline = Spline2D(xrange, yrange, w1)
 	      v1 = spline(Xi[:], Yi[:])
-	      v1 = reshape(v1, size(Xi))'
+	      v1 = reshape(v1, size(Xi))
 
-	      spline = Spline2D(X, Y, w2)
+	      spline = Spline2D(xrange, yrange, w2)
 	      v2 = spline(Xi[:], Yi[:])
-	      v2 = reshape(v2, size(Xi))'
+	      v2 = reshape(v2, size(Xi))
       end
    end
 
-   c = streamplot(Xi, Yi, v1, v2; kwargs...)
+   streamplot(Xi, Yi, v1, v2; kwargs...)
 end
