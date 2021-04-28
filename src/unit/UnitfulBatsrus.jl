@@ -2,7 +2,7 @@ module UnitfulBatsrus
 
 import Unitful
 import Unitful: q, c, μ0, ϵ0, k, me, mp
-using Unitful: @unit
+using Unitful: @unit, Unitlike
 export @bu_str
 export getunit, getunits
 
@@ -38,53 +38,58 @@ include("batsrusmacro.jl")
 # Unitful.basefactors at compile time and expect the changes to persist to runtime.
 const localunits = Unitful.basefactors
 function __init__()
-    merge!(Unitful.basefactors, localunits)
-    Unitful.register(UnitfulBatsrus)
+   merge!(Unitful.basefactors, localunits)
+   Unitful.register(UnitfulBatsrus)
 end
 
 
 function getunit(data, var)
 
-    # Batsrus has a bug in the 2D cuts of 3D runs: it always outputs the 3
-    # coordinate units in the headline. To temporarily deal with it, I plus
-    # the index by 1.
-    var_ = findfirst(x->x==lowercase(var), lowercase.(data.head.variables)) + 1
-    isnothing(var_) && error("$(var) not found in file header variables!")
-    var_unit_strs = split(data.head.headline)
+   # Batsrus has a bug in the 2D cuts of 3D runs: it always outputs the 3
+   # coordinate units in the headline. To temporarily deal with it, I plus
+   # the index by 1.
+   var_ = findfirst(x->x==lowercase(var), lowercase.(data.head.variables)) + 1
+   isnothing(var_) && error("$(var) not found in file header variables!")
+   if data.head.headline == "normalized variables"
+      var_unit = nothing
+   else
+      var_unit_strs = split(data.head.headline)
  
-    if var_unit_strs[var_] == "R"
-       var_unit = bu"R"
-    elseif var_unit_strs[var_] == "Mp/cc"
-       var_unit = bu"amucc"
-    elseif var_unit_strs[var_] == "uA/m2"
-       var_unit = bu"ampm2"
-    elseif var_unit_strs[var_] == "V/m2"
-       var_unit = bu"vm2"
-    else
-       var_unit = Unitful.uparse(var_unit_strs[var_])
-    end
-    var_unit
- end
+      if var_unit_strs[var_] == "R"
+         var_unit = bu"R"
+      elseif var_unit_strs[var_] == "Mp/cc"
+         var_unit = bu"amucc"
+      elseif var_unit_strs[var_] == "uA/m2"
+         var_unit = bu"ampm2"
+      elseif var_unit_strs[var_] == "V/m2"
+         var_unit = bu"vm2"
+      else
+         var_unit = Unitful.uparse(var_unit_strs[var_])
+      end
+   end
+   
+   var_unit
+end
  
- function getunits(data)
+function getunits(data)
  
-    var_unit_strs = split(data.head.headline)
-    var_units = [] # needs to be improved!
-    for var_unit_str in var_unit_strs
-       if var_unit_str == "R"
-          var_unit = bu"R"
-       elseif var_unit_str == "Mp/cc"
-          var_unit = bu"amucc"
-       elseif var_unit_str == "uA/m2"
-          var_unit = bu"ampm2"
-       elseif var_unit_str == "V/m2"
-          var_unit = bu"vm2"
-       else
-          var_unit = UnitfulBatsrus.Unitful.uparse(var_unit_str)
-       end
-       push!(var_units, var_unit)
-    end
-    var_units
- end
+   var_unit_strs = split(data.head.headline)
+   var_units = [] # needs to be improved!
+   for var_unit_str in var_unit_strs
+      if var_unit_str == "R"
+         var_unit = bu"R"
+      elseif var_unit_str == "Mp/cc"
+         var_unit = bu"amucc"
+      elseif var_unit_str == "uA/m2"
+         var_unit = bu"ampm2"
+      elseif var_unit_str == "V/m2"
+         var_unit = bu"vm2"
+      else
+         var_unit = UnitfulBatsrus.Unitful.uparse(var_unit_str)
+      end
+      push!(var_units, var_unit)
+   end
+   var_units
+end
 
 end

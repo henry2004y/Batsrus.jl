@@ -35,16 +35,19 @@ include("utility.jl")
       end
    elseif ndim == 2
       x, y, w = getdata(data, var, plotrange, plotinterval)
+
       unitx = getunit(data, data.head.variables[1])
       unity = getunit(data, data.head.variables[2])
 
-      x *= unitx
-      y *= unity
-      w *= unitw
+      if unitx isa UnitfulBatsrus.Unitlike
+         x *= unitx
+         y *= unity
+         w *= unitw
+      end
 
       @series begin
          seriestype --> :contourf  # use := if you want to force it
-         x, y, w'
+         x, y, w
       end
    end
 end

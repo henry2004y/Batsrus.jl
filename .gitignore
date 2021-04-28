@@ -13,5 +13,6 @@
 *.vts
 *.tec
 *.gz
+test*.jl
 *~
 docs/build/

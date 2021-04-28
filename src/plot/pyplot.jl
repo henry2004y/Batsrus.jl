@@ -143,7 +143,7 @@ function plotdata(data::Data, func::AbstractString; cut="", plotmode="contbar",
          if plotmode[ivar] ∈ ("surf","surfbar","surfbarlog","cont","contbar",
             "contlog","contbarlog")
 
-            Xi, Yi, Wi = getdata(data, var, plotrange, plotinterval)
+            Xi, Yi, Wi = getdata(data, var, plotrange, plotinterval, 2)
 
             # More robust method needed!
             if plotmode[ivar] ∈ ["contbar", "contbarlog"]
@@ -637,7 +637,7 @@ Wrapper over the plot_surface function in matplotlib.
 function plot_surface(data::Data, var::AbstractString;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, kwargs=Dict())
 
-   Xi, Yi, Wi = getdata(data, var, plotrange, plotinterval)
+   Xi, Yi, Wi = getdata(data, var, plotrange, plotinterval, 2)
 
    plot_surface(Xi, Yi, Wi; kwargs...)
 end
