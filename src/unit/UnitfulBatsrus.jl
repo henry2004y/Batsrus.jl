@@ -8,7 +8,9 @@ export getunit, getunits
 
 
 # lengths
-@unit R_bu  "Rₑ"     Radii             (6378)*Unitful.km        false
+@unit R_bu  "Rₑ"     EarthRadii        (6378)*Unitful.km        false
+@unit Rg_bu  "Rg"    GanymedeRadii     (2634)*Unitful.km        false # Ganymede's radius
+@unit Rm_bu  "Rm"    MercuryRadii      (2444)*Unitful.km        false # Mercury's radius 
 
 # masses
 @unit me_bu "mₑ"     ElectronMass      me                       false

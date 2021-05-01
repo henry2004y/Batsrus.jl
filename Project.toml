@@ -1,7 +1,7 @@
 name = "Batsrus"
 uuid = "e74ebddf-6ac1-4047-a0e5-c32c99e57753"
 authors = ["Hongyang Zhou <hyzhou@umich.edu>"]
-version = "0.3.3"
+version = "0.3.4"
 
 [deps]
 Dierckx = "39dd38d3-220a-591b-8e3c-4c3a8c710a94"
@@ -30,9 +30,8 @@ WriteVTK = "1.9"
 julia = "1.6"
 
 [extras]
-PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
 SHA = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "SHA", "PyPlot"]
+test = ["Test", "SHA"]

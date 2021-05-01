@@ -102,6 +102,8 @@ filenames = vcat(filenames, filesfound)
 end
 ```
 
+More examples can be found in [examples](https://github.com/henry2004y/Batsrus.jl/tree/master/examples).
+
 ## Data visualization
 
 We provide plot recipes for Plots.jl and wrappers for PyPlot.jl.
@@ -161,7 +163,7 @@ using PyPlot
 plt.axis("scaled")
 
 subplot(2,2,(1,3))
-cutplot(data, "Ex", cut='y', cutPlaneIndex=128, plotrange=plotrange)
+cutplot(data, "Ex", cut="y", cutPlaneIndex=128, plotrange=plotrange)
 ```
 
 #### Finding indexes
@@ -234,7 +236,7 @@ set_cmap("RdBu_r")
 
 contourf(data, "uxS0", 50, plotrange=[-3,3,-3,3], plotinterval=0.05, norm=DN(0))
 colorbar()
-streamplot(data, "uxS0;uzS0", density=2.0, color="g",plotrange=[-3,3,-3,3])
+streamplot(data, "uxS0;uzS0", density=2.0, color="g", plotrange=[-3,3,-3,3])
 xlabel("x"); ylabel("y"); title("Ux [km/s]")
 
 contourf(data,"uxS0", 50, plotinterval=0.05, norm=DN(0))

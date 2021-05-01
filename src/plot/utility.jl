@@ -1,8 +1,7 @@
 # Utility functions for plotting.
 
 "Prepare 2D data arrays for passing to plotting functions."
-function getdata(data::Data, var::AbstractString, plotrange, plotinterval,
-   griddim=1)
+function getdata(data::Data, var::AbstractString, plotrange, plotinterval, griddim=1)
    @assert data.head.ndim == 2 "data must be in 2D!"
 
    x, w = data.x, data.w

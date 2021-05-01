@@ -1,11 +1,12 @@
 # Tests of BATSRUS.jl
 
 using Batsrus, Test, SHA
+using Batsrus.UnitfulBatsrus, Unitful
 
 function filecmp(path1::AbstractString, path2::AbstractString)
    stat1, stat2 = stat(path1), stat(path2)
    if !(isfile(stat1) && isfile(stat2)) || filesize(stat1) != filesize(stat2)
-      return false # or should it throw if a file doesn't exist?
+      return false
    end
    stat1 == stat2 && return true # same file
    open(path1, "r") do file1
@@ -107,4 +108,23 @@ end
          @test isa(ax, PyPlot.PyObject)
       end
    end
+
+   @testset "Units" begin
+      @test 1.0bu"R" > 2.0bu"Rg"
+      filename = "y=0_var_1_t00000000_n00000000.out"
+      data = readdata(filename, dir="data")
+      varunit = getunit(data, "Rho")
+      @test varunit == bu"amucc"
+      varunit = getunit(data, "Ux")
+      @test varunit == u"km/s"
+      varunit = getunit(data, "Bx")
+      @test varunit == u"nT"
+      varunit = getunit(data, "P")
+      @test varunit == u"nPa"
+      varunit = getunit(data, "jx")
+      @test dimension(varunit) == dimension(Unitful.A/Unitful.m^2)
+      varunit = getunit(data, "ex")
+      @test varunit == u"mV/m"
+   end
+
 end

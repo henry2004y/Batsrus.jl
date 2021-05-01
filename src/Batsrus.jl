@@ -7,29 +7,27 @@ using Printf, Requires
 
 export Data
 
-"""
-	FileList
-
-Type for the file information. Contains filename `name`, file type `type` of
-ascii or binary, file size `bytes`, and number of snapshots `npictinfiles`.
-"""
+"Type for the file information."
 struct FileList
+   "filename"
    name::String
+   "file type"
    type::String
+   "file size"
    bytes::Int64
+   "number of snapshots"
    npictinfiles::Int64
 end
 
-"""
-    Data
-
-Primary data storage type, with fields `head` of header info, grid `x`, value
-`w`, and file info `list`.
-"""
+"Primary data storage type"
 struct Data{T<:AbstractFloat}
+   "header information"
    head::NamedTuple
+   "grid"
    x::Array{T}
+   "variables"
    w::Array{T}
+   "file information"
    list::FileList
 end
 

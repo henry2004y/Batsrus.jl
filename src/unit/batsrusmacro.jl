@@ -1,9 +1,9 @@
 """
     macro bu_str(unit)
 
-String macro to easily recall Batsrus units located in the `UnitfulBatsrus`
-package. Although all unit symbols in that package are suffixed with `_bu`,
-the suffix should not be used when using this macro.
+String macro to easily recall Batsrus units located in the `UnitfulBatsrus` package.
+Although all unit symbols in that package are suffixed with `_bu`, the suffix should not be
+used when using this macro.
 Note that what goes inside must be parsable as a valid Julia expression.
 Examples:
 ```
@@ -50,7 +50,7 @@ dottify(s) = s
 function replace_value(sym::Symbol)
    s = Symbol(sym, :_bu)
    if !(isdefined(UnitfulBatsrus, s) && typecheck_bool(getfield(UnitfulBatsrus, s)))
-       error("Symbol $s could not be found in UnitfulBatsrus.")
+      error("Symbol $s could not be found in UnitfulBatsrus.")
    end
 
    return getfield(UnitfulBatsrus, s)

@@ -3,11 +3,11 @@
 using PyPlot
 using Dierckx: Spline2D
 
-export plotdata, plotlogdata, animatedata, plot, scatter, contour, contourf,
-	   plot_surface, tricontourf, plot_trisurf, streamplot, streamslice, cutplot
+export plotdata, plotlogdata, animatedata, plot, scatter, contour, contourf, plot_surface,
+   tricontourf, plot_trisurf, streamplot, streamslice, cutplot
 
-import PyPlot: plot, scatter, contour, contourf, plot_surface, tricontourf,
-	   plot_trisurf, streamplot
+import PyPlot: plot, scatter, contour, contourf, plot_surface, tricontourf, plot_trisurf,
+   streamplot
 
 include("utility.jl")
 
@@ -70,12 +70,12 @@ Plot the variable from SWMF output.
 - `multifigure`: (optional) 1 for multifigure display, 0 for subplots.
 - `verbose`: (optional) display additional information.
 - `density`: (optional) density for streamlines.
-Right now this can only deal with 2D plots or 3D cuts. Full 3D plots may be
-supported in the future.
+Right now this can only deal with 2D plots or 3D cuts. Full 3D plots may be supported in the
+future.
 """
 function plotdata(data::Data, func::AbstractString; cut="", plotmode="contbar",
-   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, cutPlaneIndex=1,
-   multifigure=true, getrangeOnly=false, level=0, verbose=false, density=1.0)
+   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, cutPlaneIndex=1, multifigure=true,
+   getrangeOnly=false, level=0, verbose=false, density=1.0)
 
    x, w = data.x, data.w
    plotmode = split(plotmode)
@@ -126,9 +126,8 @@ function plotdata(data::Data, func::AbstractString; cut="", plotmode="contbar",
          dim = [0.125, 0.013, 0.2, 0.045]
          str = @sprintf "it=%d, time=%4.2f" data.head.it data.head.time
          at = matplotlib.offsetbox.AnchoredText(str,
-         loc="lower left", prop=Dict("size"=>8), frameon=true,
-         bbox_to_anchor=(0., 1.),
-         bbox_transform=ax.transAxes)
+            loc="lower left", prop=Dict("size"=>8), frameon=true,
+            bbox_to_anchor=(0., 1.), bbox_transform=ax.transAxes)
          at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
          ax.add_artist(at)
       end
@@ -171,7 +170,7 @@ function plotdata(data::Data, func::AbstractString; cut="", plotmode="contbar",
             # This needs to be modified!!!
             if !all(isinf.(plotrange))
                xyIndex = X .> plotrange[1] .& X .< plotrange[2] .&
-               Y .> plotrange[3] .& Y .< plotrange[4]
+                  Y .> plotrange[3] .& Y .< plotrange[4]
                X = X[xyIndex]
                Y = Y[xyIndex]
                W = W[xyIndex]
@@ -263,12 +262,12 @@ function plotdata(data::Data, func::AbstractString; cut="", plotmode="contbar",
             X, Y = x[:,1,1], x[1,:,2]
             v1, v2 = w[:,:,VarIndex1_]', w[:,:,VarIndex2_]'
 
-            q = quiver(X,Y,v1,v2,color="w")
+            q = quiver(X, Y, v1, v2, color="w")
 
          elseif occursin("grid", plotmode[ivar])
             # This does not take subdomain plot into account!
             X, Y = x[:,:,1], x[:,:,2]
-            scatter(X,Y,marker=".",alpha=0.6)
+            scatter(X, Y, marker=".", alpha=0.6)
             title("Grid illustration")
          else
             error("unknown plot mode: $(plotmode[ivar])")
@@ -278,9 +277,8 @@ function plotdata(data::Data, func::AbstractString; cut="", plotmode="contbar",
          dim = [0.125, 0.013, 0.2, 0.045]
          str = @sprintf "it=%d, time=%4.2f" data.head.it data.head.time
          at = matplotlib.offsetbox.AnchoredText(str,
-         loc="lower left", prop=Dict("size"=>8), frameon=true,
-         bbox_to_anchor=(0., 1.),
-         bbox_transform=ax.transAxes)
+            loc="lower left", prop=Dict("size"=>8), frameon=true,
+            bbox_to_anchor=(0., 1.), bbox_transform=ax.transAxes)
          at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
          ax.add_artist(at)
          # recover status
@@ -292,8 +290,8 @@ function plotdata(data::Data, func::AbstractString; cut="", plotmode="contbar",
       Y = @view x[:,:,:,2]
       Z = @view x[:,:,:,3]
       for (ivar,var) in enumerate(vars)
-         if plotmode[ivar] ∈ ("surf","surfbar","surfbarlog","cont","contbar",
-            "contlog","contbarlog")
+         if plotmode[ivar] ∈ ("surf","surfbar","surfbarlog","cont","contbar", "contlog",
+               "contbarlog")
 
             VarIndex_ = findindex(data, var)
 
@@ -345,8 +343,8 @@ function plotdata(data::Data, func::AbstractString; cut="", plotmode="contbar",
             cut1, cut2, v1, v2 = subsurface(cut1, cut2, v1, v2, plotrange)
          end
 
-         if plotmode[ivar] ∈ ("surf","surfbar","surfbarlog","cont","contbar",
-            "contlog","contbarlog")
+         if plotmode[ivar] ∈ ("surf", "surfbar", "surfbarlog", "cont", "contbar", "contlog",
+               "contbarlog")
             if level == 0
                c = ax.contourf(cut1, cut2, W)
             else
@@ -355,19 +353,15 @@ function plotdata(data::Data, func::AbstractString; cut="", plotmode="contbar",
             fig.colorbar(c, ax=ax)
             title(data.head.wnames[VarIndex_])
 
-         elseif plotmode[ivar] ∈ ("stream","streamover")
-            # Surprisingly, some box outputs do not have equal spaces???
-            #xi = range(cut1[1,1], stop=cut1[1,end], length=size(cut1)[2])
-            #yi = range(cut2[1,1], stop=cut2[end,1], length=size(cut2)[1])
-
+         elseif plotmode[ivar] ∈ ("stream", "streamover")
             xi = range(cut1[1,1], stop=cut1[1,end],
-            step=(cut1[1,end] - cut1[1,1]) / (size(cut1,2) - 1))
+               step=(cut1[1,end] - cut1[1,1]) / (size(cut1,2) - 1))
             yi = range(cut2[1,1], stop=cut2[end,1],
-            step=(cut2[end,1] - cut2[1,1]) / (size(cut2,1) - 1))
+               step=(cut2[end,1] - cut2[1,1]) / (size(cut2,1) - 1))
 
             Xi, Yi = meshgrid(xi, yi)
 
-            s = streamplot(Xi,Yi,v1,v2; color="w", linewidth=1.0, density)
+            s = streamplot(Xi, Yi, v1, v2; color="w", linewidth=1.0, density)
          end
 
          if cut == "x"
@@ -382,9 +376,8 @@ function plotdata(data::Data, func::AbstractString; cut="", plotmode="contbar",
          dim = [0.125, 0.013, 0.2, 0.045]
          str = @sprintf "it=%d, time=%4.2f" data.head.it data.head.time
          at = matplotlib.offsetbox.AnchoredText(str,
-         loc="lower left", prop=Dict("size"=>8), frameon=true,
-         bbox_to_anchor=(0., 1.),
-         bbox_transform=ax.transAxes)
+            loc="lower left", prop=Dict("size"=>8), frameon=true,
+            bbox_to_anchor=(0., 1.), bbox_transform=ax.transAxes)
          at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
          ax.add_artist(at)
       end
@@ -394,13 +387,12 @@ end
 
 
 """
-    cutplot(data, var; plotrange=[-Inf,Inf,-Inf,Inf], cut=' ',
-       plotinterval=0.1, density=1.0, cutPlaneIndex=1,level=20)
+    cutplot(data, var; plotrange=[-Inf,Inf,-Inf,Inf], cut="x", plotinterval=0.1,
+       density=1.0, cutPlaneIndex=1, level=20)
 
 2D plane cut contourf of 3D box data.
 """
-function cutplot(data::Data, var::AbstractString;
-   plotrange=[-Inf,Inf,-Inf,Inf], cut=' ',
+function cutplot(data::Data, var::AbstractString; plotrange=[-Inf,Inf,-Inf,Inf], cut="x",
    plotinterval=0.1, density=1.0, cutPlaneIndex=1,level=20)
 
    x, w = data.x, data.w
@@ -412,15 +404,15 @@ function cutplot(data::Data, var::AbstractString;
 
    W = w[:,:,:,VarIndex_]
 
-   if cut ∈ ('x',' ')
+   if cut == "x"
       cut1 = @view X[cutPlaneIndex,:,:]
       cut2 = @view Y[cutPlaneIndex,:,:]
       W    = @view W[cutPlaneIndex,:,:]
-   elseif cut ==  'y'
+   elseif cut == "y"
       cut1 = @view X[:,cutPlaneIndex,:]
       cut2 = @view Z[:,cutPlaneIndex,:]
       W    = @view W[:,cutPlaneIndex,:]
-   elseif cut == 'z'
+   elseif cut == "z"
       cut1 = @view X[:,:,cutPlaneIndex]
       cut2 = @view Y[:,:,cutPlaneIndex]
       W    = @view W[:,:,cutPlaneIndex]
@@ -442,24 +434,22 @@ function cutplot(data::Data, var::AbstractString;
       xlabel("x"); ylabel("y")
    end
 
-   return c::PyCall.PyObject
+   c
 end
 
 
 """
-    streamslice(data::Data, var::String;
-       plotrange=[-Inf,Inf,-Inf,Inf], cut=' ',
+    streamslice(data::Data, var::String; plotrange=[-Inf,Inf,-Inf,Inf], cut="x",
        plotinterval=0.1, density=1.0, cutPlaneIndex=1, color="w", linewidth=1.0)
 
-Plot streamlines on 2D slices of 3D box data. Variable string must be separated
-with `;`. Tranposes aree needed because of `meshgrid` and `ndgrid` conversion.
+Plot streamlines on 2D slices of 3D box data. Variable names in `var` string must be
+separated with `;`.
 """
 function streamslice(data::Data, var::AbstractString;
-   plotrange=[-Inf,Inf,-Inf,Inf], cut=' ', cutPlaneIndex=1,
-   plotinterval=0.1, kwargs...)
+   plotrange=[-Inf,Inf,-Inf,Inf], cut="x", cutPlaneIndex=1, plotinterval=0.1, kwargs...)
 
    x,w = data.x, data.w
-   varStream  = split(var,";")
+   varStream  = split(var, ";")
    VarIndex1_ = findindex(data, varStream[1])
    VarIndex2_ = findindex(data, varStream[2])
 
@@ -470,17 +460,17 @@ function streamslice(data::Data, var::AbstractString;
    v1 = @view w[:,:,:,VarIndex1_]
    v2 = @view w[:,:,:,VarIndex2_]
 
-   if cut ∈ ('x',' ')
+   if cut == "x"
       cut1 = @view X[cutPlaneIndex,:,:]
       cut2 = @view Y[cutPlaneIndex,:,:]
       v1   = v1[cutPlaneIndex,:,:]
       v2   = v2[cutPlaneIndex,:,:]
-   elseif cut ==  'y'
+   elseif cut ==  "y"
       cut1 = @view X[:,cutPlaneIndex,:]
       cut2 = @view Z[:,cutPlaneIndex,:]
       v1   = v1[:,cutPlaneIndex,:]
       v2   = v2[:,cutPlaneIndex,:]
-   elseif cut == 'z'
+   elseif cut == "z"
       cut1 = @view X[:,:,cutPlaneIndex]
       cut2 = @view Y[:,:,cutPlaneIndex]
       v1   = v1[:,:,cutPlaneIndex]
@@ -492,13 +482,13 @@ function streamslice(data::Data, var::AbstractString;
    end
 
    xi = range(cut1[1,1], stop=cut1[end,1],
-   step = (cut1[end,1] - cut1[1,1]) / (size(cut1,1) - 1))
+      step = (cut1[end,1] - cut1[1,1]) / (size(cut1,1) - 1))
    yi = range(cut2[1,1], stop=cut2[1,end],
-   step = (cut2[1,end] - cut2[1,1]) / (size(cut2,2) - 1))
+      step = (cut2[1,end] - cut2[1,1]) / (size(cut2,2) - 1))
 
    Xi, Yi = meshgrid(xi, yi)
 
-   s = streamplot(Xi,Yi,v1',v2'; kwargs...)
+   s = streamplot(Xi, Yi, v1', v2'; kwargs...)
 
    if cut == 'x'
       xlabel("y"); ylabel("z")
@@ -521,8 +511,6 @@ function plot(data::Data, var::AbstractString; kwargs...)
    VarIndex_ = findindex(data, var)
 
    c = plot(x, w[:,VarIndex_]; kwargs...)
-
-   return c::Vector{PyCall.PyObject}
 end
 
 """
@@ -535,8 +523,6 @@ function scatter(data::Data, var::AbstractString; kwargs...)
    VarIndex_ = findindex(data, var)
 
    c = scatter(x, w[:,VarIndex_]; kwargs...)
-
-   return c::Vector{PyCall.PyObject}
 end
 
 """
@@ -602,7 +588,7 @@ end
 
 """
     plot_trisurf(data::Data, var::String;
-       plotrange::Vector{Float64}=[-Inf,Inf,-Inf,Inf], kwargs::Dict=Dict())
+       plotrange::Vector{Float64}=[-Inf,Inf,-Inf,Inf], kwargs...)
 
 Wrapper over the plot_trisurf function in matplotlib.
 """
@@ -635,7 +621,7 @@ end
 Wrapper over the plot_surface function in matplotlib.
 """
 function plot_surface(data::Data, var::AbstractString;
-   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, kwargs=Dict())
+   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, kwargs...)
 
    Xi, Yi, Wi = getdata(data, var, plotrange, plotinterval, 2)
 
@@ -658,7 +644,7 @@ function streamplot(data::Data, var::AbstractString;
    VarIndex1_ = findfirst(x->x==lowercase(VarStream[1]), wnames)
    VarIndex2_ = findfirst(x->x==lowercase(VarStream[2]), wnames)
 
-   if data.head.gencoord # Generalized coordinates
+   if data.head.gencoord # generalized coordinates
       X, Y = vec(x[:,:,1]), vec(x[:,:,2])
       if any(isinf.(plotrange))
          if plotrange[1] == -Inf plotrange[1] = minimum(X) end

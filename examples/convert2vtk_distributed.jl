@@ -10,11 +10,9 @@
 using Distributed
 using Pkg
 if "VisAna" ∈ keys(Pkg.installed())
-   @everywhere using VisAna
+   @everywhere using Batsrus
 else
-   @warn "VisAna not installed. Consider installing the package by
-   `Pkg.add(PackageSpec(url=\"https://github.com/henry2004y/VisAnaJulia\",
-    rev=\"master\"))`"
+   @warn "Batsrus.jl not installed. Install the package by `Pkg.add("Batsrus")`"
 end
 @everywhere using Glob
 
