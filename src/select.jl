@@ -2,13 +2,13 @@ export getvars, getvar, cutdata, subvolume, subsurface
 
 
 """
-	cutdata(data, var; plotrange=[-Inf,Inf,-Inf,Inf], cut=' ',
-		cutPlaneIndex=1)
+	cutdata(data, var; plotrange=[-Inf,Inf,-Inf,Inf], dir="x", sequence=1)
 
-Get 2D plane cut data of 3D box data.
+Get 2D plane cut in orientation `dir` for `var` out of 3D box `data` within `plotrange`.
+The returned 2D data lies in the `sequence` plane from - to + in `dir`.
 """
 function cutdata(data::Data, var::AbstractString;
-   plotrange=[-Inf,Inf,-Inf,Inf], cut=' ', cutPlaneIndex=1)
+   plotrange=[-Inf,Inf,-Inf,Inf], dir="x", sequence=1)
 
    x, w = data.x, data.w
    VarIndex_ = findfirst(x->x==lowercase(var), lowercase.(data.head.wnames))
@@ -20,18 +20,18 @@ function cutdata(data::Data, var::AbstractString;
 
    W = w[:,:,:,VarIndex_]
 
-   if cut ∈ ('x',' ')
-      cut1 = @view X[cutPlaneIndex,:,:]
-      cut2 = @view Y[cutPlaneIndex,:,:]
-      W    = @view W[cutPlaneIndex,:,:]
-   elseif cut ==  'y'
-      cut1 = @view X[:,cutPlaneIndex,:]
-      cut2 = @view Z[:,cutPlaneIndex,:]
-      W    = @view W[:,cutPlaneIndex,:]
-   elseif cut == 'z'
-      cut1 = @view X[:,:,cutPlaneIndex]
-      cut2 = @view Y[:,:,cutPlaneIndex]
-      W    = @view W[:,:,cutPlaneIndex]
+   if dir == "x"
+      cut1 = @view X[sequence,:,:]
+      cut2 = @view Y[sequence,:,:]
+      W    = @view W[sequence,:,:]
+   elseif dir == "y"
+      cut1 = @view X[:,sequence,:]
+      cut2 = @view Z[:,sequence,:]
+      W    = @view W[:,sequence,:]
+   elseif dir == "z"
+      cut1 = @view X[:,:,sequence]
+      cut2 = @view Y[:,:,sequence]
+      W    = @view W[:,:,sequence]
    end
 
    if !all(isinf.(plotrange))

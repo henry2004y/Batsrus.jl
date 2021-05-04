@@ -65,16 +65,16 @@ Plot the variable from SWMF output.
 - `plotrange::Vector`: (optional) range of plotting.
 - `plotinterval`: (optional) interval for interpolation.
 - `level`: (optional) level of contour.
-- `cut`: (optional) select 2D cut plane from 3D outputs ["x","y","z"].
-- `cutPlaneIndex`: (optional)
+- `dir`: (optional) 2D cut plane orientation from 3D outputs ["x","y","z"].
+- `sequence`: (optional) sequence of plane from - to + in that direction.
 - `multifigure`: (optional) 1 for multifigure display, 0 for subplots.
 - `verbose`: (optional) display additional information.
 - `density`: (optional) density for streamlines.
 Right now this can only deal with 2D plots or 3D cuts. Full 3D plots may be supported in the
 future.
 """
-function plotdata(data::Data, func::AbstractString; cut="", plotmode="contbar",
-   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, cutPlaneIndex=1, multifigure=true,
+function plotdata(data::Data, func::AbstractString; dir="x", plotmode="contbar",
+   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, sequence=1, multifigure=true,
    getrangeOnly=false, level=0, verbose=false, density=1.0)
 
    x, w = data.x, data.w
@@ -299,18 +299,18 @@ function plotdata(data::Data, func::AbstractString; cut="", plotmode="contbar",
 
             W = w[:,:,:,VarIndex_]
 
-            if cut ∈ ("x","")
-               cut1 = @view X[cutPlaneIndex,:,:]
-               cut2 = @view Y[cutPlaneIndex,:,:]
-               W    = @view W[cutPlaneIndex,:,:]
-            elseif cut ==  "y"
-               cut1 = @view X[:,cutPlaneIndex,:]
-               cut2 = @view Z[:,cutPlaneIndex,:]
-               W    = @view W[:,cutPlaneIndex,:]
-            elseif cut == "z"
-               cut1 = @view X[:,:,cutPlaneIndex]
-               cut2 = @view Y[:,:,cutPlaneIndex]
-               W    = @view W[:,:,cutPlaneIndex]
+            if dir == "x"
+               cut1 = @view X[sequence,:,:]
+               cut2 = @view Y[sequence,:,:]
+               W    = @view W[sequence,:,:]
+            elseif dir == "y"
+               cut1 = @view X[:,sequence,:]
+               cut2 = @view Z[:,sequence,:]
+               W    = @view W[:,sequence,:]
+            elseif dir == "z"
+               cut1 = @view X[:,:,sequence]
+               cut2 = @view Y[:,:,sequence]
+               W    = @view W[:,:,sequence]
             end
          elseif plotmode[ivar] ∈ ("stream","streamover")
             varStream  = split(var,";")
@@ -320,21 +320,21 @@ function plotdata(data::Data, func::AbstractString; cut="", plotmode="contbar",
             v1 = @view w[:,:,:,VarIndex1_]
             v2 = @view w[:,:,:,VarIndex2_]
 
-            if cut ∈ ("x","")
-               cut1 = @view Y[cutPlaneIndex,:,:]
-               cut2 = @view Z[cutPlaneIndex,:,:]
-               v1   = v1[cutPlaneIndex,:,:]'
-               v2   = v2[cutPlaneIndex,:,:]'
-            elseif cut ==  "y"
-               cut1 = @view X[:,cutPlaneIndex,:]
-               cut2 = @view Z[:,cutPlaneIndex,:]
-               v1   = v1[:,cutPlaneIndex,:]'
-               v2   = v2[:,cutPlaneIndex,:]'
-            elseif cut == "z"
-               cut1 = @view X[:,:,cutPlaneIndex]
-               cut2 = @view Y[:,:,cutPlaneIndex]
-               v1   = v1[:,:,cutPlaneIndex]'
-               v2   = v2[:,:,cutPlaneIndex]'
+            if dir == "x"
+               cut1 = @view Y[sequence,:,:]
+               cut2 = @view Z[sequence,:,:]
+               v1   = v1[sequence,:,:]'
+               v2   = v2[sequence,:,:]'
+            elseif dir == "y"
+               cut1 = @view X[:,sequence,:]
+               cut2 = @view Z[:,sequence,:]
+               v1   = v1[:,sequence,:]'
+               v2   = v2[:,sequence,:]'
+            elseif dir == "z"
+               cut1 = @view X[:,:,sequence]
+               cut2 = @view Y[:,:,sequence]
+               v1   = v1[:,:,sequence]'
+               v2   = v2[:,:,sequence]'
             end
             cut1, cut2 = cut1', cut2'
          end
@@ -364,11 +364,11 @@ function plotdata(data::Data, func::AbstractString; cut="", plotmode="contbar",
             s = streamplot(Xi, Yi, v1, v2; color="w", linewidth=1.0, density)
          end
 
-         if cut == "x"
+         if dir == "x"
             xlabel("y"); ylabel("z")
-         elseif cut == "y"
+         elseif dir == "y"
             xlabel("x"); ylabel("z")
-         elseif cut == "z"
+         elseif dir == "z"
             xlabel("x"); ylabel("y")
          end
 
@@ -387,13 +387,13 @@ end
 
 
 """
-    cutplot(data, var; plotrange=[-Inf,Inf,-Inf,Inf], cut="x", plotinterval=0.1,
-       density=1.0, cutPlaneIndex=1, level=20)
+    cutplot(data, var; plotrange=[-Inf,Inf,-Inf,Inf], dir="x", plotinterval=0.1,
+       density=1.0, sequence=1, level=20)
 
 2D plane cut contourf of 3D box data.
 """
 function cutplot(data::Data, var::AbstractString; plotrange=[-Inf,Inf,-Inf,Inf], cut="x",
-   plotinterval=0.1, density=1.0, cutPlaneIndex=1,level=20)
+   plotinterval=0.1, density=1.0, sequence=1, level=20)
 
    x, w = data.x, data.w
    VarIndex_ = findindex(data, var)
@@ -404,18 +404,18 @@ function cutplot(data::Data, var::AbstractString; plotrange=[-Inf,Inf,-Inf,Inf],
 
    W = w[:,:,:,VarIndex_]
 
-   if cut == "x"
-      cut1 = @view X[cutPlaneIndex,:,:]
-      cut2 = @view Y[cutPlaneIndex,:,:]
-      W    = @view W[cutPlaneIndex,:,:]
-   elseif cut == "y"
-      cut1 = @view X[:,cutPlaneIndex,:]
-      cut2 = @view Z[:,cutPlaneIndex,:]
-      W    = @view W[:,cutPlaneIndex,:]
-   elseif cut == "z"
-      cut1 = @view X[:,:,cutPlaneIndex]
-      cut2 = @view Y[:,:,cutPlaneIndex]
-      W    = @view W[:,:,cutPlaneIndex]
+   if dir == "x"
+      cut1 = @view X[sequence,:,:]
+      cut2 = @view Y[sequence,:,:]
+      W    = @view W[sequence,:,:]
+   elseif dir == "y"
+      cut1 = @view X[:,sequence,:]
+      cut2 = @view Z[:,sequence,:]
+      W    = @view W[:,sequence,:]
+   elseif dir == "z"
+      cut1 = @view X[:,:,sequence]
+      cut2 = @view Y[:,:,sequence]
+      W    = @view W[:,:,sequence]
    end
 
    if !all(isinf.(plotrange))
@@ -426,11 +426,11 @@ function cutplot(data::Data, var::AbstractString; plotrange=[-Inf,Inf,-Inf,Inf],
 
    title(data.head.wnames[VarIndex_])
 
-   if cut == "x"
+   if dir == "x"
       xlabel("y"); ylabel("z")
-   elseif cut == "y"
+   elseif dir == "y"
       xlabel("x"); ylabel("z")
-   elseif cut == "z"
+   elseif dir == "z"
       xlabel("x"); ylabel("y")
    end
 
@@ -439,14 +439,14 @@ end
 
 
 """
-    streamslice(data::Data, var::String; plotrange=[-Inf,Inf,-Inf,Inf], cut="x",
-       plotinterval=0.1, density=1.0, cutPlaneIndex=1, color="w", linewidth=1.0)
+    streamslice(data::Data, var::String; plotrange=[-Inf,Inf,-Inf,Inf], dir="x",
+       plotinterval=0.1, density=1.0, sequence=1, color="w", linewidth=1.0)
 
 Plot streamlines on 2D slices of 3D box data. Variable names in `var` string must be
 separated with `;`.
 """
 function streamslice(data::Data, var::AbstractString;
-   plotrange=[-Inf,Inf,-Inf,Inf], cut="x", cutPlaneIndex=1, plotinterval=0.1, kwargs...)
+   plotrange=[-Inf,Inf,-Inf,Inf], dir="x", sequence=1, plotinterval=0.1, kwargs...)
 
    x,w = data.x, data.w
    varStream  = split(var, ";")
@@ -460,21 +460,21 @@ function streamslice(data::Data, var::AbstractString;
    v1 = @view w[:,:,:,VarIndex1_]
    v2 = @view w[:,:,:,VarIndex2_]
 
-   if cut == "x"
-      cut1 = @view X[cutPlaneIndex,:,:]
-      cut2 = @view Y[cutPlaneIndex,:,:]
-      v1   = v1[cutPlaneIndex,:,:]
-      v2   = v2[cutPlaneIndex,:,:]
-   elseif cut ==  "y"
-      cut1 = @view X[:,cutPlaneIndex,:]
-      cut2 = @view Z[:,cutPlaneIndex,:]
-      v1   = v1[:,cutPlaneIndex,:]
-      v2   = v2[:,cutPlaneIndex,:]
-   elseif cut == "z"
-      cut1 = @view X[:,:,cutPlaneIndex]
-      cut2 = @view Y[:,:,cutPlaneIndex]
-      v1   = v1[:,:,cutPlaneIndex]
-      v2   = v2[:,:,cutPlaneIndex]
+   if dir == "x"
+      cut1 = @view X[sequence,:,:]
+      cut2 = @view Y[sequence,:,:]
+      v1   = v1[sequence,:,:]
+      v2   = v2[sequence,:,:]
+   elseif dir == "y"
+      cut1 = @view X[:,sequence,:]
+      cut2 = @view Z[:,sequence,:]
+      v1   = v1[:,sequence,:]
+      v2   = v2[:,sequence,:]
+   elseif dir == "z"
+      cut1 = @view X[:,:,sequence]
+      cut2 = @view Y[:,:,sequence]
+      v1   = v1[:,:,sequence]
+      v2   = v2[:,:,sequence]
    end
 
    if !all(isinf.(plotrange))
@@ -490,11 +490,11 @@ function streamslice(data::Data, var::AbstractString;
 
    s = streamplot(Xi, Yi, v1', v2'; kwargs...)
 
-   if cut == 'x'
+   if dir == "x"
       xlabel("y"); ylabel("z")
-   elseif cut == 'y'
+   elseif dir == "y"
       xlabel("x"); ylabel("z")
-   elseif cut == 'z'
+   elseif dir == "z"
       xlabel("x"); ylabel("y")
    end
    s

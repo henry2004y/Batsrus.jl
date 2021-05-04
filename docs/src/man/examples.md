@@ -157,13 +157,13 @@ plotdata(data, "rho", plotmode="contbar")
 
 - 3D box
 ```
-plotdata(data, "bx", plotmode="contbar", cut="y", cutPlaneIndex=1, level=20)
-plotdata(data, "bx", plotmode="contbar", cut="y", plotrange=[-1.4,-1.1,0.70,0.78])
+plotdata(data, "bx", plotmode="contbar", dir="y", sequence=1, level=20)
+plotdata(data, "bx", plotmode="contbar", dir="y", plotrange=[-1.4,-1.1,0.70,0.78])
 using PyPlot
 plt.axis("scaled")
 
 subplot(2,2,(1,3))
-cutplot(data, "Ex", cut="y", cutPlaneIndex=128, plotrange=plotrange)
+cutplot(data, "Ex"; dir="y", sequence=128, plotrange)
 ```
 
 #### Finding indexes
