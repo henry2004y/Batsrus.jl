@@ -1,12 +1,11 @@
-# BATSRUS
+# Batsrus.jl
 
 [![Build Status](https://img.shields.io/github/workflow/status/henry2004y/Batsrus.jl/CI)](https://github.com/henry2004y/Batsrus.jl/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![](https://img.shields.io/badge/docs-latest-blue.svg)][Batsrus-doc]
 [![][codecov-img]][codecov-url]
 
-Fast [BATSRUS](https://github.com/MSTEM-QUDA/BATSRUS) data reading, converting, and visualizing using Julia, originates back to June 14th 2017.
-It is the successor of [VisAnaMatlab](https://github.com/henry2004y/VisAnaMatlab).
+Fast [BATSRUS](https://github.com/MSTEM-QUDA/BATSRUS)/SWMF data reading, converting, and visualizing using Julia, successor of [VisAnaMatlab](https://github.com/henry2004y/VisAnaMatlab).
 
 This package provides the following functionalities:
   * simulation data reader
