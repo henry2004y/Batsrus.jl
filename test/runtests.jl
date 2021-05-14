@@ -28,7 +28,7 @@ end
    @testset "Reading 1D ascii" begin
       filename = "1d__raw_2_t25.60000_n00000258.out"
       data = readdata(filename, dir="data", verbose=true)
-      @test startswith(repr(data), "filename  = data/")
+      @test startswith(repr(data), "filename  = data")
       @test Batsrus.setunits(data.head, "NORMALIZED")
       @test isa(data.head, NamedTuple)
       @test extrema(data.x) == (-127.5, 127.5)
