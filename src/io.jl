@@ -4,33 +4,32 @@ export readdata, readlogdata, readtecdata, showhead
 
 const tag = 4 # Fortran record tag
 
-searchdir(path,key) = filter(x->occursin(key,x), readdir(path))
+searchdir(path, key) = filter(x->occursin(key, x), readdir(path))
 
-function Base.show(io::IO, s::Data)
-   showhead(s)
-   if s.list.bytes ≥ 1e9
-      @info "filesize = $(s.list.bytes/1e9) GB"
-   elseif s.list.bytes ≥ 1e6
-      @info "filesize = $(s.list.bytes/1e6) MB"
-   elseif s.list.bytes ≥ 1e3
-      @info "filesize = $(s.list.bytes/1e3) KB"
+function Base.show(io::IO, data::Data)
+   showhead(io, data)
+   if data.list.bytes ≥ 1e9
+      println(io, "filesize = $(data.list.bytes/1e9) GB")
+   elseif data.list.bytes ≥ 1e6
+      println(io, "filesize = $(data.list.bytes/1e6) MB")
+   elseif data.list.bytes ≥ 1e3
+      println(io, "filesize = $(data.list.bytes/1e3) KB")
    else
-      @info "filesize = $(s.list.bytes) bytes"
+      println(io, "filesize = $(data.list.bytes) bytes")
    end
-   @info "snapshots = $(s.list.npictinfiles)"
+   println(io, "snapshots = $(data.list.npictinfiles)")
 end
 
 """
 	readdata(filenameIn; dir=".", npict=1, verbose=false)
 
-Read data from BATSRUS output files. Stores the `npict` snapshot from an ascii
-or binary data file into the arrays of coordinates `x` and data `w`.
+Read data from BATSRUS output files. Stores the `npict` snapshot from an ascii or binary
+data file into the arrays of coordinates `x` and data `w`.
 Filename can be provided with wildcards.
 
 # Examples
 ```
-filename = "1d_raw*"
-data = readdata(filename)
+data = readdata("1d_raw*")
 ```
 """
 function readdata(filenameIn::AbstractString; dir=".", npict=1, verbose=false)
@@ -50,7 +49,7 @@ function readdata(filenameIn::AbstractString; dir=".", npict=1, verbose=false)
       @info "filename=$(filelist.name)\n"*"npict=$(filelist.npictinfiles)"
 
    if filelist.npictinfiles - npict < 0
-      throw(ArgumentError("npict out of range!"))
+      throw(ArgumentError("select snapshot $npict out of range $(filelist.npictinfiles)!"))
    end
    seekstart(fileID) # Rewind to start
 
@@ -67,7 +66,7 @@ function readdata(filenameIn::AbstractString; dir=".", npict=1, verbose=false)
       getascii!(x, w, fileID, filehead)
    else
       skip(fileID, tag) # skip record start tag.
-      fileType == "real4" ? T = Float32 : T = Float64
+      T = fileType == "real4" ? Float32 : Float64
       x, w = allocateBuffer(filehead, T)
       getbinary!(x, w, fileID, filehead, T)
    end
@@ -75,8 +74,6 @@ function readdata(filenameIn::AbstractString; dir=".", npict=1, verbose=false)
    close(fileID)
 
    #setunits(filehead,"")
-
-   verbose && showhead(filelist, filehead)
 
 	data = Data(filehead, x, w, filelist)
 
@@ -103,7 +100,7 @@ function readlogdata(filename::AbstractString)
    data = zeros(nw,nLine)
    for i = 1:nLine
       line = split(readline(f))
-      data[:,i] = parse.(Float64,line)
+      data[:,i] = parse.(Float64, line)
    end
 
    close(f)
@@ -296,7 +293,7 @@ function getfiletype(filename)
       # Obtain file size & number of snapshots
       seekstart(fileID)
       pictsize = getfilesize(fileID, type)
-      npictinfiles = floor(Int, bytes / pictsize)
+      npictinfiles = bytes ÷ pictsize
    end
 
    filelist = FileList(filename, type, bytes, npictinfiles)
@@ -305,23 +302,20 @@ function getfiletype(filename)
 end
 
 """
-	getfilehead(fileID, type, iargout=1)
+	getfilehead(fileID, type) -> NameTuple
 
-Obtain the header information from BATSRUS output files.
+Obtain the header information from BATSRUS output file of `type` linked to `fileID`.
 # Input arguments
 - `fileID::IOStream`: file identifier.
 - `type::String`: file type in ["ascii", "real4", "binary", "log"].
-- `iargout::Int`: 1 for output pictsize, 2 for output filehead.
-# Output arguments
-- `filehead::NamedTuple`: file header info.
 """
-function getfilehead(fileID::IOStream, type::String)
+function getfilehead(fileID::IOStream, type)
 
    ftype = string(lowercase(type))
 
-   if ftype == type lenstr = 79 else lenstr = 500 end
+   lenstr = ftype == type ? 79 : 500
 
-   # Read header
+   ## Read header
    pointer0 = position(fileID)
 
    if ftype == "ascii"
@@ -356,7 +350,7 @@ function getfilehead(fileID::IOStream, type::String)
       read!(fileID, nx)
       skip(fileID, 2*tag) # skip record end/start tags.
       if neqpar > 0
-         eqpar = zeros(Float32,neqpar)
+         eqpar = zeros(Float32, neqpar)
          read!(fileID, eqpar)
          skip(fileID, 2*tag) # skip record end/start tags.
       end
@@ -367,9 +361,6 @@ function getfilehead(fileID::IOStream, type::String)
    # Header length
    pointer1 = position(fileID)
    headlen = pointer1 - pointer0
-
-   # Calculate the snapshot size = header + data + recordmarks
-   nxs = prod(nx)
 
    # Set variables array
    variables = split(varname) # returns a string array
@@ -412,7 +403,7 @@ function getfilesize(fileID::IOStream, type::String)
       nx = parse.(Int64, split(readline(fileID)))
       neqpar > 0 && skipline(fileID)
       skipline(fileID)
-   elseif ftype ∈ ["real4","binary"]
+   elseif ftype ∈ ("real4", "binary")
       skip(fileID, tag)
       read(fileID, lenstr)
       skip(fileID, 2*tag)
@@ -422,12 +413,12 @@ function getfilesize(fileID::IOStream, type::String)
       tmp = read(fileID, Int32)
       nw = read(fileID, Int32)
       skip(fileID, 2*tag)
-      nx = zeros(Int32,ndim)
+      nx = zeros(Int32, ndim)
       read!(fileID, nx)
       skip(fileID, 2*tag)
       if tmp > 0
-         tmp2 = zeros(Float32,tmp)
-         read!(fileID,tmp2)
+         tmp2 = zeros(Float32, tmp)
+         read!(fileID, tmp2)
          skip(fileID, 2*tag) # skip record end/start tags.
       end
       read(fileID, lenstr)
@@ -477,23 +468,23 @@ end
 "Read ascii format data."
 function getascii!(x, w, fileID::IOStream, filehead::NamedTuple)
 
-   ndim = filehead.ndim
+   ndim, nx = filehead.ndim, filehead.nx
 
    # Read coordinates & values row by row
    if ndim == 1 # 1D
-      for ix = 1:filehead.nx[1]
+      for ix = 1:nx[1]
          temp = parse.(Float64, split(readline(fileID)))
          x[ix,:] .= temp[1]
          w[ix,:] .= temp[2:end]
       end
    elseif ndim == 2 # 2D
-      for j = 1:filehead.nx[2], i = 1:filehead.nx[1]
+      for j = 1:nx[2], i = 1:nx[1]
          temp = parse.(Float64, split(readline(fileID)))
          x[i,j,:] .= temp[1:2]
          w[i,j,:] .= temp[3:end]
       end
    elseif ndim == 3 # 3D
-      for k = 1:filehead.nx[3], j = 1:filehead.nx[2], i = 1:filehead.nx[1]
+      for k = 1:nx[3], j = 1:nx[2], i = 1:nx[1]
          temp = parse.(Float64, split(readline(fileID)))
          x[i,j,k,:] .= temp[1:3]
          w[i,j,k,:] .= temp[4:end]
@@ -512,25 +503,25 @@ function getbinary!(x, w, fileID::IOStream, filehead::NamedTuple, T::DataType)
 
    # Read coordinates & values
    if ndim == 1 # 1D
-      read!(fileID,x)
-      skip(fileID,8) # skip record end/start tags.
+      read!(fileID, x)
+      skip(fileID, 2*tag) # skip record end/start tags.
       for iw = 1:nw
          read!(fileID, @view w[:,iw])
-         skip(fileID,8) # skip record end/start tags.
+         skip(fileID, 2*tag) # skip record end/start tags.
       end
    elseif ndim == 2 # 2D
-      read!(fileID,x)
-      skip(fileID,8) # skip record end/start tags.
+      read!(fileID, x)
+      skip(fileID, 2*tag) # skip record end/start tags.
       for iw = 1:nw
          read!(fileID, @view w[:,:,iw])
-         skip(fileID,8) # skip record end/start tags.
+         skip(fileID, 2*tag) # skip record end/start tags.
       end
    elseif ndim == 3 # 3D
-      read!(fileID,x)
-      skip(fileID,8) # skip record end/start tags.
+      read!(fileID, x)
+      skip(fileID, 2*tag) # skip record end/start tags.
       for iw = 1:nw
          read!(fileID, @view w[:,:,:,iw])
-         skip(fileID,8) # skip record end/start tags.
+         skip(fileID, 2*tag) # skip record end/start tags.
       end
    end
 
@@ -538,24 +529,19 @@ function getbinary!(x, w, fileID::IOStream, filehead::NamedTuple, T::DataType)
 end
 
 """
-	setunits(filehead, type, (distunit, Mion, Melectron))
+	setunits(filehead, type; distance=1.0, mp=1.0, me=1.0)
 
-Set the units for the output files。
+Set the units for the output files.
 If type is given as "SI", "CGS", "NORMALIZED", "PIC", "PLANETARY", "SOLAR", set
-`typeunit = type`, otherwise try to guess from the fileheader.
-Based on `typeunit` set units for distance [xSI], time [tSI], density [rhoSI],
-pressure [pSI], magnetic field [bSI] and current density [jSI] in SI units.
-Distance unit [rplanet | rstar], ion & electron mass in [amu] can be set with
-optional distunit, Mion and Melectron.
+`typeunit = type`, otherwise try to guess from the fileheader. Based on `typeunit` set units
+for distance [xSI], time [tSI], density [rhoSI], pressure [pSI], magnetic field [bSI] and
+current density [jSI] in SI units. Distance unit [rplanet | rstar], ion and electron mass in
+[amu] can be set with optional `distance`, `mp` and `me`.
 
 Also calculate convenient constants ti0, cs0 ... for typical formulas.
-This function needs to be improved!
+This function is currently not used anywhere!
 """
-function setunits( filehead::NamedTuple, type::AbstractString; distunit=1.0,
-   Mion=1.0, Melectron=1.0)
-
-   # This is currently not used, so return here
-   return
+function setunits(filehead, type; distance=1.0, mp=1.0, me=1.0)
 
    ndim      = filehead.ndim
    headline  = filehead.headline
@@ -703,11 +689,11 @@ function setunits( filehead::NamedTuple, type::AbstractString; distunit=1.0,
    end
 
    # Overwrite distance unit if given as an argument
-   if !isempty(distunit) xSI = distunit end
+   if !isempty(distance) xSI = distance end
 
    # Overwrite ion & electron masses if given as an argument
-   if !isempty(Mion)      Mi = Mion end
-   if !isempty(Melectron) Me = Melectron end
+   if !isempty(mp)      Mi = mp end
+   if !isempty(me) Me = me end
 
    # Calculate convenient conversion factors
    if typeunit == "NORMALIZED"
@@ -745,7 +731,7 @@ function setunits( filehead::NamedTuple, type::AbstractString; distunit=1.0,
       di0  = cSI/(op0/tSI)/xSI                 # di=c/omegap = di0/sqrt(rho)
       ld0  = moq*√(pSI)/rhoSI/xSI              # ld          = ld0*sqrt(p)/rho
    end
-   nothing
+   return true
 end
 
 """
@@ -753,29 +739,31 @@ end
 
 Displaying file header information.
 """
-function showhead(file::FileList, head::NamedTuple)
-   @info "filename = $(file.name)"
-   @info "filetype = $(file.type)"
-   @info "headline = $(head.headline)"
-   @info "it       = $(head.it)"
-   @info "time     = $(head.time)"
-   @info "gencoord = $(head.gencoord)"
-   @info "ndim     = $(head.ndim)"
-   @info "neqpar   = $(head.neqpar)"
-   @info "nw       = $(head.nw)"
-   @info "nx       = $(head.nx)"
+function showhead(file::FileList, head, io=stdout)
+   println(io, "filename  = $(file.name)")
+   println(io, "filetype  = $(file.type)")
+   println(io, "headline  = $(head.headline)")
+   println(io, "iteration = $(head.it)")
+   println(io, "time      = $(head.time)")
+   println(io, "gencoords = $(head.gencoord)")
+   println(io, "ndim      = $(head.ndim)")
+   println(io, "neqpar    = $(head.neqpar)")
+   println(io, "nw        = $(head.nw)")
+   println(io, "nx        = $(head.nx)")
 
    if head.neqpar > 0
-      @info "parameters = $(head.eqpar)"
-      @info "coord names= $(head.variables[1:head.ndim])"
-      @info "var   names= $(head.variables[head.ndim+1:head.ndim+head.nw])"
-      @info "param names= $(head.variables[head.ndim+head.nw+1:end])"
+      println(io, "parameters  = $(head.eqpar)")
+      println(io, "coord names = $(head.variables[1:head.ndim])")
+      println(io, "var   names = $(head.variables[head.ndim+1:head.ndim+head.nw])")
+      println(io, "param names = $(head.variables[head.ndim+head.nw+1:end])")
    end
 end
 
 """
 	showhead(data)
+   showhead(io, data)
 
-Displaying file information for the `Data` type.
+Display file information of `data`.
 """
 showhead(data::Data) = showhead(data.list, data.head)
+showhead(io, data::Data) = showhead(data.list, data.head, io)

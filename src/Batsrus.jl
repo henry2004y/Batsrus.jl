@@ -14,9 +14,9 @@ struct FileList
    "file type"
    type::String
    "file size"
-   bytes::Int64
+   bytes::Int
    "number of snapshots"
-   npictinfiles::Int64
+   npictinfiles::Int
 end
 
 "Primary data storage type"

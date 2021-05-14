@@ -41,26 +41,30 @@ function cutdata(data::Data, var::AbstractString;
    cut1, cut2, W
 end
 
-"""
-	subsurface(x, y, data, limits)
-	subsurface(x, y, u, v, limits)
+@inline function checkvalidlimits(limits, dim=2)
+   if dim == 2
+      if length(limits) != 4
+         throw(ArgumentError("Reduction range $limits should be [xmin xmax ymin ymax]!"))
+      end
 
-Extract subset of 2D surface dataset. See also: [`subvolume`](@ref).
-"""
-function subsurface(x, y, data, limits)
-
-   if length(limits)!=4
-      @error "Reduction must be [xmin xmax ymin ymax]"
+      if limits[1] > limits[2] || limits[3] > limits[4]
+         throw(DomainError(limits, "Invalid reduction range!"))
+      end
+   elseif dim == 3
+      if length(limits) != 6
+         throw(ArgumentError(
+            "Reduction range $limits should be [xmin xmax ymin ymax zmin max]!"))
+      end
+   
+      if limits[1] > limits[2] || limits[3] > limits[4] || limits[5] > limits[6]
+         throw(DomainError(limits, "Invalid reduction range!"))
+      end
    end
+end
 
-   if limits[1] > limits[2] || limits[3] > limits[4]
-      @error "subsurface:InvalidReductionXRange"
-   end
-
-   sz = size(data)
-
-   hx = x[:,1]
-   hy = y[1,:]
+@inline function findindexes(x, y, limits)
+   hx = @view x[:,1]
+   hy = @view y[1,:]
 
    if isinf(limits[1]) limits[1] = minimum(hx) end
    if isinf(limits[3]) limits[3] = minimum(hy) end
@@ -69,8 +73,40 @@ function subsurface(x, y, data, limits)
 
    xind = findall(limits[1] .≤ hx .≤ limits[2])
    yind = findall(limits[3] .≤ hy .≤ limits[4])
+   xind, yind
+end
 
-   newdata = subdata(data, xind, yind, sz)
+@inline function findindexes(x, y, z, limits)
+   hx = @view x[:,1,1]
+   hy = @view y[1,:,1]
+   hz = @view z[1,1,:]
+
+   if isinf(limits[1]) limits[1] = minimum(hx) end
+   if isinf(limits[3]) limits[3] = minimum(hy) end
+   if isinf(limits[5]) limits[5] = minimum(hz) end
+   if isinf(limits[2]) limits[2] = maximum(hx) end
+   if isinf(limits[4]) limits[4] = maximum(hy) end
+   if isinf(limits[6]) limits[6] = maximum(hz) end
+
+   xind = findall(limits[1] .≤ hx .≤ limits[2])
+   yind = findall(limits[3] .≤ hy .≤ limits[4])
+   zind = findall(limits[5] .≤ hy .≤ limits[6])
+   xind, yind, zind
+end
+
+"""
+	subsurface(x, y, data, limits)
+	subsurface(x, y, u, v, limits)
+
+Extract subset of 2D surface dataset. See also: [`subvolume`](@ref).
+"""
+function subsurface(x, y, data, limits)
+
+   checkvalidlimits(limits)
+
+   xind, yind = findindexes(x, y, limits)
+
+   newdata = subdata(data, xind, yind, size(data))
 
    newx = x[xind, yind]
    newy = y[xind, yind]
@@ -80,27 +116,11 @@ end
 
 function subsurface(x, y, u, v, limits)
 
-   if length(limits)!=4
-      @error "Reduction must be [xmin xmax ymin ymax]"
-   end
+   checkvalidlimits(limits)
 
-   if limits[1] > limits[2] || limits[3] > limits[4]
-      @error "subsurface:InvalidReductionXRange"
-   end
+   xind, yind = findindexes(x, y, limits)
 
    sz = size(u)
-
-   hx = x[:,1]
-   hy = y[1,:]
-
-   if isinf(limits[1]) limits[1] = minimum(hx) end
-   if isinf(limits[3]) limits[3] = minimum(hy) end
-   if isinf(limits[2]) limits[2] = maximum(hx) end
-   if isinf(limits[4]) limits[4] = maximum(hy) end
-
-   xind = findall(limits[1] .≤ hx .≤ limits[2])
-   yind = findall(limits[3] .≤ hy .≤ limits[4])
-
    newu = subdata(u, xind, yind, sz)
    newv = subdata(v, xind, yind, sz)
 
@@ -117,32 +137,12 @@ end
 Extract subset of 3D dataset in ndgrid format. See also: [`subsurface`](@ref).
 """
 function subvolume(x, y, z, data, limits)
-   if length(limits)!=6
-      @error "Reduction must be [xmin xmax ymin ymax zmin zmax]"
-   end
 
-   if limits[1] > limits[2] || limits[3] > limits[4] || limits[5] > limits[6]
-      @error "subvolume:InvalidReductionXRange"
-   end
+   checkvalidlimits(limits, 3)
 
-   sz = size(data)
+   xind, yind, zind = findindexes(x, y, z, limits)
 
-   hx = x[:,1,1]
-   hy = y[1,:,1]
-   hz = z[1,1,:]
-
-   if isinf(limits[1]) limits[1] = minimum(hx) end
-   if isinf(limits[3]) limits[3] = minimum(hy) end
-   if isinf(limits[5]) limits[5] = minimum(hz) end
-   if isinf(limits[2]) limits[2] = maximum(hx) end
-   if isinf(limits[4]) limits[4] = maximum(hy) end
-   if isinf(limits[6]) limits[6] = maximum(hz) end
-
-   xind = findall(limits[1] .≤ hx .≤ limits[2])
-   yind = findall(limits[3] .≤ hy .≤ limits[4])
-   zind = findall(limits[5] .≤ hy .≤ limits[6])
-
-   newdata = subdata(data, xind, yind, zind, sz)
+   newdata = subdata(data, xind, yind, zind, size(data))
 
    newx = x[xind,yind,zind]
    newy = y[xind,yind,zind]
@@ -152,30 +152,12 @@ function subvolume(x, y, z, data, limits)
 end
 
 function subvolume(x, y, z, u, v, w, limits)
-   if length(limits)!=6
-      @error "Reduction must be [xmin xmax ymin ymax zmin zmax]"
-   end
-
-   if limits[1] > limits[2] || limits[3] > limits[4] || limits[5] > limits[6]
-      @error "subvolume:InvalidReductionXRange"
-   end
+   
+   checkvalidlimits(limits, 3)
 
    sz = size(u)
 
-   hx = x[:,1,1]
-   hy = y[1,:,1]
-   hz = z[1,1,:]
-
-   if isinf(limits[1]) limits[1] = minimum(hx) end
-   if isinf(limits[3]) limits[3] = minimum(hy) end
-   if isinf(limits[5]) limits[5] = minimum(hz) end
-   if isinf(limits[2]) limits[2] = maximum(hx) end
-   if isinf(limits[4]) limits[4] = maximum(hy) end
-   if isinf(limits[6]) limits[6] = maximum(hz) end
-
-   xind = findall(limits[1] .≤ hx .≤ limits[2])
-   yind = findall(limits[3] .≤ hy .≤ limits[4])
-   zind = findall(limits[5] .≤ hz .≤ limits[6])
+   xind, yind, zind = findindexes(x, y, z, limits)
 
    newu = subdata(u, xind, yind, zind, sz)
    newv = subdata(v, xind, yind, zind, sz)
@@ -192,9 +174,9 @@ end
     subdata(data, xind, yind, sz)
     subdata(data, xind, yind, zind, sz)
 
-Return the sliced data based on indexes.
+Return the sliced data based on indexes `xind` and `yind` of size `sz`.
 """
-function subdata(data, xind::Vector{Int}, yind::Vector{Int}, sz::Tuple{Int,Int})
+function subdata(data, xind, yind, sz)
    newdata = data[xind,yind]
    newsz = size(newdata)
 
@@ -205,8 +187,7 @@ function subdata(data, xind::Vector{Int}, yind::Vector{Int}, sz::Tuple{Int,Int})
    newdata
 end
 
-function subdata(data, xind::Vector{Int}, yind::Vector{Int}, zind::Vector{Int},
-   sz::Tuple{Int,Int,Int})
+function subdata(data, xind, yind, zind, sz)
 
    newdata = data[xind,yind,zind]
    newsz = size(newdata)
@@ -219,7 +200,7 @@ function subdata(data, xind::Vector{Int}, yind::Vector{Int}, zind::Vector{Int},
 end
 
 "Return variable data from string `var`."
-function getvar(data::Data, var::T) where T<:AbstractString	
+function getvar(data::Data, var)	
    VarIndex_ = findfirst(x->x==lowercase(var), lowercase.(data.head.wnames))
    isnothing(VarIndex_) && error("$(var) not found in file header variables!")
 
