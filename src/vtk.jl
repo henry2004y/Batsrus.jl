@@ -871,7 +871,6 @@ function fillCellNeighbors!(batl, iCell_G, DiLevelNei_III, iNodeNei_III, nBlock_
 
    iTree_IA = batl.iTree_IA
    nI, nJ, nK = batl.head.nI, batl.head.nJ, batl.head.nK
-   nDim = batl.nDim
 
    nIJ = nI*nJ
    nIJK = nI*nJ*nK
