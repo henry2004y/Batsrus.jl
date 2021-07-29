@@ -25,7 +25,7 @@ function getdata(data::Data, var::AbstractString, plotrange, plotinterval, gridd
       yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
       # Perform linear interpolation of the data (x,y) on grid(xi,yi)
       triang = @views matplotlib.tri.Triangulation(X[:], Y[:])
-      interpolator = matplotlib.tri.LinearTriInterpolator(triang, W)
+      interpolator = @views matplotlib.tri.LinearTriInterpolator(triang, W[:])
       Xi, Yi = meshgrid(xi, yi)
       Wi = interpolator(Xi, Yi)
    else # Cartesian coordinates

@@ -90,7 +90,7 @@ end
    @testset "Plotting" begin
       using PyPlot
       ENV["MPLBACKEND"]="agg" # no GUI
-      @testset "Plotting 1D ascii" begin
+      @testset "1D ascii" begin
          filename = "1d__raw_2_t25.60000_n00000258.out"
          data = readdata(filename, dir="data", verbose=false)
          plotdata(data, "p", plotmode="line")
@@ -99,13 +99,21 @@ end
          @test line.get_ydata() ≈ data.w[:,10]
       end
 
-      @testset "Plotting 2D structured binary" begin
+      @testset "2D structured binary" begin
          filename = "z=0_raw_1_t25.60000_n00000258.out"
          data = readdata(filename, dir="data")
-         plotdata(data,"p bx;by", plotmode="contbar streamover")
+         plotdata(data, "p bx;by", plotmode="contbar streamover")
          ax = gca()
          @test isa(ax, PyPlot.PyObject)
-         contourf(data,"p")
+         contourf(data, "p")
+         ax = gca()
+         @test isa(ax, PyPlot.PyObject)
+      end
+
+      @testset "2D AMR Cartesian" begin
+         filename = "bx0_mhd_6_t00000100_n00000352.out"
+         data = readdata(filename, dir="data")
+         plotdata(data, "P", plotmode="contbar")
          ax = gca()
          @test isa(ax, PyPlot.PyObject)
       end
