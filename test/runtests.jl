@@ -103,11 +103,22 @@ end
          filename = "z=0_raw_1_t25.60000_n00000258.out"
          data = readdata(filename, dir="data")
          plotdata(data, "p bx;by", plotmode="contbar streamover")
-         ax = gca()
-         @test isa(ax, PyPlot.PyObject)
+         @test isa(gca(), PyPlot.PyObject)
          contourf(data, "p")
-         ax = gca()
-         @test isa(ax, PyPlot.PyObject)
+         @test isa(gca(), PyPlot.PyObject)
+         @test_throws ErrorException contourf(data, "rho", innermask=true)
+         contour(data, "rho")
+         @test isa(gca(), PyPlot.PyObject)
+         tricontourf(data, "rho")
+         @test isa(gca(), PyPlot.PyObject)
+         streamplot(data, "bx;by")
+         @test isa(gca(), PyPlot.PyObject)
+         plt.close()
+         fig = plt.figure()
+         ax = fig.add_subplot(111, projection="3d")
+         plot_surface(data, "rho")
+         @test isa(gca(), PyPlot.PyObject)
+         plt.close()
       end
 
       @testset "2D AMR Cartesian" begin

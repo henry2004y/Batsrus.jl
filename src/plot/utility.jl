@@ -1,17 +1,18 @@
 # Utility functions for plotting.
 
 "Prepare 2D data arrays for passing to plotting functions."
-function getdata(data::Data, var::AbstractString, plotrange, plotinterval, griddim=1)
+function getdata(data::Data, var::AbstractString, plotrange, plotinterval; griddim=1,
+   innermask=false)
    @assert data.head.ndim == 2 "data must be in 2D!"
 
    x, w = data.x, data.w
    ndim = data.head.ndim
-   VarIndex_ = findindex(data, var)
+   varIndex_ = findindex(data, var)
 
    if data.head.gencoord # Generalized coordinates
       X = @view x[:,:,1]
       Y = @view x[:,:,2]
-      W = @view w[:,:,VarIndex_]
+      W = @view w[:,:,varIndex_]
 
       if any(abs.(plotrange) .== Inf)
          if plotrange[1] == -Inf plotrange[1] = minimum(X) end
@@ -34,7 +35,7 @@ function getdata(data::Data, var::AbstractString, plotrange, plotinterval, gridd
       if all(isinf.(plotrange))
          xi, yi = xrange, yrange
          Xi, Yi = meshgrid(xi, yi)
-         Wi = w[:,:,VarIndex_]'
+         Wi = w[:,:,varIndex_]'
       else
          if plotrange[1] == -Inf plotrange[1] = minimum(xrange) end
          if plotrange[2] ==  Inf plotrange[2] = maximum(xrange) end
@@ -44,12 +45,25 @@ function getdata(data::Data, var::AbstractString, plotrange, plotinterval, gridd
          xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
          yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
 
-         spline = @views Spline2D(xrange, yrange, w[:,:,VarIndex_])
+         spline = @views Spline2D(xrange, yrange, w[:,:,varIndex_])
          Xi, Yi = meshgrid(xi, yi)
          wi = @views spline(Xi[:], Yi[:])
          Wi = reshape(wi, size(Xi))
       end
    end
+
+   # Mask a circle at the inner boundary
+   if innermask
+      varIndex_ = findlast(x->x=="rbody", data.head.variables)
+      isnothing(varIndex_) && error("rbody not found in file header parameters!")
+      ParamIndex_ = varIndex_ - data.head.ndim - data.head.nw
+      @inbounds for i = eachindex(Xi, Yi)
+         if Xi[i]^2 + Yi[i]^2 < data.head.eqpar[ParamIndex_]^2
+            Wi[i] = NaN
+         end
+      end
+   end
+
    if griddim == 1
       return xi, yi, Wi
    else
@@ -59,9 +73,9 @@ end
 
 "Find variable index in data."
 function findindex(data::Data, var::AbstractString)
-   VarIndex_ = findfirst(x->x==lowercase(var), lowercase.(data.head.wnames))
-   isnothing(VarIndex_) && error("$(var) not found in file header variables!")
-   VarIndex_
+   varIndex_ = findfirst(x->x==lowercase(var), lowercase.(data.head.wnames))
+   isnothing(varIndex_) && error("$(var) not found in file header variables!")
+   varIndex_
 end
 
 "Generating consistent 2D arrays for passing to plotting functions."
