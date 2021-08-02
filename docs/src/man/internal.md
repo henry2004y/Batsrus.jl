@@ -29,3 +29,4 @@ Order = [:function]
 ```@autodocs
 Modules = [Batsrus]
 Public = false
+```
