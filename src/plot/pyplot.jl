@@ -11,6 +11,10 @@ import PyPlot: plot, scatter, contour, contourf, plot_surface, tricontourf, plot
 
 include("utility.jl")
 
+if matplotlib.__version__ >= "3.3"
+   matplotlib.rc("image", cmap="turbo") # set default colormap
+end
+
 """
     plotlogdata(data, head, func; plotmode="line")
 
