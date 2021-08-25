@@ -3,11 +3,11 @@
 using PyPlot
 using Dierckx: Spline2D
 
-export plotdata, plotlogdata, animatedata, plot, scatter, contour, contourf, plot_surface,
-   tricontourf, plot_trisurf, streamplot, streamslice, cutplot
-
 import PyPlot: plot, scatter, contour, contourf, plot_surface, tricontourf, plot_trisurf,
    streamplot
+
+export plotdata, plotlogdata, animatedata, plot, scatter, contour, contourf, plot_surface,
+   tricontourf, plot_trisurf, streamplot, streamslice, cutplot
 
 include("utility.jl")
 
