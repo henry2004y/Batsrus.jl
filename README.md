@@ -13,7 +13,7 @@ This package provides the following functionalities:
   * 2D/3D region cut from the whole domain
   * interpolation from unstructured to structured data
   * data format conversion to VTK
-  * simulation data visualization
+  * simulation data visualization through multiple plotting libraries
 
 For more details, please check the [document][Batsrus-doc].
 
