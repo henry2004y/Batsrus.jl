@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Example · Batsrus.jl</title><link rel="canonical" href="https://henry2004y.github.io/Batsrus.jl/man/examples/"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit">Batsrus.jl</span></div><form class="docs-search" action="../../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li class="is-active"><a class="tocitem" href>Example</a><ul class="internal"><li><a class="tocitem" href="#IDL-format-output-loader-1"><span>IDL format output loader</span></a></li><li><a class="tocitem" href="#Derived-variables-1"><span>Derived variables</span></a></li><li><a class="tocitem" href="#Output-format-conversion-1"><span>Output format conversion</span></a></li><li><a class="tocitem" href="#Data-visualization-1"><span>Data visualization</span></a></li></ul></li><li><a class="tocitem" href="../internal/">Internal</a></li><li><a class="tocitem" href="../log/">Log</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Example</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Example</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/henry2004y/Batsrus.jl/blob/master/docs/src/man/examples.md#L" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Examples-1"><a class="docs-heading-anchor" href="#Examples-1">Examples</a><a class="docs-heading-anchor-permalink" href="#Examples-1" title="Permalink"></a></h1><h2 id="IDL-format-output-loader-1"><a class="docs-heading-anchor" href="#IDL-format-output-loader-1">IDL format output loader</a><a class="docs-heading-anchor-permalink" href="#IDL-format-output-loader-1" title="Permalink"></a></h2><ul><li>Read data</li></ul><pre><code class="language-none">filename = &quot;1d_bin.out&quot;;
+data = readdata(filename);
+data = readdata(filename, verbose=true);
+data = readdata(filename, npict=1);
+data = readdata(filename, dir=&quot;.&quot;);</code></pre><ul><li>3D structured spherical coordinates</li></ul><pre><code class="language-none">filename = &quot;3d_structured.out&quot;;
+data = readdata(filename, verbose=false);</code></pre><ul><li>log file</li></ul><pre><code class="language-none">logfilename = &quot;shocktube.log&quot;;
+head, data = readlogdata(logfilename)</code></pre><h2 id="Derived-variables-1"><a class="docs-heading-anchor" href="#Derived-variables-1">Derived variables</a><a class="docs-heading-anchor-permalink" href="#Derived-variables-1" title="Permalink"></a></h2><pre><code class="language-none">v = getvars(data, [&quot;Bx&quot;, &quot;By&quot;, &quot;Bz&quot;])
+B = @. sqrt(v[&quot;Bx&quot;]^2 + v[&quot;By&quot;]^2 + v[&quot;Bz&quot;]^2)</code></pre><h2 id="Output-format-conversion-1"><a class="docs-heading-anchor" href="#Output-format-conversion-1">Output format conversion</a><a class="docs-heading-anchor-permalink" href="#Output-format-conversion-1" title="Permalink"></a></h2><p>We can convert 2D/3D BATSRUS outputs <code>*.dat</code> to VTK formats. It uses the VTK XML format writer <a href="https://github.com/jipolanco/WriteVTK.jl">writeVTK</a> to generate files for Paraview and Tecplot. The default converted filename is <code>out.vtu</code>.</p><p>ASCII Tecplot file (supports both <code>tec</code> and <code>tcp</code>) and binary Tecplot file (set <code>DOSAVETECBINARY=TRUE</code> in BATSRUS <code>PARAM.in</code>):</p><pre><code class="language-none">filename = &quot;x=0_mhd_1_n00000050.dat&quot;
+#filename = &quot;3d_ascii.dat&quot;
+#filename = &quot;3d_bin.dat&quot;
+head, data, connectivity = readtecdata(filename)
+convertTECtoVTU(head, data, connectivity)</code></pre><p>3D structured IDL file (<code>gridType=1</code> returns rectilinear <code>vtr</code> file, <code>gridType=2</code> returns structured <code>vts</code> file):</p><pre><code class="language-none">filename = &quot;3d_structured.out&quot;
+convertIDLtoVTK(filename, gridType=1)</code></pre><p>3D unstructured IDL file together with header and tree file:</p><pre><code class="language-none">filetag = &quot;3d_var_1_n00002500&quot;
+convertIDLtoVTK(filetag)</code></pre><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>The file suffix should not be provided for this to work correctly!</p></div></div><p>Multiple files:</p><pre><code class="language-none">using Batsrus, Glob
+filenamesIn = &quot;3d*.dat&quot;
+dir = &quot;.&quot;
+filenames = Vector{String}(undef,0)
+filesfound = glob(filenamesIn, dir)
+filenames = vcat(filenames, filesfound)
+tec = readtecdata.(filenames) # head, data, connectivity
+for (i, outname) in enumerate(filenames)
+   convertTECtoVTU(tec[i][1], tec[i][2], tec[i][3], outname[1:end-4])
+end</code></pre><p>If each individual file size is large, consider using:</p><pre><code class="language-none">using Batsrus, Glob
+filenamesIn = &quot;3d*.dat&quot;
+dir = &quot;.&quot;
+filenames = Vector{String}(undef,0)
+filesfound = glob(filenamesIn, dir)
+filenames = vcat(filenames, filesfound)
+for (i, outname) in enumerate(filenames)
+   head, data, connectivity = readtecdata(outname)
+   convertTECtoVTU(head, data, connectivity, outname[1:end-4])
+end</code></pre><p>Multiple files in parallel:</p><pre><code class="language-none">using Distributed
+@everywhere using Batsrus, Glob
+
+filenamesIn = &quot;cut*.dat&quot;
+dir = &quot;.&quot;
+filenames = Vector{String}(undef,0)
+filesfound = glob(filenamesIn, dir)
+filenames = vcat(filenames, filesfound)
+
+@sync @distributed for outname in filenames
+   println(&quot;filename=$(outname)&quot;)
+   head, data, connectivity = readtecdata(outname)
+   convertTECtoVTU(head, data, connectivity, outname[1:end-4])
+end</code></pre><p>More examples can be found in <a href="https://github.com/henry2004y/Batsrus.jl/tree/master/examples">examples</a>.</p><h2 id="Data-visualization-1"><a class="docs-heading-anchor" href="#Data-visualization-1">Data visualization</a><a class="docs-heading-anchor-permalink" href="#Data-visualization-1" title="Permalink"></a></h2><p>We provide plot recipes for Plots.jl and wrappers for PyPlot.jl.</p><p>The recipes for Plots.jl will work on all functions given the correct dimensions, e.g.</p><pre><code class="language-none">using Plots
+plot(data, &quot;p&quot;)
+contourf(data, &quot;Mx&quot;, xlabel=&quot;x&quot;)</code></pre><p>See the official documentation for Plots.jl for more information.</p><p>On the other hand, most common 1D and 2D plotting functions are wrapped over their Matplotlib equivalences through PyPlot.jl. To trigger the wrapper, <code>using PyPlot</code>. Check out the documentation for more details.</p><h3 id="Quick-exploration-of-data-1"><a class="docs-heading-anchor" href="#Quick-exploration-of-data-1">Quick exploration of data</a><a class="docs-heading-anchor-permalink" href="#Quick-exploration-of-data-1" title="Permalink"></a></h3><p>A general <code>plotdata</code> function is provided for quick visualizations using Matplotlib.</p><ul><li>1D binary</li></ul><pre><code class="language-none">plotdata(data, &quot;p&quot;, plotmode=&quot;line&quot;)
+plotdata(data, &quot;p&quot;, plotmode=&quot;linegrid&quot;)</code></pre><ul><li>2D Cartesian (structured)</li></ul><pre><code class="language-none">plotdata(data, &quot;p bx;by&quot;, plotmode=&quot;contbar streamover&quot;)
+plotdata(data, &quot;p bx;by&quot;, plotmode=&quot;contbar quiverover&quot;)
+plotdata(data, &quot;p bx;by&quot;, plotmode=&quot;contbar streamover&quot;, density=2.0)
+plotdata(data, &quot;p&quot;, plotmode=&quot;grid&quot;)
+plotdata(data, &quot;p&quot;, plotmode=&quot;contbar&quot;, plotrange=[-50., 50., -1., 1.])
+plotdata(data, &quot;p&quot;, plotmode=&quot;contbar&quot;)
+plotdata(data, &quot;p&quot;, plotmode=&quot;contbarlog&quot;)
+plotdata(data, &quot;p&quot;, plotmode=&quot;surfbar&quot;)</code></pre><ul><li>2D unstructured</li></ul><pre><code class="language-none">plotdata(data, &quot;rho&quot;, plotmode=&quot;contbar&quot;)
+plotdata(data, &quot;rho&quot;, plotmode=&quot;trimesh&quot;)
+plotdata(data, &quot;rho&quot;, plotmode=&quot;tricont&quot;)</code></pre><ul><li>2D structured spherical coordinates</li></ul><pre><code class="language-none">plotdata(data, &quot;rho&quot;, plotmode=&quot;contbar&quot;)</code></pre><ul><li>3D box</li></ul><pre><code class="language-none">plotdata(data, &quot;bx&quot;, plotmode=&quot;contbar&quot;, dir=&quot;y&quot;, sequence=1, level=20)
+plotdata(data, &quot;bx&quot;, plotmode=&quot;contbar&quot;, dir=&quot;y&quot;, plotrange=[-1.4,-1.1,0.70,0.78])
+using PyPlot
+plt.axis(&quot;scaled&quot;)
+
+subplot(2,2,(1,3))
+cutplot(data, &quot;Ex&quot;; dir=&quot;y&quot;, sequence=128, plotrange)</code></pre><h4 id="Finding-indexes-1"><a class="docs-heading-anchor" href="#Finding-indexes-1">Finding indexes</a><a class="docs-heading-anchor-permalink" href="#Finding-indexes-1" title="Permalink"></a></h4><p>To get the index of a certain quantity, e.g. electron number density</p><pre><code class="language-none">ρe_= findfirst(x-&gt;x==&quot;rhoS0&quot;, data.head.wnames)</code></pre><h3 id="Multiple-dispatch-for-Matplotlib-functions-1"><a class="docs-heading-anchor" href="#Multiple-dispatch-for-Matplotlib-functions-1">Multiple dispatch for Matplotlib functions</a><a class="docs-heading-anchor-permalink" href="#Multiple-dispatch-for-Matplotlib-functions-1" title="Permalink"></a></h3><p>Using the same plotting functions as in Matplotlib is allowed, and actually recommended. Some plotting functions can be directly called as shown below, which allows for more control from the user. <code>using PyPlot</code> to import the full capability of the package, etc. adding colorbar, changing line colors, setting colorbar range with <code>clim</code>.</p><ul><li>line plot</li></ul><pre><code class="language-none">plot(data, &quot;p&quot;, linewidth=2, color=&quot;green&quot;)
+c = plot(data, &quot;p&quot;)
+plt.setp(c, linestyle=&quot;--&quot;, linewidth=2);</code></pre><ul><li>scatter plot</li></ul><pre><code class="language-none">scatter(data, &quot;p&quot;)</code></pre><ul><li>contour</li></ul><pre><code class="language-none"># 2D contour
+contour(data, &quot;p&quot;)</code></pre><ul><li>filled contour</li></ul><pre><code class="language-none">contourf(data, &quot;p&quot;)
+contourf(data, &quot;p&quot;, levels, plotrange=[-10,10,-Inf,Inf], plotinterval=0.1)</code></pre><ul><li>surface plot</li></ul><pre><code class="language-none">plot_surface(data, &quot;p&quot;)</code></pre><ul><li>triangle surface plot</li></ul><pre><code class="language-none">plot_trisurf(data, &quot;p&quot;)</code></pre><ul><li>triangle filled contour plot</li></ul><pre><code class="language-none">tricontourf(data, &quot;p&quot;)</code></pre><ul><li>streamline</li></ul><pre><code class="language-none">streamplot(data, &quot;bx;bz&quot;)
+streamplot(data, &quot;bx;bz&quot;, density=2.0, color=&quot;k&quot;, plotinterval=1.0, plotrange=[-10,10,-Inf,Inf])</code></pre><ul><li>quiver (currently only for Cartesian grid)</li></ul><pre><code class="language-none">quiver(data, &quot;ux;uy&quot;, stride=50)</code></pre><ul><li>streamline + contourf</li></ul><pre><code class="language-none">using Batsrus, PyPlot
+
+filename = &quot;y*out&quot;
+data = readdata(filename)
+
+DN = matplotlib.colors.DivergingNorm
+set_cmap(&quot;RdBu_r&quot;)
+
+contourf(data, &quot;uxS0&quot;, 50, plotrange=[-3,3,-3,3], plotinterval=0.05, norm=DN(0))
+colorbar()
+streamplot(data, &quot;uxS0;uzS0&quot;, density=2.0, color=&quot;g&quot;, plotrange=[-3,3,-3,3])
+xlabel(&quot;x&quot;); ylabel(&quot;y&quot;); title(&quot;Ux [km/s]&quot;)
+
+contourf(data,&quot;uxS0&quot;, 50, plotinterval=0.05, norm=DN(0))
+colorbar()
+axis(&quot;scaled&quot;)
+xlabel(&quot;x&quot;); ylabel(&quot;y&quot;); title(&quot;uxS0&quot;)</code></pre><h3 id="Tracing-1"><a class="docs-heading-anchor" href="#Tracing-1">Tracing</a><a class="docs-heading-anchor-permalink" href="#Tracing-1" title="Permalink"></a></h3><p>The built-in <code>streamplot</code> function in Matplotlib is not satisfactory for accurately tracing. Instead we recommend <a href="https://github.com/henry2004y/FieldTracer.jl">FieldTracer.jl</a> for tracing fieldlines and streamlines.</p><p>An example of tracing in a 2D cut and plot the field lines over contour:</p><pre><code class="language-none">using Batsrus, PyPlot
+
+filename = &quot;y=0_var_1_t00000000_n00000000.out&quot;
+data = readdata(filename, dir=&quot;test&quot;)
+
+bx = data.w[:,:,5]
+bz = data.w[:,:,7]
+x  = data.x[:,1,1]
+z  = data.x[1,:,2]
+
+seeds = select_seeds(x, z; nSeed=100) # randomly select the seeding points
+
+for i = 1:size(seeds)[2]
+   xs = seeds[1,i]
+   zs = seeds[2,i]
+   # Tracing in both direction. Check the document for more options.
+   x1, z1 = trace2d_eul(bx, bz, xs, zs, x, z, ds=0.1, maxstep=1000, gridType=&quot;ndgrid&quot;)
+   plot(x1,z1,&quot;--&quot;)
+end
+axis(&quot;equal&quot;)</code></pre><p>Currently the <code>select_seeds</code> function uses pseudo random number generator that produces the same seeds every time.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../">« Home</a><a class="docs-footer-nextpage" href="../internal/">Internal »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Friday 27 August 2021 10:40">Friday 27 August 2021</span>. Using Julia version 1.6.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
