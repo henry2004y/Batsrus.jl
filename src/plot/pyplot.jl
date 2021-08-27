@@ -737,23 +737,21 @@ end
 
 "Set colorbar norm and ticks."
 function set_colorbar(colorscale, vmin, vmax, data=[1.0])
-   if colorscale == :log # Logarithmic plot
-      if any(<(0), data)
-         throw(DomainError(data, "Nonpositive data detected: use linear scale instead!"))
-      end
-      datapositive = data[data .> 0.0]
-      v1 = isinf(vmin) ? minimum(datapositive) : vmin
-      v2 = isinf(vmax) ? maximum(x->isnan(x) ? -Inf : x, data) : vmax
-
-      cnorm = matplotlib.colors.LogNorm(vmin=v1, vmax=v2)
-      ticks = matplotlib.ticker.LogLocator(base=10,subs=collect(0:9))
-   elseif colorscale == :linear
+   if colorscale == :linear || any(<(0), data)
+      colorscale == :log && @warn "Nonpositive data detected: use linear scale instead!"
       v1 = isinf(vmin) ? minimum(x->isnan(x) ? +Inf : x, data) : vmin
       v2 = isinf(vmax) ? maximum(x->isnan(x) ? -Inf : x, data) : vmax
       nticks = 7
       levels = matplotlib.ticker.MaxNLocator(nbins=255).tick_values(v1, v2)
       cnorm = matplotlib.colors.BoundaryNorm(levels, ncolors=256, clip=true)
       ticks = range(v1, v2, length=nticks)
+   else # logarithmic
+      datapositive = data[data .> 0.0]
+      v1 = isinf(vmin) ? minimum(datapositive) : vmin
+      v2 = isinf(vmax) ? maximum(x->isnan(x) ? -Inf : x, data) : vmax
+
+      cnorm = matplotlib.colors.LogNorm(vmin=v1, vmax=v2)
+      ticks = matplotlib.ticker.LogLocator(base=10,subs=collect(0:9))
    end
 
    cnorm, ticks
