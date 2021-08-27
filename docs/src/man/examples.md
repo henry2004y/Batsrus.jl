@@ -224,6 +224,11 @@ streamplot(data, "bx;bz")
 streamplot(data, "bx;bz", density=2.0, color="k", plotinterval=1.0, plotrange=[-10,10,-Inf,Inf])
 ```
 
+- quiver (currently only for Cartesian grid)
+```
+quiver(data, "ux;uy", stride=50)
+```
+
 - streamline + contourf
 ```
 using Batsrus, PyPlot
