@@ -3,11 +3,8 @@
 using PyPlot
 using Dierckx: Spline2D
 
-import PyPlot: plot, scatter, contour, contourf, plot_surface, tricontourf, plot_trisurf,
-   streamplot
-
-export plotdata, plotlogdata, animatedata, plot, scatter, contour, contourf, plot_surface,
-   tricontourf, plot_trisurf, streamplot, streamslice, cutplot
+export plotdata, plotlogdata, plot, scatter, contour, contourf, plot_surface,
+   tricontourf, plot_trisurf, streamplot, streamslice, quiver, cutplot
 
 include("utility.jl")
 
@@ -74,12 +71,14 @@ Plot the variable from SWMF output.
 - `multifigure`: (optional) 1 for multifigure display, 0 for subplots.
 - `verbose`: (optional) display additional information.
 - `density`: (optional) density for streamlines.
+- `stride`: (optional) quiver strides in number of cells.
 Right now this can only deal with 2D plots or 3D cuts. Full 3D plots may be supported in the
 future.
 """
 function plotdata(data::Data, func::AbstractString; dir="x", plotmode="contbar",
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, sequence=1, multifigure=true,
-   getrangeOnly=false, level=0, innermask=false, verbose=false, density=1.0)
+   getrangeonly=false, level=0, innermask=false, verbose=false, density=1.0,
+   stride=10)
 
    x, w = data.x, data.w
    plotmode = split(plotmode)
@@ -87,7 +86,7 @@ function plotdata(data::Data, func::AbstractString; dir="x", plotmode="contbar",
    ndim     = data.head.ndim
    nvar     = length(vars)
 
-   if verbose || getrangeOnly
+   if verbose || getrangeonly
       @info "============ PLOTTING PARAMETERS ==============="
       @info "wnames = $(data.head.wnames)"
       wmin = Vector{Float64}(undef,nvar)
@@ -105,7 +104,7 @@ function plotdata(data::Data, func::AbstractString; dir="x", plotmode="contbar",
          end
          println("Min & Max value for $(var) :$(wmin[ivar])",", $(wmax[ivar])")
       end
-      if getrangeOnly return wmin, wmax end
+      if getrangeonly return wmin, wmax end
    end
 
    ## plot multiple variables with same plotmode
@@ -119,11 +118,11 @@ function plotdata(data::Data, func::AbstractString; dir="x", plotmode="contbar",
          varIndex_ = findindex(data, var)
          if ivar == 1 || multifigure fig, ax = subplots() else ax = gca() end
          if !occursin("scatter",plotmode[ivar])
-            plot(x,w[:,varIndex_])
+            plot(x, w[:,varIndex_])
          else
-            scatter(x,w[:,varIndex_])
+            scatter(x, w[:,varIndex_])
          end
-         if occursin("grid",plotmode[ivar])
+         if occursin("grid", plotmode[ivar])
             grid(true)
          end
          xlabel("x"); ylabel("$(var)")
@@ -259,14 +258,18 @@ function plotdata(data::Data, func::AbstractString; dir="x", plotmode="contbar",
             s = streamplot(Xi, Yi, v1, v2; color="w", linewidth=1.0, density)
 
          elseif occursin("quiver", plotmode[ivar])
-            VarQuiver  = split(var,";")
+            VarQuiver  = split(var, ";")
             VarIndex1_ = findindex(data, VarQuiver[1])
             VarIndex2_ = findindex(data, VarQuiver[2])
 
             X, Y = x[:,1,1], x[1,:,2]
             v1, v2 = w[:,:,VarIndex1_]', w[:,:,VarIndex2_]'
 
-            q = quiver(X, Y, v1, v2, color="w")
+            @views Xq, Yq = X[1:stride:end], Y[1:stride:end]
+            v1q = @view v1[1:stride:end, 1:stride:end]
+            v2q = @view v2[1:stride:end, 1:stride:end]
+
+            q = quiver(Xq, Yq, v1q, v2q, color="w")
 
          elseif occursin("grid", plotmode[ivar])
             # This does not take subdomain plot into account!
@@ -509,7 +512,7 @@ end
 
 Wrapper over `plot` in matplotlib.
 """
-function plot(data::Data, var::AbstractString, ax=nothing; kwargs...)
+function PyPlot.plot(data::Data, var::AbstractString, ax=nothing; kwargs...)
    x, w = data.x, data.w
    varIndex_ = findindex(data, var)
    if isnothing(ax) ax = plt.gca() end
@@ -521,7 +524,7 @@ end
 
 Wrapper over `scatter` in matplotlib.
 """
-function scatter(data::Data, var::AbstractString, ax=nothing; kwargs...)
+function PyPlot.scatter(data::Data, var::AbstractString, ax=nothing; kwargs...)
    x, w = data.x, data.w
    varIndex_ = findindex(data, var)
    if isnothing(ax) ax = plt.gca() end
@@ -534,7 +537,7 @@ end
 
 Wrapper over `contour` in matplotlib.
 """
-function contour(data::Data, var::AbstractString, levels=0; ax=nothing,
+function PyPlot.contour(data::Data, var::AbstractString, levels=0; ax=nothing,
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...)
 
    Xi, Yi, Wi = getdata(data, var, plotrange, plotinterval; innermask)
@@ -554,7 +557,7 @@ end
 
 Wrapper over `contourf` in matplotlib.
 """
-function contourf(data::Data, var::AbstractString, levels=0; ax=nothing,
+function PyPlot.contourf(data::Data, var::AbstractString, levels=0; ax=nothing,
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...)
 
    Xi, Yi, Wi = getdata(data, var, plotrange, plotinterval; innermask)
@@ -574,7 +577,7 @@ end
 
 Wrapper over `tricontourf` in matplotlib.
 """
-function tricontourf(data::Data, var::AbstractString, ax=nothing;
+function PyPlot.tricontourf(data::Data, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, kwargs...)
 
    x, w = data.x, data.w
@@ -602,7 +605,7 @@ end
 
 Wrapper over `plot_trisurf` in matplotlib.
 """
-function plot_trisurf(data::Data, var::AbstractString, ax=nothing;
+function PyPlot.plot_trisurf(data::Data, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], kwargs...)
 
    x, w = data.x, data.w
@@ -631,7 +634,7 @@ end
 
 Wrapper over `plot_surface` in matplotlib.
 """
-function plot_surface(data::Data, var::AbstractString;
+function PyPlot.plot_surface(data::Data, var::AbstractString;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...)
 
    Xi, Yi, Wi = getdata(data, var, plotrange, plotinterval; griddim=2, innermask)
@@ -645,7 +648,7 @@ end
 Wrapper over `streamplot` in matplotlib. `streamplot` does not have **kwargs in the API, but
 it supports `density`, `color`, and some other keywords.
 """
-function streamplot(data::Data, var::AbstractString, ax=nothing;
+function PyPlot.streamplot(data::Data, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, kwargs...)
 
    x, w = data.x, data.w
@@ -678,12 +681,12 @@ function streamplot(data::Data, var::AbstractString, ax=nothing;
       v2 = interpolator(Xi, Yi)
 
    else # Cartesian coordinates
-      xrange = @view x[:,1,1]
-      yrange = @view x[1,:,2]
       if all(isinf.(plotrange))
          Xi, Yi = x[:,:,1]', x[:,:,2]'
          v1, v2 = w[:,:,VarIndex1_]', w[:,:,VarIndex2_]'
       else
+         xrange = @view x[:,1,1]
+         yrange = @view x[1,:,2]
 	      if plotrange[1] == -Inf plotrange[1] = minimum(xrange) end
 	      if plotrange[2] ==  Inf plotrange[2] = maximum(xrange) end
          if plotrange[3] == -Inf plotrange[3] = minimum(yrange) end
@@ -707,6 +710,29 @@ function streamplot(data::Data, var::AbstractString, ax=nothing;
    end
    if isnothing(ax) ax = plt.gca() end
    ax.streamplot(Xi, Yi, v1, v2; kwargs...)
+end
+
+"""
+    quiver(data, var, ax=nothing; stride=10, kwargs...)
+
+Wrapper over `quiver` in matplotlib. Only supports Cartesian grid for now.
+"""
+function PyPlot.quiver(data::Data, var::AbstractString, ax=nothing;
+   stride::Integer=10, kwargs...)
+   x, w = data.x, data.w
+   VarQuiver  = split(var, ";")
+   VarIndex1_ = findindex(data, VarQuiver[1])
+   VarIndex2_ = findindex(data, VarQuiver[2])
+
+   @views X, Y = x[:,1,1], x[1,:,2]
+   @views v1, v2 = w[:,:,VarIndex1_]', w[:,:,VarIndex2_]'
+
+   @views Xq, Yq = X[1:stride:end], Y[1:stride:end]
+   v1q = @view v1[1:stride:end, 1:stride:end]
+   v2q = @view v2[1:stride:end, 1:stride:end]
+
+   if isnothing(ax) ax = plt.gca() end
+   ax.quiver(Xq, Yq, v1q, v2q; kwargs...)
 end
 
 "Set colorbar norm and ticks."
