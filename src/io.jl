@@ -126,7 +126,7 @@ function readtecdata(filename::AbstractString; verbose=false)
 
    f = open(filename)
 
-   nDim  = 3 
+   nDim  = 3
    nNode = Int32(0)
    nCell = Int32(0)
    ET = ""

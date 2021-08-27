@@ -148,7 +148,7 @@ end
 """
 	convertIDLtoVTK(filename; dir=".", gridType=1, verbose=false)
 
-Convert 3D BATSRUS *.out to VTK. If `gridType==1`, it converts to the 
+Convert 3D BATSRUS *.out to VTK. If `gridType==1`, it converts to the
 rectilinear grid; if `gridType==2`, it converts to the structured grid.
 If `filename` does not end with "out", it tries to find the ".info" and ".tree"
 file with the same name tag and generates 3D unstructured VTU file.
@@ -162,12 +162,12 @@ function convertIDLtoVTK(filename::AbstractString; dir=".", gridType=1,
       nVar = length(data.head.wnames)
 
       outname = filename[1:end-4]
-   
+
       if gridType == 1 # rectilinear grid
          x = @view data.x[:,1,1,1]
          y = @view data.x[1,:,1,2]
          z = @view data.x[1,1,:,3]
-   
+
          outfiles = vtk_grid(outname, x,y,z) do vtk
             for ivar = 1:nVar
                if data.head.wnames[ivar][end] == 'x' # vector
@@ -186,7 +186,7 @@ function convertIDLtoVTK(filename::AbstractString; dir=".", gridType=1,
          end
       elseif gridType == 2 # structured grid
          xyz = permutedims(data.x, [4,1,2,3])
-   
+
          outfiles = vtk_grid(outname, xyz) do vtk
             for ivar = 1:nVar
                if data.head.wnames[ivar][end] == 'x' # vector
@@ -233,7 +233,7 @@ function convertIDLtoVTK(filename::AbstractString; dir=".", gridType=1,
          end
       end
       cells = Vector{MeshCell{VTKCellType,Array{Int32,1}}}(undef,nCell)
-   
+
       if nDim == 3
          @inbounds for i = 1:nCell
             cells[i] = MeshCell(VTKCellTypes.VTK_HEXAHEDRON, connectivity[:,i])
@@ -243,9 +243,9 @@ function convertIDLtoVTK(filename::AbstractString; dir=".", gridType=1,
             cells[i] = MeshCell(VTKCellTypes.VTK_QUAD, connectivity[:,i])
          end
       end
-   
+
       vtkfile = vtk_grid(filename, points, cells)
-   
+
       for ivar = 1:nVar
          if endswith(data.head.wnames[ivar], "x") # vector
             if nDim == 3
@@ -347,7 +347,7 @@ function readhead(filehead)
             if nDim == 3
                dxPlot_D[3] = parse(Float64, split(readline(f))[1])
             end
-         end  
+         end
       end
    end
 
@@ -356,7 +356,7 @@ function readhead(filehead)
    iRatio, jRatio, kRatio = min(2, nI), min(2, nJ), min(2, nK)
 
    nDimAmr = iRatio + jRatio + kRatio - 3
-      
+
    nChild = 2^nDimAmr
 
    # Get size of domain (in generalized coordinates)
@@ -430,7 +430,7 @@ end
 """
    find_tree_node(batl, Coord_D)
 
-Find the node that contains a point. The point coordinates should be given in 
+Find the node that contains a point. The point coordinates should be given in
 generalized coordinates normalized by the domain size.
 """
 function find_tree_node(batl::Batl, Coord_D)
@@ -457,7 +457,7 @@ function find_tree_node(batl::Batl, Coord_D)
 
    # Get normalized coordinates within root node and scale it up
    # to the largest resolution: 0 <= iCoord_D <= maxCoord_I(nLevelMax)-1
-   iCoord_D = min.(maxCoord_I[nLevelMax+1] - 1, 
+   iCoord_D = min.(maxCoord_I[nLevelMax+1] - 1,
       floor.(Int32, (Coord_D[iDimAmr_D] - iRoot_D[iDimAmr_D])*maxCoord_I[nLevelMax+1]))
 
    # Go down the tree using bit information
@@ -576,7 +576,7 @@ function find_neighbor_for_anynode(batl::Batl, iNode)
    IsCylindricalAxis = false
 
    # Periodicity check is necessary for recovering the boundary conditions,
-   # but it makes postprocessing harder. An easy solution is to turn it off. 
+   # but it makes postprocessing harder. An easy solution is to turn it off.
    #isPeriodic_D = batl.head.isPeriodic_D
    isPeriodic_D = [false, false, false]
 
@@ -744,7 +744,7 @@ function getConnectivity(batl::Batl)
    nBlock_P = fill(Int32(0), nProc)
    if nProc > 1
       for iProc = 1:nProc-1
-         nBlock_P[iProc+1] = nBlock_P[iProc] + count(==(iProc-1), iTree_IA[proc_,:]) 
+         nBlock_P[iProc+1] = nBlock_P[iProc] + count(==(iProc-1), iTree_IA[proc_,:])
       end
    end
 
@@ -857,7 +857,7 @@ end
 
 Fill neighbor cell indexes for the given block. The faces, edges, and vertices
 are ordered from left (-) to right (+) in x-y-z sequentially.
-Vertices:        Edges: (10,11 ignored) 
+Vertices:        Edges: (10,11 ignored)
    7 ----- 8        . --4-- .
  - .     - .      7 .     8 .
 5 ----- 6  .     . --3-- .  12
@@ -1030,7 +1030,7 @@ function fillCellNeighbors!(batl, iCell_G, DiLevelNei_III, iNodeNei_III, nBlock_
             iCell_G[i+1,j+1,end] = nIJK*(neiBlock-1) +
                nIJ/2 + nI/2 + 1 + (i-1)÷2 + nI*((j-1)÷2)
          end
-      end   
+      end
    end
 
    ## Edges, in total 12
@@ -1046,7 +1046,7 @@ function fillCellNeighbors!(batl, iCell_G, DiLevelNei_III, iNodeNei_III, nBlock_
       neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[2,1,1], nBlock_P)
 
       iSibling = getSibling(iNodeNei_III, iTree_IA)
-   
+
       iAMR = 2*DiLevelNei_III[2,1,1]
 
       if iSibling == 1
@@ -1093,7 +1093,7 @@ function fillCellNeighbors!(batl, iCell_G, DiLevelNei_III, iNodeNei_III, nBlock_
       neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[2,4,1], nBlock_P)
 
       iSibling = getSibling(iNodeNei_III, iTree_IA)
-   
+
       iAMR = 2*DiLevelNei_III[2,3,1]
 
       if iSibling == 1
@@ -1132,15 +1132,15 @@ function fillCellNeighbors!(batl, iCell_G, DiLevelNei_III, iNodeNei_III, nBlock_
    # edge 3
    if DiLevelNei_III[2,1,3] == 0
       neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[2,1,4], nBlock_P)
-   
+
       @inbounds for i = 1:nI
          iCell_G[i+1,1,end] = nIJK*(neiBlock-1) + nI*(nJ-1) + i
-      end      
+      end
    elseif DiLevelNei_III[2,1,3] in (1,2)
       neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[2,1,4], nBlock_P)
 
       iSibling = getSibling(iNodeNei_III, iTree_IA)
-   
+
       iAMR = 2*DiLevelNei_III[2,1,3]
 
       if iSibling == 1
@@ -1188,7 +1188,7 @@ function fillCellNeighbors!(batl, iCell_G, DiLevelNei_III, iNodeNei_III, nBlock_
       iSibling = getSibling(iNodeNei_III, iTree_IA)
 
       iAMR = 2^DiLevelNei_III[2,3,3]
-   
+
       if iSibling == 3
          @inbounds for i = 1:nI
             iCell_G[i+1,end,end] = nIJK*(neiBlock-1) +
@@ -1235,7 +1235,7 @@ function fillCellNeighbors!(batl, iCell_G, DiLevelNei_III, iNodeNei_III, nBlock_
       iSibling = getSibling(iNodeNei_III, iTree_IA)
 
       iAMR = 2^DiLevelNei_III[1,2,1]
-   
+
       if iSibling == 1
          @inbounds for j = 1:nJ
             iCell_G[1,j+1,1] = nIJK*neiBlock -
@@ -1319,7 +1319,7 @@ function fillCellNeighbors!(batl, iCell_G, DiLevelNei_III, iNodeNei_III, nBlock_
    # edge 7
    if DiLevelNei_III[1,2,3] == 0
       neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[1,2,4], nBlock_P)
-   
+
       @inbounds for j = 1:nJ
          iCell_G[1,j+1,end] = nIJK*(neiBlock-1) + nI*j
       end
@@ -1848,7 +1848,7 @@ function create_pvd(filepattern)
    compressor = "vtkZLibDataCompressor"
 
    set_attributes(xroot; type, byte_order, compressor)
-    
+
    # create the first child
    xs1 = new_child(xroot, "Collection")
 

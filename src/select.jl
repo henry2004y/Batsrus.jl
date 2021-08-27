@@ -55,7 +55,7 @@ end
          throw(ArgumentError(
             "Reduction range $limits should be [xmin xmax ymin ymax zmin max]!"))
       end
-   
+
       if limits[1] > limits[2] || limits[3] > limits[4] || limits[5] > limits[6]
          throw(DomainError(limits, "Invalid reduction range!"))
       end
@@ -152,7 +152,7 @@ function subvolume(x, y, z, data, limits)
 end
 
 function subvolume(x, y, z, u, v, w, limits)
-   
+
    checkvalidlimits(limits, 3)
 
    sz = size(u)
@@ -200,7 +200,7 @@ function subdata(data, xind, yind, zind, sz)
 end
 
 "Return variable data from string `var`."
-function getvar(data::Data, var)	
+function getvar(data::Data, var)
    VarIndex_ = findfirst(x->x==lowercase(var), lowercase.(data.head.wnames))
    isnothing(VarIndex_) && error("$(var) not found in file header variables!")
 
