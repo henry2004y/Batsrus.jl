@@ -3,7 +3,6 @@
 # Hongyang Zhou, hyzhou@umich.edu
 
 using Batsrus, PyPlot, Glob
-matplotlib.rc("image", cmap=:turbo)
 
 dir = "RESULTS/run_2ndOrder_10s_PIC_10x10_xy2d/GM"
 var = "rho"
