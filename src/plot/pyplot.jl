@@ -8,7 +8,7 @@ export plotdata, plotlogdata, plot, scatter, contour, contourf, plot_surface,
 
 include("utility.jl")
 
-if matplotlib.__version__ >= "3.3"
+@static if matplotlib.__version__ >= "3.3"
    matplotlib.rc("image", cmap="turbo") # set default colormap
 end
 
