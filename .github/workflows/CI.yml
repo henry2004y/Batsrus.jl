@@ -11,6 +11,7 @@ on:
     tags: '*'
     paths-ignore:
       - 'README.md'
+      - 'examples/**'
 env:
   JULIA_NUM_THREADS: 1
 jobs:
