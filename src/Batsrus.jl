@@ -13,6 +13,8 @@ struct FileList
    name::String
    "file type"
    type::String
+   "directory"
+   dir::String
    "file size"
    bytes::Int
    "number of snapshots"
