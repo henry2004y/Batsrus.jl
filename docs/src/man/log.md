@@ -5,7 +5,18 @@ Because of the embarrassing parallelism nature of postprocessing, it is quite ea
 
 For the plotting, streamline tracing and particle tracing, a common problem is the grid and related interpolation process. Now I have [FieldTracer.jl](https://github.com/henry2004y/FieldTracer.jl) and [TestParticle.jl](https://github.com/henry2004y/TestParticle.jl) designed specifically for these tasks.
 
-### VTK AMR Grid Structure
+## Test Data
+
+If you don't have SWMF data at hand, Batsrus.jl provides some test data for you to begin with.
+```
+using LazyArtifacts
+
+datapath = artifact"testdata" # where you can find multiple test data files
+```
+
+These are also used in the standard test. These will be automatically downloaded from [batsrus_data](https://github.com/henry2004y/batsrus_data) if you run the package test locally.
+
+## VTK AMR Grid Structure
 
 `vtkOverlappingAMR` implements a somewhat strict Berger-Collela AMR scheme:
 1. All grids are Cartesian.

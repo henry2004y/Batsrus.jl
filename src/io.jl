@@ -42,8 +42,7 @@ function readdata(filenameIn::AbstractString; dir=".", npict=1, verbose=false)
       throw(ArgumentError("Ambiguous filename $(filenameIn)!"))
    end
 
-   filename = joinpath(dir, filename[1])
-   filelist, fileID, pictsize = getfiletype(filename)
+   filelist, fileID, pictsize = getfiletype(filename[1], dir)
 
    verbose &&
       @info "filename=$(filelist.name)\n"*"npict=$(filelist.npictinfiles)"
@@ -251,10 +250,10 @@ end
 
 
 "Obtain file type."
-function getfiletype(filename)
-
-   fileID = open(filename, "r")
-   bytes = filesize(filename)
+function getfiletype(filename, dir)
+   file = joinpath(dir, filename)
+   fileID = open(file, "r")
+   bytes = filesize(file)
    type  = ""
 
    # Check the appendix of file names
@@ -283,7 +282,7 @@ function getfiletype(filename)
             type = "binary"
          else
             throw(ArgumentError(
-               "Error in getfiletype: incorrect formatted file: $(filename)"))
+               "Error in getfiletype: incorrect formatted file: $filename"))
          end
 
          if lenhead == 500
@@ -296,7 +295,7 @@ function getfiletype(filename)
       npictinfiles = bytes ÷ pictsize
    end
 
-   filelist = FileList(filename, type, bytes, npictinfiles)
+   filelist = FileList(filename, type, dir, bytes, npictinfiles)
 
    filelist, fileID, pictsize
 end
@@ -740,16 +739,16 @@ end
 Displaying file header information.
 """
 function showhead(file::FileList, head, io=stdout)
-   println(io, "filename  = $(file.name)")
-   println(io, "filetype  = $(file.type)")
-   println(io, "headline  = $(head.headline)")
-   println(io, "iteration = $(head.it)")
-   println(io, "time      = $(head.time)")
-   println(io, "gencoords = $(head.gencoord)")
-   println(io, "ndim      = $(head.ndim)")
-   println(io, "neqpar    = $(head.neqpar)")
-   println(io, "nw        = $(head.nw)")
-   println(io, "nx        = $(head.nx)")
+   println(io, "filename : $(file.name)")
+   println(io, "filetype : $(file.type)")
+   println(io, "headline : $(head.headline)")
+   println(io, "iteration: $(head.it)")
+   println(io, "time     : $(head.time)")
+   println(io, "gencoords: $(head.gencoord)")
+   println(io, "ndim     : $(head.ndim)")
+   println(io, "neqpar   : $(head.neqpar)")
+   println(io, "nw       : $(head.nw)")
+   println(io, "nx       : $(head.nx)")
 
    if head.neqpar > 0
       println(io, "parameters  = $(head.eqpar)")
