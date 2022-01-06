@@ -138,7 +138,7 @@ function convertTECtoVTU(head, data, connectivity, filename="out")
    end
 
    # Add meta data from Tecplot AUXDATA
-   for i in 1:length(head.auxdata)
+   for i in eachindex(head.auxdata)
       vtkfile[head.auxdataname[i],VTKFieldData()] = head.auxdata[i]
    end
 
