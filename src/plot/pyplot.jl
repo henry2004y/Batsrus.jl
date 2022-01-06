@@ -117,7 +117,7 @@ function plotdata(data::Data, func::AbstractString; dir="x", plotmode="contbar",
       for (ivar,var) in enumerate(vars)
          varIndex_ = findindex(data, var)
          if ivar == 1 || multifigure fig, ax = subplots() else ax = gca() end
-         if !occursin("scatter",plotmode[ivar])
+         if !occursin("scatter", plotmode[ivar])
             plot(x, w[:,varIndex_])
          else
             scatter(x, w[:,varIndex_])
