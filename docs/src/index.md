@@ -30,7 +30,8 @@ Pkg.add("Batsrus")
 
 Or in the Pkg REPL
 ```julia
->pkg add Batsrus
+julia> ]
+pkg> add Batsrus
 ```
 
 ## Benchmark

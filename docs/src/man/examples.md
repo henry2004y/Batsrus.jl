@@ -3,7 +3,7 @@
 ## IDL format output loader
 
 - Read data
-```
+```julia
 filename = "1d_bin.out";
 data = readdata(filename);
 data = readdata(filename, verbose=true);
@@ -12,19 +12,19 @@ data = readdata(filename, dir=".");
 ```
 
 - 3D structured spherical coordinates
-```
+```julia
 filename = "3d_structured.out";
 data = readdata(filename, verbose=false);
 ```
 
 - log file
-```
+```julia
 logfilename = "shocktube.log";
 head, data = readlogdata(logfilename)
 ```
 
 ## Derived variables
-```
+```julia
 v = getvars(data, ["Bx", "By", "Bz"])
 B = @. sqrt(v["Bx"]^2 + v["By"]^2 + v["Bz"]^2)
 ```
@@ -33,7 +33,7 @@ B = @. sqrt(v["Bx"]^2 + v["By"]^2 + v["Bz"]^2)
 We can convert 2D/3D BATSRUS outputs `*.dat` to VTK formats. It uses the VTK XML format writer [writeVTK](https://github.com/jipolanco/WriteVTK.jl) to generate files for Paraview and Tecplot. The default converted filename is `out.vtu`.
 
 ASCII Tecplot file (supports both `tec` and `tcp`) and binary Tecplot file (set `DOSAVETECBINARY=TRUE` in BATSRUS `PARAM.in`):
-```
+```julia
 filename = "x=0_mhd_1_n00000050.dat"
 #filename = "3d_ascii.dat"
 #filename = "3d_bin.dat"
@@ -42,13 +42,13 @@ convertTECtoVTU(head, data, connectivity)
 ```
 
 3D structured IDL file (`gridType=1` returns rectilinear `vtr` file, `gridType=2` returns structured `vts` file):
-```
+```julia
 filename = "3d_structured.out"
 convertIDLtoVTK(filename, gridType=1)
 ```
 
 3D unstructured IDL file together with header and tree file:
-```
+```julia
 filetag = "3d_var_1_n00002500"
 convertIDLtoVTK(filetag)
 ```
@@ -57,7 +57,7 @@ convertIDLtoVTK(filetag)
     The file suffix should not be provided for this to work correctly!
 
 Multiple files:
-```
+```julia
 using Batsrus, Glob
 filenamesIn = "3d*.dat"
 dir = "."
@@ -71,7 +71,7 @@ end
 ```
 
 If each individual file size is large, consider using:
-```
+```julia
 using Batsrus, Glob
 filenamesIn = "3d*.dat"
 dir = "."
@@ -85,7 +85,7 @@ end
 ```
 
 Multiple files in parallel:
-```
+```julia
 using Distributed
 @everywhere using Batsrus, Glob
 
@@ -109,7 +109,7 @@ More examples can be found in [examples](https://github.com/henry2004y/Batsrus.j
 We provide plot recipes for Plots.jl and wrappers for PyPlot.jl.
 
 The recipes for Plots.jl will work on all functions given the correct dimensions, e.g.
-```
+```julia
 using Plots
 plot(data, "p")
 contourf(data, "Mx", xlabel="x")
@@ -126,13 +126,13 @@ Check out the documentation for more details.
 A general `plotdata` function is provided for quick visualizations using Matplotlib.
 
 - 1D binary
-```
+```julia
 plotdata(data, "p", plotmode="line")
 plotdata(data, "p", plotmode="linegrid")
 ```
 
 - 2D Cartesian (structured)
-```
+```julia
 plotdata(data, "p bx;by", plotmode="contbar streamover")
 plotdata(data, "p bx;by", plotmode="contbar quiverover")
 plotdata(data, "p bx;by", plotmode="contbar streamover", density=2.0)
@@ -144,19 +144,19 @@ plotdata(data, "p", plotmode="surfbar")
 ```
 
 - 2D unstructured
-```
+```julia
 plotdata(data, "rho", plotmode="contbar")
 plotdata(data, "rho", plotmode="trimesh")
 plotdata(data, "rho", plotmode="tricont")
 ```
 
 - 2D structured spherical coordinates
-```
+```julia
 plotdata(data, "rho", plotmode="contbar")
 ```
 
 - 3D box
-```
+```julia
 plotdata(data, "bx", plotmode="contbar", dir="y", sequence=1, level=20)
 plotdata(data, "bx", plotmode="contbar", dir="y", plotrange=[-1.4,-1.1,0.70,0.78])
 using PyPlot
@@ -169,7 +169,7 @@ cutplot(data, "Ex"; dir="y", sequence=128, plotrange)
 #### Finding indexes
 
 To get the index of a certain quantity, e.g. electron number density
-```
+```julia
 ρe_= findfirst(x->x=="rhoS0", data.head.wnames)
 ```
 
@@ -180,57 +180,57 @@ Some plotting functions can be directly called as shown below, which allows for 
 `using PyPlot` to import the full capability of the package, etc. adding colorbar, changing line colors, setting colorbar range with `clim`.
 
 - line plot
-```
+```julia
 plot(data, "p", linewidth=2, color="green")
 c = plot(data, "p")
 plt.setp(c, linestyle="--", linewidth=2);
 ```
 
 - scatter plot
-```
+```julia
 scatter(data, "p")
 ```
 
 - contour
-```
+```julia
 # 2D contour
 contour(data, "p")
 ```
 
 - filled contour
-```
+```julia
 contourf(data, "p")
 contourf(data, "p", levels, plotrange=[-10,10,-Inf,Inf], plotinterval=0.1)
 ```
 
 - surface plot
-```
+```julia
 plot_surface(data, "p")
 ```
 
 - triangle surface plot
-```
+```julia
 plot_trisurf(data, "p")
 ```
 
 - triangle filled contour plot
-```
+```julia
 tricontourf(data, "p")
 ```
 
 - streamline
-```
+```julia
 streamplot(data, "bx;bz")
 streamplot(data, "bx;bz", density=2.0, color="k", plotinterval=1.0, plotrange=[-10,10,-Inf,Inf])
 ```
 
 - quiver (currently only for Cartesian grid)
-```
+```julia
 quiver(data, "ux;uy", stride=50)
 ```
 
 - streamline + contourf
-```
+```julia
 using Batsrus, PyPlot
 
 filename = "y*out"
@@ -255,7 +255,7 @@ xlabel("x"); ylabel("y"); title("uxS0")
 The built-in `streamplot` function in Matplotlib is not satisfactory for accurately tracing. Instead we recommend [FieldTracer.jl](https://github.com/henry2004y/FieldTracer.jl) for tracing fieldlines and streamlines.
 
 An example of tracing in a 2D cut and plot the field lines over contour:
-```
+```julia
 using Batsrus, PyPlot
 
 filename = "y=0_var_1_t00000000_n00000000.out"

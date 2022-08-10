@@ -8,7 +8,7 @@ For the plotting, streamline tracing and particle tracing, a common problem is t
 ## Test Data
 
 If you don't have SWMF data at hand, Batsrus.jl provides some test data for you to begin with.
-```
+```julia
 using LazyArtifacts
 
 datapath = artifact"testdata" # where you can find multiple test data files
