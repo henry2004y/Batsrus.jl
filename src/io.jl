@@ -32,8 +32,8 @@ Filename can be provided with wildcards.
 data = readdata("1d_raw*")
 ```
 """
-function readdata(filenameIn::AbstractString; dir=".", npict=1, verbose=false)
-
+function readdata(filenameIn::AbstractString; dir::String=".", npict::Int=1,
+   verbose::Bool=false)
    # Check the existence of files
    filename = searchdir(dir, Regex(replace(filenameIn, s"*" => s".*")))
    if isempty(filename)
@@ -83,7 +83,6 @@ end
 
 "Read information from log file."
 function readlogdata(filename::AbstractString)
-
    f = open(filename, "r")
    nLine = countlines(f) - 2
    seekstart(f)
@@ -121,8 +120,7 @@ filename = "3d_ascii.dat"
 head, data, connectivity = readtecdata(filename)
 ```
 """
-function readtecdata(filename::AbstractString; verbose=false)
-
+function readtecdata(filename::AbstractString; verbose::Bool=false)
    f = open(filename)
 
    nDim  = 3
@@ -248,9 +246,8 @@ function readtecdata(filename::AbstractString; verbose=false)
    head, data, connectivity
 end
 
-
 "Obtain file type."
-function getfiletype(filename, dir)
+function getfiletype(filename::String, dir::String)
    file = joinpath(dir, filename)
    fileID = open(file, "r")
    bytes = filesize(file)
@@ -308,8 +305,7 @@ Obtain the header information from BATSRUS output file of `type` linked to `file
 - `fileID::IOStream`: file identifier.
 - `type::String`: file type in ["ascii", "real4", "binary", "log"].
 """
-function getfilehead(fileID::IOStream, type)
-
+function getfilehead(fileID::IOStream, type::String)
    ftype = string(lowercase(type))
 
    lenstr = ftype == type ? 79 : 500
@@ -377,12 +373,11 @@ function skipline(s::IO)
        c = read(s, Char)
        c == '\n' && break
    end
-   nothing
+   return
 end
 
 "Return the size in bytes for one snapshot."
 function getfilesize(fileID::IOStream, type::String)
-
    ftype = string(lowercase(type))
 
    if ftype == type lenstr = 79 else lenstr = 500 end
@@ -443,10 +438,8 @@ function getfilesize(fileID::IOStream, type::String)
    pictsize
 end
 
-
 "Create buffer for x and w."
 function allocateBuffer(filehead::NamedTuple, T::DataType)
-
    if filehead.ndim == 1
       n1 = filehead.nx[1]
       x  = Array{T,2}(undef,n1,filehead.ndim)
@@ -466,7 +459,6 @@ end
 
 "Read ascii format data."
 function getascii!(x, w, fileID::IOStream, filehead::NamedTuple)
-
    ndim, nx = filehead.ndim, filehead.nx
 
    # Read coordinates & values row by row
@@ -490,15 +482,13 @@ function getascii!(x, w, fileID::IOStream, filehead::NamedTuple)
       end
    end
 
-   nothing
+   return
 end
 
 
 "Read binary format data."
 function getbinary!(x, w, fileID::IOStream, filehead::NamedTuple, T::DataType)
-
-   ndim = filehead.ndim
-   nw   = filehead.nw
+   ndim, nw = filehead.ndim, filehead.nw
 
    # Read coordinates & values
    if ndim == 1 # 1D
@@ -524,7 +514,7 @@ function getbinary!(x, w, fileID::IOStream, filehead::NamedTuple, T::DataType)
       end
    end
 
-   nothing
+   return
 end
 
 """
@@ -541,7 +531,6 @@ Also calculate convenient constants ti0, cs0 ... for typical formulas.
 This function is currently not used anywhere!
 """
 function setunits(filehead, type; distance=1.0, mp=1.0, me=1.0)
-
    ndim      = filehead.ndim
    headline  = filehead.headline
    neqpar    = filehead.neqpar

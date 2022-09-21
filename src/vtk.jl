@@ -83,13 +83,11 @@ end
 """
 	convertTECtoVTU(head, data, connectivity, filename="out")
 
-Convert unstructured Tecplot data to VTK. Note that if using voxel type data
-in VTK, the connectivity sequence is different from Tecplot.
-Note that the 3D connectivity sequence in Tecplot is the same with the
-`hexahedron` type in VTK, but different with the `voxel` type.
-The 2D connectivity sequence is the same as the `quad` type, but different with
-the `pixel` type.
-For example, in 3D the index conversion is:
+Convert unstructured Tecplot data to VTK. Note that if using voxel type data in VTK, the
+connectivity sequence is different from Tecplot. Note that the 3D connectivity sequence in
+Tecplot is the same with the `hexahedron` type in VTK, but different with the `voxel` type.
+The 2D connectivity sequence is the same as the `quad` type, but different with the `pixel`
+type. For example, in 3D the index conversion is:
 ```
 # PLT to VTK voxel index_ = [1 2 4 3 5 6 8 7]
 for i = 1:2
@@ -98,7 +96,6 @@ end
 ```
 """
 function convertTECtoVTU(head, data, connectivity, filename="out")
-
    nVar = length(head.variables)
    points = @view data[1:head.nDim,:]
    cells = Vector{MeshCell{VTKCellType,Array{Int32,1}}}(undef,head.nCell)
@@ -148,14 +145,13 @@ end
 """
 	convertIDLtoVTK(filename; dir=".", gridType=1, verbose=false)
 
-Convert 3D BATSRUS *.out to VTK. If `gridType==1`, it converts to the
-rectilinear grid; if `gridType==2`, it converts to the structured grid.
-If `filename` does not end with "out", it tries to find the ".info" and ".tree"
-file with the same name tag and generates 3D unstructured VTU file.
+Convert 3D BATSRUS *.out to VTK. If `gridType==1`, it converts to the rectilinear grid; if
+`gridType==2`, it converts to the structured grid. If `filename` does not end with "out", it
+tries to find the ".info" and ".tree" file with the same name tag and generates 3D
+unstructured VTU file.
 """
-function convertIDLtoVTK(filename::AbstractString; dir=".", gridType=1,
-   verbose=false)
-
+function convertIDLtoVTK(filename::AbstractString; dir::String=".", gridType::Int=1,
+   verbose::Bool=false)
    if endswith(filename, ".out")
       data = readdata(filename, dir=dir)
 
@@ -279,7 +275,7 @@ function convertIDLtoVTK(filename::AbstractString; dir=".", gridType=1,
 end
 
 "Return matrix X with swapped rows i and j."
-function swaprows!(X, i, j)
+function swaprows!(X::Matrix, i::Int, j::Int)
    m, n = size(X)
    if (1 ≤ i ≤ n) && (1 ≤ j ≤ n)
       @inbounds @simd for k = 1:n
@@ -293,7 +289,6 @@ end
 
 "Return header from info file. Currently only designed for 2D and 3D."
 function readhead(filehead)
-
    nDim = 3
    nI, nJ, nK = 1, 1, 1
    nRoot_D = Int32[1,1,1]
@@ -373,7 +368,6 @@ end
 
 "Return BATL tree structure."
 function readtree(filetag)
-
    iRatio_D = Int32[1,1,1]
    nRoot_D = Int32[1,1,1]
 
@@ -394,11 +388,10 @@ end
 """
    find_grid_block(batl, xyz_D)
 
-Return processor local block index that contains a point. Input location should
-be given in Cartesian coordinates.
+Return processor local block index that contains a point. Input location should be given in
+Cartesian coordinates.
 """
 function find_grid_block(batl::Batl, xyz_D)
-
    CoordMin_D = batl.head.CoordMin_D
    CoordMax_D = batl.head.CoordMax_D
 
@@ -430,11 +423,10 @@ end
 """
    find_tree_node(batl, Coord_D)
 
-Find the node that contains a point. The point coordinates should be given in
-generalized coordinates normalized by the domain size.
+Find the node that contains a point. The point coordinates should be given in generalized
+coordinates normalized by the domain size.
 """
 function find_tree_node(batl::Batl, Coord_D)
-
    nRoot_D = batl.head.nRoot_D
    nDimAmr = batl.head.nDimAmr
    iDimAmr_D = batl.head.iDimAmr_D
@@ -491,7 +483,6 @@ function ibits(i, pos, len)
    return s
 end
 
-
 """
    order_tree(batl)
 
@@ -501,12 +492,11 @@ Set iNodeMorton_I indirect index arrays according to
 2. Morton ordering for each root node
 """
 function order_tree(batl::Batl)
-
    nRoot_D = batl.head.nRoot_D
    iTree_IA = batl.iTree_IA
 
    nNode = prod(nRoot_D)
-   iNode = 0
+   iNode = Int32(0)
    iMorton = 0
 
    # Get used node counts
@@ -518,7 +508,7 @@ function order_tree(batl::Batl)
       for jRoot = 1:nRoot_D[2]
          for iRoot = 1:nRoot_D[1]
             # Root nodes are the first ones
-            iNode += 1
+            iNode += Int32(1)
             # All root nodes are handled as if they were first child
             iMorton = order_children!(batl, iNode, iMorton, iNodeMorton_I)
          end
@@ -542,13 +532,13 @@ end
 
 
 """
-   order_children!(iNode)
+   order_children!(batl::Batl, iNode, iMorton::Int, iNodeMorton_I::Vector{Int32})
 
 Recursively apply Morton ordering for nodes below a root block.
 Store result into iNodeMorton_I and iMortonNode_A using the iMorton index.
 """
-function order_children!(batl::Batl, iNode, iMorton, iNodeMorton_I)
-
+function order_children!(batl::Batl, iNode::Int32, iMorton::Int,
+   iNodeMorton_I::Vector{Int32})
    iTree_IA = batl.iTree_IA
 
    if iTree_IA[status_, iNode] ≥ used_
@@ -564,8 +554,7 @@ function order_children!(batl::Batl, iNode, iMorton, iNodeMorton_I)
 end
 
 "Find neighbors for any node in the tree. Only for Cartesian now."
-function find_neighbor_for_anynode(batl::Batl, iNode)
-
+function find_neighbor_for_anynode(batl::Batl, iNode::Int)
    nDim = batl.nDim
    nRoot_D = batl.head.nRoot_D
    iTree_IA = batl.iTree_IA
@@ -698,7 +687,6 @@ end
 
 "Return global block index for the node."
 function nodeToGlobalBlock(batl::Batl, iNode::Int32, nBlock_P)
-
    iTree_IA = batl.iTree_IA
 
    iProc = iTree_IA[proc_, iNode]
@@ -717,7 +705,6 @@ end
 
 "Get cell connectivity list."
 function getConnectivity(batl::Batl)
-
    iTree_IA = batl.iTree_IA
    nI, nJ, nK = batl.head.nI, batl.head.nJ, batl.head.nK
    nDim = batl.nDim
@@ -775,7 +762,8 @@ function getConnectivity(batl::Batl)
                iCell_G[i+1,j+1,k+1] = iCell
             end
 
-            iNodeNei_III, DiLevelNei_III = find_neighbor_for_anynode(batl, localNodes_B[iBlock]) # rename!
+            iNodeNei_III, DiLevelNei_III =
+               find_neighbor_for_anynode(batl, localNodes_B[iBlock]) # rename!
 
             fillCellNeighbors!(batl, iCell_G, DiLevelNei_III, iNodeNei_III, nBlock_P)
 
@@ -851,7 +839,6 @@ function getSibling(iNodeNei_III, iTree_IA)
    iSibling = findfirst(x->x==iMyNode, motherNode[child1_:end])
 end
 
-
 """
     fillCellNeighbors!(batl, iCell_G, DiLevelNei_III, iNodeNei_III, nBlock_P)
 
@@ -867,8 +854,7 @@ Vertices:        Edges: (10,11 ignored)
 1 ----- 2        . --1-- .
 Only tested for 3D.
 """
-function fillCellNeighbors!(batl, iCell_G, DiLevelNei_III, iNodeNei_III, nBlock_P)
-
+function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, nBlock_P)
    iTree_IA = batl.iTree_IA
    nI, nJ, nK = batl.head.nI, batl.head.nJ, batl.head.nK
 
@@ -1821,7 +1807,7 @@ function fillCellNeighbors!(batl, iCell_G, DiLevelNei_III, iNodeNei_III, nBlock_
          iCell_G[end,end,end] = nIJK*(neiBlock-1) + 1
       end
    end
-   nothing
+   return
 end
 
 """
@@ -1833,8 +1819,7 @@ Generate PVD file for a time series collection of VTK data.
 create_pvd("*.vtu)
 ```
 """
-function create_pvd(filepattern)
-
+function create_pvd(filepattern::String)
    filenames = glob(filepattern)
 
    # create an empty XML document
@@ -1868,5 +1853,5 @@ function create_pvd(filepattern)
    name_index = findfirst("_t",filenames[1])[1] - 1
 
    save_file(xdoc, filenames[1][1:name_index]*".pvd")
-   nothing
+   return
 end

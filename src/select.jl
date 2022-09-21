@@ -8,7 +8,7 @@ Get 2D plane cut in orientation `dir` for `var` out of 3D box `data` within `plo
 The returned 2D data lies in the `sequence` plane from - to + in `dir`.
 """
 function cutdata(data::Data, var::AbstractString;
-   plotrange=[-Inf,Inf,-Inf,Inf], dir="x", sequence=1)
+   plotrange=[-Inf,Inf,-Inf,Inf], dir::String="x", sequence::Int=1)
 
    x, w = data.x, data.w
    VarIndex_ = findfirst(x->x==lowercase(var), lowercase.(data.head.wnames))
@@ -41,7 +41,7 @@ function cutdata(data::Data, var::AbstractString;
    cut1, cut2, W
 end
 
-@inline function checkvalidlimits(limits, dim=2)
+@inline function checkvalidlimits(limits, dim::Int=2)
    if dim == 2
       if length(limits) != 4
          throw(ArgumentError("Reduction range $limits should be [xmin xmax ymin ymax]!"))
@@ -101,7 +101,6 @@ end
 Extract subset of 2D surface dataset. See also: [`subvolume`](@ref).
 """
 function subsurface(x, y, data, limits)
-
    checkvalidlimits(limits)
 
    xind, yind = findindexes(x, y, limits)
@@ -115,7 +114,6 @@ function subsurface(x, y, data, limits)
 end
 
 function subsurface(x, y, u, v, limits)
-
    checkvalidlimits(limits)
 
    xind, yind = findindexes(x, y, limits)
@@ -137,7 +135,6 @@ end
 Extract subset of 3D dataset in ndgrid format. See also: [`subsurface`](@ref).
 """
 function subvolume(x, y, z, data, limits)
-
    checkvalidlimits(limits, 3)
 
    xind, yind, zind = findindexes(x, y, z, limits)
@@ -152,7 +149,6 @@ function subvolume(x, y, z, data, limits)
 end
 
 function subvolume(x, y, z, u, v, w, limits)
-
    checkvalidlimits(limits, 3)
 
    sz = size(u)
@@ -188,7 +184,6 @@ function subdata(data, xind, yind, sz)
 end
 
 function subdata(data, xind, yind, zind, sz)
-
    newdata = data[xind,yind,zind]
    newsz = size(newdata)
 
@@ -222,7 +217,6 @@ Return variables' data as a dictionary from string vector.
 See also: [`getvar`](@ref).
 """
 function getvars(data::Data, Names::Vector{T}) where T<:AbstractString
-
    dict = Dict()
    for name in Names
       dict[name] = getvar(data, name)
