@@ -1,6 +1,6 @@
 # Batsrus.jl
 
-[![Build Status](https://img.shields.io/github/workflow/status/henry2004y/Batsrus.jl/CI)](https://github.com/henry2004y/Batsrus.jl/actions)
+[![Build Status](https://github.com/henry2004y/Batsrus.jl/workflows/CI/badge.svg)](https://github.com/henry2004y/Batsrus.jl/actions?query=workflow%3ACI+branch%3Amaster)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![](https://img.shields.io/badge/docs-latest-blue.svg)][Batsrus-doc]
 [![][codecov-img]][codecov-url]
@@ -57,7 +57,6 @@ See the [benchmark](https://henry2004y.github.io/Batsrus.jl/dev/#Benchmark-1) in
 
 * All the nice guys who share their codes!
 
-[travis-url]: https://travis-ci.com/github/henry2004y/Batsrus.jl/builds
 [codecov-img]: https://codecov.io/gh/henry2004y/Batsrus.jl/branch/master/graph/badge.svg
 [codecov-url]: https://codecov.io/gh/henry2004y/Batsrus.jl
 [Batsrus-doc]: https://henry2004y.github.io/Batsrus.jl/dev
