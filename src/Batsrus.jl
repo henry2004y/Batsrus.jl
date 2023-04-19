@@ -38,7 +38,7 @@ include("select.jl")
 include("vtk.jl")
 
 include("unit/UnitfulBatsrus.jl")
-using UnitfulRecipes, .UnitfulBatsrus
+using .UnitfulBatsrus
 
 function __init__()
    @require PyPlot="d330b81b-6aea-500a-939a-2ce795aea3ee" begin

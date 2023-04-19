@@ -159,7 +159,7 @@ function readtecdata(filename::AbstractString; verbose::Bool=false)
          replace(zoneline[1], '"'=>"") # Remove the quotes in T
       end
       for zline in zoneline
-         name, value = split(zline,'=', keepempty=false)
+         name, value = split(zline, '=', keepempty=false)
          name = uppercase(name)
          if name == "T" # ZONE title
             T = value
@@ -183,7 +183,7 @@ function readtecdata(filename::AbstractString; verbose::Bool=false)
    auxdata = Union{Int32, String}[]
    pt0 = position(f)
 
-   while startswith(ln, "AUXDATA") || startswith(ln,"DT")
+   while startswith(ln, "AUXDATA") || startswith(ln, "DT")
       name, value = split(ln,'"', keepempty=false)
       name = string(name[9:end-1])
       str = string(strip(value))
