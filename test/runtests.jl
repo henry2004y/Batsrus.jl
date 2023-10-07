@@ -93,7 +93,7 @@ end
          filename = "1d__raw_2_t25.60000_n00000258.out"
          data = readdata(filename, dir=datapath, verbose=false)
          plotdata(data, "p", plotmode="line")
-         line = gca().lines[1]
+         line = get(gca().lines, 0)
          @test line.get_xdata() ≈ data.x
          @test line.get_ydata() ≈ data.w[:,10]
       end
