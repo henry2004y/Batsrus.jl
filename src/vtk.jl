@@ -84,8 +84,8 @@ end
 	convertTECtoVTU(head, data, connectivity, filename="out")
 
 Convert unstructured Tecplot data to VTK. Note that if using voxel type data in VTK, the
-connectivity sequence is different from Tecplot. Note that the 3D connectivity sequence in
-Tecplot is the same with the `hexahedron` type in VTK, but different with the `voxel` type.
+connectivity sequence is different from Tecplot: the 3D connectivity sequence in Tecplot is
+the same as the `hexahedron` type in VTK, but different with the `voxel` type.
 The 2D connectivity sequence is the same as the `quad` type, but different with the `pixel`
 type. For example, in 3D the index conversion is:
 ```
@@ -98,7 +98,7 @@ end
 function convertTECtoVTU(head, data, connectivity, filename="out")
    nVar = length(head.variables)
    points = @view data[1:head.nDim,:]
-   cells = Vector{MeshCell{VTKCellType,Array{Int32,1}}}(undef,head.nCell)
+   cells = Vector{MeshCell{VTKCellType,Array{Int32,1}}}(undef, head.nCell)
 
    if head.nDim == 3
       @inbounds for i = 1:head.nCell
@@ -136,7 +136,7 @@ function convertTECtoVTU(head, data, connectivity, filename="out")
 
    # Add meta data from Tecplot AUXDATA
    for i in eachindex(head.auxdata)
-      vtkfile[head.auxdataname[i],VTKFieldData()] = head.auxdata[i]
+      vtkfile[head.auxdataname[i], VTKFieldData()] = head.auxdata[i]
    end
 
    outfiles = vtk_save(vtkfile)
