@@ -81,7 +81,7 @@ end
 
 
 """
-	convertTECtoVTU(head, data, connectivity, filename="out")
+    convertTECtoVTU(head, data, connectivity, filename="out")
 
 Convert unstructured Tecplot data to VTK. Note that if using voxel type data in VTK, the
 connectivity sequence is different from Tecplot: the 3D connectivity sequence in Tecplot is
@@ -143,7 +143,7 @@ function convertTECtoVTU(head, data, connectivity, filename="out")
 end
 
 """
-	convertIDLtoVTK(filename; dir=".", gridType=1, verbose=false)
+    convertIDLtoVTK(filename; dir=".", gridType=1, verbose=false)
 
 Convert 3D BATSRUS *.out to VTK. If `gridType==1`, it converts to the rectilinear grid; if
 `gridType==2`, it converts to the structured grid. If `filename` does not end with "out", it
@@ -386,7 +386,7 @@ end
 
 
 """
-   find_grid_block(batl, xyz_D)
+    find_grid_block(batl, xyz_D)
 
 Return processor local block index that contains a point. Input location should be given in
 Cartesian coordinates.
@@ -421,7 +421,7 @@ end
 
 
 """
-   find_tree_node(batl, Coord_D)
+    find_tree_node(batl, Coord_D)
 
 Find the node that contains a point. The point coordinates should be given in generalized
 coordinates normalized by the domain size.
@@ -484,7 +484,7 @@ function ibits(i, pos, len)
 end
 
 """
-   order_tree(batl)
+    order_tree(batl)
 
 Return maximum AMR level in the used block and the Morton curve order.
 Set iNodeMorton_I indirect index arrays according to
@@ -532,7 +532,7 @@ end
 
 
 """
-   order_children!(batl::Batl, iNode, iMorton::Int, iNodeMorton_I::Vector{Int32})
+    order_children!(batl::Batl, iNode, iMorton::Int, iNodeMorton_I::Vector{Int32})
 
 Recursively apply Morton ordering for nodes below a root block.
 Store result into iNodeMorton_I and iMortonNode_A using the iMorton index.
@@ -844,7 +844,9 @@ end
 
 Fill neighbor cell indexes for the given block. The faces, edges, and vertices
 are ordered from left (-) to right (+) in x-y-z sequentially.
+
 Vertices:        Edges: (10,11 ignored)
+
    7 ----- 8        . --4-- .
  - .     - .      7 .     8 .
 5 ----- 6  .     . --3-- .  12
@@ -852,6 +854,7 @@ Vertices:        Edges: (10,11 ignored)
 .  3 ----- 4     9  . --2-- .
 . -     . -      . 5     . 6
 1 ----- 2        . --1-- .
+
 Only tested for 3D.
 """
 function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, nBlock_P)
