@@ -5,7 +5,7 @@ module Batsrus
 
 using Printf, Requires
 
-export Data
+export BATLData
 
 "Type for the file information."
 struct FileList
@@ -21,8 +21,8 @@ struct FileList
    npictinfiles::Int
 end
 
-"Primary data storage type"
-struct Data{T<:AbstractFloat}
+"Primary BATLData storage type"
+struct BATLData{T<:AbstractFloat}
    "header information"
    head::NamedTuple
    "grid"

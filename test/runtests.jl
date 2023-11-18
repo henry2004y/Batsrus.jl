@@ -28,7 +28,7 @@ end
    datapath = artifact"testdata"
    @testset "Reading 1D ascii" begin
       filename = "1d__raw_2_t25.60000_n00000258.out"
-      data = readdata(filename, dir=datapath, verbose=true)
+      data = load(filename, dir=datapath, verbose=true)
       @test startswith(repr(data), "filename : 1d")
       @test Batsrus.setunits(data.head, "NORMALIZED")
       @test isa(data.head, NamedTuple)
@@ -38,7 +38,7 @@ end
 
    @testset "Reading 2D structured binary" begin
       filename = "z=0_raw_1_t25.60000_n00000258.out"
-      data = readdata(filename, dir=datapath)
+      data = load(filename, dir=datapath)
       @test data.head.time == 25.6f0
       @test extrema(data.x) == (-127.5f0, 127.5f0)
       @test extrema(data.w) == (-0.79985905f0, 1.9399388f0)
@@ -46,12 +46,12 @@ end
 
    @testset "Reading 2D unstructured binary" begin
       #filename = "z=0_raw_1_t25.60000_n00000258.out"
-      #data = readdata(filename)
+      #data = load(filename)
    end
 
    @testset "Reading 3D structured binary" begin
       filename = "3d_raw.out"
-      data = readdata(filename, dir=datapath)
+      data = load(filename, dir=datapath)
       plotrange = [-50.0, 50.0, -0.5, 0.5]
       X, Z, p = cutdata(data, "p"; dir="y", sequence=1, plotrange)
       @test p[1] ≈ 0.560976f0
@@ -91,7 +91,7 @@ end
       ENV["MPLBACKEND"]="agg" # no GUI
       @testset "1D ascii" begin
          filename = "1d__raw_2_t25.60000_n00000258.out"
-         data = readdata(filename, dir=datapath, verbose=false)
+         data = load(filename, dir=datapath, verbose=false)
          plotdata(data, "p", plotmode="line")
          line = get(gca().lines, 0)
          @test line.get_xdata() ≈ data.x
@@ -100,7 +100,7 @@ end
 
       @testset "2D structured binary" begin
          filename = "z=0_raw_1_t25.60000_n00000258.out"
-         data = readdata(filename, dir=datapath)
+         data = load(filename, dir=datapath)
          plotdata(data, "p bx;by", plotmode="contbar streamover")
          @test isa(gca(), PyPlot.PyObject)
          contourf(data, "p")
@@ -122,7 +122,7 @@ end
 
       @testset "2D AMR Cartesian" begin
          filename = "bx0_mhd_6_t00000100_n00000352.out"
-         data = readdata(filename, dir=datapath)
+         data = load(filename, dir=datapath)
          plotdata(data, "P", plotmode="contbar")
          ax = gca()
          @test isa(ax, PyPlot.PyObject)
@@ -132,7 +132,7 @@ end
    @testset "Units" begin
       @test 1.0bu"R" > 2.0bu"Rg"
       filename = "y=0_var_1_t00000000_n00000000.out"
-      data = readdata(filename, dir=datapath)
+      data = load(filename, dir=datapath)
       varunit = getunit(data, "Rho")
       @test varunit == bu"amucc"
       varunit = getunit(data, "Ux")

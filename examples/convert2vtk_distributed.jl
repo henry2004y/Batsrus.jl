@@ -8,13 +8,7 @@
 # Hongyang Zhou, hyzhou@umich.edu
 
 using Distributed
-using Pkg
-if "VisAna" ∈ keys(Pkg.installed())
-   @everywhere using Batsrus
-else
-   @warn "Batsrus.jl not installed. Install the package by `Pkg.add("Batsrus")`"
-end
-@everywhere using Glob
+@everywhere using Batsrus, Glob
 
 dir = "IO2"
 

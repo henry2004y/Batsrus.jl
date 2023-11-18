@@ -1,12 +1,12 @@
 # Utility functions for plotting.
 
 "Prepare 2D data arrays for passing to plotting functions."
-function getdata(data::Data, var::AbstractString, plotrange, plotinterval; griddim=1,
+function getdata(data::BATLData, var::AbstractString, plotrange, plotinterval; griddim=1,
    innermask=false)
-   @assert data.head.ndim == 2 "data must be in 2D!"
-
    x, w = data.x, data.w
    ndim = data.head.ndim
+   @assert ndim == 2 "data must be in 2D!"
+
    varIndex_ = findindex(data, var)
 
    if data.head.gencoord # Generalized coordinates
@@ -56,7 +56,7 @@ function getdata(data::Data, var::AbstractString, plotrange, plotinterval; gridd
    if innermask
       varIndex_ = findlast(x->x=="rbody", data.head.variables)
       isnothing(varIndex_) && error("rbody not found in file header parameters!")
-      ParamIndex_ = varIndex_ - data.head.ndim - data.head.nw
+      ParamIndex_ = varIndex_ - ndim - data.head.nw
       @inbounds for i = eachindex(Xi, Yi)
          if Xi[i]^2 + Yi[i]^2 < data.head.eqpar[ParamIndex_]^2
             Wi[i] = NaN
@@ -72,9 +72,10 @@ function getdata(data::Data, var::AbstractString, plotrange, plotinterval; gridd
 end
 
 "Find variable index in data."
-function findindex(data::Data, var::AbstractString)
+function findindex(data::BATLData, var::AbstractString)
    varIndex_ = findfirst(x->x==lowercase(var), lowercase.(data.head.wnames))
    isnothing(varIndex_) && error("$(var) not found in file header variables!")
+
    varIndex_
 end
 
@@ -82,5 +83,6 @@ end
 function meshgrid(x, y)
    X = [x for _ in y, x in x]
    Y = [y for y in y, _ in x]
+
    X, Y
 end

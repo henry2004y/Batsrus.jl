@@ -70,7 +70,7 @@ After the installation, in the Python REPL:
 from julia import Batsrus
 dir = 'test'
 filename = '1d__raw_2_t25.60000_n00000258.out'
-data = Batsrus.readdata(filename, dir=dir)
+data = Batsrus.load(filename, dir=dir)
 ```
 There you have it! Enjoy!
 

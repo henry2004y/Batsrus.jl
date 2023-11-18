@@ -7,7 +7,7 @@ include("utility.jl")
 
 # 1D example
 filename = "1d__raw_2_t25.60000_n00000258.out"
-data = readdata(filename, dir="test/data")
+data = load(filename, dir="test/data")
 
 var = "p"
 VarIndex_ = findindex(data, var)
@@ -22,7 +22,7 @@ fig
 #=
 # 2D example
 #filename = "z=0_raw_1_t25.60000_n00000258.out"
-#data = readdata(filename, dir="test/data")
+#data = load(filename, dir="test/data")
 
 var = "p"
 plotrange = [-Inf,Inf,-Inf,Inf]

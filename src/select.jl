@@ -7,7 +7,7 @@ export getvars, getvar, cutdata, subvolume, subsurface
 Get 2D plane cut in orientation `dir` for `var` out of 3D box `data` within `plotrange`.
 The returned 2D data lies in the `sequence` plane from - to + in `dir`.
 """
-function cutdata(data::Data, var::AbstractString;
+function cutdata(data::BATLData, var::AbstractString;
    plotrange=[-Inf,Inf,-Inf,Inf], dir::String="x", sequence::Int=1)
 
    x, w = data.x, data.w
@@ -195,7 +195,7 @@ function subdata(data, xind, yind, zind, sz)
 end
 
 "Return variable data from string `var`."
-function getvar(data::Data, var)
+function getvar(data::BATLData, var)
    VarIndex_ = findfirst(x->x==lowercase(var), lowercase.(data.head.wnames))
    isnothing(VarIndex_) && error("$(var) not found in file header variables!")
 
@@ -211,12 +211,12 @@ function getvar(data::Data, var)
 end
 
 """
-    getvars(data::Data, Names::Vector) -> Dict
+    getvars(data::BATLData, Names::Vector) -> Dict
 
 Return variables' data as a dictionary from string vector.
 See also: [`getvar`](@ref).
 """
-function getvars(data::Data, Names::Vector{T}) where T<:AbstractString
+function getvars(data::BATLData, Names::Vector{T}) where T<:AbstractString
    dict = Dict()
    for name in Names
       dict[name] = getvar(data, name)

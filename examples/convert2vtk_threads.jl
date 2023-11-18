@@ -4,16 +4,11 @@
 # export JULIA_NUM_THREADS=8
 # julia convert2vtk.jl
 #
-# Currently the relative location of the output files to be processed is "IO2".
+# The default location of the output files to be processed is "IO2".
 #
 # Hongyang Zhou, hyzhou@umich.edu
 
-using Pkg, Glob
-if "VisAna" ∈ keys(Pkg.installed())
-   using Batsrus
-else
-   @warn "Batsrus.jl not installed. Install the package by `Pkg.add("Batsrus")`"
-end
+using Batsrus, Glob
 
 dir = "IO2"
 
@@ -42,7 +37,7 @@ filenames = [fname for fname in filenames if ~isfile(fname[1:end-3]*"vtu")]
 Threads.@threads for outname in filenames
    println("filename=$(outname)")
    head, data, connectivity = readtecdata(outname)
-   convertVTK(head, data, connectivity, outname[1:end-4])
+   convertTECtoVTU(head, data, connectivity, outname[1:end-4])
 end
 
 # Choose whether or not to delete the original *.dat files.

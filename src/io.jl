@@ -1,12 +1,12 @@
 # All the IO related APIs.
 
-export readdata, readlogdata, readtecdata, showhead
+export load, readlogdata, readtecdata, showhead
 
 const tag = 4 # Fortran record tag
 
 searchdir(path, key) = filter(x->occursin(key, x), readdir(path))
 
-function Base.show(io::IO, data::Data)
+function Base.show(io::IO, data::BATLData)
    showhead(io, data)
    if data.list.bytes ≥ 1e9
       println(io, "filesize = $(data.list.bytes/1e9) GB")
@@ -21,18 +21,17 @@ function Base.show(io::IO, data::Data)
 end
 
 """
-	readdata(filenameIn; dir=".", npict=1, verbose=false)
+    load(filenameIn; dir=".", npict=1, verbose=false)
 
-Read data from BATSRUS output files. Stores the `npict` snapshot from an ascii or binary
-data file into the arrays of coordinates `x` and data `w`.
-Filename can be provided with wildcards.
+Read BATSRUS output files. Stores the `npict` snapshot from an ascii or binary data file
+into the arrays of coordinates `x` and data `w`. Filename can be provided with wildcards.
 
 # Examples
 ```
-data = readdata("1d_raw*")
+data = load("1d_raw*")
 ```
 """
-function readdata(filenameIn::AbstractString; dir::String=".", npict::Int=1,
+function load(filenameIn::AbstractString; dir::String=".", npict::Int=1,
    verbose::Bool=false)
    # Check the existence of files
    filename = searchdir(dir, Regex(replace(filenameIn, s"*" => s".*")))
@@ -74,7 +73,7 @@ function readdata(filenameIn::AbstractString; dir::String=".", npict::Int=1,
 
    #setunits(filehead,"")
 
-	data = Data(filehead, x, w, filelist)
+	data = BATLData(filehead, x, w, filelist)
 
    verbose && @info "Finished reading $(filelist.name)"
 
@@ -110,7 +109,7 @@ function readlogdata(filename::AbstractString)
 end
 
 """
-	readtecdata(filename; verbose=false)
+    readtecdata(filename; verbose=false)
 
 Return header, data and connectivity from BATSRUS Tecplot outputs. Both 2D and
 3D binary and ASCII formats are supported.
@@ -298,7 +297,7 @@ function getfiletype(filename::String, dir::String)
 end
 
 """
-	getfilehead(fileID, type) -> NameTuple
+    getfilehead(fileID, type) -> NameTuple
 
 Obtain the header information from BATSRUS output file of `type` linked to `fileID`.
 # Input arguments
@@ -373,6 +372,7 @@ function skipline(s::IO)
        c = read(s, Char)
        c == '\n' && break
    end
+
    return
 end
 
@@ -485,7 +485,6 @@ function getascii!(x, w, fileID::IOStream, filehead::NamedTuple)
    return
 end
 
-
 "Read binary format data."
 function getbinary!(x, w, fileID::IOStream, filehead::NamedTuple, T::DataType)
    ndim, nw = filehead.ndim, filehead.nw
@@ -518,7 +517,7 @@ function getbinary!(x, w, fileID::IOStream, filehead::NamedTuple, T::DataType)
 end
 
 """
-	setunits(filehead, type; distance=1.0, mp=1.0, me=1.0)
+    setunits(filehead, type; distance=1.0, mp=1.0, me=1.0)
 
 Set the units for the output files.
 If type is given as "SI", "CGS", "NORMALIZED", "PIC", "PLANETARY", "SOLAR", set
@@ -719,11 +718,12 @@ function setunits(filehead, type; distance=1.0, mp=1.0, me=1.0)
       di0  = cSI/(op0/tSI)/xSI                 # di=c/omegap = di0/sqrt(rho)
       ld0  = moq*√(pSI)/rhoSI/xSI              # ld          = ld0*sqrt(p)/rho
    end
+
    return true
 end
 
 """
-	showhead(file, filehead)
+    showhead(file, filehead)
 
 Displaying file header information.
 """
@@ -745,13 +745,15 @@ function showhead(file::FileList, head, io=stdout)
       println(io, "var   names = $(head.variables[head.ndim+1:head.ndim+head.nw])")
       println(io, "param names = $(head.variables[head.ndim+head.nw+1:end])")
    end
+
+   return
 end
 
 """
-	showhead(data)
-   showhead(io, data)
+    showhead(data)
+    showhead(io, data)
 
 Display file information of `data`.
 """
-showhead(data::Data) = showhead(data.list, data.head)
-showhead(io, data::Data) = showhead(data.list, data.head, io)
+showhead(data::BATLData) = showhead(data.list, data.head)
+showhead(io, data::BATLData) = showhead(data.list, data.head, io)

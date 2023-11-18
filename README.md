@@ -24,7 +24,8 @@ For more details, please check the [document][Batsrus-doc].
 * (Optional) Python and Matplotlib
 
 ## Installation
-```
+
+```julia
 using Pkg
 Pkg.add("Batsrus")
 ```
@@ -37,12 +38,14 @@ See the [examples](https://henry2004y.github.io/Batsrus.jl/dev/man/examples/).
 
 In Python, you can easily take advantage of this package with the aid of [PyJulia](https://pyjulia.readthedocs.io/en/latest/).
 After the installation, in the Python repl:
+
 ```python
 from julia import Batsrus
 dir = 'test'
 filename = '1d__raw_2_t25.60000_n00000258.out'
-data = Batsrus.readdata(filename, dir=dir)
+data = Batsrus.load(filename, dir=dir)
 ```
+
 There you have it! Enjoy!
 
 ## Benchmark
