@@ -1,7 +1,7 @@
 name = "Batsrus"
 uuid = "e74ebddf-6ac1-4047-a0e5-c32c99e57753"
 authors = ["Hongyang Zhou <hyzhou@umich.edu>"]
-version = "0.3.11"
+version = "0.4.0"
 
 [deps]
 Dierckx = "39dd38d3-220a-591b-8e3c-4c3a8c710a94"
@@ -14,6 +14,12 @@ RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
 Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 WriteVTK = "64499a7a-5c06-52f2-abe2-ccb03c286192"
+
+[weakdeps]
+Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
+
+[extensions]
+BatsrusMakieExt = "Makie"
 
 [compat]
 Dierckx = "0.5"

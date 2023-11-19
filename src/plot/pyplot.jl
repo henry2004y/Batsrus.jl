@@ -53,22 +53,24 @@ Plot the variable from SWMF output.
 
 `plotdata(data, "p", plotmode="grid")`
 
-`plotdata(data, func, plotmode="trimesh",plotrange=plotrange, plotinterval=0.2)`
+`plotdata(data, func, plotmode="trimesh", plotrange=[-1.0, 1.0, -1.0, 1.0], plotinterval=0.2)`
 
-# Input arguments
+# Arguments
 - `data::BATLData`: BATSRUS data to be visualized.
 - `func::String`: variables for plotting.
-- `plotmode::String`: (optional) type of plotting ["cont","contbar"]...
-- `plotrange::Vector`: (optional) range of plotting.
-- `plotinterval`: (optional) interval for interpolation.
-- `level`: (optional) level of contour.
-- `innermask`: (optional) Bool for masking a circle at the inner boundary.
-- `dir`: (optional) 2D cut plane orientation from 3D outputs ["x","y","z"].
-- `sequence`: (optional) sequence of plane from - to + in that direction.
-- `multifigure`: (optional) 1 for multifigure display, 0 for subplots.
-- `verbose`: (optional) display additional information.
-- `density`: (optional) density for streamlines.
-- `stride`: (optional) quiver strides in number of cells.
+
+# Keywords
+- `plotmode::String`: type of plotting ["cont","contbar"]...
+- `plotrange::Vector`: range of plotting.
+- `plotinterval`: interval for interpolation.
+- `level`: level of contour.
+- `innermask`: Bool for masking a circle at the inner boundary.
+- `dir`: 2D cut plane orientation from 3D outputs ["x","y","z"].
+- `sequence`: sequence of plane from - to + in that direction.
+- `multifigure`: 1 for multifigure display, 0 for subplots.
+- `verbose`: display additional information.
+- `density`: density for streamlines.
+- `stride`: quiver strides in number of cells.
 Right now this can only deal with 2D plots or 3D cuts. Full 3D plots may be supported in the
 future.
 """

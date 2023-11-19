@@ -8,17 +8,13 @@ using RecipesBase
 
    ndim = data.head.ndim
 
-   if startswith(data.head.headline, "normalized")
-      hasunits = false
-   else
-      hasunits = true
-      unitw = getunit(data, var)
-   end
+   hasunits = hasunit(bd)
 
    if ndim == 1
       VarIndex_ = findindex(data, var)
       if hasunits
          unitx = getunit(data, data.head.variables[1])
+         unitw = getunit(data, var)
          x = data.x .* unitx
          w = data.w
          y = w[:,VarIndex_] .* unitw
@@ -36,6 +32,7 @@ using RecipesBase
 
       unitx = getunit(data, data.head.variables[1])
       unity = getunit(data, data.head.variables[2])
+      unitw = getunit(data, var)
 
       if unitx isa UnitfulBatsrus.Unitlike
          x *= unitx

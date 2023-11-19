@@ -23,7 +23,7 @@ struct FileList
    lenhead::Int
 end
 
-"Primary BATLData storage type"
+"Primary Batsrus data storage type."
 struct BATLData{T<:AbstractFloat}
    "header information"
    head::NamedTuple
