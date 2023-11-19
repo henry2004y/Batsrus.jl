@@ -12,13 +12,15 @@ struct FileList
    "filename"
    name::String
    "file type"
-   type::String
+   type::Symbol
    "directory"
    dir::String
    "file size"
    bytes::Int
    "number of snapshots"
    npictinfiles::Int
+   "length of meta data"
+   lenhead::Int
 end
 
 "Primary BATLData storage type"
@@ -36,6 +38,8 @@ end
 include("io.jl")
 include("select.jl")
 include("vtk.jl")
+include("plot/utility.jl")
+include("plot/plots.jl")
 
 include("unit/UnitfulBatsrus.jl")
 using .UnitfulBatsrus
@@ -43,9 +47,6 @@ using .UnitfulBatsrus
 function __init__()
    @require PyPlot="d330b81b-6aea-500a-939a-2ce795aea3ee" begin
       include("plot/pyplot.jl")
-   end
-   @require Plots="91a5bcdd-55d7-5caf-9e0b-520d859cae80" begin
-      include("plot/plots.jl")
    end
 end
 

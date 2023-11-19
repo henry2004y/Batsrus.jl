@@ -2,8 +2,6 @@
 
 using RecipesBase
 
-include("utility.jl")
-
 # Build a recipe which acts on a custom type.
 @recipe function f(data::BATLData, var::AbstractString;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1)

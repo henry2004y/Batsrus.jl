@@ -6,8 +6,6 @@ using Dierckx: Spline2D
 export plotdata, plotlogdata, plot, scatter, contour, contourf, plot_surface,
    tricontourf, plot_trisurf, streamplot, streamslice, quiver, cutplot
 
-include("utility.jl")
-
 @static if matplotlib.__version__ >= "3.3"
    matplotlib.rc("image", cmap="turbo") # set default colormap
 end
@@ -23,7 +21,6 @@ Plot information from log file.
 - `plotmode::String`: type of plotting ["line","scatter"].
 """
 function plotlogdata(data, head::NamedTuple, func::AbstractString; plotmode="line")
-
    vars     = split(func)
    plotmode = split(plotmode)
 
