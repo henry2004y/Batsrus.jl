@@ -4,8 +4,8 @@
 
 using Batsrus, PyPlot, Printf
 
-filename = "3d_box.out"
-data = readdata(filename)
+file = "3d_box.out"
+data = load(file)
 
 sequence = 65 # cut plane index from -
 p_ = 18 # thermal pressure index

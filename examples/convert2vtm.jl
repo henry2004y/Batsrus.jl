@@ -81,7 +81,7 @@ close(f)
 blockused_ = [iNode for iNode in 1:nNode if iTree_IA[Status_,iNode] == 1]
 
 ## If you know how blocks are organized, you can get VTK!
-data = readdata(filetag*".out")
+data = load(filetag*".out")
 
 # vtkMultiBlockDataSet
 vtmfile = vtk_multiblock("vtm/my_vtm_file")

@@ -15,7 +15,7 @@ dir = "."
 fnameField = "3d_var_region0_0_t00001640_n00020369.out"
 #fnameField = "3d_var_region0_0_t00001520_n00004093.out"
 
-data = readdata(fnameField, dir=dir)
+data = load(fnameField, dir=dir)
 
 me = data.head.eqpar[1]
 qe = data.head.eqpar[2]

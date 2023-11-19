@@ -6,8 +6,6 @@ using Dierckx: Spline2D
 export plotdata, plotlogdata, plot, scatter, contour, contourf, plot_surface,
    tricontourf, plot_trisurf, streamplot, streamslice, quiver, cutplot
 
-include("utility.jl")
-
 @static if matplotlib.__version__ >= "3.3"
    matplotlib.rc("image", cmap="turbo") # set default colormap
 end
@@ -23,7 +21,6 @@ Plot information from log file.
 - `plotmode::String`: type of plotting ["line","scatter"].
 """
 function plotlogdata(data, head::NamedTuple, func::AbstractString; plotmode="line")
-
    vars     = split(func)
    plotmode = split(plotmode)
 
@@ -48,7 +45,7 @@ end
 
 
 """
-    plotdata(data, func, kwargs)
+    plotdata(data, func, args, kwargs...)
 
 Plot the variable from SWMF output.
 
@@ -59,7 +56,7 @@ Plot the variable from SWMF output.
 `plotdata(data, func, plotmode="trimesh",plotrange=plotrange, plotinterval=0.2)`
 
 # Input arguments
-- `data::Data`: output data.
+- `data::BATLData`: BATSRUS data to be visualized.
 - `func::String`: variables for plotting.
 - `plotmode::String`: (optional) type of plotting ["cont","contbar"]...
 - `plotrange::Vector`: (optional) range of plotting.
@@ -75,10 +72,10 @@ Plot the variable from SWMF output.
 Right now this can only deal with 2D plots or 3D cuts. Full 3D plots may be supported in the
 future.
 """
-function plotdata(data::Data, func::AbstractString; dir="x", plotmode="contbar",
+function plotdata(data::BATLData, func::AbstractString; dir="x", plotmode="contbar",
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, sequence=1, multifigure=true,
    getrangeonly=false, level=0, innermask=false, verbose=false, density=1.0,
-   stride=10)
+   stride=10, kwargs...)
 
    x, w = data.x, data.w
    plotmode = split(plotmode)
@@ -118,9 +115,9 @@ function plotdata(data::Data, func::AbstractString; dir="x", plotmode="contbar",
          varIndex_ = findindex(data, var)
          if ivar == 1 || multifigure fig, ax = subplots() else ax = gca() end
          if !occursin("scatter", plotmode[ivar])
-            plot(x, w[:,varIndex_])
+            plot(x, w[:,varIndex_]; kwargs...)
          else
-            scatter(x, w[:,varIndex_])
+            scatter(x, w[:,varIndex_]; kwargs...)
          end
          if occursin("grid", plotmode[ivar])
             grid(true)
@@ -150,14 +147,14 @@ function plotdata(data::Data, func::AbstractString; dir="x", plotmode="contbar",
             # More robust method needed!
             if plotmode[ivar] ∈ ["contbar", "contbarlog"]
                if level == 0
-                  c = contourf(Xi, Yi, Wi)
+                  c = contourf(Xi, Yi, Wi; kwargs...)
                else
-                  c = contourf(Xi, Yi, Wi, level)
+                  c = contourf(Xi, Yi, Wi, level; kwargs...)
                end
             elseif plotmode[ivar] ∈ ["cont", "contlog"]
-               c = contour(Xi, Yi, Wi)
+               c = contour(Xi, Yi, Wi; kwargs...)
             elseif plotmode[ivar] ∈ ["surfbar", "surfbarlog"]
-               c = plot_surface(Xi, Yi, Wi)
+               c = plot_surface(Xi, Yi, Wi; kwargs...)
             end
 
             occursin("bar", plotmode[ivar]) && colorbar()
@@ -183,9 +180,9 @@ function plotdata(data::Data, func::AbstractString; dir="x", plotmode="contbar",
                triang = matplotlib.tri.Triangulation(X, Y)
                c = ax.triplot(triang)
             elseif plotmode[ivar] == "trisurf"
-               c = ax.plot_trisurf(X, Y, W)
+               c = ax.plot_trisurf(X, Y, W; kwargs...)
             elseif plotmode[ivar] == "tricont"
-               c = ax.tricontourf(X, Y, W)
+               c = ax.tricontourf(X, Y, W; kwargs...)
                fig.colorbar(c,ax=ax)
             elseif plotmode[ivar] == "tristream"
                throw(ArgumentError("tristream not yet implemented!"))
@@ -353,9 +350,9 @@ function plotdata(data::Data, func::AbstractString; dir="x", plotmode="contbar",
          if plotmode[ivar] ∈ ("surf", "surfbar", "surfbarlog", "cont", "contbar", "contlog",
                "contbarlog")
             if level == 0
-               c = ax.contourf(cut1, cut2, W)
+               c = ax.contourf(cut1, cut2, W; kwargs...)
             else
-               c = ax.contourf(cut1, cut2, W, level)
+               c = ax.contourf(cut1, cut2, W, level; kwargs...)
             end
             fig.colorbar(c, ax=ax)
             title(data.head.wnames[varIndex_])
@@ -390,6 +387,7 @@ function plotdata(data::Data, func::AbstractString; dir="x", plotmode="contbar",
       end
    end
 
+   return
 end
 
 
@@ -399,8 +397,8 @@ end
 
 2D plane cut contourf of 3D box data.
 """
-function cutplot(data::Data, var::AbstractString, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf],
-   dir="x", sequence=1, level=20)
+function cutplot(data::BATLData, var::AbstractString, ax=nothing;
+   plotrange=[-Inf,Inf,-Inf,Inf], dir="x", sequence=1, level=20)
 
    x, w = data.x, data.w
    varIndex_ = findindex(data, var)
@@ -440,18 +438,19 @@ function cutplot(data::Data, var::AbstractString, ax=nothing; plotrange=[-Inf,In
    elseif dir == "z"
       xlabel("x"); ylabel("y")
    end
+
    c
 end
 
 
 """
-    streamslice(data::Data, var, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf], dir="x",
+    streamslice(data::BATLData, var, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf], dir="x",
        sequence=1; kwargs...)
 
 Plot streamlines on 2D slices of 3D box data. Variable names in `var` string must be
 separated with `;`.
 """
-function streamslice(data::Data, var::AbstractString, ax=nothing;
+function streamslice(data::BATLData, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], dir="x", sequence=1, kwargs...)
 
    x,w = data.x, data.w
@@ -503,6 +502,7 @@ function streamslice(data::Data, var::AbstractString, ax=nothing;
    elseif dir == "z"
       xlabel("x"); ylabel("y")
    end
+
    s
 end
 
@@ -512,10 +512,11 @@ end
 
 Wrapper over `plot` in matplotlib.
 """
-function PyPlot.plot(data::Data, var::AbstractString, ax=nothing; kwargs...)
+function PyPlot.plot(data::BATLData, var::AbstractString, ax=nothing; kwargs...)
    x, w = data.x, data.w
    varIndex_ = findindex(data, var)
    if isnothing(ax) ax = plt.gca() end
+
    c = ax.plot(x, w[:,varIndex_]; kwargs...)
 end
 
@@ -524,10 +525,11 @@ end
 
 Wrapper over `scatter` in matplotlib.
 """
-function PyPlot.scatter(data::Data, var::AbstractString, ax=nothing; kwargs...)
+function PyPlot.scatter(data::BATLData, var::AbstractString, ax=nothing; kwargs...)
    x, w = data.x, data.w
    varIndex_ = findindex(data, var)
    if isnothing(ax) ax = plt.gca() end
+
    c = ax.scatter(x, w[:,varIndex_]; kwargs...)
 end
 
@@ -537,7 +539,7 @@ end
 
 Wrapper over `contour` in matplotlib.
 """
-function PyPlot.contour(data::Data, var::AbstractString, levels=0; ax=nothing,
+function PyPlot.contour(data::BATLData, var::AbstractString, levels=0; ax=nothing,
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...)
 
    Xi, Yi, Wi = getdata(data, var, plotrange, plotinterval; innermask)
@@ -557,7 +559,7 @@ end
 
 Wrapper over `contourf` in matplotlib.
 """
-function PyPlot.contourf(data::Data, var::AbstractString, levels=0; ax=nothing,
+function PyPlot.contourf(data::BATLData, var::AbstractString, levels=0; ax=nothing,
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...)
 
    Xi, Yi, Wi = getdata(data, var, plotrange, plotinterval; innermask)
@@ -577,7 +579,7 @@ end
 
 Wrapper over `tricontourf` in matplotlib.
 """
-function PyPlot.tricontourf(data::Data, var::AbstractString, ax=nothing;
+function PyPlot.tricontourf(data::BATLData, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, kwargs...)
 
    x, w = data.x, data.w
@@ -596,16 +598,17 @@ function PyPlot.tricontourf(data::Data, var::AbstractString, ax=nothing;
       W = W[xyIndex]
    end
    if isnothing(ax) ax = plt.gca() end
+
    ax.tricontourf(X, Y, W)
 end
 
 """
-    plot_trisurf(data::Data, var::String, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf],
+    plot_trisurf(data::BATLData, var::String, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf],
        kwargs...)
 
 Wrapper over `plot_trisurf` in matplotlib.
 """
-function PyPlot.plot_trisurf(data::Data, var::AbstractString, ax=nothing;
+function PyPlot.plot_trisurf(data::BATLData, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], kwargs...)
 
    x, w = data.x, data.w
@@ -624,6 +627,7 @@ function PyPlot.plot_trisurf(data::Data, var::AbstractString, ax=nothing;
       W = W[xyIndex]
    end
    if isnothing(ax) ax = plt.gca() end
+
    ax.plot_trisurf(X, Y, W)
 end
 
@@ -634,10 +638,11 @@ end
 
 Wrapper over `plot_surface` in matplotlib.
 """
-function PyPlot.plot_surface(data::Data, var::AbstractString;
+function PyPlot.plot_surface(data::BATLData, var::AbstractString;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...)
 
    Xi, Yi, Wi = getdata(data, var, plotrange, plotinterval; griddim=2, innermask)
+
    plot_surface(Xi, Yi, Wi; kwargs...)
 end
 
@@ -648,7 +653,7 @@ end
 Wrapper over `streamplot` in matplotlib. `streamplot` does not have **kwargs in the API, but
 it supports `density`, `color`, and some other keywords.
 """
-function PyPlot.streamplot(data::Data, var::AbstractString, ax=nothing;
+function PyPlot.streamplot(data::BATLData, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, kwargs...)
 
    x, w = data.x, data.w
@@ -709,6 +714,7 @@ function PyPlot.streamplot(data::Data, var::AbstractString, ax=nothing;
       end
    end
    if isnothing(ax) ax = plt.gca() end
+
    ax.streamplot(Xi, Yi, v1, v2; kwargs...)
 end
 
@@ -717,7 +723,7 @@ end
 
 Wrapper over `quiver` in matplotlib. Only supports Cartesian grid for now.
 """
-function PyPlot.quiver(data::Data, var::AbstractString, ax=nothing;
+function PyPlot.quiver(data::BATLData, var::AbstractString, ax=nothing;
    stride::Integer=10, kwargs...)
    x, w = data.x, data.w
    VarQuiver  = split(var, ";")
@@ -732,6 +738,7 @@ function PyPlot.quiver(data::Data, var::AbstractString, ax=nothing;
    v2q = @view v2[1:stride:end, 1:stride:end]
 
    if isnothing(ax) ax = plt.gca() end
+
    ax.quiver(Xq, Yq, v1q, v2q; kwargs...)
 end
 

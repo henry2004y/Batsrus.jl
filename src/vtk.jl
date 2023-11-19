@@ -153,7 +153,7 @@ unstructured VTU file.
 function convertIDLtoVTK(filename::AbstractString; dir::String=".", gridType::Int=1,
    verbose::Bool=false)
    if endswith(filename, ".out")
-      data = readdata(filename, dir=dir)
+      data = load(filename, dir=dir)
 
       nVar = length(data.head.wnames)
 
@@ -205,7 +205,7 @@ function convertIDLtoVTK(filename::AbstractString; dir::String=".", gridType::In
 
    else
       # info, tree, and out files
-      data = readdata(filename*".out", dir=dir)
+      data = load(filename*".out", dir=dir)
       batl = Batl(readhead(filename*".info"), readtree(filename)...)
       connectivity = getConnectivity(batl)
 
@@ -271,6 +271,7 @@ function convertIDLtoVTK(filename::AbstractString; dir::String=".", gridType::In
    end
 
    verbose && @info "$(filename) finished conversion."
+
    return
 end
 
@@ -480,6 +481,7 @@ function ibits(i, pos, len)
    for val in ds
       s = s * 2 + val
    end
+
    return s
 end
 
@@ -1856,5 +1858,6 @@ function create_pvd(filepattern::String)
    name_index = findfirst("_t",filenames[1])[1] - 1
 
    save_file(xdoc, filenames[1][1:name_index]*".pvd")
+
    return
 end

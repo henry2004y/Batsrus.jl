@@ -1,54 +1,40 @@
 # All the IO related APIs.
 
-export readdata, readlogdata, readtecdata, showhead
+export load, readlogdata, readtecdata, showhead
 
-const tag = 4 # Fortran record tag
+# Fortran binary format includes record end/start tags that needs to be skipped.
+# If there are continuous blocks, we usually skip 2*TAG between actual reading.
+const TAG = 4 # Fortran record tag size
 
 searchdir(path, key) = filter(x->occursin(key, x), readdir(path))
 
-function Base.show(io::IO, data::Data)
-   showhead(io, data)
-   if data.list.bytes ≥ 1e9
-      println(io, "filesize = $(data.list.bytes/1e9) GB")
-   elseif data.list.bytes ≥ 1e6
-      println(io, "filesize = $(data.list.bytes/1e6) MB")
-   elseif data.list.bytes ≥ 1e3
-      println(io, "filesize = $(data.list.bytes/1e3) KB")
-   else
-      println(io, "filesize = $(data.list.bytes) bytes")
-   end
-   println(io, "snapshots = $(data.list.npictinfiles)")
-end
-
 """
-	readdata(filenameIn; dir=".", npict=1, verbose=false)
+    load(filenameIn; dir=".", npict=1, verbose=false)
 
-Read data from BATSRUS output files. Stores the `npict` snapshot from an ascii or binary
-data file into the arrays of coordinates `x` and data `w`.
-Filename can be provided with wildcards.
+Read BATSRUS output files. Stores the `npict` snapshot from an ascii or binary data file
+into the arrays of coordinates `x` and data `w`. Filename can be provided with wildcards.
 
 # Examples
 ```
-data = readdata("1d_raw*")
+data = load("1d_raw*")
 ```
 """
-function readdata(filenameIn::AbstractString; dir::String=".", npict::Int=1,
+function load(filenameIn::AbstractString; dir::String=".", npict::Int=1,
    verbose::Bool=false)
    # Check the existence of files
-   filename = searchdir(dir, Regex(replace(filenameIn, s"*" => s".*")))
-   if isempty(filename)
+   file = searchdir(dir, Regex(replace(filenameIn, s"*" => s".*")))
+   if isempty(file)
       throw(ArgumentError("No matching filename was found for $(filenameIn)"))
-   elseif length(filename) > 1
+   elseif length(file) > 1
       throw(ArgumentError("Ambiguous filename $(filenameIn)!"))
    end
 
-   filelist, fileID, pictsize = getfiletype(filename[1], dir)
+   filelist, fileID, pictsize = getfiletype(file[1], dir)
 
-   verbose &&
-      @info "filename=$(filelist.name)\n"*"npict=$(filelist.npictinfiles)"
+   verbose && @info "filename=$(filelist.name)\n"*"npict=$(filelist.npictinfiles)"
 
    if filelist.npictinfiles - npict < 0
-      throw(ArgumentError("select snapshot $npict out of range $(filelist.npictinfiles)!"))
+      throw(ArgumentError("Select snapshot $npict out of range $(filelist.npictinfiles)!"))
    end
    seekstart(fileID) # Rewind to start
 
@@ -56,25 +42,24 @@ function readdata(filenameIn::AbstractString; dir::String=".", npict::Int=1,
    # Skip npict-1 snapshots (because we only want the npict-th snapshot)
    skip(fileID, pictsize*(npict-1))
 
-   filehead = getfilehead(fileID, filelist.type)
+   filehead = getfilehead(fileID, filelist)
 
    # Read data
-   fileType = lowercase(filelist.type)
-   if fileType == "ascii"
+   if filelist.type == :ascii
       x, w = allocateBuffer(filehead, Float64) # why Float64?
       getascii!(x, w, fileID, filehead)
    else
-      skip(fileID, tag) # skip record start tag.
-      T = fileType == "real4" ? Float32 : Float64
+      skip(fileID, TAG) # skip record start tag
+      T = filelist.type == :real4 ? Float32 : Float64
       x, w = allocateBuffer(filehead, T)
-      getbinary!(x, w, fileID, filehead, T)
+      getbinary!(x, w, fileID, filehead)
    end
 
    close(fileID)
 
    #setunits(filehead,"")
 
-	data = Data(filehead, x, w, filelist)
+	data = BATLData(filehead, x, w, filelist)
 
    verbose && @info "Finished reading $(filelist.name)"
 
@@ -82,8 +67,8 @@ function readdata(filenameIn::AbstractString; dir::String=".", npict::Int=1,
 end
 
 "Read information from log file."
-function readlogdata(filename::AbstractString)
-   f = open(filename, "r")
+function readlogdata(file::AbstractString)
+   f = open(file, "r")
    nLine = countlines(f) - 2
    seekstart(f)
    headline  = readline(f)
@@ -110,18 +95,18 @@ function readlogdata(filename::AbstractString)
 end
 
 """
-	readtecdata(filename; verbose=false)
+    readtecdata(file; verbose=false)
 
 Return header, data and connectivity from BATSRUS Tecplot outputs. Both 2D and
 3D binary and ASCII formats are supported.
 # Examples
 ```
-filename = "3d_ascii.dat"
-head, data, connectivity = readtecdata(filename)
+file = "3d_ascii.dat"
+head, data, connectivity = readtecdata(file)
 ```
 """
-function readtecdata(filename::AbstractString; verbose::Bool=false)
-   f = open(filename)
+function readtecdata(file::AbstractString; verbose::Bool=false)
+   f = open(file)
 
    nDim  = 3
    nNode = Int32(0)
@@ -247,81 +232,72 @@ function readtecdata(filename::AbstractString; verbose::Bool=false)
 end
 
 "Obtain file type."
-function getfiletype(filename::String, dir::String)
-   file = joinpath(dir, filename)
-   fileID = open(file, "r")
-   bytes = filesize(file)
-   type  = ""
+function getfiletype(file::String, dir::String)
+   fullpath = joinpath(dir, file)
+   fileID = open(fullpath, "r")
+   bytes = filesize(fullpath)
 
    # Check the appendix of file names
-   # Gabor uses a trick: the first 4 bytes decides the file type
-   if occursin(r"^.*\.(log)$", filename)
-      type = "log"
+   if occursin(r"^.*\.(log)$", file)
+      type = :log
       npictinfiles = 1
-   elseif occursin(r"^.*\.(dat)$", filename)
-      # Tecplot ascii format
-      type = "dat"
+   elseif occursin(r"^.*\.(dat)$", file) # Tecplot ascii format
+      type = :dat
       npictinfiles = 1
    else
-      # Obtain filetype based on the length info in the first 4 bytes
+      # Obtain filetype based on the length info in the first 4 bytes (Gabor's trick)
       lenhead = read(fileID, Int32)
 
-      if lenhead!=79 && lenhead!=500
-         type = "ascii"
+      if lenhead != 79 && lenhead != 500
+         type = :ascii
       else
          # The length of the 2nd line decides between real4 & real8
          # since it contains the time; which is real*8 | real*4
-         skip(fileID, lenhead+tag)
+         skip(fileID, lenhead + TAG)
          len = read(fileID, Int32)
          if len == 20
-            type = "real4"
+            type = :real4
          elseif len == 24
-            type = "binary"
+            type = :binary
          else
-            throw(ArgumentError(
-               "Error in getfiletype: incorrect formatted file: $filename"))
-         end
-
-         if lenhead == 500
-            type = uppercase(type)
+            throw(
+               ArgumentError("Incorrect formatted file: $file"))
          end
       end
       # Obtain file size & number of snapshots
       seekstart(fileID)
-      pictsize = getfilesize(fileID, type)
+      pictsize = getfilesize(fileID, type, lenhead)
       npictinfiles = bytes ÷ pictsize
    end
 
-   filelist = FileList(filename, type, dir, bytes, npictinfiles)
+   filelist = FileList(file, type, dir, bytes, npictinfiles, lenhead)
 
    filelist, fileID, pictsize
 end
 
 """
-	getfilehead(fileID, type) -> NameTuple
+    getfilehead(fileID::IoStream, filelist::FileList) -> NameTuple
 
 Obtain the header information from BATSRUS output file of `type` linked to `fileID`.
 # Input arguments
 - `fileID::IOStream`: file identifier.
-- `type::String`: file type in ["ascii", "real4", "binary", "log"].
+- `filelist::FileList`: file information.
 """
-function getfilehead(fileID::IOStream, type::String)
-   ftype = string(lowercase(type))
-
-   lenstr = ftype == type ? 79 : 500
+function getfilehead(fileID::IOStream, filelist::FileList)
+   type, lenstr = filelist.type, filelist.lenhead
 
    ## Read header
    pointer0 = position(fileID)
 
-   if ftype == "ascii"
+   if type == :ascii
       headline = readline(fileID)
       line = readline(fileID)
       line = split(line)
-      it = parse(Int,line[1])
-      t = parse(Float64,line[2])
-      ndim = parse(Int8,line[3])
-      neqpar = parse(Int32,line[4])
-      nw = parse(Int8,line[5])
+      it = parse(Int, line[1])
+      t = parse(Float64, line[2])
+      ndim = parse(Int8, line[3])
+      neqpar = parse(Int32, line[4])
+      nw = parse(Int8, line[5])
       gencoord = ndim < 0
       ndim = abs(ndim)
       nx = parse.(Int64, split(readline(fileID)))
@@ -329,10 +305,10 @@ function getfilehead(fileID::IOStream, type::String)
          eqpar = parse.(Float64, split(readline(fileID)))
       end
       varname = readline(fileID)
-   elseif ftype ∈ ["real4", "binary"]
-      skip(fileID, tag) # skip record start tag.
+   elseif type ∈ (:real4, :binary)
+      skip(fileID, TAG)
       headline = rstrip(String(read(fileID, lenstr)))
-      skip(fileID, 2*tag) # skip record end/start tags.
+      skip(fileID, 2*TAG)
       it = read(fileID, Int32)
       t = read(fileID, Float32)
       ndim = read(fileID, Int32)
@@ -340,17 +316,17 @@ function getfilehead(fileID::IOStream, type::String)
       ndim = abs(ndim)
       neqpar = read(fileID, Int32)
       nw = read(fileID, Int32)
-      skip(fileID, 2*tag) # skip record end/start tags.
+      skip(fileID, 2*TAG)
       nx = zeros(Int32, ndim)
       read!(fileID, nx)
-      skip(fileID, 2*tag) # skip record end/start tags.
+      skip(fileID, 2*TAG)
       if neqpar > 0
          eqpar = zeros(Float32, neqpar)
          read!(fileID, eqpar)
-         skip(fileID, 2*tag) # skip record end/start tags.
+         skip(fileID, 2*TAG)
       end
       varname = String(read(fileID, lenstr))
-      skip(fileID, tag) # skip record end tag.
+      skip(fileID, TAG)
    end
 
    # Header length
@@ -373,50 +349,43 @@ function skipline(s::IO)
        c = read(s, Char)
        c == '\n' && break
    end
+
    return
 end
 
 "Return the size in bytes for one snapshot."
-function getfilesize(fileID::IOStream, type::String)
-   ftype = string(lowercase(type))
-
-   if ftype == type lenstr = 79 else lenstr = 500 end
-
+function getfilesize(fileID::IOStream, type::Symbol, lenstr::Int32)
    # Read header
    pointer0 = position(fileID)
 
-   if ftype == "ascii"
+   if type == :ascii
       skipline(fileID)
       line = readline(fileID)
       line = split(line)
-      ndim = parse(Int32,line[3])
-      neqpar = parse(Int32,line[4])
-      nw = parse(Int8,line[5])
+      ndim = parse(Int32, line[3])
+      neqpar = parse(Int32, line[4])
+      nw = parse(Int8, line[5])
       gencoord = ndim < 0
       ndim = abs(ndim)
       nx = parse.(Int64, split(readline(fileID)))
       neqpar > 0 && skipline(fileID)
       skipline(fileID)
-   elseif ftype ∈ ("real4", "binary")
-      skip(fileID, tag)
-      read(fileID, lenstr)
-      skip(fileID, 2*tag)
-      read(fileID, Int32)
-      read(fileID, Float32)
+   elseif type ∈ (:real4, :binary)
+      skip(fileID, TAG + lenstr + 2*TAG + sizeof(Int32) + sizeof(Float32))
       ndim = abs(read(fileID, Int32))
       tmp = read(fileID, Int32)
       nw = read(fileID, Int32)
-      skip(fileID, 2*tag)
+      skip(fileID, 2*TAG)
       nx = zeros(Int32, ndim)
       read!(fileID, nx)
-      skip(fileID, 2*tag)
+      skip(fileID, 2*TAG)
       if tmp > 0
          tmp2 = zeros(Float32, tmp)
          read!(fileID, tmp2)
-         skip(fileID, 2*tag) # skip record end/start tags.
+         skip(fileID, 2*TAG)
       end
       read(fileID, lenstr)
-      skip(fileID, tag)
+      skip(fileID, TAG)
    end
 
    # Header length
@@ -425,15 +394,16 @@ function getfilesize(fileID::IOStream, type::String)
 
    # Calculate the snapshot size = header + data + recordmarks
    nxs = prod(nx)
-   if ftype == "log"
-      pictsize = 1
-   elseif ftype == "ascii"
-      pictsize = headlen + (18*(ndim+nw)+1)*nxs
-   elseif ftype == "real4"
-      pictsize = headlen + 8*(1+nw) + 4*(ndim+nw)*nxs
-   elseif ftype == "binary"
-      pictsize = headlen + 8*(1+nw) + 8*(ndim+nw)*nxs
-   end
+   pictsize =
+      if type == :log
+         1
+      elseif type == :ascii
+         headlen + (18*(ndim + nw) + 1)*nxs
+      elseif type == :real4
+         headlen + 8*(1 + nw) + 4*(ndim + nw)*nxs
+      elseif type == :binary
+         headlen + 8*(1 + nw) + 8*(ndim + nw)*nxs
+      end
 
    pictsize
 end
@@ -442,16 +412,16 @@ end
 function allocateBuffer(filehead::NamedTuple, T::DataType)
    if filehead.ndim == 1
       n1 = filehead.nx[1]
-      x  = Array{T,2}(undef,n1,filehead.ndim)
-      w  = Array{T,2}(undef,n1,filehead.nw)
+      x  = Array{T,2}(undef, n1, filehead.ndim)
+      w  = Array{T,2}(undef, n1, filehead.nw)
    elseif filehead.ndim == 2
       n1, n2 = filehead.nx
-      x  = Array{T,3}(undef,n1,n2,filehead.ndim)
-      w  = Array{T,3}(undef,n1,n2,filehead.nw)
+      x  = Array{T,3}(undef, n1, n2, filehead.ndim)
+      w  = Array{T,3}(undef, n1, n2, filehead.nw)
    elseif filehead.ndim == 3
       n1, n2, n3 = filehead.nx
-      x  = Array{T,4}(undef,n1,n2,n3,filehead.ndim)
-      w  = Array{T,4}(undef,n1,n2,n3,filehead.nw)
+      x  = Array{T,4}(undef, n1, n2, n3, filehead.ndim)
+      w  = Array{T,4}(undef, n1, n2, n3, filehead.nw)
    end
 
    x, w
@@ -462,19 +432,19 @@ function getascii!(x, w, fileID::IOStream, filehead::NamedTuple)
    ndim, nx = filehead.ndim, filehead.nx
 
    # Read coordinates & values row by row
-   if ndim == 1 # 1D
+   if ndim == 1
       for ix = 1:nx[1]
          temp = parse.(Float64, split(readline(fileID)))
          x[ix,:] .= temp[1]
          w[ix,:] .= temp[2:end]
       end
-   elseif ndim == 2 # 2D
+   elseif ndim == 2
       for j = 1:nx[2], i = 1:nx[1]
          temp = parse.(Float64, split(readline(fileID)))
          x[i,j,:] .= temp[1:2]
          w[i,j,:] .= temp[3:end]
       end
-   elseif ndim == 3 # 3D
+   elseif ndim == 3
       for k = 1:nx[3], j = 1:nx[2], i = 1:nx[1]
          temp = parse.(Float64, split(readline(fileID)))
          x[i,j,k,:] .= temp[1:3]
@@ -485,32 +455,31 @@ function getascii!(x, w, fileID::IOStream, filehead::NamedTuple)
    return
 end
 
-
 "Read binary format data."
-function getbinary!(x, w, fileID::IOStream, filehead::NamedTuple, T::DataType)
+function getbinary!(x, w, fileID::IOStream, filehead::NamedTuple)
    ndim, nw = filehead.ndim, filehead.nw
 
    # Read coordinates & values
-   if ndim == 1 # 1D
+   if ndim == 1
       read!(fileID, x)
-      skip(fileID, 2*tag) # skip record end/start tags.
+      skip(fileID, 2*TAG)
       for iw = 1:nw
          read!(fileID, @view w[:,iw])
-         skip(fileID, 2*tag) # skip record end/start tags.
+         skip(fileID, 2*TAG)
       end
-   elseif ndim == 2 # 2D
+   elseif ndim == 2
       read!(fileID, x)
-      skip(fileID, 2*tag) # skip record end/start tags.
+      skip(fileID, 2*TAG)
       for iw = 1:nw
          read!(fileID, @view w[:,:,iw])
-         skip(fileID, 2*tag) # skip record end/start tags.
+         skip(fileID, 2*TAG)
       end
-   elseif ndim == 3 # 3D
+   elseif ndim == 3
       read!(fileID, x)
-      skip(fileID, 2*tag) # skip record end/start tags.
+      skip(fileID, 2*TAG)
       for iw = 1:nw
          read!(fileID, @view w[:,:,:,iw])
-         skip(fileID, 2*tag) # skip record end/start tags.
+         skip(fileID, 2*TAG)
       end
    end
 
@@ -518,7 +487,7 @@ function getbinary!(x, w, fileID::IOStream, filehead::NamedTuple, T::DataType)
 end
 
 """
-	setunits(filehead, type; distance=1.0, mp=1.0, me=1.0)
+    setunits(filehead, type; distance=1.0, mp=1.0, me=1.0)
 
 Set the units for the output files.
 If type is given as "SI", "CGS", "NORMALIZED", "PIC", "PLANETARY", "SOLAR", set
@@ -719,11 +688,26 @@ function setunits(filehead, type; distance=1.0, mp=1.0, me=1.0)
       di0  = cSI/(op0/tSI)/xSI                 # di=c/omegap = di0/sqrt(rho)
       ld0  = moq*√(pSI)/rhoSI/xSI              # ld          = ld0*sqrt(p)/rho
    end
+
    return true
 end
 
+function Base.show(io::IO, data::BATLData)
+   showhead(io, data)
+   if data.list.bytes ≥ 1e9
+      println(io, "filesize = $(data.list.bytes/1e9) GB")
+   elseif data.list.bytes ≥ 1e6
+      println(io, "filesize = $(data.list.bytes/1e6) MB")
+   elseif data.list.bytes ≥ 1e3
+      println(io, "filesize = $(data.list.bytes/1e3) KB")
+   else
+      println(io, "filesize = $(data.list.bytes) bytes")
+   end
+   println(io, "snapshots = $(data.list.npictinfiles)")
+end
+
 """
-	showhead(file, filehead)
+    showhead(file, filehead)
 
 Displaying file header information.
 """
@@ -740,18 +724,20 @@ function showhead(file::FileList, head, io=stdout)
    println(io, "nx       : $(head.nx)")
 
    if head.neqpar > 0
-      println(io, "parameters  = $(head.eqpar)")
-      println(io, "coord names = $(head.variables[1:head.ndim])")
-      println(io, "var   names = $(head.variables[head.ndim+1:head.ndim+head.nw])")
-      println(io, "param names = $(head.variables[head.ndim+head.nw+1:end])")
+      println(io, "parameters : $(head.eqpar)")
+      println(io, "coord names: $(head.variables[1:head.ndim])")
+      println(io, "var   names: $(head.variables[head.ndim+1:head.ndim+head.nw])")
+      println(io, "param names: $(head.variables[head.ndim+head.nw+1:end])")
    end
+
+   return
 end
 
 """
-	showhead(data)
-   showhead(io, data)
+    showhead(data)
+    showhead(io, data)
 
 Display file information of `data`.
 """
-showhead(data::Data) = showhead(data.list, data.head)
-showhead(io, data::Data) = showhead(data.list, data.head, io)
+showhead(data::BATLData) = showhead(data.list, data.head)
+showhead(io, data::BATLData) = showhead(data.list, data.head, io)

@@ -48,7 +48,7 @@ function dist_select(fnameParticle, xC=-1.90, yC=0.0, zC=-0.1, xL=0.005, yL=0.2,
 
    particle = [Array{Float32}(undef, 3, 0) for _ in 1:nBox]
 
-   data = readdata(fnameParticle; dir)
+   data = load(fnameParticle; dir)
 
    x = @view data.x[:,:,:,1]
    y = @view data.x[:,:,:,2]
@@ -180,7 +180,7 @@ Get the average field direction in region `limits`.
 function GetMeanField(fnameField, limits; dir=".")
 
    # Get the average field direction in limited region
-   data = readdata(fnameField; dir)
+   data = load(fnameField; dir)
 
    x = data.x[:,:,:,1]
    y = data.x[:,:,:,2]
@@ -213,7 +213,7 @@ function plotExCut(fnameField::String, region, xC, yC, zC, xL, yL, zL;
 
    plotrange = [xC-xL*16, xC+xL*16, zC-zL*5, zC+zL*5]
    # Sample region plot over contour
-   data = readdata(fnameField, dir=dir)
+   data = load(fnameField, dir=dir)
 
    bx_ = findfirst(x->x=="Bx", data.head.wnames)
    bz_ = findfirst(x->x=="Bz", data.head.wnames)
@@ -278,7 +278,7 @@ function dist_plot(pType='e')
       region[:,3] = [-1.930, -1.925, -0.08, 0.08, -0.10, -0.06]
       region[:,4] = [-1.930, -1.925, -0.08, 0.08,  0.00,  0.04]
 
-      data = readdata(fnameE, dir=dir)
+      data = load(fnameE, dir=dir)
 
       x = @view data.x[:,:,:,1]
       y = @view data.x[:,:,:,2]
@@ -317,7 +317,7 @@ function dist_plot(pType='e')
       region[:,3] = [-1.930, -1.920, -0.08, 0.08, -0.10, -0.06]
       region[:,4] = [-1.930, -1.920, -0.08, 0.08,  0.00,  0.04]
 
-      data = readdata(fnameI, dir=dir)
+      data = load(fnameI, dir=dir)
 
       x = @view data.x[:,:,:,1]
       y = @view data.x[:,:,:,2]
@@ -483,7 +483,7 @@ function show_box_region()
    plotrange = [-2.0, -1.8, -0.35, 0.35]
    sequence = 129 # cut plane index starting from -
 
-   data = readdata(fnameField; dir)
+   data = load(fnameField; dir)
 
    X, Z, Bx = cutdata(data, "Bx"; dir="y", sequence, plotrange)
    X, Z, Bz = cutdata(data, "Bz"; dir="y", sequence, plotrange)
@@ -585,7 +585,7 @@ function HF_velocity()
 
    fnameField = "3d_var_region0_0_"*fnameE[end-22:end]
 
-   data = readdata(fnameField; dir)
+   data = load(fnameField; dir)
 
    x = data.x[:,:,:,1]
    y = data.x[:,:,:,2]

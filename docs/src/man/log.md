@@ -8,6 +8,7 @@ For the plotting, streamline tracing and particle tracing, a common problem is t
 ## Test Data
 
 If you don't have SWMF data at hand, Batsrus.jl provides some test data for you to begin with.
+
 ```julia
 using LazyArtifacts
 
@@ -19,12 +20,14 @@ These are also used in the standard test. These will be automatically downloaded
 ## VTK AMR Grid Structure
 
 `vtkOverlappingAMR` implements a somewhat strict Berger-Collela AMR scheme:
+
 1. All grids are Cartesian.
 2. Grids at the same level do not overlap.
 3. The refinement ratios, RL, between adjacent levels are integer (typically 2 or 4) and uniform within the same level.
 4. Grid cells are never partially refined; i.e., each cell is refined to four quads in 2D or eight hexahedra in 3D.
 
 Or in other words,
+
 * Refinement ratio across levels is constant.
 * Each block at levels > 0 need to be covered 100% by one parent block of
 previous level.
@@ -36,6 +39,7 @@ be any specialized filters such as the dual-grid contour / clip ones for
 the `vtkOverlappingAMR`.
 
 The `vtkAMRInformation` documentation consists only of
+
 * Refinement ratio between AMR levels
 * Grid spacing for each level
 * The file block index for each block parent child information, if requested

@@ -19,7 +19,7 @@ nfiles = length(filenames)
 fig, ax = subplots(figsize=(10,7.5))
 
 @info "1 / $nfiles, $(basename(filenames[1]))"
-data = readdata(basename(filenames[1]); dir)
+data = load(basename(filenames[1]); dir)
 varIndex_ = Batsrus.findindex(data, var)
 cnorm, cticks = @views Batsrus.set_colorbar(colorscale, vmin, vmax, data.w[:,:,varIndex_])
 
@@ -39,7 +39,7 @@ if nfiles > 1
    for i in 2:nfiles
       f = filenames[i] |> basename
       @info "$i / $nfiles, $f"
-      local data = readdata(f; dir)
+      local data = load(f; dir)
 
       contourf(data, var, levels; ax, plotrange, plotinterval, innermask=true, norm=cnorm)
    

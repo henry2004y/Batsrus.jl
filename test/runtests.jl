@@ -27,8 +27,8 @@ end
 @testset "Batsrus.jl" begin
    datapath = artifact"testdata"
    @testset "Reading 1D ascii" begin
-      filename = "1d__raw_2_t25.60000_n00000258.out"
-      data = readdata(filename, dir=datapath, verbose=true)
+      file = "1d__raw_2_t25.60000_n00000258.out"
+      data = load(file, dir=datapath, verbose=true)
       @test startswith(repr(data), "filename : 1d")
       @test Batsrus.setunits(data.head, "NORMALIZED")
       @test isa(data.head, NamedTuple)
@@ -37,21 +37,21 @@ end
    end
 
    @testset "Reading 2D structured binary" begin
-      filename = "z=0_raw_1_t25.60000_n00000258.out"
-      data = readdata(filename, dir=datapath)
+      file = "z=0_raw_1_t25.60000_n00000258.out"
+      data = load(file, dir=datapath)
       @test data.head.time == 25.6f0
       @test extrema(data.x) == (-127.5f0, 127.5f0)
       @test extrema(data.w) == (-0.79985905f0, 1.9399388f0)
    end
 
    @testset "Reading 2D unstructured binary" begin
-      #filename = "z=0_raw_1_t25.60000_n00000258.out"
-      #data = readdata(filename)
+      #file = "z=0_raw_1_t25.60000_n00000258.out"
+      #data = load(file)
    end
 
    @testset "Reading 3D structured binary" begin
-      filename = "3d_raw.out"
-      data = readdata(filename, dir=datapath)
+      file = "3d_raw.out"
+      data = load(file, dir=datapath)
       plotrange = [-50.0, 50.0, -0.5, 0.5]
       X, Z, p = cutdata(data, "p"; dir="y", sequence=1, plotrange)
       @test p[1] ≈ 0.560976f0
@@ -68,8 +68,8 @@ end
    end
 
    @testset "VTK" begin
-      filename = joinpath(datapath, "3d_bin.dat")
-      head, data, connectivity = readtecdata(filename)
+      file = joinpath(datapath, "3d_bin.dat")
+      head, data, connectivity = readtecdata(file)
       @test maximum(connectivity) ≤ head[:nNode] # check if it's read correctly
       convertTECtoVTU(head, data, connectivity)
       sha_str = bytes2hex(open(sha1, "out.vtu"))
@@ -90,8 +90,8 @@ end
       using PyPlot
       ENV["MPLBACKEND"]="agg" # no GUI
       @testset "1D ascii" begin
-         filename = "1d__raw_2_t25.60000_n00000258.out"
-         data = readdata(filename, dir=datapath, verbose=false)
+         file = "1d__raw_2_t25.60000_n00000258.out"
+         data = load(file, dir=datapath, verbose=false)
          plotdata(data, "p", plotmode="line")
          line = get(gca().lines, 0)
          @test line.get_xdata() ≈ data.x
@@ -99,8 +99,8 @@ end
       end
 
       @testset "2D structured binary" begin
-         filename = "z=0_raw_1_t25.60000_n00000258.out"
-         data = readdata(filename, dir=datapath)
+         file = "z=0_raw_1_t25.60000_n00000258.out"
+         data = load(file, dir=datapath)
          plotdata(data, "p bx;by", plotmode="contbar streamover")
          @test isa(gca(), PyPlot.PyObject)
          contourf(data, "p")
@@ -121,8 +121,8 @@ end
       end
 
       @testset "2D AMR Cartesian" begin
-         filename = "bx0_mhd_6_t00000100_n00000352.out"
-         data = readdata(filename, dir=datapath)
+         file = "bx0_mhd_6_t00000100_n00000352.out"
+         data = load(file, dir=datapath)
          plotdata(data, "P", plotmode="contbar")
          ax = gca()
          @test isa(ax, PyPlot.PyObject)
@@ -131,8 +131,8 @@ end
 
    @testset "Units" begin
       @test 1.0bu"R" > 2.0bu"Rg"
-      filename = "y=0_var_1_t00000000_n00000000.out"
-      data = readdata(filename, dir=datapath)
+      file = "y=0_var_1_t00000000_n00000000.out"
+      data = load(file, dir=datapath)
       varunit = getunit(data, "Rho")
       @test varunit == bu"amucc"
       varunit = getunit(data, "Ux")
