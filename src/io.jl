@@ -253,7 +253,7 @@ function getfiletype(file::String, dir::String)
       else
          # The length of the 2nd line decides between real4 & real8
          # since it contains the time; which is real*8 | real*4
-         skip(fileID, lenhead+TAG)
+         skip(fileID, lenhead + TAG)
          len = read(fileID, Int32)
          if len == 20
             type = :real4
@@ -432,19 +432,19 @@ function getascii!(x, w, fileID::IOStream, filehead::NamedTuple)
    ndim, nx = filehead.ndim, filehead.nx
 
    # Read coordinates & values row by row
-   if ndim == 1 # 1D
+   if ndim == 1
       for ix = 1:nx[1]
          temp = parse.(Float64, split(readline(fileID)))
          x[ix,:] .= temp[1]
          w[ix,:] .= temp[2:end]
       end
-   elseif ndim == 2 # 2D
+   elseif ndim == 2
       for j = 1:nx[2], i = 1:nx[1]
          temp = parse.(Float64, split(readline(fileID)))
          x[i,j,:] .= temp[1:2]
          w[i,j,:] .= temp[3:end]
       end
-   elseif ndim == 3 # 3D
+   elseif ndim == 3
       for k = 1:nx[3], j = 1:nx[2], i = 1:nx[1]
          temp = parse.(Float64, split(readline(fileID)))
          x[i,j,k,:] .= temp[1:3]
@@ -460,21 +460,21 @@ function getbinary!(x, w, fileID::IOStream, filehead::NamedTuple)
    ndim, nw = filehead.ndim, filehead.nw
 
    # Read coordinates & values
-   if ndim == 1 # 1D
+   if ndim == 1
       read!(fileID, x)
       skip(fileID, 2*TAG)
       for iw = 1:nw
          read!(fileID, @view w[:,iw])
          skip(fileID, 2*TAG)
       end
-   elseif ndim == 2 # 2D
+   elseif ndim == 2
       read!(fileID, x)
       skip(fileID, 2*TAG)
       for iw = 1:nw
          read!(fileID, @view w[:,:,iw])
          skip(fileID, 2*TAG)
       end
-   elseif ndim == 3 # 3D
+   elseif ndim == 3
       read!(fileID, x)
       skip(fileID, 2*TAG)
       for iw = 1:nw
