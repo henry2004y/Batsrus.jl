@@ -10,11 +10,11 @@ Fast [BATSRUS](https://github.com/MSTEM-QUDA/BATSRUS)/[SWMF](https://github.com/
 
 This package provides the following functionalities:
 
-* simulation data reader
+* Simulation data reader
 * 2D/3D region cut from the whole domain
-* interpolation from unstructured to structured data
-* data format conversion to VTK
-* simulation data visualization through multiple plotting libraries
+* Interpolation from unstructured to structured data
+* Data format conversion to VTK
+* Data visualization through multiple plotting libraries
 
 For more details, please check the [document][Batsrus-doc].
 
