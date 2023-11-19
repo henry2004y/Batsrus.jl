@@ -2,23 +2,11 @@
 
 export load, readlogdata, readtecdata, showhead
 
-const TAG = 4 # Fortran record tag
+# Fortran binary format includes record end/start tags that needs to be skipped.
+# If there are continuous blocks, we usually skip 2*TAG between actual reading.
+const TAG = 4 # Fortran record tag size
 
 searchdir(path, key) = filter(x->occursin(key, x), readdir(path))
-
-function Base.show(io::IO, data::BATLData)
-   showhead(io, data)
-   if data.list.bytes ≥ 1e9
-      println(io, "filesize = $(data.list.bytes/1e9) GB")
-   elseif data.list.bytes ≥ 1e6
-      println(io, "filesize = $(data.list.bytes/1e6) MB")
-   elseif data.list.bytes ≥ 1e3
-      println(io, "filesize = $(data.list.bytes/1e3) KB")
-   else
-      println(io, "filesize = $(data.list.bytes) bytes")
-   end
-   println(io, "snapshots = $(data.list.npictinfiles)")
-end
 
 """
     load(filenameIn; dir=".", npict=1, verbose=false)
@@ -64,7 +52,7 @@ function load(filenameIn::AbstractString; dir::String=".", npict::Int=1,
       skip(fileID, TAG) # skip record start tag
       T = filelist.type == :real4 ? Float32 : Float64
       x, w = allocateBuffer(filehead, T)
-      getbinary!(x, w, fileID, filehead, T)
+      getbinary!(x, w, fileID, filehead)
    end
 
    close(fileID)
@@ -253,8 +241,7 @@ function getfiletype(filename::String, dir::String)
    if occursin(r"^.*\.(log)$", filename)
       type = :log
       npictinfiles = 1
-   elseif occursin(r"^.*\.(dat)$", filename)
-      # Tecplot ascii format
+   elseif occursin(r"^.*\.(dat)$", filename) # Tecplot ascii format
       type = :dat
       npictinfiles = 1
    else
@@ -319,9 +306,9 @@ function getfilehead(fileID::IOStream, filelist::FileList)
       end
       varname = readline(fileID)
    elseif type ∈ (:real4, :binary)
-      skip(fileID, TAG) # skip record start tag
+      skip(fileID, TAG)
       headline = rstrip(String(read(fileID, lenstr)))
-      skip(fileID, 2*TAG) # skip record end/start tags
+      skip(fileID, 2*TAG)
       it = read(fileID, Int32)
       t = read(fileID, Float32)
       ndim = read(fileID, Int32)
@@ -329,17 +316,17 @@ function getfilehead(fileID::IOStream, filelist::FileList)
       ndim = abs(ndim)
       neqpar = read(fileID, Int32)
       nw = read(fileID, Int32)
-      skip(fileID, 2*TAG) # skip record end/start tags
+      skip(fileID, 2*TAG)
       nx = zeros(Int32, ndim)
       read!(fileID, nx)
-      skip(fileID, 2*TAG) # skip record end/start tags
+      skip(fileID, 2*TAG)
       if neqpar > 0
          eqpar = zeros(Float32, neqpar)
          read!(fileID, eqpar)
-         skip(fileID, 2*TAG) # skip record end/start tags
+         skip(fileID, 2*TAG)
       end
       varname = String(read(fileID, lenstr))
-      skip(fileID, TAG) # skip record end tag
+      skip(fileID, TAG)
    end
 
    # Header length
@@ -375,20 +362,16 @@ function getfilesize(fileID::IOStream, type::Symbol, lenstr::Int32)
       skipline(fileID)
       line = readline(fileID)
       line = split(line)
-      ndim = parse(Int32,line[3])
-      neqpar = parse(Int32,line[4])
-      nw = parse(Int8,line[5])
+      ndim = parse(Int32, line[3])
+      neqpar = parse(Int32, line[4])
+      nw = parse(Int8, line[5])
       gencoord = ndim < 0
       ndim = abs(ndim)
       nx = parse.(Int64, split(readline(fileID)))
       neqpar > 0 && skipline(fileID)
       skipline(fileID)
    elseif type ∈ (:real4, :binary)
-      skip(fileID, TAG)
-      read(fileID, lenstr)
-      skip(fileID, 2*TAG)
-      read(fileID, Int32)
-      read(fileID, Float32)
+      skip(fileID, TAG + lenstr + 2*TAG + sizeof(Int32) + sizeof(Float32))
       ndim = abs(read(fileID, Int32))
       tmp = read(fileID, Int32)
       nw = read(fileID, Int32)
@@ -399,7 +382,7 @@ function getfilesize(fileID::IOStream, type::Symbol, lenstr::Int32)
       if tmp > 0
          tmp2 = zeros(Float32, tmp)
          read!(fileID, tmp2)
-         skip(fileID, 2*TAG) # skip record end/start tags
+         skip(fileID, 2*TAG)
       end
       read(fileID, lenstr)
       skip(fileID, TAG)
@@ -411,15 +394,16 @@ function getfilesize(fileID::IOStream, type::Symbol, lenstr::Int32)
 
    # Calculate the snapshot size = header + data + recordmarks
    nxs = prod(nx)
-   if type == :log
-      pictsize = 1
-   elseif type == :ascii
-      pictsize = headlen + (18*(ndim+nw)+1)*nxs
-   elseif type == :real4
-      pictsize = headlen + 8*(1+nw) + 4*(ndim+nw)*nxs
-   elseif type == :binary
-      pictsize = headlen + 8*(1+nw) + 8*(ndim+nw)*nxs
-   end
+   pictsize =
+      if type == :log
+         1
+      elseif type == :ascii
+         headlen + (18*(ndim + nw) + 1)*nxs
+      elseif type == :real4
+         headlen + 8*(1 + nw) + 4*(ndim + nw)*nxs
+      elseif type == :binary
+         headlen + 8*(1 + nw) + 8*(ndim + nw)*nxs
+      end
 
    pictsize
 end
@@ -428,16 +412,16 @@ end
 function allocateBuffer(filehead::NamedTuple, T::DataType)
    if filehead.ndim == 1
       n1 = filehead.nx[1]
-      x  = Array{T,2}(undef,n1,filehead.ndim)
-      w  = Array{T,2}(undef,n1,filehead.nw)
+      x  = Array{T,2}(undef, n1, filehead.ndim)
+      w  = Array{T,2}(undef, n1, filehead.nw)
    elseif filehead.ndim == 2
       n1, n2 = filehead.nx
-      x  = Array{T,3}(undef,n1,n2,filehead.ndim)
-      w  = Array{T,3}(undef,n1,n2,filehead.nw)
+      x  = Array{T,3}(undef, n1, n2, filehead.ndim)
+      w  = Array{T,3}(undef, n1, n2, filehead.nw)
    elseif filehead.ndim == 3
       n1, n2, n3 = filehead.nx
-      x  = Array{T,4}(undef,n1,n2,n3,filehead.ndim)
-      w  = Array{T,4}(undef,n1,n2,n3,filehead.nw)
+      x  = Array{T,4}(undef, n1, n2, n3, filehead.ndim)
+      w  = Array{T,4}(undef, n1, n2, n3, filehead.nw)
    end
 
    x, w
@@ -472,30 +456,30 @@ function getascii!(x, w, fileID::IOStream, filehead::NamedTuple)
 end
 
 "Read binary format data."
-function getbinary!(x, w, fileID::IOStream, filehead::NamedTuple, T::DataType)
+function getbinary!(x, w, fileID::IOStream, filehead::NamedTuple)
    ndim, nw = filehead.ndim, filehead.nw
 
    # Read coordinates & values
    if ndim == 1 # 1D
       read!(fileID, x)
-      skip(fileID, 2*TAG) # skip record end/start tags
+      skip(fileID, 2*TAG)
       for iw = 1:nw
          read!(fileID, @view w[:,iw])
-         skip(fileID, 2*TAG) # skip record end/start tags
+         skip(fileID, 2*TAG)
       end
    elseif ndim == 2 # 2D
       read!(fileID, x)
-      skip(fileID, 2*TAG) # skip record end/start tags
+      skip(fileID, 2*TAG)
       for iw = 1:nw
          read!(fileID, @view w[:,:,iw])
-         skip(fileID, 2*TAG) # skip record end/start tags
+         skip(fileID, 2*TAG)
       end
    elseif ndim == 3 # 3D
       read!(fileID, x)
-      skip(fileID, 2*TAG) # skip record end/start tags
+      skip(fileID, 2*TAG)
       for iw = 1:nw
          read!(fileID, @view w[:,:,:,iw])
-         skip(fileID, 2*TAG) # skip record end/start tags
+         skip(fileID, 2*TAG)
       end
    end
 
@@ -708,6 +692,20 @@ function setunits(filehead, type; distance=1.0, mp=1.0, me=1.0)
    return true
 end
 
+function Base.show(io::IO, data::BATLData)
+   showhead(io, data)
+   if data.list.bytes ≥ 1e9
+      println(io, "filesize = $(data.list.bytes/1e9) GB")
+   elseif data.list.bytes ≥ 1e6
+      println(io, "filesize = $(data.list.bytes/1e6) MB")
+   elseif data.list.bytes ≥ 1e3
+      println(io, "filesize = $(data.list.bytes/1e3) KB")
+   else
+      println(io, "filesize = $(data.list.bytes) bytes")
+   end
+   println(io, "snapshots = $(data.list.npictinfiles)")
+end
+
 """
     showhead(file, filehead)
 
@@ -726,10 +724,10 @@ function showhead(file::FileList, head, io=stdout)
    println(io, "nx       : $(head.nx)")
 
    if head.neqpar > 0
-      println(io, "parameters  = $(head.eqpar)")
-      println(io, "coord names = $(head.variables[1:head.ndim])")
-      println(io, "var   names = $(head.variables[head.ndim+1:head.ndim+head.nw])")
-      println(io, "param names = $(head.variables[head.ndim+head.nw+1:end])")
+      println(io, "parameters : $(head.eqpar)")
+      println(io, "coord names: $(head.variables[1:head.ndim])")
+      println(io, "var   names: $(head.variables[head.ndim+1:head.ndim+head.nw])")
+      println(io, "param names: $(head.variables[head.ndim+head.nw+1:end])")
    end
 
    return
