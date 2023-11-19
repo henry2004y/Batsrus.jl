@@ -5,18 +5,18 @@
 - Read data
 
 ```julia
-filename = "1d_bin.out";
-data = load(filename);
-data = load(filename, verbose=true);
-data = load(filename, npict=1);
-data = load(filename, dir=".");
+file = "1d_bin.out";
+data = load(file);
+data = load(file, verbose=true);
+data = load(file, npict=1);
+data = load(file, dir=".");
 ```
 
 - 3D structured spherical coordinates
 
 ```julia
-filename = "3d_structured.out";
-data = load(filename, verbose=false);
+file = "3d_structured.out";
+data = load(file, verbose=false);
 ```
 
 - log file
@@ -40,18 +40,18 @@ We can convert 2D/3D BATSRUS outputs `*.dat` to VTK formats. It uses the VTK XML
 ASCII Tecplot file (supports both `tec` and `tcp`) and binary Tecplot file (set `DOSAVETECBINARY=TRUE` in BATSRUS `PARAM.in`):
 
 ```julia
-filename = "x=0_mhd_1_n00000050.dat"
-#filename = "3d_ascii.dat"
-#filename = "3d_bin.dat"
-head, data, connectivity = readtecdata(filename)
+file = "x=0_mhd_1_n00000050.dat"
+#file = "3d_ascii.dat"
+#file = "3d_bin.dat"
+head, data, connectivity = readtecdata(file)
 convertTECtoVTU(head, data, connectivity)
 ```
 
 3D structured IDL file (`gridType=1` returns rectilinear `vtr` file, `gridType=2` returns structured `vts` file):
 
 ```julia
-filename = "3d_structured.out"
-convertIDLtoVTK(filename, gridType=1)
+file3d_structured.out"
+convertIDLtoVTK(file, gridType=1)
 ```
 
 3D unstructured IDL file together with header and tree file:
@@ -261,8 +261,8 @@ quiver(data, "ux;uy", stride=50)
 ```julia
 using Batsrus, PyPlot
 
-filename = "y*out"
-data = load(filename)
+file = "y*out"
+data = load(file)
 
 DN = matplotlib.colors.DivergingNorm
 set_cmap("RdBu_r")
@@ -287,8 +287,8 @@ An example of tracing in a 2D cut and plot the field lines over contour:
 ```julia
 using Batsrus, PyPlot
 
-filename = "y=0_var_1_t00000000_n00000000.out"
-data = load(filename, dir="test")
+file = "y=0_var_1_t00000000_n00000000.out"
+data = load(file, dir="test")
 
 bx = data.w[:,:,5]
 bz = data.w[:,:,7]

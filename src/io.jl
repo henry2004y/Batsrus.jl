@@ -22,14 +22,14 @@ data = load("1d_raw*")
 function load(filenameIn::AbstractString; dir::String=".", npict::Int=1,
    verbose::Bool=false)
    # Check the existence of files
-   filename = searchdir(dir, Regex(replace(filenameIn, s"*" => s".*")))
-   if isempty(filename)
+   file = searchdir(dir, Regex(replace(filenameIn, s"*" => s".*")))
+   if isempty(file)
       throw(ArgumentError("No matching filename was found for $(filenameIn)"))
-   elseif length(filename) > 1
+   elseif length(file) > 1
       throw(ArgumentError("Ambiguous filename $(filenameIn)!"))
    end
 
-   filelist, fileID, pictsize = getfiletype(filename[1], dir)
+   filelist, fileID, pictsize = getfiletype(file[1], dir)
 
    verbose && @info "filename=$(filelist.name)\n"*"npict=$(filelist.npictinfiles)"
 
@@ -67,8 +67,8 @@ function load(filenameIn::AbstractString; dir::String=".", npict::Int=1,
 end
 
 "Read information from log file."
-function readlogdata(filename::AbstractString)
-   f = open(filename, "r")
+function readlogdata(file::AbstractString)
+   f = open(file, "r")
    nLine = countlines(f) - 2
    seekstart(f)
    headline  = readline(f)
@@ -95,18 +95,18 @@ function readlogdata(filename::AbstractString)
 end
 
 """
-    readtecdata(filename; verbose=false)
+    readtecdata(file; verbose=false)
 
 Return header, data and connectivity from BATSRUS Tecplot outputs. Both 2D and
 3D binary and ASCII formats are supported.
 # Examples
 ```
-filename = "3d_ascii.dat"
-head, data, connectivity = readtecdata(filename)
+file = "3d_ascii.dat"
+head, data, connectivity = readtecdata(file)
 ```
 """
-function readtecdata(filename::AbstractString; verbose::Bool=false)
-   f = open(filename)
+function readtecdata(file::AbstractString; verbose::Bool=false)
+   f = open(file)
 
    nDim  = 3
    nNode = Int32(0)
@@ -232,16 +232,16 @@ function readtecdata(filename::AbstractString; verbose::Bool=false)
 end
 
 "Obtain file type."
-function getfiletype(filename::String, dir::String)
-   file = joinpath(dir, filename)
-   fileID = open(file, "r")
-   bytes = filesize(file)
+function getfiletype(file::String, dir::String)
+   fullpath = joinpath(dir, file)
+   fileID = open(fullpath, "r")
+   bytes = filesize(fullpath)
 
    # Check the appendix of file names
-   if occursin(r"^.*\.(log)$", filename)
+   if occursin(r"^.*\.(log)$", file)
       type = :log
       npictinfiles = 1
-   elseif occursin(r"^.*\.(dat)$", filename) # Tecplot ascii format
+   elseif occursin(r"^.*\.(dat)$", file) # Tecplot ascii format
       type = :dat
       npictinfiles = 1
    else
@@ -261,7 +261,7 @@ function getfiletype(filename::String, dir::String)
             type = :binary
          else
             throw(
-               ArgumentError("Error in getfiletype: incorrect formatted file: $filename"))
+               ArgumentError("Incorrect formatted file: $file"))
          end
       end
       # Obtain file size & number of snapshots
@@ -270,7 +270,7 @@ function getfiletype(filename::String, dir::String)
       npictinfiles = bytes ÷ pictsize
    end
 
-   filelist = FileList(filename, type, dir, bytes, npictinfiles, lenhead)
+   filelist = FileList(file, type, dir, bytes, npictinfiles, lenhead)
 
    filelist, fileID, pictsize
 end

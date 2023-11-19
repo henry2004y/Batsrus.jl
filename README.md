@@ -42,8 +42,8 @@ After the installation, in the Python repl:
 ```python
 from julia import Batsrus
 dir = 'test'
-filename = '1d__raw_2_t25.60000_n00000258.out'
-data = Batsrus.load(filename, dir=dir)
+file = '1d__raw_2_t25.60000_n00000258.out'
+data = Batsrus.load(file, dir=dir)
 ```
 
 There you have it! Enjoy!
