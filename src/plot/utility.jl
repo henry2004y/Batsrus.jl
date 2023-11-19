@@ -3,8 +3,7 @@
 "Prepare 2D data arrays for passing to plotting functions."
 function getdata(data::BATLData, var::AbstractString, plotrange, plotinterval; griddim=1,
    innermask::Bool=false)
-   x, w = data.x, data.w
-   ndim = data.head.ndim
+   x, w, ndim = data.x, data.w, data.head.ndim
    @assert ndim == 2 "data must be in 2D!"
 
    varIndex_ = findindex(data, var)
