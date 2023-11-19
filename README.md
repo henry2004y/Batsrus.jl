@@ -9,11 +9,12 @@
 Fast [BATSRUS](https://github.com/MSTEM-QUDA/BATSRUS)/[SWMF](https://github.com/MSTEM-QUDA/SWMF) data reading, converting, and visualizing using Julia, successor of [VisAnaMatlab](https://github.com/henry2004y/VisAnaMatlab).
 
 This package provides the following functionalities:
-  * simulation data reader
-  * 2D/3D region cut from the whole domain
-  * interpolation from unstructured to structured data
-  * data format conversion to VTK
-  * simulation data visualization through multiple plotting libraries
+
+* simulation data reader
+* 2D/3D region cut from the whole domain
+* interpolation from unstructured to structured data
+* data format conversion to VTK
+* simulation data visualization through multiple plotting libraries
 
 For more details, please check the [document][Batsrus-doc].
 
@@ -55,10 +56,6 @@ See the [benchmark](https://henry2004y.github.io/Batsrus.jl/dev/#Benchmark-1) in
 ## Author
 
 * **Hongyang Zhou** - *Initial work* - [henry2004y](https://github.com/henry2004y)
-
-## Acknowledgments
-
-* All the nice guys who share their codes!
 
 [codecov-img]: https://codecov.io/gh/henry2004y/Batsrus.jl/branch/master/graph/badge.svg
 [codecov-url]: https://codecov.io/gh/henry2004y/Batsrus.jl

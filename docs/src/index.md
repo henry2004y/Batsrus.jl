@@ -8,13 +8,14 @@
 [BATSRUS](https://github.com/MSTEM-QUDA/BATSRUS) and [SWMF](https://github.com/MSTEM-QUDA/SWMF) data reading, converting, visualizing and analyzing in Julia.
 
 This package provides the following functionalities:
-  * simulation data reader
-  * run log plots
-  * 2D/3D region cut from the whole data
-  * phase space distribution plots
-  * interpolation from unstructured to structured data
-  * data format conversion to VTK
-  * simulation data visualization
+
+* simulation data reader
+* run log plots
+* 2D/3D region cut from the whole data
+* phase space distribution plots
+* interpolation from unstructured to structured data
+* data format conversion to VTK
+* simulation data visualization
 
 The ultimate goal is to build a convenient tool of reading and analyzing simulation outputs which is easy to install and easy to use.
 
@@ -22,13 +23,16 @@ The ultimate goal is to build a convenient tool of reading and analyzing simulat
     Feel free to contact the author for any help or collaboration!
 
 ## Installation
+
 Install VisAna from the `julia REPL` prompt with
+
 ```julia
 using Pkg
 Pkg.add("Batsrus")
 ```
 
 Or in the Pkg REPL
+
 ```julia
 julia> ]
 pkg> add Batsrus
@@ -66,12 +70,14 @@ For dynamic languages with JIT, the first time when function gets executed is al
 
 In Python, you can easily take advantage of this package with the aid of [PyJulia](https://pyjulia.readthedocs.io/en/latest/).
 After the installation, in the Python REPL:
+
 ```python
 from julia import Batsrus
 dir = 'test'
 file = '1d__raw_2_t25.60000_n00000258.out'
 data = Batsrus.load(file, dir=dir)
 ```
+
 There you have it! Enjoy!
 
 !!! warning "Python dependency"
@@ -82,3 +88,7 @@ There you have it! Enjoy!
 This package inherits the ideas and code structures from its predecessor in [IDL](https://github.com/MSTEM-QUDA/share/tree/stable/IDL) (developed by Gábor Tóth) and [MATLAB](https://github.com/henry2004y/VisAnaMatlab).
 
 Batsrus.jl is developed and maintained by [Hongyang Zhou](https://github.com/henry2004y).
+
+## Acknowledgments
+
+* All the nice guys who share their codes!
