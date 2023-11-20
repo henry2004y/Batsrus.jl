@@ -32,7 +32,7 @@ function plotlogdata(data, head::NamedTuple, func::AbstractString; plotmode="lin
       if plotmode[ivar] == "line"
          plot(data[1,:],data[varIndex_,:])
       elseif plotmode[ivar] == "scatter"
-         scatter(data[1,:],data[varIndex_,:])
+         scatter(data[1,:], data[varIndex_,:])
       else
          throw(ArgumentError("unknown plot mode $(plotmode[ivar])!"))
       end
