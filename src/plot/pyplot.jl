@@ -56,7 +56,7 @@ Plot the variable from SWMF output.
 `plotdata(data, func, plotmode="trimesh", plotrange=[-1.0, 1.0, -1.0, 1.0], plotinterval=0.2)`
 
 # Arguments
-- `data::BATLData`: BATSRUS data to be visualized.
+- `bd::BATLData`: BATSRUS data to be visualized.
 - `func::String`: variables for plotting.
 
 # Keywords
@@ -74,26 +74,26 @@ Plot the variable from SWMF output.
 Right now this can only deal with 2D plots or 3D cuts. Full 3D plots may be supported in the
 future.
 """
-function plotdata(data::BATLData, func::AbstractString; dir="x", plotmode="contbar",
+function plotdata(bd::BATLData, func::AbstractString; dir="x", plotmode="contbar",
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, sequence=1, multifigure=true,
    getrangeonly=false, level=0, innermask=false, verbose=false, density=1.0,
    stride=10, kwargs...)
 
-   x, w = data.x, data.w
+   x, w = bd.x, bd.w
    plotmode = split(plotmode)
    vars     = split(func)
-   ndim     = data.head.ndim
+   ndim     = bd.head.ndim
    nvar     = length(vars)
 
    if verbose || getrangeonly
       @info "============ PLOTTING PARAMETERS ==============="
-      @info "wnames = $(data.head.wnames)"
+      @info "wnames = $(bd.head.wnames)"
       wmin = Vector{Float64}(undef,nvar)
       wmax = Vector{Float64}(undef,nvar)
       # Display min & max for each variable
       for (ivar,var) in enumerate(vars)
          if occursin(";",var) continue end # skip the vars for streamline
-         varIndex_ = findindex(data, var)
+         varIndex_ = findindex(bd, var)
          if ndim == 1
             wmin[ivar] = minimum(w[:,varIndex_])
             wmax[ivar] = maximum(w[:,varIndex_])
@@ -114,7 +114,7 @@ function plotdata(data::BATLData, func::AbstractString; dir="x", plotmode="contb
    ## Plot
    if ndim == 1
       for (ivar,var) in enumerate(vars)
-         varIndex_ = findindex(data, var)
+         varIndex_ = findindex(bd, var)
          if ivar == 1 || multifigure fig, ax = subplots() else ax = gca() end
          if !occursin("scatter", plotmode[ivar])
             plot(x, w[:,varIndex_]; kwargs...)
@@ -126,7 +126,7 @@ function plotdata(data::BATLData, func::AbstractString; dir="x", plotmode="contb
          end
          xlabel("x"); ylabel("$(var)")
          dim = [0.125, 0.013, 0.2, 0.045]
-         str = @sprintf "it=%d, time=%4.2f" data.head.it data.head.time
+         str = @sprintf "it=%d, time=%4.2f" bd.head.it bd.head.time
          at = matplotlib.offsetbox.AnchoredText(str,
             loc="lower left", prop=Dict("size"=>8), frameon=true,
             bbox_to_anchor=(0., 1.), bbox_transform=ax.transAxes)
@@ -138,13 +138,13 @@ function plotdata(data::BATLData, func::AbstractString; dir="x", plotmode="contb
          occursin("over", plotmode[ivar]) && (multifigure = false)
          if ivar == 1 || multifigure fig, ax = subplots() else ax = gca() end
          if !occursin(";",var)
-            varIndex_ = findindex(data, var)
+            varIndex_ = findindex(bd, var)
          end
 
          if plotmode[ivar] ∈ ("surf","surfbar","surfbarlog","cont","contbar",
             "contlog","contbarlog")
 
-            Xi, Yi, Wi = getdata(data, var, plotrange, plotinterval; griddim=2, innermask)
+            Xi, Yi, Wi = getdata(bd, var, plotrange, plotinterval; griddim=2, innermask)
 
             # More robust method needed!
             if plotmode[ivar] ∈ ["contbar", "contbarlog"]
@@ -162,7 +162,7 @@ function plotdata(data::BATLData, func::AbstractString; dir="x", plotmode="contb
             occursin("bar", plotmode[ivar]) && colorbar()
             occursin("log", plotmode[ivar]) &&
             ( c.locator = matplotlib.ticker.LogLocator() )
-            title(data.head.wnames[varIndex_])
+            title(bd.head.wnames[varIndex_])
 
          elseif plotmode[ivar] ∈ ("trimesh","trisurf","tricont","tristream")
             X = vec(x[:,:,1])
@@ -190,14 +190,14 @@ function plotdata(data::BATLData, func::AbstractString; dir="x", plotmode="contb
                throw(ArgumentError("tristream not yet implemented!"))
             end
 
-            title(data.head.wnames[varIndex_])
+            title(bd.head.wnames[varIndex_])
 
          elseif plotmode[ivar] ∈ ("stream","streamover")
             VarStream  = split(var,";")
-            VarIndex1_ = findindex(data, VarStream[1])
-            VarIndex2_ = findindex(data, VarStream[2])
+            VarIndex1_ = findindex(bd, VarStream[1])
+            VarIndex2_ = findindex(bd, VarStream[2])
 
-            if data.head.gencoord # Generalized coordinates
+            if bd.head.gencoord # Generalized coordinates
                xrange = @view x[:,:,1]
                yrange = @view x[:,:,2]
                if any(isinf.(plotrange))
@@ -258,8 +258,8 @@ function plotdata(data::BATLData, func::AbstractString; dir="x", plotmode="contb
 
          elseif occursin("quiver", plotmode[ivar])
             VarQuiver  = split(var, ";")
-            VarIndex1_ = findindex(data, VarQuiver[1])
-            VarIndex2_ = findindex(data, VarQuiver[2])
+            VarIndex1_ = findindex(bd, VarQuiver[1])
+            VarIndex2_ = findindex(bd, VarQuiver[2])
 
             X, Y = x[:,1,1], x[1,:,2]
             v1, v2 = w[:,:,VarIndex1_]', w[:,:,VarIndex2_]'
@@ -279,9 +279,9 @@ function plotdata(data::BATLData, func::AbstractString; dir="x", plotmode="contb
             throw(ArgumentError("unknown plot mode: $(plotmode[ivar])"))
          end
 
-         xlabel(data.head.variables[1]); ylabel(data.head.variables[2])
+         xlabel(bd.head.variables[1]); ylabel(bd.head.variables[2])
          dim = [0.125, 0.013, 0.2, 0.045]
-         str = @sprintf "it=%d, time=%4.2f" data.head.it data.head.time
+         str = @sprintf "it=%d, time=%4.2f" bd.head.it bd.head.time
          at = matplotlib.offsetbox.AnchoredText(str,
             loc="lower left", prop=Dict("size"=>8), frameon=true,
             bbox_to_anchor=(0., 1.), bbox_transform=ax.transAxes)
@@ -299,7 +299,7 @@ function plotdata(data::BATLData, func::AbstractString; dir="x", plotmode="contb
          if plotmode[ivar] ∈ ("surf","surfbar","surfbarlog","cont","contbar", "contlog",
                "contbarlog")
 
-            varIndex_ = findindex(data, var)
+            varIndex_ = findindex(bd, var)
 
             if ivar == 1 || multifigure fig, ax = subplots() else ax = gca() end
 
@@ -320,8 +320,8 @@ function plotdata(data::BATLData, func::AbstractString; dir="x", plotmode="contb
             end
          elseif plotmode[ivar] ∈ ("stream","streamover")
             varStream  = split(var,";")
-            VarIndex1_ = findindex(data, varStream[1])
-            VarIndex2_ = findindex(data, varStream[2])
+            VarIndex1_ = findindex(bd, varStream[1])
+            VarIndex2_ = findindex(bd, varStream[2])
 
             v1 = @view w[:,:,:,VarIndex1_]
             v2 = @view w[:,:,:,VarIndex2_]
@@ -357,7 +357,7 @@ function plotdata(data::BATLData, func::AbstractString; dir="x", plotmode="contb
                c = ax.contourf(cut1, cut2, W', level; kwargs...)
             end
             fig.colorbar(c, ax=ax)
-            title(data.head.wnames[varIndex_])
+            title(bd.head.wnames[varIndex_])
 
          elseif plotmode[ivar] ∈ ("stream", "streamover")
             xi = range(cut1[1,1], stop=cut1[1,end],
@@ -380,7 +380,7 @@ function plotdata(data::BATLData, func::AbstractString; dir="x", plotmode="contb
 
          ax = gca()
          dim = [0.125, 0.013, 0.2, 0.045]
-         str = @sprintf "it=%d, time=%4.2f" data.head.it data.head.time
+         str = @sprintf "it=%d, time=%4.2f" bd.head.it bd.head.time
          at = matplotlib.offsetbox.AnchoredText(str,
             loc="lower left", prop=Dict("size"=>8), frameon=true,
             bbox_to_anchor=(0., 1.), bbox_transform=ax.transAxes)
@@ -399,11 +399,11 @@ end
 
 2D plane cut contourf of 3D box data.
 """
-function cutplot(data::BATLData, var::AbstractString, ax=nothing;
+function cutplot(bd::BATLData, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], dir="x", sequence=1, level=20)
 
-   x, w = data.x, data.w
-   varIndex_ = findindex(data, var)
+   x, w = bd.x, bd.w
+   varIndex_ = findindex(bd, var)
 
    X = @view x[:,:,:,1]
    Y = @view x[:,:,:,2]
@@ -431,7 +431,7 @@ function cutplot(data::BATLData, var::AbstractString, ax=nothing;
    if isnothing(ax) ax = plt.gca() end
    c = ax.contourf(cut1, cut2, W, level)
 
-   title(data.head.wnames[varIndex_])
+   title(bd.head.wnames[varIndex_])
 
    if dir == "x"
       xlabel("y"); ylabel("z")
@@ -452,13 +452,13 @@ end
 Plot streamlines on 2D slices of 3D box data. Variable names in `var` string must be
 separated with `;`.
 """
-function streamslice(data::BATLData, var::AbstractString, ax=nothing;
+function streamslice(bd::BATLData, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], dir="x", sequence=1, kwargs...)
 
-   x,w = data.x, data.w
+   x,w = bd.x, bd.w
    varStream  = split(var, ";")
-   VarIndex1_ = findindex(data, varStream[1])
-   VarIndex2_ = findindex(data, varStream[2])
+   VarIndex1_ = findindex(bd, varStream[1])
+   VarIndex2_ = findindex(bd, varStream[2])
 
    X = @view x[:,:,:,1]
    Y = @view x[:,:,:,2]
@@ -514,9 +514,9 @@ end
 
 Wrapper over `plot` in matplotlib.
 """
-function PyPlot.plot(data::BATLData, var::AbstractString, ax=nothing; kwargs...)
-   x, w = data.x, data.w
-   varIndex_ = findindex(data, var)
+function PyPlot.plot(bd::BATLData, var::AbstractString, ax=nothing; kwargs...)
+   x, w = bd.x, bd.w
+   varIndex_ = findindex(bd, var)
    if isnothing(ax) ax = plt.gca() end
 
    c = ax.plot(x, w[:,varIndex_]; kwargs...)
@@ -527,9 +527,9 @@ end
 
 Wrapper over `scatter` in matplotlib.
 """
-function PyPlot.scatter(data::BATLData, var::AbstractString, ax=nothing; kwargs...)
-   x, w = data.x, data.w
-   varIndex_ = findindex(data, var)
+function PyPlot.scatter(bd::BATLData, var::AbstractString, ax=nothing; kwargs...)
+   x, w = bd.x, bd.w
+   varIndex_ = findindex(bd, var)
    if isnothing(ax) ax = plt.gca() end
 
    c = ax.scatter(x, w[:,varIndex_]; kwargs...)
@@ -541,10 +541,10 @@ end
 
 Wrapper over `contour` in matplotlib.
 """
-function PyPlot.contour(data::BATLData, var::AbstractString, levels=0; ax=nothing,
+function PyPlot.contour(bd::BATLData, var::AbstractString, levels=0; ax=nothing,
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...)
 
-   Xi, Yi, Wi = getdata(data, var, plotrange, plotinterval; innermask)
+   Xi, Yi, Wi = getdata(bd, var, plotrange, plotinterval; innermask)
 
    if isnothing(ax) ax = plt.gca() end
 
@@ -561,10 +561,10 @@ end
 
 Wrapper over `contourf` in matplotlib.
 """
-function PyPlot.contourf(data::BATLData, var::AbstractString, levels=0; ax=nothing,
+function PyPlot.contourf(bd::BATLData, var::AbstractString, levels=0; ax=nothing,
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...)
 
-   Xi, Yi, Wi = getdata(data, var, plotrange, plotinterval; innermask)
+   Xi, Yi, Wi = getdata(bd, var, plotrange, plotinterval; innermask)
 
    if isnothing(ax) ax = plt.gca() end
 
@@ -581,11 +581,11 @@ end
 
 Wrapper over `tricontourf` in matplotlib.
 """
-function PyPlot.tricontourf(data::BATLData, var::AbstractString, ax=nothing;
+function PyPlot.tricontourf(bd::BATLData, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, kwargs...)
 
-   x, w = data.x, data.w
-   varIndex_ = findindex(data, var)
+   x, w = bd.x, bd.w
+   varIndex_ = findindex(bd, var)
 
    X = vec(x[:,:,1])
    Y = vec(x[:,:,2])
@@ -610,11 +610,11 @@ end
 
 Wrapper over `plot_trisurf` in matplotlib.
 """
-function PyPlot.plot_trisurf(data::BATLData, var::AbstractString, ax=nothing;
+function PyPlot.plot_trisurf(bd::BATLData, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], kwargs...)
 
-   x, w = data.x, data.w
-   varIndex_ = findindex(data, var)
+   x, w = bd.x, bd.w
+   varIndex_ = findindex(bd, var)
 
    X = vec(x[:,:,1])
    Y = vec(x[:,:,2])
@@ -640,10 +640,10 @@ end
 
 Wrapper over `plot_surface` in matplotlib.
 """
-function PyPlot.plot_surface(data::BATLData, var::AbstractString;
+function PyPlot.plot_surface(bd::BATLData, var::AbstractString;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...)
 
-   Xi, Yi, Wi = getdata(data, var, plotrange, plotinterval; griddim=2, innermask)
+   Xi, Yi, Wi = getdata(bd, var, plotrange, plotinterval; griddim=2, innermask)
 
    plot_surface(Xi, Yi, Wi'; kwargs...)
 end
@@ -655,16 +655,16 @@ end
 Wrapper over `streamplot` in matplotlib. `streamplot` does not have **kwargs in the API, but
 it supports `density`, `color`, and some other keywords.
 """
-function PyPlot.streamplot(data::BATLData, var::AbstractString, ax=nothing;
+function PyPlot.streamplot(bd::BATLData, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, kwargs...)
 
-   x, w = data.x, data.w
+   x, w = bd.x, bd.w
    VarStream  = split(var,";")
-   wnames = lowercase.(data.head.wnames)
+   wnames = lowercase.(bd.head.wnames)
    VarIndex1_ = findfirst(x->x==lowercase(VarStream[1]), wnames)
    VarIndex2_ = findfirst(x->x==lowercase(VarStream[2]), wnames)
 
-   if data.head.gencoord # generalized coordinates
+   if bd.head.gencoord # generalized coordinates
       X, Y = vec(x[:,:,1]), vec(x[:,:,2])
       if any(isinf.(plotrange))
          if plotrange[1] == -Inf plotrange[1] = minimum(X) end
@@ -725,12 +725,12 @@ end
 
 Wrapper over `quiver` in matplotlib. Only supports Cartesian grid for now.
 """
-function PyPlot.quiver(data::BATLData, var::AbstractString, ax=nothing;
+function PyPlot.quiver(bd::BATLData, var::AbstractString, ax=nothing;
    stride::Integer=10, kwargs...)
-   x, w = data.x, data.w
+   x, w = bd.x, bd.w
    VarQuiver  = split(var, ";")
-   VarIndex1_ = findindex(data, VarQuiver[1])
-   VarIndex2_ = findindex(data, VarQuiver[2])
+   VarIndex1_ = findindex(bd, VarQuiver[1])
+   VarIndex2_ = findindex(bd, VarQuiver[2])
 
    @views X, Y = x[:,1,1], x[1,:,2]
    @views v1, v2 = w[:,:,VarIndex1_]', w[:,:,VarIndex2_]'
