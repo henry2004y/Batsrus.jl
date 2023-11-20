@@ -14,14 +14,13 @@ This package provides the following functionalities:
 * 2D/3D region cut from the whole domain
 * Interpolation from unstructured to structured data
 * Data format conversion to VTK
-* Data visualization through multiple plotting libraries
+* Data visualization via Makie, PyPlot, and Plots
 
 For more details, please check the [document][Batsrus-doc].
 
 ## Prerequisites
 
 * Julia 1.6+
-
 * (Optional) Python and Matplotlib
 
 ## Installation
@@ -37,17 +36,24 @@ See the [examples](https://henry2004y.github.io/Batsrus.jl/dev/man/examples/).
 
 ### Using from Python
 
-In Python, you can easily take advantage of this package with the aid of [PyJulia](https://pyjulia.readthedocs.io/en/latest/).
-After the installation, in the Python repl:
+In Python, you can easily take advantage of this package with the aid of [JuliaCall](https://juliapy.github.io/PythonCall.jl/dev/juliacall/) or [PyJulia](https://pyjulia.readthedocs.io/en/latest/).
+
+With JuliaCall:
+
+```python
+from juliacall import Main as jl
+jl.seval("using Batsrus")
+file = 'example.out'
+data = Batsrus.load(file, dir='test')
+```
+
+With PyJulia:
 
 ```python
 from julia import Batsrus
-dir = 'test'
-file = '1d__raw_2_t25.60000_n00000258.out'
-data = Batsrus.load(file, dir=dir)
+file = 'example.out'
+data = Batsrus.load(file, dir='test')
 ```
-
-There you have it! Enjoy!
 
 ## Benchmark
 
