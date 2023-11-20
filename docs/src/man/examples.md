@@ -50,7 +50,7 @@ convertTECtoVTU(head, data, connectivity)
 3D structured IDL file (`gridType=1` returns rectilinear `vtr` file, `gridType=2` returns structured `vts` file):
 
 ```julia
-file3d_structured.out"
+file = "3d_structured.out"
 convertIDLtoVTK(file, gridType=1)
 ```
 
@@ -117,9 +117,9 @@ More examples can be found in [examples](https://github.com/henry2004y/Batsrus.j
 
 ## Data visualization
 
-We provide plot recipes for Plots.jl and wrappers for PyPlot.jl.
+We provide plot recipes for Plots.jl, Makie.jl, and wrappers for PyPlot.jl.
 
-The recipes for Plots.jl will work on all functions given the correct dimensions, e.g.
+The recipes for Plots.jl and Makie.jl will work on all kinds of plots given the correct dimensions, e.g.
 
 ```julia
 using Plots

@@ -68,8 +68,18 @@ For dynamic languages with JIT, the first time when function gets executed is al
 
 ## Calling From Python
 
-In Python, you can easily take advantage of this package with the aid of [PyJulia](https://pyjulia.readthedocs.io/en/latest/).
-After the installation, in the Python REPL:
+In Python, you can easily take advantage of this package with the aid of [JuliaCall](https://juliapy.github.io/PythonCall.jl/dev/juliacall/) or [PyJulia](https://pyjulia.readthedocs.io/en/latest/).
+
+With JuliaCall:
+
+```python
+from juliacall import Main as jl
+jl.seval("using Batsrus")
+file = 'example.out'
+data = Batsrus.load(file, dir='test')
+```
+
+With PyJulia:
 
 ```python
 from julia import Batsrus
@@ -77,8 +87,6 @@ dir = 'test'
 file = '1d__raw_2_t25.60000_n00000258.out'
 data = Batsrus.load(file, dir=dir)
 ```
-
-There you have it! Enjoy!
 
 !!! warning "Python dependency"
     `PyPlot` package backend may be affected by the settings of `PyJulia` dependencies. If you want to set it back properly, you need to recompile the `PyCall` package in Julia.
