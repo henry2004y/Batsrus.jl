@@ -695,15 +695,15 @@ end
 function Base.show(io::IO, data::BATLData)
    showhead(io, data)
    if data.list.bytes ≥ 1e9
-      println(io, "filesize = $(data.list.bytes/1e9) GB")
+      println(io, "filesize: $(data.list.bytes/1e9) GB")
    elseif data.list.bytes ≥ 1e6
-      println(io, "filesize = $(data.list.bytes/1e6) MB")
+      println(io, "filesize: $(data.list.bytes/1e6) MB")
    elseif data.list.bytes ≥ 1e3
-      println(io, "filesize = $(data.list.bytes/1e3) KB")
+      println(io, "filesize: $(data.list.bytes/1e3) KB")
    else
-      println(io, "filesize = $(data.list.bytes) bytes")
+      println(io, "filesize: $(data.list.bytes) bytes")
    end
-   println(io, "snapshots = $(data.list.npictinfiles)")
+   println(io, "snapshots: $(data.list.npictinfiles)")
 end
 
 """

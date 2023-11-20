@@ -98,7 +98,7 @@ end
 	subsurface(x, y, data, limits)
 	subsurface(x, y, u, v, limits)
 
-Extract subset of 2D surface dataset. See also: [`subvolume`](@ref).
+Extract subset of 2D surface dataset in ndgrid format. See also: [`subvolume`](@ref).
 """
 function subsurface(x, y, data, limits)
    checkvalidlimits(limits)
@@ -188,24 +188,24 @@ function subdata(data, xind, yind, zind, sz)
    newsz = size(newdata)
 
    if length(sz) > 3
-      newdata = reshape(newdata, (newsz[1:3]..., sz[4:end]))
+      newdata = @views reshape(newdata, (newsz[1:3]..., sz[4:end]))
    end
 
    newdata
 end
 
 "Return variable data from string `var`."
-function getvar(data::BATLData, var)
+function getvar(data::BATLData, var::AbstractString)
    VarIndex_ = findfirst(x->x==lowercase(var), lowercase.(data.head.wnames))
-   isnothing(VarIndex_) && error("$(var) not found in file header variables!")
+   isnothing(VarIndex_) && error("$var not found in file header variables!")
 
    ndim = data.head.ndim
    if ndim == 1
-      w = data.w[:,VarIndex_]
+      w = @view data.w[:,VarIndex_]
    elseif ndim == 2
-      w = data.w[:,:,VarIndex_]
+      w = @view data.w[:,:,VarIndex_]
    elseif ndim == 3
-      w = data.w[:,:,:,VarIndex_]
+      w = @view data.w[:,:,:,VarIndex_]
    end
    w
 end
