@@ -149,14 +149,14 @@ function plotdata(data::BATLData, func::AbstractString; dir="x", plotmode="contb
             # More robust method needed!
             if plotmode[ivar] ∈ ["contbar", "contbarlog"]
                if level == 0
-                  c = contourf(Xi, Yi, Wi; kwargs...)
+                  c = contourf(Xi, Yi, Wi'; kwargs...)
                else
-                  c = contourf(Xi, Yi, Wi, level; kwargs...)
+                  c = contourf(Xi, Yi, Wi', level; kwargs...)
                end
             elseif plotmode[ivar] ∈ ["cont", "contlog"]
-               c = contour(Xi, Yi, Wi; kwargs...)
+               c = contour(Xi, Yi, Wi'; kwargs...)
             elseif plotmode[ivar] ∈ ["surfbar", "surfbarlog"]
-               c = plot_surface(Xi, Yi, Wi; kwargs...)
+               c = plot_surface(Xi, Yi, Wi'; kwargs...)
             end
 
             occursin("bar", plotmode[ivar]) && colorbar()
@@ -182,9 +182,9 @@ function plotdata(data::BATLData, func::AbstractString; dir="x", plotmode="contb
                triang = matplotlib.tri.Triangulation(X, Y)
                c = ax.triplot(triang)
             elseif plotmode[ivar] == "trisurf"
-               c = ax.plot_trisurf(X, Y, W; kwargs...)
+               c = ax.plot_trisurf(X, Y, W'; kwargs...)
             elseif plotmode[ivar] == "tricont"
-               c = ax.tricontourf(X, Y, W; kwargs...)
+               c = ax.tricontourf(X, Y, W'; kwargs...)
                fig.colorbar(c,ax=ax)
             elseif plotmode[ivar] == "tristream"
                throw(ArgumentError("tristream not yet implemented!"))
@@ -352,9 +352,9 @@ function plotdata(data::BATLData, func::AbstractString; dir="x", plotmode="contb
          if plotmode[ivar] ∈ ("surf", "surfbar", "surfbarlog", "cont", "contbar", "contlog",
                "contbarlog")
             if level == 0
-               c = ax.contourf(cut1, cut2, W; kwargs...)
+               c = ax.contourf(cut1, cut2, W'; kwargs...)
             else
-               c = ax.contourf(cut1, cut2, W, level; kwargs...)
+               c = ax.contourf(cut1, cut2, W', level; kwargs...)
             end
             fig.colorbar(c, ax=ax)
             title(data.head.wnames[varIndex_])
@@ -409,7 +409,7 @@ function cutplot(data::BATLData, var::AbstractString, ax=nothing;
    Y = @view x[:,:,:,2]
    Z = @view x[:,:,:,3]
 
-   W = w[:,:,:,varIndex_]
+   W = @view w[:,:,:,varIndex_]
 
    if dir == "x"
       cut1 = @view X[sequence,:,:]
@@ -549,9 +549,9 @@ function PyPlot.contour(data::BATLData, var::AbstractString, levels=0; ax=nothin
    if isnothing(ax) ax = plt.gca() end
 
    if levels != 0
-      c = ax.contour(Xi, Yi, Wi, levels; kwargs...)
+      c = ax.contour(Xi, Yi, Wi', levels; kwargs...)
    else
-      c = ax.contour(Xi, Yi, Wi; kwargs...)
+      c = ax.contour(Xi, Yi, Wi'; kwargs...)
    end
 end
 
@@ -569,9 +569,9 @@ function PyPlot.contourf(data::BATLData, var::AbstractString, levels=0; ax=nothi
    if isnothing(ax) ax = plt.gca() end
 
    if levels != 0
-      c = ax.contourf(Xi, Yi, Wi, levels; kwargs...)
+      c = ax.contourf(Xi, Yi, Wi', levels; kwargs...)
    else
-      c = ax.contourf(Xi, Yi, Wi; kwargs...)
+      c = ax.contourf(Xi, Yi, Wi'; kwargs...)
    end
 end
 
@@ -645,7 +645,7 @@ function PyPlot.plot_surface(data::BATLData, var::AbstractString;
 
    Xi, Yi, Wi = getdata(data, var, plotrange, plotinterval; griddim=2, innermask)
 
-   plot_surface(Xi, Yi, Wi; kwargs...)
+   plot_surface(Xi, Yi, Wi'; kwargs...)
 end
 
 """

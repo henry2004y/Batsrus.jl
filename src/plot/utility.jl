@@ -27,14 +27,14 @@ function getdata(data::BATLData, var::AbstractString, plotrange, plotinterval; g
       triang = @views matplotlib.tri.Triangulation(X[:], Y[:])
       interpolator = @views matplotlib.tri.LinearTriInterpolator(triang, W[:])
       Xi, Yi = meshgrid(xi, yi)
-      Wi = interpolator(Xi, Yi)
+      Wi = interpolator(Xi, Yi)'
    else # Cartesian coordinates
       xrange = range(x[1,1,1], x[end,1,1], length=size(x,1))
       yrange = range(x[1,1,2], x[1,end,2], length=size(x,2))
       if all(isinf.(plotrange))
          xi, yi = xrange, yrange
          Xi, Yi = meshgrid(xi, yi)
-         Wi = w[:,:,varIndex_]'
+         Wi = w[:,:,varIndex_] # Matplotlib does not accept view!
       else
          if plotrange[1] == -Inf plotrange[1] = minimum(xrange) end
          if plotrange[2] ==  Inf plotrange[2] = maximum(xrange) end
