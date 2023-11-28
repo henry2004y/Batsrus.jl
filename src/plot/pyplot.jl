@@ -10,6 +10,16 @@ export plotdata, plotlogdata, plot, scatter, contour, contourf, plot_surface,
    matplotlib.rc("image", cmap="turbo") # set default colormap
 end
 
+@static if matplotlib.__version__ < "3.5"
+   matplotlib.rc("pcolor", shading="nearest") # newer version default "auto"
+end
+
+matplotlib.rc("font", size=14)
+matplotlib.rc("xtick", labelsize=10)
+matplotlib.rc("ytick", labelsize=10)
+matplotlib.rc("xtick.minor", visible=true)
+matplotlib.rc("ytick.minor", visible=true)
+
 """
     plotlogdata(data, head, func; plotmode="line")
 
