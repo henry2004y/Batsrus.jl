@@ -651,7 +651,7 @@ end
 
 Wrapper over `pcolormesh` in matplotlib.
 """
-function PyPlot.pcolormesh(bd::BATLData, var::AbstractString; ax=nothing,
+function PyPlot.pcolormesh(bd::BATLData, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...)
 
    Xi, Yi, Wi = getdata(bd, var, plotrange, plotinterval; innermask)
