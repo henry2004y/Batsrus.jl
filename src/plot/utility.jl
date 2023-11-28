@@ -1,14 +1,14 @@
 # Utility functions for plotting.
 
 "Prepare 2D data arrays for passing to plotting functions."
-function getdata(data::BATLData, var::AbstractString, plotrange, plotinterval; griddim=1,
+function getdata(bd::BATLData, var::AbstractString, plotrange, plotinterval; griddim=1,
    innermask::Bool=false)
-   x, w, ndim = data.x, data.w, data.head.ndim
+   x, w, ndim = bd.x, bd.w, bd.head.ndim
    @assert ndim == 2 "data must be in 2D!"
 
-   varIndex_ = findindex(data, var)
+   varIndex_ = findindex(bd, var)
 
-   if data.head.gencoord # Generalized coordinates
+   if bd.head.gencoord # Generalized coordinates
       X = @view x[:,:,1]
       Y = @view x[:,:,2]
       W = @view w[:,:,varIndex_]
@@ -53,11 +53,11 @@ function getdata(data::BATLData, var::AbstractString, plotrange, plotinterval; g
 
    # Mask a circle at the inner boundary
    if innermask
-      varIndex_ = findlast(x->x=="rbody", data.head.variables)
+      varIndex_ = findlast(x->x=="rbody", bd.head.variables)
       isnothing(varIndex_) && error("rbody not found in file header parameters!")
-      ParamIndex_ = varIndex_ - ndim - data.head.nw
+      ParamIndex_ = varIndex_ - ndim - bd.head.nw
       @inbounds for i = eachindex(Xi, Yi)
-         if Xi[i]^2 + Yi[i]^2 < data.head.eqpar[ParamIndex_]^2
+         if Xi[i]^2 + Yi[i]^2 < bd.head.eqpar[ParamIndex_]^2
             Wi[i] = NaN
          end
       end
@@ -70,9 +70,9 @@ function getdata(data::BATLData, var::AbstractString, plotrange, plotinterval; g
    end
 end
 
-"Find variable index in data."
-function findindex(data::BATLData, var::AbstractString)
-   varIndex_ = findfirst(x->x==lowercase(var), lowercase.(data.head.wnames))
+"Find variable index in the BATSRUS data."
+function findindex(bd::BATLData, var::AbstractString)
+   varIndex_ = findfirst(x->x==lowercase(var), lowercase.(bd.head.wnames))
    isnothing(varIndex_) && error("$(var) not found in file header variables!")
 
    varIndex_
