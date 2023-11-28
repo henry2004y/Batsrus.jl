@@ -50,8 +50,8 @@ function getunit(data, var)
    # coordinate units in the headline. To work around it, here the index is shifted by 1.
    var_ = findfirst(x->x==lowercase(var), lowercase.(data.head.variables)) + 1
    isnothing(var_) && error("$(var) not found in file header variables!")
-   if data.head.headline == "normalized variables"
-      var_unit = nothing
+   if data.head.headline in ("normalized variables", "PLANETARY")
+      var_unit = nothing 
    else
       var_unit_strs = split(data.head.headline)
  
