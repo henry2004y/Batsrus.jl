@@ -117,16 +117,16 @@ end
          @test plt isa Heatmap
       end
 
-      @testset "1D ascii" begin
+      @testset "PyPlot" begin
+         # 1D ascii
          file = "1d__raw_2_t25.60000_n00000258.out"
          bd = load(file, dir=datapath, verbose=false)
          plotdata(bd, "p", plotmode="line")
          line = get(gca().lines, 0)
          @test line.get_xdata() ≈ bd.x
          @test line.get_ydata() ≈ bd.w[:,10]
-      end
-
-      @testset "2D structured binary" begin
+         
+         # 2D structured binary
          file = "z=0_raw_1_t25.60000_n00000258.out"
          bd = load(file, dir=datapath)
          plotdata(bd, "p bx;by", plotmode="contbar streamover")
@@ -140,15 +140,16 @@ end
          @test isa(gca(), PyPlot.PyObject)
          PyPlot.streamplot(bd, "bx;by")
          @test isa(gca(), PyPlot.PyObject)
+         p = PyPlot.pcolormesh(bd, "p").get_array()
+         @test p[end] == 0.1f0
          plt.close()
          fig = plt.figure()
          ax = fig.add_subplot(111, projection="3d")
          plot_surface(bd, "rho")
          @test isa(gca(), PyPlot.PyObject)
          plt.close()
-      end
 
-      @testset "2D AMR Cartesian" begin
+         # 2D AMR Cartesian
          file = "bx0_mhd_6_t00000100_n00000352.out"
          bd = load(file, dir=datapath)
          plotdata(bd, "P", plotmode="contbar")

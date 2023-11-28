@@ -4,7 +4,7 @@ using PyPlot
 using Dierckx: Spline2D
 
 export plotdata, plotlogdata, plot, scatter, contour, contourf, plot_surface,
-   tricontourf, plot_trisurf, streamplot, streamslice, quiver, cutplot
+   tricontourf, plot_trisurf, streamplot, streamslice, quiver, cutplot, pcolormesh
 
 @static if matplotlib.__version__ >= "3.3"
    matplotlib.rc("image", cmap="turbo") # set default colormap
@@ -642,6 +642,23 @@ function PyPlot.plot_surface(bd::BATLData, var::AbstractString;
    Xi, Yi, Wi = getdata(bd, var, plotrange, plotinterval; griddim=2, innermask)
 
    plot_surface(Xi, Yi, Wi'; kwargs...)
+end
+
+
+"""
+    pcolormesh(data, var, levels=0; ax=nothing, plotrange=[-Inf,Inf,-Inf,Inf],
+       plotinterval=0.1, innermask=false, kwargs...)
+
+Wrapper over `pcolormesh` in matplotlib.
+"""
+function PyPlot.pcolormesh(bd::BATLData, var::AbstractString; ax=nothing,
+   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...)
+
+   Xi, Yi, Wi = getdata(bd, var, plotrange, plotinterval; innermask)
+
+   if isnothing(ax) ax = plt.gca() end
+
+   c = ax.pcolormesh(Xi, Yi, Wi'; kwargs...)
 end
 
 """
