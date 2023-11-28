@@ -17,7 +17,7 @@ function Makie.convert_arguments(P::Makie.PointBased, bd::BATLData, var::String)
 end
 
 "Conversion for 2D plots."
-function Makie.convert_arguments(P::Makie.SurfaceLike, bd::BATLData, var::String;
+function Makie.convert_arguments(P::Makie.GridBased, bd::BATLData, var::String;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1)
    x, y, w = getdata(bd, var, plotrange, plotinterval)
 
