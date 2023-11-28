@@ -193,9 +193,9 @@ function plotdata(bd::BATLData, func::AbstractString; dir="x", plotmode="contbar
             title(bd.head.wnames[varIndex_])
 
          elseif plotmode[ivar] ∈ ("stream","streamover")
-            VarStream  = split(var,";")
-            VarIndex1_ = findindex(bd, VarStream[1])
-            VarIndex2_ = findindex(bd, VarStream[2])
+            varstream  = split(var,";")
+            var1_ = findindex(bd, varstream[1])
+            var2_ = findindex(bd, varstream[2])
 
             if bd.head.gencoord # Generalized coordinates
                xrange = @view x[:,:,1]
@@ -217,52 +217,48 @@ function plotdata(bd::BATLData, func::AbstractString; dir="x", plotmode="contbar
 
                Xi, Yi = meshgrid(xi, yi)
 
-               W = w[:,1,VarIndex1_]
+               W = w[:,1,var1_]
                interpolator = matplotlib.tri.LinearTriInterpolator(triang, W)
                v1 = interpolator(Xi, Yi)
 
-               W = w[:,1,VarIndex2_]
+               W = w[:,1,var2_]
                interpolator = matplotlib.tri.LinearTriInterpolator(triang, W)
                v2 = interpolator(Xi, Yi)
 
             else # Cartesian coordinates
                xrange = @view x[:,1,1]
                yrange = @view x[1,:,2]
-               if all(isinf.(plotrange))
-                  Xi, Yi = meshgrid(xrange, yrange)
-                  v1, v2 = w[:,:,VarIndex1_]', w[:,:,VarIndex2_]'
-               else
-                  if plotrange[1] == -Inf plotrange[1] = minimum(xrange) end
-                  if plotrange[2] ==  Inf plotrange[2] = maximum(xrange) end
-                  if plotrange[3] == -Inf plotrange[3] = minimum(yrange) end
-                  if plotrange[4] ==  Inf plotrange[4] = maximum(yrange) end
 
-                  w1, w2 = w[:,:,VarIndex1_], w[:,:,VarIndex2_]
+               if plotrange[1] == -Inf plotrange[1] = minimum(xrange) end
+               if plotrange[2] ==  Inf plotrange[2] = maximum(xrange) end
+               if plotrange[3] == -Inf plotrange[3] = minimum(yrange) end
+               if plotrange[4] ==  Inf plotrange[4] = maximum(yrange) end
 
-                  xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
-                  yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
+               w1, w2 = w[:,:,var1_], w[:,:,var2_]
 
-                  Xi, Yi = meshgrid(xi, yi)
+               xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
+               yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
 
-                  spline = Spline2D(xrange, yrange, w1)
-                  v1 = spline(Xi[:], Yi[:])
-                  v1 = reshape(v1, size(Xi))
+               Xi, Yi = meshgrid(xi, yi)
 
-                  spline = Spline2D(xrange, yrange, w2)
-                  v2 = spline(Xi[:], Yi[:])
-                  v2 = reshape(v2, size(Xi))
-               end
+               spline = Spline2D(xrange, yrange, w1)
+               v1 = spline(Xi[:], Yi[:])
+               v1 = reshape(v1, size(Xi))
+
+               spline = Spline2D(xrange, yrange, w2)
+               v2 = spline(Xi[:], Yi[:])
+               v2 = reshape(v2, size(Xi))
             end
 
             s = streamplot(Xi, Yi, v1, v2; color="w", linewidth=1.0, density)
 
          elseif occursin("quiver", plotmode[ivar])
             VarQuiver  = split(var, ";")
-            VarIndex1_ = findindex(bd, VarQuiver[1])
-            VarIndex2_ = findindex(bd, VarQuiver[2])
+            var1_ = findindex(bd, VarQuiver[1])
+            var2_ = findindex(bd, VarQuiver[2])
 
             X, Y = x[:,1,1], x[1,:,2]
-            v1, v2 = w[:,:,VarIndex1_]', w[:,:,VarIndex2_]'
+            v1, v2 = w[:,:,var1_]', w[:,:,var2_]'
 
             @views Xq, Yq = X[1:stride:end], Y[1:stride:end]
             v1q = @view v1[1:stride:end, 1:stride:end]
@@ -319,12 +315,12 @@ function plotdata(bd::BATLData, func::AbstractString; dir="x", plotmode="contbar
                W    = @view W[:,:,sequence]
             end
          elseif plotmode[ivar] ∈ ("stream","streamover")
-            varStream  = split(var,";")
-            VarIndex1_ = findindex(bd, varStream[1])
-            VarIndex2_ = findindex(bd, varStream[2])
+            varstream  = split(var,";")
+            var1_ = findindex(bd, varstream[1])
+            var2_ = findindex(bd, varstream[2])
 
-            v1 = @view w[:,:,:,VarIndex1_]
-            v2 = @view w[:,:,:,VarIndex2_]
+            v1 = @view w[:,:,:,var1_]
+            v2 = @view w[:,:,:,var2_]
 
             if dir == "x"
                cut1 = @view Y[sequence,:,:]
@@ -456,16 +452,16 @@ function streamslice(bd::BATLData, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], dir="x", sequence=1, kwargs...)
 
    x,w = bd.x, bd.w
-   varStream  = split(var, ";")
-   VarIndex1_ = findindex(bd, varStream[1])
-   VarIndex2_ = findindex(bd, varStream[2])
+   varstream  = split(var, ";")
+   var1_ = findindex(bd, varstream[1])
+   var2_ = findindex(bd, varstream[2])
 
    X = @view x[:,:,:,1]
    Y = @view x[:,:,:,2]
    Z = @view x[:,:,:,3]
 
-   v1 = @view w[:,:,:,VarIndex1_]
-   v2 = @view w[:,:,:,VarIndex2_]
+   v1 = @view w[:,:,:,var1_]
+   v2 = @view w[:,:,:,var2_]
 
    if dir == "x"
       cut1 = @view X[sequence,:,:]
@@ -659,10 +655,10 @@ function PyPlot.streamplot(bd::BATLData, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, kwargs...)
 
    x, w = bd.x, bd.w
-   VarStream  = split(var,";")
+   varstream  = split(var,";")
    wnames = lowercase.(bd.head.wnames)
-   VarIndex1_ = findfirst(x->x==lowercase(VarStream[1]), wnames)
-   VarIndex2_ = findfirst(x->x==lowercase(VarStream[2]), wnames)
+   var1_ = findfirst(x->x==lowercase(varstream[1]), wnames)
+   var2_ = findfirst(x->x==lowercase(varstream[2]), wnames)
 
    if bd.head.gencoord # generalized coordinates
       X, Y = vec(x[:,:,1]), vec(x[:,:,2])
@@ -681,39 +677,34 @@ function PyPlot.streamplot(bd::BATLData, var::AbstractString, ax=nothing;
       tr = matplotlib.tri.Triangulation(X, Y)
       Xi, Yi = meshgrid(xi, yi)
 
-      interpolator = matplotlib.tri.LinearTriInterpolator(tr, w[:,1,VarIndex1_])
+      interpolator = matplotlib.tri.LinearTriInterpolator(tr, w[:,1,var1_])
       v1 = interpolator(Xi, Yi)
 
-      interpolator = matplotlib.tri.LinearTriInterpolator(tr, w[:,1,VarIndex2_])
+      interpolator = matplotlib.tri.LinearTriInterpolator(tr, w[:,1,var2_])
       v2 = interpolator(Xi, Yi)
 
    else # Cartesian coordinates
-      if all(isinf.(plotrange))
-         Xi, Yi = x[:,:,1]', x[:,:,2]'
-         v1, v2 = w[:,:,VarIndex1_]', w[:,:,VarIndex2_]'
-      else
-         xrange = @view x[:,1,1]
-         yrange = @view x[1,:,2]
-	      if plotrange[1] == -Inf plotrange[1] = minimum(xrange) end
-	      if plotrange[2] ==  Inf plotrange[2] = maximum(xrange) end
-         if plotrange[3] == -Inf plotrange[3] = minimum(yrange) end
-         if plotrange[4] ==  Inf plotrange[4] = maximum(yrange) end
+      xrange = @view x[:,1,1]
+      yrange = @view x[1,:,2]
+	   if plotrange[1] == -Inf plotrange[1] = minimum(xrange) end
+	   if plotrange[2] ==  Inf plotrange[2] = maximum(xrange) end
+      if plotrange[3] == -Inf plotrange[3] = minimum(yrange) end
+      if plotrange[4] ==  Inf plotrange[4] = maximum(yrange) end
 
-	      w1, w2 = w[:,:,VarIndex1_], w[:,:,VarIndex2_]
+	   w1, w2 = w[:,:,var1_], w[:,:,var2_]
+      # Make sure the grid is evenly spaced
+      xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
+      yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
 
-         xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
-         yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
+      Xi, Yi = meshgrid(xi, yi)
 
-         Xi, Yi = meshgrid(xi, yi)
+      spline = Spline2D(xrange, yrange, w1)
+	   v1 = spline(Xi[:], Yi[:])
+	   v1 = reshape(v1, size(Xi))
 
-         spline = Spline2D(xrange, yrange, w1)
-	      v1 = spline(Xi[:], Yi[:])
-	      v1 = reshape(v1, size(Xi))
-
-	      spline = Spline2D(xrange, yrange, w2)
-	      v2 = spline(Xi[:], Yi[:])
-	      v2 = reshape(v2, size(Xi))
-      end
+	   spline = Spline2D(xrange, yrange, w2)
+	   v2 = spline(Xi[:], Yi[:])
+	   v2 = reshape(v2, size(Xi))
    end
    if isnothing(ax) ax = plt.gca() end
 
@@ -729,11 +720,11 @@ function PyPlot.quiver(bd::BATLData, var::AbstractString, ax=nothing;
    stride::Integer=10, kwargs...)
    x, w = bd.x, bd.w
    VarQuiver  = split(var, ";")
-   VarIndex1_ = findindex(bd, VarQuiver[1])
-   VarIndex2_ = findindex(bd, VarQuiver[2])
+   var1_ = findindex(bd, VarQuiver[1])
+   var2_ = findindex(bd, VarQuiver[2])
 
    @views X, Y = x[:,1,1], x[1,:,2]
-   @views v1, v2 = w[:,:,VarIndex1_]', w[:,:,VarIndex2_]'
+   @views v1, v2 = w[:,:,var1_]', w[:,:,var2_]'
 
    @views Xq, Yq = X[1:stride:end], Y[1:stride:end]
    v1q = @view v1[1:stride:end, 1:stride:end]
