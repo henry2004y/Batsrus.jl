@@ -1,7 +1,7 @@
 # Plotting functionalities.
 
 using PyPlot
-using Dierckx: Spline2D
+using Interpolations: cubic_spline_interpolation
 
 export plotdata, plotlogdata, plot, scatter, contour, contourf, plot_surface,
    tricontourf, plot_trisurf, streamplot, streamslice, quiver, cutplot, pcolormesh
@@ -73,7 +73,7 @@ Plot the variable from SWMF output.
 - `plotmode::String`: type of plotting ["cont","contbar"]...
 - `plotrange::Vector`: range of plotting.
 - `plotinterval`: interval for interpolation.
-- `level`: level of contour.
+- `levels`: levels of contour.
 - `innermask`: Bool for masking a circle at the inner boundary.
 - `dir`: 2D cut plane orientation from 3D outputs ["x","y","z"].
 - `sequence`: sequence of plane from - to + in that direction.
@@ -86,8 +86,8 @@ future.
 """
 function plotdata(bd::BATLData, func::AbstractString; dir="x", plotmode="contbar",
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, sequence=1, multifigure=true,
-   getrangeonly=false, level=0, innermask=false, verbose=false, density=1.0,
-   stride=10, kwargs...)
+   getrangeonly::Bool=false, levels::Int=0, innermask::Bool=false, verbose::Bool=false,
+   density=1.0, stride::Int=10, kwargs...)
 
    x, w = bd.x, bd.w
    plotmode = split(plotmode)
@@ -154,24 +154,16 @@ function plotdata(bd::BATLData, func::AbstractString; dir="x", plotmode="contbar
          if plotmode[ivar] ∈ ("surf","surfbar","surfbarlog","cont","contbar",
             "contlog","contbarlog")
 
-            Xi, Yi, Wi = getdata(bd, var, plotrange, plotinterval; griddim=2, innermask)
-
-            # More robust method needed!
-            if plotmode[ivar] ∈ ["contbar", "contbarlog"]
-               if level == 0
-                  c = contourf(Xi, Yi, Wi; kwargs...)
-               else
-                  c = contourf(Xi, Yi, Wi, level; kwargs...)
-               end
-            elseif plotmode[ivar] ∈ ["cont", "contlog"]
-               c = contour(Xi, Yi, Wi; kwargs...)
-            elseif plotmode[ivar] ∈ ["surfbar", "surfbarlog"]
-               c = plot_surface(Xi, Yi, Wi; kwargs...)
+            if plotmode[ivar] ∈ ("contbar", "contbarlog")
+               c = contourf(bd, var, levels; plotrange, plotinterval, innermask, kwargs...)
+            elseif plotmode[ivar] ∈ ("cont", "contlog")
+               c = contour(bd, var, levels; plotrange, plotinterval, innermask, kwargs...)
+            elseif plotmode[ivar] ∈ ("surfbar", "surfbarlog")
+               c = plot_surface(bd, var; plotrange, plotinterval, innermask, kwargs...)
             end
 
-            occursin("bar", plotmode[ivar]) && colorbar()
-            occursin("log", plotmode[ivar]) &&
-            ( c.locator = matplotlib.ticker.LogLocator() )
+            occursin("bar", plotmode[ivar]) && colorbar(c; fraction=0.04, pad=0.02)
+            occursin("log", plotmode[ivar]) && (c.locator = matplotlib.ticker.LogLocator())
             title(bd.head.wnames[varIndex_])
 
          elseif plotmode[ivar] ∈ ("trimesh","trisurf","tricont","tristream")
@@ -190,12 +182,12 @@ function plotdata(bd::BATLData, func::AbstractString; dir="x", plotmode="contbar
 
             if plotmode[ivar] == "trimesh"
                triang = matplotlib.tri.Triangulation(X, Y)
-               c = ax.triplot(triang)
+               c = ax.triplot(triang, kwargs...)
             elseif plotmode[ivar] == "trisurf"
                c = ax.plot_trisurf(X, Y, W'; kwargs...)
             elseif plotmode[ivar] == "tricont"
                c = ax.tricontourf(X, Y, W'; kwargs...)
-               fig.colorbar(c,ax=ax)
+               fig.colorbar(c; ax)
             elseif plotmode[ivar] == "tristream"
                throw(ArgumentError("tristream not yet implemented!"))
             end
@@ -203,78 +195,10 @@ function plotdata(bd::BATLData, func::AbstractString; dir="x", plotmode="contbar
             title(bd.head.wnames[varIndex_])
 
          elseif plotmode[ivar] ∈ ("stream","streamover")
-            varstream  = split(var,";")
-            var1_ = findindex(bd, varstream[1])
-            var2_ = findindex(bd, varstream[2])
-
-            if bd.head.gencoord # Generalized coordinates
-               xrange = @view x[:,:,1]
-               yrange = @view x[:,:,2]
-               if any(isinf.(plotrange))
-                  if plotrange[1] == -Inf plotrange[1] = minimum(xrange) end
-                  if plotrange[2] ==  Inf plotrange[2] = maximum(xrange) end
-                  if plotrange[3] == -Inf plotrange[3] = minimum(yrange) end
-                  if plotrange[4] ==  Inf plotrange[4] = maximum(yrange) end
-               end
-
-               # Create grid values first.
-               xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
-               yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
-
-               # The PyCall here can be potentially replaced with Spline2D.
-               # Perform linear interpolation of the data (x,y) on grid(xi,yi)
-               triang = matplotlib.tri.Triangulation(xrange[:], yrange[:])
-
-               Xi, Yi = meshgrid(xi, yi)
-
-               W = w[:,1,var1_]
-               interpolator = matplotlib.tri.LinearTriInterpolator(triang, W)
-               v1 = interpolator(Xi, Yi)
-
-               W = w[:,1,var2_]
-               interpolator = matplotlib.tri.LinearTriInterpolator(triang, W)
-               v2 = interpolator(Xi, Yi)
-            else # Cartesian coordinates
-               xrange = @view x[:,1,1]
-               yrange = @view x[1,:,2]
-
-               if plotrange[1] == -Inf plotrange[1] = minimum(xrange) end
-               if plotrange[2] ==  Inf plotrange[2] = maximum(xrange) end
-               if plotrange[3] == -Inf plotrange[3] = minimum(yrange) end
-               if plotrange[4] ==  Inf plotrange[4] = maximum(yrange) end
-
-               w1, w2 = w[:,:,var1_], w[:,:,var2_]
-
-               xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
-               yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
-
-               Xi, Yi = meshgrid(xi, yi)
-
-               spline = Spline2D(xrange, yrange, w1)
-               v1 = spline(Xi[:], Yi[:])
-               v1 = reshape(v1, size(Xi))
-
-               spline = Spline2D(xrange, yrange, w2)
-               v2 = spline(Xi[:], Yi[:])
-               v2 = reshape(v2, size(Xi))
-            end
-
-            s = streamplot(Xi, Yi, v1, v2; color="w", linewidth=1.0, density)
-
+            s = streamplot(bd, var; plotrange, plotinterval, color="w", linewidth=1.0,
+               density, kwargs...)
          elseif occursin("quiver", plotmode[ivar])
-            VarQuiver  = split(var, ";")
-            var1_ = findindex(bd, VarQuiver[1])
-            var2_ = findindex(bd, VarQuiver[2])
-
-            X, Y = x[:,1,1], x[1,:,2]
-            v1, v2 = w[:,:,var1_]', w[:,:,var2_]'
-
-            @views Xq, Yq = X[1:stride:end], Y[1:stride:end]
-            v1q = @view v1[1:stride:end, 1:stride:end]
-            v2q = @view v2[1:stride:end, 1:stride:end]
-
-            q = quiver(Xq, Yq, v1q, v2q, color="w")
-
+            q = quiver(bd, var; stride, color="w", kwargs...)
          elseif occursin("grid", plotmode[ivar])
             # This does not take subdomain plot into account!
             X, Y = x[:,:,1], x[:,:,2]
@@ -356,10 +280,10 @@ function plotdata(bd::BATLData, func::AbstractString; dir="x", plotmode="contbar
 
          if plotmode[ivar] ∈ ("surf", "surfbar", "surfbarlog", "cont", "contbar", "contlog",
                "contbarlog")
-            if level == 0
+            if levels == 0
                c = ax.contourf(cut1, cut2, W'; kwargs...)
             else
-               c = ax.contourf(cut1, cut2, W', level; kwargs...)
+               c = ax.contourf(cut1, cut2, W', levels; kwargs...)
             end
             fig.colorbar(c, ax=ax)
             title(bd.head.wnames[varIndex_])
@@ -370,9 +294,7 @@ function plotdata(bd::BATLData, func::AbstractString; dir="x", plotmode="contbar
             yi = range(cut2[1,1], stop=cut2[end,1],
                step=(cut2[end,1] - cut2[1,1]) / (size(cut2,1) - 1))
 
-            Xi, Yi = meshgrid(xi, yi)
-
-            s = streamplot(Xi, Yi, v1, v2; color="w", linewidth=1.0, density)
+            s = streamplot(xi, yi, v1, v2; color="w", linewidth=1.0, density, kwargs...)
          end
 
          if dir == "x"
@@ -400,12 +322,12 @@ end
 
 """
     cutplot(data, var, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf], dir="x", sequence=1,
-       level=20)
+       levels=20)
 
 2D plane cut contourf of 3D box data.
 """
 function cutplot(bd::BATLData, var::AbstractString, ax=nothing;
-   plotrange=[-Inf,Inf,-Inf,Inf], dir="x", sequence=1, level=20)
+   plotrange=[-Inf,Inf,-Inf,Inf], dir="x", sequence=1, levels::Int=20)
 
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
@@ -434,7 +356,7 @@ function cutplot(bd::BATLData, var::AbstractString, ax=nothing;
       cut1, cut2, W = subsurface(cut1, cut2, W, plotrange)
    end
    if isnothing(ax) ax = plt.gca() end
-   c = ax.contourf(cut1, cut2, W, level)
+   c = ax.contourf(cut1, cut2, W, levels)
 
    title(bd.head.wnames[varIndex_])
 
@@ -498,9 +420,8 @@ function streamslice(bd::BATLData, var::AbstractString, ax=nothing;
    yi = range(cut2[1,1], stop=cut2[1,end],
       step = (cut2[1,end] - cut2[1,1]) / (size(cut2,2) - 1))
 
-   Xi, Yi = meshgrid(xi, yi)
    if isnothing(ax) ax = plt.gca() end
-   s = ax.streamplot(Xi, Yi, v1', v2'; kwargs...)
+   s = ax.streamplot(xi, yi, v1', v2'; kwargs...)
 
    if dir == "x"
       xlabel("y"); ylabel("z")
@@ -546,7 +467,7 @@ end
 
 Wrapper over `contour` in matplotlib.
 """
-function PyPlot.contour(bd::BATLData, var::AbstractString, levels=0; ax=nothing,
+function PyPlot.contour(bd::BATLData, var::AbstractString, levels::Int=0; ax=nothing,
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...)
 
    Xi, Yi, Wi = getdata(bd, var, plotrange, plotinterval; innermask)
@@ -566,7 +487,7 @@ end
 
 Wrapper over `contourf` in matplotlib.
 """
-function PyPlot.contourf(bd::BATLData, var::AbstractString, levels=0; ax=nothing,
+function PyPlot.contourf(bd::BATLData, var::AbstractString, levels::Int=0; ax=nothing,
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...)
 
    Xi, Yi, Wi = getdata(bd, var, plotrange, plotinterval; innermask)
@@ -674,8 +595,7 @@ end
     streamplot(data, var, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1,
        kwargs...)
 
-Wrapper over `streamplot` in matplotlib. `streamplot` does not have **kwargs in the API, but
-it supports `density`, `color`, and some other keywords.
+Wrapper over `streamplot` in matplotlib .
 """
 function PyPlot.streamplot(bd::BATLData, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, kwargs...)
@@ -710,31 +630,32 @@ function PyPlot.streamplot(bd::BATLData, var::AbstractString, ax=nothing;
       v2 = interpolator(Xi, Yi)
 
    else # Cartesian coordinates
-      xrange = @view x[:,1,1]
-      yrange = @view x[1,:,2]
-	   if plotrange[1] == -Inf plotrange[1] = minimum(xrange) end
-	   if plotrange[2] ==  Inf plotrange[2] = maximum(xrange) end
-      if plotrange[3] == -Inf plotrange[3] = minimum(yrange) end
-      if plotrange[4] ==  Inf plotrange[4] = maximum(yrange) end
+      xrange = range(x[1,1,1], x[end,1,1], size(x,1))
+      yrange = range(x[1,1,2], x[1,end,2], size(x,2))
+      if all(isinf.(plotrange))
+         xi = xrange
+         yi = yrange
+         v1 = w[:,:,var1_]'
+         v2 = w[:,:,var2_]'
+      else
+	      if plotrange[1] == -Inf plotrange[1] = xrange[1] end
+	      if plotrange[2] ==  Inf plotrange[2] = xrange[end] end
+         if plotrange[3] == -Inf plotrange[3] = yrange[1] end
+         if plotrange[4] ==  Inf plotrange[4] = yrange[end] end
 
-	   w1, w2 = w[:,:,var1_], w[:,:,var2_]
-      # Make sure the grid is evenly spaced
-      xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
-      yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
-
-      Xi, Yi = meshgrid(xi, yi)
-
-      spline = Spline2D(xrange, yrange, w1)
-	   v1 = spline(Xi[:], Yi[:])
-	   v1 = reshape(v1, size(Xi))
-
-	   spline = Spline2D(xrange, yrange, w2)
-	   v2 = spline(Xi[:], Yi[:])
-	   v2 = reshape(v2, size(Xi))
+         w1, w2 = @views w[:,:,var1_], w[:,:,var2_]
+         xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
+         yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
+         interp1 = cubic_spline_interpolation((xrange, yrange), w1)
+         v1 = [interp1(i, j) for j in yi, i in xi]
+   
+         interp2 = cubic_spline_interpolation((xrange, yrange), w2)
+         v2 = [interp2(i, j) for j in yi, i in xi]
+      end
    end
    if isnothing(ax) ax = plt.gca() end
 
-   ax.streamplot(Xi, Yi, v1, v2; kwargs...)
+   ax.streamplot(xi, yi, v1, v2; kwargs...)
 end
 
 """
