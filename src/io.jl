@@ -1,7 +1,5 @@
 # All the IO related APIs.
 
-export load, readlogdata, readtecdata, showhead
-
 # Fortran binary format includes record end/start tags that needs to be skipped.
 # If there are continuous blocks, we usually skip 2*TAG between actual reading.
 const TAG = 4 # Fortran record tag size

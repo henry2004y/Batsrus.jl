@@ -27,7 +27,7 @@ using RecipesBase
          x, y
       end
    elseif ndim == 2
-      x, y, w = getdata(bd, var, plotrange, plotinterval)
+      x, y, w = getdata2d(bd, var, plotrange, plotinterval)
 
       unitx = getunit(bd, bd.head.variables[1])
       unity = getunit(bd, bd.head.variables[2])

@@ -470,7 +470,7 @@ Wrapper over `contour` in matplotlib.
 function PyPlot.contour(bd::BATLData, var::AbstractString, levels::Int=0; ax=nothing,
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...)
 
-   Xi, Yi, Wi = getdata(bd, var, plotrange, plotinterval; innermask)
+   Xi, Yi, Wi = getdata2d(bd, var, plotrange, plotinterval; innermask)
 
    if isnothing(ax) ax = plt.gca() end
 
@@ -490,7 +490,7 @@ Wrapper over `contourf` in matplotlib.
 function PyPlot.contourf(bd::BATLData, var::AbstractString, levels::Int=0; ax=nothing,
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...)
 
-   Xi, Yi, Wi = getdata(bd, var, plotrange, plotinterval; innermask)
+   Xi, Yi, Wi = getdata2d(bd, var, plotrange, plotinterval; innermask)
 
    if isnothing(ax) ax = plt.gca() end
 
@@ -569,7 +569,8 @@ Wrapper over `plot_surface` in matplotlib.
 function PyPlot.plot_surface(bd::BATLData, var::AbstractString;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...)
 
-   Xi, Yi, Wi = getdata(bd, var, plotrange, plotinterval; griddim=2, innermask)
+   xi, yi, Wi = getdata2d(bd, var, plotrange, plotinterval; innermask)
+   Xi, Yi = meshgrid(xi, yi)
 
    plot_surface(Xi, Yi, Wi; kwargs...)
 end
@@ -584,11 +585,11 @@ Wrapper over `pcolormesh` in matplotlib.
 function PyPlot.pcolormesh(bd::BATLData, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...)
 
-   Xi, Yi, Wi = getdata(bd, var, plotrange, plotinterval; innermask)
+   xi, yi, Wi = getdata2d(bd, var, plotrange, plotinterval; innermask)
 
    if isnothing(ax) ax = plt.gca() end
 
-   c = ax.pcolormesh(Xi, Yi, Wi; kwargs...)
+   c = ax.pcolormesh(xi, yi, Wi; kwargs...)
 end
 
 """

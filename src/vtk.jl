@@ -2,9 +2,6 @@
 
 using FortranFiles, WriteVTK, Glob, LightXML
 
-export convertTECtoVTU, convertIDLtoVTK, readhead, readtree, getConnectivity
-export Batl
-
 # Named indexes of iTree_IA
 const status_   =  Int8(1) # used, unused, to be refined, to be coarsened, etc.
 const level_    =  Int8(2) # grid AMR level for this node

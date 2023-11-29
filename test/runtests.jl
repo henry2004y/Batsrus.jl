@@ -46,6 +46,9 @@ end
       @test bd.head.time == 25.6f0
       @test extrema(bd.x) == (-127.5f0, 127.5f0)
       @test extrema(bd.w) == (-0.79985905f0, 1.9399388f0)
+      plotrange = [-10.0, 10.0, -Inf, Inf]
+      x, y, w = Batsrus.getdata2d(bd, "rho", plotrange)
+      @test w[1,end] == 0.6848978549242021
    end
 
    @testset "Reading 2D unstructured binary" begin

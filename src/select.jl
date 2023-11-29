@@ -1,5 +1,4 @@
-export getvars, getvar, cutdata, subvolume, subsurface
-
+# Data manipulation.
 
 """
 	cutdata(data, var; plotrange=[-Inf,Inf,-Inf,Inf], dir="x", sequence=1)

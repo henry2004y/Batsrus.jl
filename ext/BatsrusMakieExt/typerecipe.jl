@@ -19,7 +19,7 @@ end
 "Conversion for 2D plots."
 function Makie.convert_arguments(P::Makie.GridBased, bd::BATLData, var::String;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1)
-   x, y, w = getdata(bd, var, plotrange, plotinterval)
+   x, y, w = getdata2d(bd, var, plotrange, plotinterval)
 
    unitx = getunit(bd, bd.head.variables[1])
    unity = getunit(bd, bd.head.variables[2])

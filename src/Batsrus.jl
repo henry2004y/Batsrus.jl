@@ -5,7 +5,11 @@ module Batsrus
 
 using Printf, Requires
 
-export BATLData
+export BATLData,
+   load, readlogdata, readtecdata, showhead, # io
+   getvars, getvar, cutdata, subvolume, subsurface, # select
+   Batl, convertTECtoVTU, convertIDLtoVTK, readhead, readtree, getConnectivity, # vtk
+   getdata2d # plot/utility
 
 "Type for the file information."
 struct FileList
