@@ -54,6 +54,7 @@ end
    @testset "Reading 2D unstructured binary" begin
       #file = "z=0_raw_1_t25.60000_n00000258.out"
       #bd = load(file)
+      #TODO test getdata2d on gencoord
    end
 
    @testset "Reading 3D structured binary" begin

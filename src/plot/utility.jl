@@ -27,7 +27,10 @@ function getdata2d(bd::BATLData, var::AbstractString,
          if plotrange[4] ==  Inf plotrange[4] = maximum(Y) end
       end
 
-      # Create grid values first.
+      if isinf(plotinterval)
+         # set a heuristic value
+         plotinterval = (plotrange[2] - plotrange[1]) / size(X,1)
+      end
       xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
       yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
       # Perform linear interpolation of the data (x,y) on grid(xi,yi)
