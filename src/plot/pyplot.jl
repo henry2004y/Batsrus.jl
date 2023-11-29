@@ -159,14 +159,14 @@ function plotdata(bd::BATLData, func::AbstractString; dir="x", plotmode="contbar
             # More robust method needed!
             if plotmode[ivar] ∈ ["contbar", "contbarlog"]
                if level == 0
-                  c = contourf(Xi, Yi, Wi'; kwargs...)
+                  c = contourf(Xi, Yi, Wi; kwargs...)
                else
-                  c = contourf(Xi, Yi, Wi', level; kwargs...)
+                  c = contourf(Xi, Yi, Wi, level; kwargs...)
                end
             elseif plotmode[ivar] ∈ ["cont", "contlog"]
-               c = contour(Xi, Yi, Wi'; kwargs...)
+               c = contour(Xi, Yi, Wi; kwargs...)
             elseif plotmode[ivar] ∈ ["surfbar", "surfbarlog"]
-               c = plot_surface(Xi, Yi, Wi'; kwargs...)
+               c = plot_surface(Xi, Yi, Wi; kwargs...)
             end
 
             occursin("bar", plotmode[ivar]) && colorbar()
@@ -234,7 +234,6 @@ function plotdata(bd::BATLData, func::AbstractString; dir="x", plotmode="contbar
                W = w[:,1,var2_]
                interpolator = matplotlib.tri.LinearTriInterpolator(triang, W)
                v2 = interpolator(Xi, Yi)
-
             else # Cartesian coordinates
                xrange = @view x[:,1,1]
                yrange = @view x[1,:,2]
@@ -555,9 +554,9 @@ function PyPlot.contour(bd::BATLData, var::AbstractString, levels=0; ax=nothing,
    if isnothing(ax) ax = plt.gca() end
 
    if levels != 0
-      c = ax.contour(Xi, Yi, Wi', levels; kwargs...)
+      c = ax.contour(Xi, Yi, Wi, levels; kwargs...)
    else
-      c = ax.contour(Xi, Yi, Wi'; kwargs...)
+      c = ax.contour(Xi, Yi, Wi; kwargs...)
    end
 end
 
@@ -575,9 +574,9 @@ function PyPlot.contourf(bd::BATLData, var::AbstractString, levels=0; ax=nothing
    if isnothing(ax) ax = plt.gca() end
 
    if levels != 0
-      c = ax.contourf(Xi, Yi, Wi', levels; kwargs...)
+      c = ax.contourf(Xi, Yi, Wi, levels; kwargs...)
    else
-      c = ax.contourf(Xi, Yi, Wi'; kwargs...)
+      c = ax.contourf(Xi, Yi, Wi; kwargs...)
    end
 end
 
@@ -651,7 +650,7 @@ function PyPlot.plot_surface(bd::BATLData, var::AbstractString;
 
    Xi, Yi, Wi = getdata(bd, var, plotrange, plotinterval; griddim=2, innermask)
 
-   plot_surface(Xi, Yi, Wi'; kwargs...)
+   plot_surface(Xi, Yi, Wi; kwargs...)
 end
 
 
@@ -668,7 +667,7 @@ function PyPlot.pcolormesh(bd::BATLData, var::AbstractString, ax=nothing;
 
    if isnothing(ax) ax = plt.gca() end
 
-   c = ax.pcolormesh(Xi, Yi, Wi'; kwargs...)
+   c = ax.pcolormesh(Xi, Yi, Wi; kwargs...)
 end
 
 """

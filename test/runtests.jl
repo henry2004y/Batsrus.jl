@@ -60,8 +60,8 @@ end
       X, Z, p = cutdata(bd, "p"; dir="y", sequence=1, plotrange)
       @test p[1] ≈ 0.560976f0
       @test p[2] ≈ 0.53704995f0
-      vars = getvars(bd, ["p"]) 
-      @test size(vars["p"]) == (8,8,8) 
+      vars = getvars(bd, ["p"])
+      @test size(vars["p"]) == (8,8,8)
    end
 
    @testset "Log" begin
@@ -83,7 +83,7 @@ end
       filetag = joinpath(datapath, "3d_mhd_amr/3d__mhd_1_t00000000_n00000000")
       batl = Batl(readhead(filetag*".info"), readtree(filetag)...)
       # local block index check
-      @test Batsrus.find_grid_block(batl, [1.0, 0.0, 0.0]) == 4 
+      @test Batsrus.find_grid_block(batl, [1.0, 0.0, 0.0]) == 4
       @test Batsrus.find_grid_block(batl, [100.0, 0.0, 0.0]) == -100
       connectivity = getConnectivity(batl)
       sha_str = bytes2hex(sha256(string(connectivity)))
@@ -98,7 +98,7 @@ end
          bd = load(file, dir=datapath)
          rec = RecipesBase.apply_recipe(Dict{Symbol, Any}(), bd, "Rho")
          @test getfield(rec[1], 1)[:seriestype] == :path
-   
+
          file = "z=0_raw_1_t25.60000_n00000258.out"
          bd = load(file, dir=datapath)
          rec = RecipesBase.apply_recipe(Dict{Symbol, Any}(), bd, "p")
@@ -110,7 +110,7 @@ end
          bd = load(file, dir=datapath)
          fig, ax, plt = lines(bd, "Rho")
          @test plt isa Lines
-   
+
          file = "z=0_raw_1_t25.60000_n00000258.out"
          bd = load(file, dir=datapath)
          fig, ax, plt = heatmap(bd, "p")
@@ -125,7 +125,7 @@ end
          line = get(gca().lines, 0)
          @test line.get_xdata() ≈ bd.x
          @test line.get_ydata() ≈ bd.w[:,10]
-         
+
          # 2D structured binary
          file = "z=0_raw_1_t25.60000_n00000258.out"
          bd = load(file, dir=datapath)
