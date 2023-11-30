@@ -10,28 +10,20 @@ function cutdata(data::BATLData, var::AbstractString;
    plotrange=[-Inf,Inf,-Inf,Inf], dir::String="x", sequence::Int=1)
 
    x, w = data.x, data.w
-   VarIndex_ = findfirst(x->x==lowercase(var), lowercase.(data.head.wnames))
-   isempty(VarIndex_) && error("$(var) not found in header variables!")
-
-   X = @view x[:,:,:,1]
-   Y = @view x[:,:,:,2]
-   Z = @view x[:,:,:,3]
-
-   W = w[:,:,:,VarIndex_]
+   var_ = findfirst(x->x==lowercase(var), lowercase.(data.head.wnames))
+   isempty(var_) && error("$(var) not found in header variables!")
 
    if dir == "x"
-      cut1 = @view X[sequence,:,:]
-      cut2 = @view Y[sequence,:,:]
-      W    = @view W[sequence,:,:]
+      dim, d1, d2 = 1, 2, 3
    elseif dir == "y"
-      cut1 = @view X[:,sequence,:]
-      cut2 = @view Z[:,sequence,:]
-      W    = @view W[:,sequence,:]
-   elseif dir == "z"
-      cut1 = @view X[:,:,sequence]
-      cut2 = @view Y[:,:,sequence]
-      W    = @view W[:,:,sequence]
+      dim, d1, d2 = 2, 1, 3
+   else
+      dim, d1, d2 = 3, 1, 2
    end
+
+   cut1 = selectdim(view(x,:,:,:,d1), dim, sequence)
+   cut2 = selectdim(view(x,:,:,:,d2), dim, sequence)
+   W = selectdim(view(w,:,:,:,var_), dim, sequence)
 
    if !all(isinf.(plotrange))
       cut1, cut2, W = subsurface(cut1, cut2, W, plotrange)
@@ -65,14 +57,15 @@ end
    hx = @view x[:,1]
    hy = @view y[1,:]
 
-   if isinf(limits[1]) limits[1] = minimum(hx) end
-   if isinf(limits[3]) limits[3] = minimum(hy) end
-   if isinf(limits[2]) limits[2] = maximum(hx) end
-   if isinf(limits[4]) limits[4] = maximum(hy) end
+   if isinf(limits[1]) limits[1] = hx[1] end
+   if isinf(limits[3]) limits[3] = hy[1] end
+   if isinf(limits[2]) limits[2] = hx[end] end
+   if isinf(limits[4]) limits[4] = hy[end] end
 
-   xind = findall(limits[1] .≤ hx .≤ limits[2])
-   yind = findall(limits[3] .≤ hy .≤ limits[4])
-   xind, yind
+   xind = searchsortedfirst(hx, limits[1]):searchsortedlast(hx, limits[2])
+   yind = searchsortedfirst(hy, limits[3]):searchsortedlast(hy, limits[4])
+
+   CartesianIndices((xind, yind))
 end
 
 @inline function findindexes(x, y, z, limits)
@@ -80,17 +73,18 @@ end
    hy = @view y[1,:,1]
    hz = @view z[1,1,:]
 
-   if isinf(limits[1]) limits[1] = minimum(hx) end
-   if isinf(limits[3]) limits[3] = minimum(hy) end
-   if isinf(limits[5]) limits[5] = minimum(hz) end
-   if isinf(limits[2]) limits[2] = maximum(hx) end
-   if isinf(limits[4]) limits[4] = maximum(hy) end
-   if isinf(limits[6]) limits[6] = maximum(hz) end
+   if isinf(limits[1]) limits[1] = hx[1] end
+   if isinf(limits[3]) limits[3] = hy[1] end
+   if isinf(limits[5]) limits[5] = hz[1] end
+   if isinf(limits[2]) limits[2] = hx[end] end
+   if isinf(limits[4]) limits[4] = hy[end] end
+   if isinf(limits[6]) limits[6] = hz[end] end
 
-   xind = findall(limits[1] .≤ hx .≤ limits[2])
-   yind = findall(limits[3] .≤ hy .≤ limits[4])
-   zind = findall(limits[5] .≤ hy .≤ limits[6])
-   xind, yind, zind
+   xind = searchsortedfirst(hx, limits[1]):searchsortedlast(hx, limits[2])
+   yind = searchsortedfirst(hy, limits[3]):searchsortedlast(hy, limits[4])
+   zind = searchsortedfirst(hz, limits[5]):searchsortedlast(hz, limits[6])
+
+   CartesianIndices((xind, yind, zind))
 end
 
 """
@@ -102,29 +96,32 @@ Extract subset of 2D surface dataset in ndgrid format. See also: [`subvolume`](@
 function subsurface(x, y, data, limits)
    checkvalidlimits(limits)
 
-   xind, yind = findindexes(x, y, limits)
+   ids = findindexes(x, y, limits)
 
-   newdata = subdata(data, xind, yind, size(data))
+   @views begin
+      subdata = data[ids]
 
-   newx = x[xind, yind]
-   newy = y[xind, yind]
+      subx = x[ids]
+      suby = y[ids]
+   end
 
-   newx, newy, newdata
+   subx, suby, subdata
 end
 
 function subsurface(x, y, u, v, limits)
    checkvalidlimits(limits)
 
-   xind, yind = findindexes(x, y, limits)
+   ids = findindexes(x, y, limits)
 
-   sz = size(u)
-   newu = subdata(u, xind, yind, sz)
-   newv = subdata(v, xind, yind, sz)
+   @views begin
+      newu = u[ids]
+      newv = v[ids]
 
-   newx = x[xind, yind]
-   newy = y[xind, yind]
+      subx = x[ids]
+      suby = y[ids]
+   end
 
-   newx, newy, newu, newv
+   subx, suby, newu, newv
 end
 
 """
@@ -136,77 +133,43 @@ Extract subset of 3D dataset in ndgrid format. See also: [`subsurface`](@ref).
 function subvolume(x, y, z, data, limits)
    checkvalidlimits(limits, 3)
 
-   xind, yind, zind = findindexes(x, y, z, limits)
+   ids = findindexes(x, y, z, limits)
 
-   newdata = subdata(data, xind, yind, zind, size(data))
+   @views begin
+      subdata = data[ids]
 
-   newx = x[xind,yind,zind]
-   newy = y[xind,yind,zind]
-   newz = z[xind,yind,zind]
+      subx = x[ids]
+      suby = y[ids]
+      subz = z[ids]
+   end
 
-   newx, newy, newz, newdata
+   subx, suby, subz, subdata
 end
 
 function subvolume(x, y, z, u, v, w, limits)
    checkvalidlimits(limits, 3)
 
-   sz = size(u)
+   ids = findindexes(x, y, z, limits)
 
-   xind, yind, zind = findindexes(x, y, z, limits)
+   @views begin
+      newu = u[ids]
+      newv = v[ids]
+      neww = w[ids]
 
-   newu = subdata(u, xind, yind, zind, sz)
-   newv = subdata(v, xind, yind, zind, sz)
-   neww = subdata(w, xind, yind, zind, sz)
-
-   newx = x[xind,yind,zind]
-   newy = y[xind,yind,zind]
-   newz = z[xind,yind,zind]
-
-   newx, newy, newz, newu, newv, neww
-end
-
-"""
-    subdata(data, xind, yind, sz)
-    subdata(data, xind, yind, zind, sz)
-
-Return the sliced data based on indexes `xind` and `yind` of size `sz`.
-"""
-function subdata(data, xind, yind, sz)
-   newdata = data[xind,yind]
-   newsz = size(newdata)
-
-   if length(sz) > 2
-      newdata = reshape(newdata, (newsz[1:2]..., sz[3:end]))
+      subx = x[ids]
+      suby = y[ids]
+      subz = z[ids]
    end
 
-   newdata
-end
-
-function subdata(data, xind, yind, zind, sz)
-   newdata = data[xind,yind,zind]
-   newsz = size(newdata)
-
-   if length(sz) > 3
-      newdata = @views reshape(newdata, (newsz[1:3]..., sz[4:end]))
-   end
-
-   newdata
+   subx, suby, subz, newu, newv, neww
 end
 
 "Return variable data from string `var`."
 function getvar(data::BATLData, var::AbstractString)
-   VarIndex_ = findfirst(x->x==lowercase(var), lowercase.(data.head.wnames))
-   isnothing(VarIndex_) && error("$var not found in file header variables!")
+   var_ = findfirst(x->x==lowercase(var), lowercase.(data.head.wnames))
+   isnothing(var_) && error("$var not found in file header variables!")
 
-   ndim = data.head.ndim
-   if ndim == 1
-      w = @view data.w[:,VarIndex_]
-   elseif ndim == 2
-      w = @view data.w[:,:,VarIndex_]
-   elseif ndim == 3
-      w = @view data.w[:,:,:,VarIndex_]
-   end
-   w
+   w = selectdim(data.w, data.head.ndim+1, var_)
 end
 
 """
@@ -215,10 +178,10 @@ end
 Return variables' data as a dictionary from string vector.
 See also: [`getvar`](@ref).
 """
-function getvars(data::BATLData, Names::Vector{T}) where T<:AbstractString
-   dict = Dict()
+function getvars(bd::BATLData{U}, Names::Vector{T}) where {U, T<:AbstractString}
+   dict = Dict{T, Array{U}}()
    for name in Names
-      dict[name] = getvar(data, name)
+      dict[name] = getvar(bd, name)
    end
 
    dict

@@ -425,60 +425,27 @@ function allocateBuffer(filehead::NamedTuple, T::DataType)
    x, w
 end
 
-"Read ascii format data."
+"Read ascii format coordinates and data values."
 function getascii!(x, w, fileID::IOStream, filehead::NamedTuple)
-   ndim, nx = filehead.ndim, filehead.nx
-
-   # Read coordinates & values row by row
-   if ndim == 1
-      for ix = 1:nx[1]
-         temp = parse.(Float64, split(readline(fileID)))
-         x[ix,:] .= temp[1]
-         w[ix,:] .= temp[2:end]
-      end
-   elseif ndim == 2
-      for j = 1:nx[2], i = 1:nx[1]
-         temp = parse.(Float64, split(readline(fileID)))
-         x[i,j,:] .= temp[1:2]
-         w[i,j,:] .= temp[3:end]
-      end
-   elseif ndim == 3
-      for k = 1:nx[3], j = 1:nx[2], i = 1:nx[1]
-         temp = parse.(Float64, split(readline(fileID)))
-         x[i,j,k,:] .= temp[1:3]
-         w[i,j,k,:] .= temp[4:end]
-      end
+   ndim = filehead.ndim
+   Ids = CartesianIndices(size(x)[1:ndim])
+   for ids in Ids
+      temp = parse.(Float64, split(readline(fileID)))
+      x[ids,:] = temp[1:ndim]
+      w[ids,:] = temp[ndim+1:end]
    end
 
    return
 end
 
-"Read binary format data."
+"Read binary format coordinates and data values."
 function getbinary!(x, w, fileID::IOStream, filehead::NamedTuple)
-   ndim, nw = filehead.ndim, filehead.nw
-
-   # Read coordinates & values
-   if ndim == 1
-      read!(fileID, x)
+   dimlast = filehead.ndim + 1
+   read!(fileID, x)
+   skip(fileID, 2*TAG)
+   for iw in axes(w, dimlast)
+      read!(fileID, selectdim(w, dimlast, iw))
       skip(fileID, 2*TAG)
-      for iw = 1:nw
-         read!(fileID, @view w[:,iw])
-         skip(fileID, 2*TAG)
-      end
-   elseif ndim == 2
-      read!(fileID, x)
-      skip(fileID, 2*TAG)
-      for iw = 1:nw
-         read!(fileID, @view w[:,:,iw])
-         skip(fileID, 2*TAG)
-      end
-   elseif ndim == 3
-      read!(fileID, x)
-      skip(fileID, 2*TAG)
-      for iw = 1:nw
-         read!(fileID, @view w[:,:,:,iw])
-         skip(fileID, 2*TAG)
-      end
    end
 
    return
