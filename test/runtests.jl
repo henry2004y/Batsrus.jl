@@ -140,7 +140,9 @@ end
          @test_throws ErrorException PyPlot.contourf(bd, "rho", innermask=true)
          PyPlot.contour(bd, "rho")
          @test isa(gca(), PyPlot.PyObject)
-         PyPlot.tricontourf(bd, "rho")
+         c = PyPlot.tricontourf(bd, "rho")
+         @test c.get_array()[end] == 1.0500000000000003
+         PyPlot.tripcolor(bd, "rho")
          @test isa(gca(), PyPlot.PyObject)
          PyPlot.streamplot(bd, "bx;by")
          @test isa(gca(), PyPlot.PyObject)

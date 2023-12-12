@@ -3,7 +3,7 @@
 using PyPlot
 using Interpolations: cubic_spline_interpolation
 
-export plotdata, plotlogdata, plot, scatter, contour, contourf, plot_surface,
+export plotdata, plotlogdata, plot, scatter, contour, contourf, plot_surface, tripcolor,
    tricontourf, plot_trisurf, streamplot, streamslice, quiver, cutplot, pcolormesh
 
 @static if matplotlib.__version__ >= "3.3"
@@ -527,7 +527,7 @@ function PyPlot.tricontourf(bd::BATLData, var::AbstractString, ax=nothing;
    end
    if isnothing(ax) ax = plt.gca() end
 
-   ax.tricontourf(X, Y, W)
+   ax.tricontourf(X, Y, W; kwargs...)
 end
 
 """
@@ -591,6 +591,63 @@ function PyPlot.pcolormesh(bd::BATLData, var::AbstractString, ax=nothing;
 
    c = ax.pcolormesh(xi, yi, Wi; kwargs...)
 end
+
+
+"""
+    tripcolor(data, var, levels=0; ax=nothing, plotrange=[-Inf,Inf,-Inf,Inf],
+       plotinterval=0.1, innermask=false, kwargs...)
+
+Wrapper over `tripcolor` in matplotlib.
+"""
+function PyPlot.tripcolor(bd::BATLData, var::AbstractString, ax=nothing;
+   plotrange=[-Inf,Inf,-Inf,Inf], innermask=false, kwargs...)
+
+   x, w, ndim = bd.x, bd.w, bd.head.ndim
+
+   varIndex_ = findindex(bd, var)
+
+   X = @view x[:,:,1]
+   Y = @view x[:,:,2]
+   W = vec(w[:,:,varIndex_])
+
+   if any(abs.(plotrange) .== Inf)
+      if plotrange[1] == -Inf plotrange[1] = minimum(X) end
+      if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
+      if plotrange[3] == -Inf plotrange[3] = minimum(Y) end
+      if plotrange[4] ==  Inf plotrange[4] = maximum(Y) end
+   end
+
+   triang = matplotlib.tri.Triangulation(vec(X), vec(Y))
+
+   # Mask off unwanted triangles at the inner boundary.
+   if innermask
+      varIndex_ = findlast(x->x=="rbody", bd.head.variables)
+      isnothing(varIndex_) && error("rbody not found in file header parameters!")
+      ParamIndex_ = varIndex_ - ndim - bd.head.nw
+      r2 = bd.head.eqpar[ParamIndex_]^2
+
+      ids = triang.triangles .+ Int32(1)
+      mask = Vector{Bool}(undef, size(ids, 1))
+      for i in axes(ids, 1)
+         xmean = sum(@view X[ids[i,:]]) / 3
+         ymean = sum(@view Y[ids[i,:]]) / 3
+         xmean^2 + ymean^2 < r2 && (mask[i] = true)
+      end
+
+      triang.set_mask(mask)
+   end
+
+
+   if isnothing(ax) ax = plt.gca() end
+
+   c = ax.tripcolor(triang, W; kwargs...)
+
+   ax.set_xlim(plotrange[1], plotrange[2])
+   ax.set_ylim(plotrange[3], plotrange[4])
+
+   c
+end
+
 
 """
     streamplot(data, var, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1,
