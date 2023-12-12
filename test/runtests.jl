@@ -32,7 +32,7 @@ end
    datapath = artifact"testdata"
    @testset "Reading 1D ascii" begin
       file = "1d__raw_2_t25.60000_n00000258.out"
-      bd = load(file, dir=datapath, verbose=true)
+      bd = load(joinpath(datapath, file), verbose=true)
       @test startswith(repr(bd), "filename : 1d")
       @test Batsrus.setunits(bd.head, "NORMALIZED")
       @test isa(bd.head, NamedTuple)
@@ -42,7 +42,7 @@ end
 
    @testset "Reading 2D structured binary" begin
       file = "z=0_raw_1_t25.60000_n00000258.out"
-      bd = load(file, dir=datapath)
+      bd = load(joinpath(datapath, file))
       @test bd.head.time == 25.6f0
       @test extrema(bd.x) == (-127.5f0, 127.5f0)
       @test extrema(bd.w) == (-0.79985905f0, 1.9399388f0)
@@ -59,7 +59,7 @@ end
 
    @testset "Reading 3D structured binary" begin
       file = "3d_raw.out"
-      bd = load(file, dir=datapath)
+      bd = load(joinpath(datapath, file))
       plotrange = [-50.0, 50.0, -0.5, 0.5]
       X, Z, p = cutdata(bd, "p"; dir="y", sequence=1, plotrange)
       @test p[1] ≈ 0.560976f0
@@ -99,24 +99,24 @@ end
          RecipesBase.is_key_supported(k::Symbol) = true
          # 1D
          file = "1d__raw_2_t25.60000_n00000258.out"
-         bd = load(file, dir=datapath)
+         bd = load(joinpath(datapath, file))
          rec = RecipesBase.apply_recipe(Dict{Symbol, Any}(), bd, "Rho")
          @test getfield(rec[1], 1)[:seriestype] == :path
 
          file = "z=0_raw_1_t25.60000_n00000258.out"
-         bd = load(file, dir=datapath)
+         bd = load(joinpath(datapath, file))
          rec = RecipesBase.apply_recipe(Dict{Symbol, Any}(), bd, "p")
          @test getfield(rec[1], 1)[:seriestype] == :contourf
       end
 
       @testset "Makie" begin
          file = "1d__raw_2_t25.60000_n00000258.out"
-         bd = load(file, dir=datapath)
+         bd = load(joinpath(datapath, file))
          fig, ax, plt = lines(bd, "Rho")
          @test plt isa Lines
 
          file = "z=0_raw_1_t25.60000_n00000258.out"
-         bd = load(file, dir=datapath)
+         bd = load(joinpath(datapath, file))
          fig, ax, plt = heatmap(bd, "p")
          @test plt isa Heatmap
       end
@@ -124,7 +124,7 @@ end
       @testset "PyPlot" begin
          # 1D ascii
          file = "1d__raw_2_t25.60000_n00000258.out"
-         bd = load(file, dir=datapath, verbose=false)
+         bd = load(joinpath(datapath, file), verbose=false)
          plotdata(bd, "p", plotmode="line")
          line = get(gca().lines, 0)
          @test line.get_xdata() ≈ bd.x
@@ -132,7 +132,7 @@ end
 
          # 2D structured binary
          file = "z=0_raw_1_t25.60000_n00000258.out"
-         bd = load(file, dir=datapath)
+         bd = load(joinpath(datapath, file))
          plotdata(bd, "p bx;by", plotmode="contbar streamover")
          @test isa(gca(), PyPlot.PyObject)
          PyPlot.contourf(bd, "p")
@@ -157,7 +157,7 @@ end
 
          # 2D AMR Cartesian
          file = "bx0_mhd_6_t00000100_n00000352.out"
-         bd = load(file, dir=datapath)
+         bd = load(joinpath(datapath, file))
          plotdata(bd, "P", plotmode="contbar")
          ax = gca()
          @test isa(ax, PyPlot.PyObject)
@@ -167,7 +167,7 @@ end
    @testset "Units" begin
       @test 1.0bu"R" > 2.0bu"Rg"
       file = "y=0_var_1_t00000000_n00000000.out"
-      bd = load(file, dir=datapath)
+      bd = load(joinpath(datapath, file))
       varunit = getunit(bd, "Rho")
       @test varunit == bu"amucc"
       varunit = getunit(bd, "Ux")

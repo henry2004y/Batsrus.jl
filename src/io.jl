@@ -7,7 +7,7 @@ const TAG = 4 # Fortran record tag size
 searchdir(path, key) = filter(x->occursin(key, x), readdir(path))
 
 """
-    load(filenameIn; dir=".", npict=1, verbose=false)
+    load(filename; npict=1, verbose=false)
 
 Read BATSRUS output files. Stores the `npict` snapshot from an ascii or binary data file
 into the arrays of coordinates `x` and data `w`. Filename can be provided with wildcards.
@@ -17,14 +17,14 @@ into the arrays of coordinates `x` and data `w`. Filename can be provided with w
 data = load("1d_raw*")
 ```
 """
-function load(filenameIn::AbstractString; dir::String=".", npict::Int=1,
-   verbose::Bool=false)
+function load(filenameIn::AbstractString; npict::Int=1, verbose::Bool=false)
    # Check the existence of files
-   file = searchdir(dir, Regex(replace(filenameIn, s"*" => s".*")))
+   dir, filename = splitdir(filenameIn)
+   file = searchdir(dir, Regex(replace(filename, s"*" => s".*")))
    if isempty(file)
       throw(ArgumentError("No matching filename was found for $(filenameIn)"))
    elseif length(file) > 1
-      throw(ArgumentError("Ambiguous filename $(filenameIn)!"))
+      throw(ArgumentError("Ambiguous filename $(filename)!"))
    end
 
    filelist, fileID, pictsize = getfiletype(file[1], dir)

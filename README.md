@@ -43,16 +43,16 @@ With JuliaCall:
 ```python
 from juliacall import Main as jl
 jl.seval("using Batsrus")
-file = 'example.out'
-data = Batsrus.load(file, dir='test')
+file = 'test/example.out'
+data = Batsrus.load(file)
 ```
 
 With PyJulia:
 
 ```python
 from julia import Batsrus
-file = 'example.out'
-data = Batsrus.load(file, dir='test')
+file = 'test/example.out'
+data = Batsrus.load(file)
 ```
 
 ## Benchmark

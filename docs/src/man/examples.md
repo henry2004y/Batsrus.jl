@@ -9,7 +9,6 @@ file = "1d_bin.out";
 data = load(file);
 data = load(file, verbose=true);
 data = load(file, npict=1);
-data = load(file, dir=".");
 ```
 
 - 3D structured spherical coordinates
@@ -287,8 +286,8 @@ An example of tracing in a 2D cut and plot the field lines over contour:
 ```julia
 using Batsrus, PyPlot
 
-file = "y=0_var_1_t00000000_n00000000.out"
-data = load(file, dir="test")
+file = "test/y=0_var_1_t00000000_n00000000.out"
+data = load(file)
 
 bx = data.w[:,:,5]
 bz = data.w[:,:,7]

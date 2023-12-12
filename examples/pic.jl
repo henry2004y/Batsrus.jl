@@ -12,10 +12,9 @@ inset_axes = inset_locator.inset_axes
 DN = matplotlib.colors.DivergingNorm
 
 dir = "."
-fnameField = "3d_var_region0_0_t00001640_n00020369.out"
-#fnameField = "3d_var_region0_0_t00001520_n00004093.out"
+file = "3d_var_region0_0_t00001640_n00020369.out"
 
-data = load(fnameField, dir=dir)
+data = load(joinpath(dir, file))
 
 me = data.head.eqpar[1]
 qe = data.head.eqpar[2]
@@ -32,7 +31,6 @@ const J₀ = 4.0*vAlfven # Actual normalization unit: q*4.0*vAlfven
 const T₀ = 0.2/4 # Pe/n₀
 
 plotrange = [-2.05, -1.75, -0.5, 0.5]
-#plotrange = [-2.12, -1.75, -0.65, 0.6]
 #plotrange=[-Inf, Inf, -Inf, Inf]
 cI = 129 # plane cut index
 

@@ -140,17 +140,16 @@ function convertTECtoVTU(head, data, connectivity, filename="out")
 end
 
 """
-    convertIDLtoVTK(filename; dir=".", gridType=1, verbose=false)
+    convertIDLtoVTK(filename; gridType=1, verbose=false)
 
 Convert 3D BATSRUS *.out to VTK. If `gridType==1`, it converts to the rectilinear grid; if
 `gridType==2`, it converts to the structured grid. If `filename` does not end with "out", it
 tries to find the ".info" and ".tree" file with the same name tag and generates 3D
 unstructured VTU file.
 """
-function convertIDLtoVTK(filename::AbstractString; dir::String=".", gridType::Int=1,
-   verbose::Bool=false)
+function convertIDLtoVTK(filename::AbstractString; gridType::Int=1, verbose::Bool=false)
    if endswith(filename, ".out")
-      data = load(filename, dir=dir)
+      data = load(filename)
 
       nVar = length(data.head.wnames)
 
@@ -202,7 +201,7 @@ function convertIDLtoVTK(filename::AbstractString; dir::String=".", gridType::In
 
    else
       # info, tree, and out files
-      data = load(filename*".out", dir=dir)
+      data = load(filename*".out")
       batl = Batl(readhead(filename*".info"), readtree(filename)...)
       connectivity = getConnectivity(batl)
 

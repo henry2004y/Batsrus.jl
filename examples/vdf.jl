@@ -30,7 +30,7 @@ function dist_select(fnameParticle, xC=-1.90, yC=0.0, zC=-0.1, xL=0.005, yL=0.2,
       !occursin("region0_1", fnameParticle) && @error "Check filename!"
    end
 
-   fnameField = "3d_var_region0_0_"*fnameParticle[end-22:end]
+   filefield = "3d_var_region0_0_"*fnameParticle[end-22:end]
 
    nBox = 9 # number of box regions
 
@@ -48,7 +48,7 @@ function dist_select(fnameParticle, xC=-1.90, yC=0.0, zC=-0.1, xL=0.005, yL=0.2,
 
    particle = [Array{Float32}(undef, 3, 0) for _ in 1:nBox]
 
-   data = load(fnameParticle; dir)
+   data = load(joinpath(dir, fnameParticle))
 
    x = @view data.x[:,:,:,1]
    y = @view data.x[:,:,:,2]
@@ -83,7 +83,7 @@ Velocity distribution plot in 9 box regions.
 `plottype`: 1: uy-ux; 2: ux-uz; 3:uy-uz; 4:u⟂O-u⟂I; 5:u⟂I-u∥; 5:u⟂O-u∥
 """
 function dist_scan(region, particle, ParticleType='i', plottype=1; dir=".",
-   fnameField::AbstractString, nbin=60, fs=10)
+   filefield::AbstractString, nbin=60, fs=10)
 
    if ParticleType == 'i'
       binRange = [[-3.,3.], [-3.,3.]]
@@ -99,7 +99,7 @@ function dist_scan(region, particle, ParticleType='i', plottype=1; dir=".",
          uy = particle[iB][2,:] ./ cAlfven
          uz = particle[iB][3,:] ./ cAlfven
       else
-         dBx, dBy, dBz = GetMeanField(fnameField, region[:,iB]; dir)
+         dBx, dBy, dBz = GetMeanField(filefield, region[:,iB]; dir)
 
          dPar = [dBx; dBy; dBz] # Parallel direction
          dPerpI = cross([0; -1; 0], dPar) # Perpendicular direction in-plane
@@ -173,14 +173,12 @@ function dist_scan(region, particle, ParticleType='i', plottype=1; dir=".",
 end
 
 """
-    GetMeanField(fnameField, limits; dir=".")
+    GetMeanField(filefield, limits; dir=".")
 
-Get the average field direction in region `limits`.
+Get the average field direction in a box region specified by `limits`.
 """
-function GetMeanField(fnameField, limits; dir=".")
-
-   # Get the average field direction in limited region
-   data = load(fnameField; dir)
+function GetMeanField(filefield, limits; dir=".")
+   data = load(joinpath(dir, filefield))
 
    x = data.x[:,:,:,1]
    y = data.x[:,:,:,2]
@@ -208,12 +206,12 @@ end
 
 
 
-function plotExCut(fnameField::String, region, xC, yC, zC, xL, yL, zL;
+function plotExCut(filefield::String, region, xC, yC, zC, xL, yL, zL;
    dir=".", fs=16, sequence=129)
 
    plotrange = [xC-xL*16, xC+xL*16, zC-zL*5, zC+zL*5]
    # Sample region plot over contour
-   data = load(fnameField, dir=dir)
+   data = load(joinpath(dir, filefield))
 
    bx_ = findfirst(x->x=="Bx", data.head.wnames)
    bz_ = findfirst(x->x=="Bz", data.head.wnames)
@@ -256,7 +254,7 @@ function dist_plot(pType='e')
    fnameE = "cut_particles0_region0_1_t00001640_n00020369.out"
    fnameI = "cut_particles1_region0_2_t00001640_n00020369.out"
 
-   fnameField = "3d_var_region0_0_"*fnameE[end-22:end]
+   filefield = "3d_var_region0_0_"*fnameE[end-22:end]
 
    binRangeI = [[-3.,3.], [-3.,3.]]
    binRangeE = [[-7.,13.], [-10.,10.]]
@@ -278,7 +276,7 @@ function dist_plot(pType='e')
       region[:,3] = [-1.930, -1.925, -0.08, 0.08, -0.10, -0.06]
       region[:,4] = [-1.930, -1.925, -0.08, 0.08,  0.00,  0.04]
 
-      data = load(fnameE, dir=dir)
+      data = load(joinpath(dir, fnameE))
 
       x = @view data.x[:,:,:,1]
       y = @view data.x[:,:,:,2]
@@ -317,7 +315,7 @@ function dist_plot(pType='e')
       region[:,3] = [-1.930, -1.920, -0.08, 0.08, -0.10, -0.06]
       region[:,4] = [-1.930, -1.920, -0.08, 0.08,  0.00,  0.04]
 
-      data = load(fnameI, dir=dir)
+      data = load(joinpath(dir, fnameI))
 
       x = @view data.x[:,:,:,1]
       y = @view data.x[:,:,:,2]
@@ -368,7 +366,7 @@ function dist_plot(pType='e')
          uy = particle[iB][2,:] ./ cAlfven
          uz = particle[iB][3,:] ./ cAlfven
       else
-         dBx, dBy, dBz = GetMeanField(fnameField, region[:,iB]; dir=dir)
+         dBx, dBy, dBz = GetMeanField(filefield, region[:,iB]; dir=dir)
 
          dPar   = [dBx; dBy; dBz]         # Parallel direction
          dPerpI = cross([0; -1; 0], dPar) # Perpendicular direction in-plane
@@ -477,13 +475,13 @@ function show_box_region()
    fnameE = "cut_particles0_region0_1_t00001640_n00020369.out"
    fnameI = "cut_particles1_region0_2_t00001640_n00020369.out"
 
-   fnameField = "3d_var_region0_0_"*fnameE[end-22:end]
+   filefield = "3d_var_region0_0_"*fnameE[end-22:end]
 
    fs = 10
    plotrange = [-2.0, -1.8, -0.35, 0.35]
    sequence = 129 # cut plane index starting from -
 
-   data = load(fnameField; dir)
+   data = load(joinpath(dir, filefield())
 
    X, Z, Bx = cutdata(data, "Bx"; dir="y", sequence, plotrange)
    X, Z, Bz = cutdata(data, "Bz"; dir="y", sequence, plotrange)
@@ -583,9 +581,9 @@ function HF_velocity()
    fnameE = "cut_particles0_region0_1_t00001640_n00020369.out"
    fnameI = "cut_particles1_region0_2_t00001640_n00020369.out"
 
-   fnameField = "3d_var_region0_0_"*fnameE[end-22:end]
+   filefield = "3d_var_region0_0_"*fnameE[end-22:end]
 
-   data = load(fnameField; dir)
+   data = load(joinpath(dir, filefield))
 
    x = data.x[:,:,:,1]
    y = data.x[:,:,:,2]
@@ -612,7 +610,7 @@ end
 
 
 dir = "/Users/hyzhou/Documents/Computer/DeepBlue"
-fnameField = "3d_var_region0_0_t00001640_n00020369.out"
+filefield = "3d_var_region0_0_t00001640_n00020369.out"
 PType = 'e'
 plottype = 2
 
@@ -633,9 +631,9 @@ xL, yL, zL = 0.008, 0.2, 0.03 # box length in x,y,z
    fnameParticle, xC, yC, zC, xL, yL, zL,
    dir=dir, ParticleType=PType)
 
-@time dist_scan(region, particle, PType, plottype; dir, fnameField)
+@time dist_scan(region, particle, PType, plottype; dir, filefield)
 
-@time plotExCut(fnameField, region, xC,yC,zC,xL,yL,zL; dir)
+@time plotExCut(filefield, region, xC,yC,zC,xL,yL,zL; dir)
 
 
 #ax = dist_plot('i')

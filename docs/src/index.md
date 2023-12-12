@@ -75,17 +75,16 @@ With JuliaCall:
 ```python
 from juliacall import Main as jl
 jl.seval("using Batsrus")
-file = 'example.out'
-data = Batsrus.load(file, dir='test')
+file = 'test/example.out'
+data = Batsrus.load(file)
 ```
 
 With PyJulia:
 
 ```python
 from julia import Batsrus
-dir = 'test'
-file = '1d__raw_2_t25.60000_n00000258.out'
-data = Batsrus.load(file, dir=dir)
+file = 'test/1d__raw_2_t25.60000_n00000258.out'
+data = Batsrus.load(file)
 ```
 
 !!! warning "Python dependency"

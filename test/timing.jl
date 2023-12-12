@@ -43,5 +43,5 @@ using Batsrus, BenchmarkTools
 filename = "3d_var_region0_0_t00001205_n00037679.out"
 dir = "../BATSRUS/VisAnaJulia"
 #dir = "test/"
-@btime data = load(filename, dir=dir);
+@btime data = load(joinpath(dir, filename));
 =#
