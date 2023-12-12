@@ -141,7 +141,11 @@ end
          PyPlot.contour(bd, "rho")
          @test isa(gca(), PyPlot.PyObject)
          c = PyPlot.tricontourf(bd, "rho")
-         @test c.get_array()[end] == 1.0500000000000003
+         @static if matplotlib.__version__ < "3.8"
+            @test c.get_array()[end] == 1.0500000000000003
+         else
+            @test c.get_array()[end] == 0.9750000000000002
+         end
          PyPlot.tripcolor(bd, "rho")
          @test isa(gca(), PyPlot.PyObject)
          PyPlot.streamplot(bd, "bx;by")
