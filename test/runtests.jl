@@ -3,6 +3,7 @@
 using Batsrus, Test, SHA, LazyArtifacts
 using Batsrus.UnitfulBatsrus, Unitful
 using RecipesBase
+using Suppressor: @capture_out, @capture_err, @suppress_out, @suppress_err
 using CairoMakie
 using PyPlot
 ENV["MPLBACKEND"]="agg" # no GUI
@@ -32,7 +33,9 @@ end
    datapath = artifact"testdata"
    @testset "Reading 1D ascii" begin
       file = "1d__raw_2_t25.60000_n00000258.out"
-      bd = load(joinpath(datapath, file), verbose=true)
+      bd = @suppress_err begin
+         load(joinpath(datapath, file), verbose=true)
+      end
       @test startswith(repr(bd), "filename : 1d")
       @test Batsrus.setunits(bd.head, "NORMALIZED")
       @test isa(bd.head, NamedTuple)
@@ -92,6 +95,11 @@ end
       connectivity = getConnectivity(batl)
       sha_str = bytes2hex(sha256(string(connectivity)))
       @test sha_str == "c6c5a65a46d86a9ba4096228c1516f89275e45e295cd305eb70c281a770ede74"
+   end
+
+   @testset "HDF5" begin
+      #TODO: add test HDF5 file
+      @test size(squeeze(zeros(2,3,1))) == (2,3)
    end
 
    @testset "Plotting" begin

@@ -3,7 +3,7 @@ module Batsrus
 #
 # Hongyang Zhou, hyzhou@umich.edu
 
-using Printf, Requires
+using Printf, Reexport, Requires 
 
 export BATLData,
    load, readlogdata, readtecdata, showhead, # io
@@ -44,6 +44,9 @@ include("select.jl")
 include("vtk.jl")
 include("plot/utility.jl")
 include("plot/plots.jl")
+
+include("hdf.jl")
+@reexport using .HDF
 
 include("unit/UnitfulBatsrus.jl")
 using .UnitfulBatsrus
