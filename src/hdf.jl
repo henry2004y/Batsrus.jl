@@ -20,11 +20,13 @@ struct HDF5Common{TI<:Signed, TF<:AbstractFloat} <: BatsrusHDF5File
    version::TI
    "Type of geometry. 0 for Cartesian."
    geometry::TI
+   "Saved snapshot timestamp."
    time::TF
    "Minimum coordinates for the whole grid."
    coordmin::Vector{TF}
    "Maximum coordinates for the whole grid."
    coordmax::Vector{TF}
+   "Saved snapshot simulation timestep."
    timestep::TI
    "True dimension of the data despite the stored data dimension."
    ndim::TI
@@ -32,7 +34,7 @@ struct HDF5Common{TI<:Signed, TF<:AbstractFloat} <: BatsrusHDF5File
    ncb::Vector{TI}
    "If boundary condition is periodic."
    isperiodic::Vector{Bool}
-
+   "Vector of non-singleton dimensions."
    multi_cell_dims::Vector{Bool}
    "Lengths along each direction for the whole grid."
    extent::Vector{TF}
@@ -61,7 +63,7 @@ struct HDF5Common{TI<:Signed, TF<:AbstractFloat} <: BatsrusHDF5File
    end
 end
 
-
+"BATSRUS HDF5 file with uniform Cartesian mesh."
 struct BatsrusHDF5Uniform{TI, TF} <: BatsrusHDF5File
    common::HDF5Common{TI, TF}
    "Numbers of cells along each direction"
@@ -96,6 +98,17 @@ struct BatsrusHDF5Uniform{TI, TF} <: BatsrusHDF5File
 end
 
 findparam(::HDF5Common{TI, TF}) where {TI, TF} = (TI, TF)
+
+
+function Base.show(io::IO, file::BatsrusHDF5Uniform)
+   println(io, "Dimension: ", file.common.ndim)
+   println(io, "Mesh coordmin: ", file.common.coordmin)
+   println(io, "Mesh coordmax: ", file.common.coordmax)
+   println(io, "Number of blocks: ", file.common.nb)
+   println(io, "Number of cells per block: ", file.common.ncb)
+   println(io, "Grid resolution: ", file.dcoord)
+   println(io, "Time: ", file.common.time)
+end
 
 
 """
