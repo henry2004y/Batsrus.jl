@@ -69,7 +69,7 @@ Multiple files:
 using Batsrus, Glob
 filenamesIn = "3d*.dat"
 dir = "."
-filenames = Vector{String}(undef,0)
+filenames = Vector{String}(undef, 0)
 filesfound = glob(filenamesIn, dir)
 filenames = vcat(filenames, filesfound)
 tec = readtecdata.(filenames) # head, data, connectivity
@@ -84,7 +84,7 @@ If each individual file size is large, consider using:
 using Batsrus, Glob
 filenamesIn = "3d*.dat"
 dir = "."
-filenames = Vector{String}(undef,0)
+filenames = Vector{String}(undef, 0)
 filesfound = glob(filenamesIn, dir)
 filenames = vcat(filenames, filesfound)
 for (i, outname) in enumerate(filenames)
@@ -101,7 +101,7 @@ using Distributed
 
 filenamesIn = "cut*.dat"
 dir = "."
-filenames = Vector{String}(undef,0)
+filenames = Vector{String}(undef, 0)
 filesfound = glob(filenamesIn, dir)
 filenames = vcat(filenames, filesfound)
 
@@ -260,7 +260,7 @@ quiver(data, "ux;uy", stride=50)
 ```julia
 using Batsrus, PyPlot
 
-file = "y*out"
+file = "y.out"
 data = load(file)
 
 DN = matplotlib.colors.DivergingNorm

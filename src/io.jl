@@ -4,30 +4,14 @@
 # If there are continuous blocks, we usually skip 2*TAG between actual reading.
 const TAG = 4 # Fortran record tag size
 
-searchdir(path, key) = filter(x->occursin(key, x), readdir(path))
-
 """
     load(filename; npict=1, verbose=false)
 
 Read BATSRUS output files. Stores the `npict` snapshot from an ascii or binary data file
-into the arrays of coordinates `x` and data `w`. Filename can be provided with wildcards.
-
-# Examples
-```
-data = load("1d_raw*")
-```
+into the arrays of coordinates `x` and data `w`.
 """
-function load(filenameIn::AbstractString; npict::Int=1, verbose::Bool=false)
-   # Check the existence of files
-   dir, filename = splitdir(filenameIn)
-   file = searchdir(dir, Regex(replace(filename, s"*" => s".*")))
-   if isempty(file)
-      throw(ArgumentError("No matching filename was found for $(filenameIn)"))
-   elseif length(file) > 1
-      throw(ArgumentError("Ambiguous filename $(filename)!"))
-   end
-
-   filelist, fileID, pictsize = getfiletype(file[1], dir)
+function load(file::AbstractString; npict::Int=1, verbose::Bool=false)
+   filelist, fileID, pictsize = getfiletype(file)
 
    verbose && @info "filename=$(filelist.name)\n"*"npict=$(filelist.npictinfiles)"
 
@@ -230,10 +214,9 @@ function readtecdata(file::AbstractString; verbose::Bool=false)
 end
 
 "Obtain file type."
-function getfiletype(file::String, dir::String)
-   fullpath = joinpath(dir, file)
-   fileID = open(fullpath, "r")
-   bytes = filesize(fullpath)
+function getfiletype(file::AbstractString)
+   fileID = open(file, "r")
+   bytes = filesize(file)
 
    # Check the appendix of file names
    if occursin(r"^.*\.(log)$", file)
@@ -258,8 +241,7 @@ function getfiletype(file::String, dir::String)
          elseif len == 24
             type = :binary
          else
-            throw(
-               ArgumentError("Incorrect formatted file: $file"))
+            throw(ArgumentError("Incorrect formatted file: $file"))
          end
       end
       # Obtain file size & number of snapshots
@@ -268,7 +250,7 @@ function getfiletype(file::String, dir::String)
       npictinfiles = bytes ÷ pictsize
    end
 
-   filelist = FileList(file, type, dir, bytes, npictinfiles, lenhead)
+   filelist = FileList(basename(file), type, dirname(file), bytes, npictinfiles, lenhead)
 
    filelist, fileID, pictsize
 end
