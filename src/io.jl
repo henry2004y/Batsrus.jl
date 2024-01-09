@@ -63,7 +63,7 @@ function readlogdata(file::AbstractString)
    nw        = length(variables)
 
    data = zeros(nw,nLine)
-   for i = 1:nLine
+   for i in 1:nLine
       line = split(readline(f))
       data[:,i] = parse.(Float64, line)
    end
@@ -188,18 +188,18 @@ function readtecdata(file::AbstractString; verbose::Bool=false)
    seek(f, pt0)
 
    if IsBinary
-	   @inbounds for i = 1:nNode
+	   @inbounds for i in 1:nNode
 		   read!(f, @view data[:,i])
 	   end
-	   @inbounds for i = 1:nCell
+	   @inbounds for i in 1:nCell
          read!(f, @view connectivity[:,i])
       end
    else
-      @inbounds for i = 1:nNode
+      @inbounds for i in 1:nNode
          x = readline(f)
          data[:,i] .= parse.(Float32, split(x))
       end
-	   @inbounds for i = 1:nCell
+	   @inbounds for i in 1:nCell
 		   x = readline(f)
 		   connectivity[:,i] .= parse.(Int32, split(x))
 	   end
@@ -553,7 +553,7 @@ function setunits(filehead, type; distance=1.0, mp=1.0, me=1.0)
    end
 
    # Overwrite values if given by eqpar
-   for ieqpar = 1:neqpar
+   for ieqpar in 1:neqpar
       var = variables[ndim+nw+ieqpar]
       if var == "xSI"
          xSI   = eqpar[ieqpar]
