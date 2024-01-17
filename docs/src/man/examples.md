@@ -6,16 +6,16 @@
 
 ```julia
 file = "1d_bin.out";
-data = load(file);
-data = load(file, verbose=true);
-data = load(file, npict=1);
+bd = load(file);
+bd = load(file, verbose=true);
+bd = load(file, npict=1);
 ```
 
 - 3D structured spherical coordinates
 
 ```julia
 file = "3d_structured.out";
-data = load(file, verbose=false);
+bd = load(file, verbose=false);
 ```
 
 - log file
@@ -25,10 +25,19 @@ logfilename = "shocktube.log";
 head, data = readlogdata(logfilename)
 ```
 
-## Derived variables
+## Data Extraction
+
+- Raw variables
 
 ```julia
-v = getvars(data, ["Bx", "By", "Bz"])
+ρ = getvar(bd, "rho")
+bd["rho"]
+```
+
+- Derived variables
+
+```julia
+v = getvars(bd, ["Bx", "By", "Bz"])
 B = @. sqrt(v["Bx"]^2 + v["By"]^2 + v["Bz"]^2)
 ```
 
@@ -122,8 +131,8 @@ The recipes for Plots.jl and Makie.jl will work on all kinds of plots given the 
 
 ```julia
 using Plots
-plot(data, "p")
-contourf(data, "Mx", xlabel="x")
+plot(bd, "p")
+contourf(bd, "Mx", xlabel="x")
 ```
 
 See the official documentation for Plots.jl for more information.
@@ -139,47 +148,47 @@ A general `plotdata` function is provided for quick visualizations using Matplot
 - 1D binary
 
 ```julia
-plotdata(data, "p", plotmode="line")
-plotdata(data, "p", plotmode="linegrid")
+plotdata(bd, "p", plotmode="line")
+plotdata(bd, "p", plotmode="linegrid")
 ```
 
 - 2D Cartesian (structured)
 
 ```julia
-plotdata(data, "p bx;by", plotmode="contbar streamover")
-plotdata(data, "p bx;by", plotmode="contbar quiverover")
-plotdata(data, "p bx;by", plotmode="contbar streamover", density=2.0)
-plotdata(data, "p", plotmode="grid")
-plotdata(data, "p", plotmode="contbar", plotrange=[-50., 50., -1., 1.])
-plotdata(data, "p", plotmode="contbar")
-plotdata(data, "p", plotmode="contbarlog")
-plotdata(data, "p", plotmode="surfbar")
+plotdata(bd, "p bx;by", plotmode="contbar streamover")
+plotdata(bd, "p bx;by", plotmode="contbar quiverover")
+plotdata(bd, "p bx;by", plotmode="contbar streamover", density=2.0)
+plotdata(bd, "p", plotmode="grid")
+plotdata(bd, "p", plotmode="contbar", plotrange=[-50., 50., -1., 1.])
+plotdata(bd, "p", plotmode="contbar")
+plotdata(bd, "p", plotmode="contbarlog")
+plotdata(bd, "p", plotmode="surfbar")
 ```
 
 - 2D unstructured
 
 ```julia
-plotdata(data, "rho", plotmode="contbar")
-plotdata(data, "rho", plotmode="trimesh")
-plotdata(data, "rho", plotmode="tricont")
+plotdata(bd, "rho", plotmode="contbar")
+plotdata(bd, "rho", plotmode="trimesh")
+plotdata(bd, "rho", plotmode="tricont")
 ```
 
 - 2D structured spherical coordinates
 
 ```julia
-plotdata(data, "rho", plotmode="contbar")
+plotdata(bd, "rho", plotmode="contbar")
 ```
 
 - 3D box
 
 ```julia
-plotdata(data, "bx", plotmode="contbar", dir="y", sequence=1, level=20)
-plotdata(data, "bx", plotmode="contbar", dir="y", plotrange=[-1.4,-1.1,0.70,0.78])
+plotdata(bd, "bx", plotmode="contbar", dir="y", sequence=1, level=20)
+plotdata(bd, "bx", plotmode="contbar", dir="y", plotrange=[-1.4,-1.1,0.70,0.78])
 using PyPlot
 plt.axis("scaled")
 
 subplot(2,2,(1,3))
-cutplot(data, "Ex"; dir="y", sequence=128, plotrange)
+cutplot(bd, "Ex"; dir="y", sequence=128, plotrange)
 ```
 
 #### Finding indexes
@@ -187,7 +196,7 @@ cutplot(data, "Ex"; dir="y", sequence=128, plotrange)
 To get the index of a certain quantity, e.g. electron number density
 
 ```julia
-ρe_= findfirst(x->x=="rhoS0", data.head.wnames)
+ρe_= findfirst(x->x=="rhoS0", bd.head.wnames)
 ```
 
 ### Multiple dispatch for Matplotlib functions
@@ -199,60 +208,60 @@ Some plotting functions can be directly called as shown below, which allows for 
 - line plot
 
 ```julia
-plot(data, "p", linewidth=2, color="green")
-c = plot(data, "p")
+plot(bd, "p", linewidth=2, color="green")
+c = plot(bd, "p")
 plt.setp(c, linestyle="--", linewidth=2);
 ```
 
 - scatter plot
 
 ```julia
-scatter(data, "p")
+scatter(bd, "p")
 ```
 
 - contour
 
 ```julia
 # 2D contour
-contour(data, "p")
+contour(bd, "p")
 ```
 
 - filled contour
 
 ```julia
-contourf(data, "p")
-contourf(data, "p", levels, plotrange=[-10,10,-Inf,Inf], plotinterval=0.1)
+contourf(bd, "p")
+contourf(bd, "p", levels, plotrange=[-10,10,-Inf,Inf], plotinterval=0.1)
 ```
 
 - surface plot
 
 ```julia
-plot_surface(data, "p")
+plot_surface(bd, "p")
 ```
 
 - triangle surface plot
 
 ```julia
-plot_trisurf(data, "p")
+plot_trisurf(bd, "p")
 ```
 
 - triangle filled contour plot
 
 ```julia
-tricontourf(data, "p")
+tricontourf(bd, "p")
 ```
 
 - streamline
 
 ```julia
-streamplot(data, "bx;bz")
-streamplot(data, "bx;bz", density=2.0, color="k", plotinterval=1.0, plotrange=[-10,10,-Inf,Inf])
+streamplot(bd, "bx;bz")
+streamplot(bd, "bx;bz", density=2.0, color="k", plotinterval=1.0, plotrange=[-10,10,-Inf,Inf])
 ```
 
 - quiver (currently only for Cartesian grid)
 
 ```julia
-quiver(data, "ux;uy", stride=50)
+quiver(bd, "ux;uy", stride=50)
 ```
 
 - streamline + contourf
@@ -261,17 +270,17 @@ quiver(data, "ux;uy", stride=50)
 using Batsrus, PyPlot
 
 file = "y.out"
-data = load(file)
+bd = load(file)
 
 DN = matplotlib.colors.DivergingNorm
 set_cmap("RdBu_r")
 
-contourf(data, "uxS0", 50, plotrange=[-3,3,-3,3], plotinterval=0.05, norm=DN(0))
+contourf(bd, "uxS0", 50, plotrange=[-3,3,-3,3], plotinterval=0.05, norm=DN(0))
 colorbar()
-streamplot(data, "uxS0;uzS0", density=2.0, color="g", plotrange=[-3,3,-3,3])
+streamplot(bd, "uxS0;uzS0", density=2.0, color="g", plotrange=[-3,3,-3,3])
 xlabel("x"); ylabel("y"); title("Ux [km/s]")
 
-contourf(data,"uxS0", 50, plotinterval=0.05, norm=DN(0))
+contourf(bd,"uxS0", 50, plotinterval=0.05, norm=DN(0))
 colorbar()
 axis("scaled")
 xlabel("x"); ylabel("y"); title("uxS0")
@@ -287,12 +296,12 @@ An example of tracing in a 2D cut and plot the field lines over contour:
 using Batsrus, PyPlot
 
 file = "test/y=0_var_1_t00000000_n00000000.out"
-data = load(file)
+bd = load(file)
 
-bx = data.w[:,:,5]
-bz = data.w[:,:,7]
-x  = data.x[:,1,1]
-z  = data.x[1,:,2]
+bx = bd.w[:,:,5]
+bz = bd.w[:,:,7]
+x  = bd.x[:,1,1]
+z  = bd.x[1,:,2]
 
 seeds = select_seeds(x, z; nSeed=100) # randomly select the seeding points
 
