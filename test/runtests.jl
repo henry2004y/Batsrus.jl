@@ -64,6 +64,7 @@ end
       X, Z, p = cutdata(bd, "p"; dir="y", sequence=1, plotrange)
       @test p[1] ≈ 0.560976f0
       @test p[2] ≈ 0.53704995f0
+      @test size(bd["p"]) == (8,8,8)
       vars = getvars(bd, ["p"])
       @test size(vars["p"]) == (8,8,8)
    end

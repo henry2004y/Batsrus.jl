@@ -6,11 +6,11 @@
 Get 2D plane cut in orientation `dir` for `var` out of 3D box `data` within `plotrange`.
 The returned 2D data lies in the `sequence` plane from - to + in `dir`.
 """
-function cutdata(data::BATLData, var::AbstractString;
+function cutdata(bd::BATLData, var::AbstractString;
    plotrange=[-Inf,Inf,-Inf,Inf], dir::String="x", sequence::Int=1)
 
-   x, w = data.x, data.w
-   var_ = findfirst(x->x==lowercase(var), lowercase.(data.head.wnames))
+   x, w = bd.x, bd.w
+   var_ = findfirst(x->x==lowercase(var), lowercase.(bd.head.wnames))
    isempty(var_) && error("$(var) not found in header variables!")
 
    if dir == "x"
@@ -164,16 +164,30 @@ function subvolume(x, y, z, u, v, w, limits)
    subx, suby, subz, newu, newv, neww
 end
 
-"Return variable data from string `var`."
-function getvar(data::BATLData, var::AbstractString)
-   var_ = findfirst(x->x==lowercase(var), lowercase.(data.head.wnames))
+"""
+    getvars(bd::BATLData, var::AbstractString) -> Array
+
+Return variable data from string `var`. This is also supported via direct indexing,
+
+# Examples
+```
+bd["rho"]
+```
+
+See also: [`getvars`](@ref).
+"""
+function getvar(bd::BATLData, var::AbstractString)
+   var_ = findfirst(x->x==lowercase(var), lowercase.(bd.head.wnames))
    isnothing(var_) && error("$var not found in file header variables!")
 
-   w = selectdim(data.w, data.head.ndim+1, var_)
+   w = selectdim(bd.w, bd.head.ndim+1, var_)
 end
 
+@inline @Base.propagate_inbounds Base.getindex(bd::BATLData, var::AbstractString) =
+   getvar(bd, var)
+
 """
-    getvars(data::BATLData, Names::Vector) -> Dict
+    getvars(bd::BATLData, Names::Vector) -> Dict
 
 Return variables' data as a dictionary from string vector.
 See also: [`getvar`](@ref).
@@ -189,8 +203,8 @@ end
 
 
 const variables_predefined = Dict(
-   "B" => data -> sqrt.(getvar(data, "Bx").^2 .+ getvar(data, "By").^2 .+ getvar(data, "Bz").^2),
-   "E" => data -> sqrt.(getvar(data, "Ex").^2 .+ getvar(data, "Ey").^2 .+ getvar(data, "Ez").^2),
-   "U" => data -> sqrt.(getvar(data, "Ux").^2 .+ getvar(data, "Uy").^2 .+ getvar(data, "Uz").^2),
-   #"beta" => data -> getvar(data, "P") ./ getvar(data, "B").^2 * 2μ,
+   "B" => bd -> sqrt.(getvar(bd, "Bx").^2 .+ getvar(bd, "By").^2 .+ getvar(bd, "Bz").^2),
+   "E" => bd -> sqrt.(getvar(bd, "Ex").^2 .+ getvar(bd, "Ey").^2 .+ getvar(bd, "Ez").^2),
+   "U" => bd -> sqrt.(getvar(bd, "Ux").^2 .+ getvar(bd, "Uy").^2 .+ getvar(bd, "Uz").^2),
+   #"beta" => bd -> getvar(bd, "P") ./ getvar(bd, "B").^2 * 2μ,
 )
