@@ -467,7 +467,7 @@ end
 
 Wrapper over `contour` in matplotlib.
 """
-function PyPlot.contour(bd::BATLData, var::AbstractString, levels::Int=0; ax=nothing,
+function PyPlot.contour(bd::BATLData, var::AbstractString, ax=nothing; levels::Int=0,
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...)
 
    Xi, Yi, Wi = getdata2d(bd, var, plotrange, plotinterval; innermask)
@@ -482,12 +482,12 @@ function PyPlot.contour(bd::BATLData, var::AbstractString, levels::Int=0; ax=not
 end
 
 """
-    contourf(data, var, levels=0; ax=nothing, plotrange=[-Inf,Inf,-Inf,Inf],
+    contourf(data, var, ax=nothing; levels=0, plotrange=[-Inf,Inf,-Inf,Inf],
        plotinterval=0.1, innermask=false, kwargs...)
 
 Wrapper over `contourf` in matplotlib.
 """
-function PyPlot.contourf(bd::BATLData, var::AbstractString, levels::Int=0; ax=nothing,
+function PyPlot.contourf(bd::BATLData, var::AbstractString, ax=nothing; levels::Int=0, 
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...)
 
    Xi, Yi, Wi = getdata2d(bd, var, plotrange, plotinterval; innermask)
