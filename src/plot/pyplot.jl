@@ -155,9 +155,9 @@ function plotdata(bd::BATLData, func::AbstractString; dir="x", plotmode="contbar
             "contlog","contbarlog")
 
             if plotmode[ivar] ∈ ("contbar", "contbarlog")
-               c = contourf(bd, var, levels; plotrange, plotinterval, innermask, kwargs...)
+               c = contourf(bd, var; levels, plotrange, plotinterval, innermask, kwargs...)
             elseif plotmode[ivar] ∈ ("cont", "contlog")
-               c = contour(bd, var, levels; plotrange, plotinterval, innermask, kwargs...)
+               c = contour(bd, var; levels, plotrange, plotinterval, innermask, kwargs...)
             elseif plotmode[ivar] ∈ ("surfbar", "surfbarlog")
                c = plot_surface(bd, var; plotrange, plotinterval, innermask, kwargs...)
             end
@@ -462,7 +462,7 @@ function PyPlot.scatter(bd::BATLData, var::AbstractString, ax=nothing; kwargs...
 end
 
 """
-    contour(data, var, levels=0; ax=nothing, plotrange=[-Inf,Inf,-Inf,Inf],
+    contour(data, var, ax=nothing; levels=0, plotrange=[-Inf,Inf,-Inf,Inf],
        plotinterval=0.1, innermask=false, kwargs...)
 
 Wrapper over `contour` in matplotlib.
