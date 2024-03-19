@@ -4,7 +4,6 @@ using Batsrus.UnitfulBatsrus
 makedocs(;
     modules=[Batsrus],
     authors="Hongyang Zhou <hyzhou@umich.edu>",
-    repo="https://github.com/henry2004y/Batsrus.jl/blob/{commit}{path}#L{line}",
     sitename="Batsrus.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
