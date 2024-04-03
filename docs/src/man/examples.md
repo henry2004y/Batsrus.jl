@@ -25,7 +25,7 @@ logfilename = "shocktube.log";
 head, data = readlogdata(logfilename)
 ```
 
-## Data Extraction
+### Data Extraction
 
 - Raw variables
 
@@ -122,6 +122,22 @@ end
 ```
 
 More examples can be found in [examples](https://github.com/henry2004y/Batsrus.jl/tree/master/examples).
+
+## HDF format output loader
+
+```julia
+filename = "3d__var_1_n00006288.h5"
+file = BatsrusHDF5Uniform(filename)
+```
+
+### Field extraction
+
+Variables within a box region can be extracted as following:
+
+```julia
+out, (xl_new, yl_new, zl_new), (xu_new, yu_new, zu_new) =
+   extract_field(file, "bx"; xmin, xmax, ymin, ymax, zmin, zmax)
+```
 
 ## Data visualization
 
