@@ -39,6 +39,9 @@ struct BATLData{T<:AbstractFloat}
    list::FileList
 end
 
+include("unit/UnitfulBatsrus.jl")
+using .UnitfulBatsrus
+
 include("io.jl")
 include("select.jl")
 include("vtk.jl")
@@ -47,9 +50,6 @@ include("plot/plots.jl")
 
 include("hdf.jl")
 @reexport using .HDF
-
-include("unit/UnitfulBatsrus.jl")
-using .UnitfulBatsrus
 
 function __init__()
    @require PyPlot="d330b81b-6aea-500a-939a-2ce795aea3ee" begin
