@@ -38,8 +38,22 @@ bd["rho"]
 
 ```julia
 v = getvars(bd, ["Bx", "By", "Bz"])
-B = @. sqrt(v["Bx"]^2 + v["By"]^2 + v["Bz"]^2)
+Bmag = bd["Bmag"]
 ```
+
+Here is a full list of predefined derived quantities:
+
+| Derived variable name | Meaning                          | Required variable |
+|-----------------------|----------------------------------|-------------------|
+| B2                    | magnetic field magnitude squared | Bx, By, Bz        |
+| E2                    | electric field magnitude squared | Ex, Ey, Ez        |
+| U2                    | velocity magnitude squared       | Ux, Uy, Uz        |
+| Bmag                  | magnetic field magnitude         | Bx, By, Bz        |
+| Emag                  | electric field magnitude         | Ex, Ey, Ez        |
+| Umag                  | velocity magnitude               | Ux, Uy, Uz        |
+| B                     | magnetic field vector            | Bx, By, Bz        |
+| E                     | electric field vector            | Ex, Ey, Ez        |
+| U                     | velocity vector                  | Ux, Uy, Uz        |
 
 ## Output format conversion
 
@@ -49,8 +63,6 @@ ASCII Tecplot file (supports both `tec` and `tcp`) and binary Tecplot file (set 
 
 ```julia
 file = "x=0_mhd_1_n00000050.dat"
-#file = "3d_ascii.dat"
-#file = "3d_bin.dat"
 head, data, connectivity = readtecdata(file)
 convertTECtoVTU(head, data, connectivity)
 ```

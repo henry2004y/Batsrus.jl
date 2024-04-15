@@ -177,10 +177,15 @@ bd["rho"]
 See also: [`getvars`](@ref).
 """
 function getvar(bd::BATLData, var::AbstractString)
-   var_ = findfirst(x->x==lowercase(var), lowercase.(bd.head.wnames))
-   isnothing(var_) && error("$var not found in file header variables!")
+   if var in keys(variables_predefined)
+      w = variables_predefined[var](bd)
+   else
+      var_ = findfirst(x->x==lowercase(var), lowercase.(bd.head.wnames))
+      isnothing(var_) && error("$var not found in file header variables!")
+      w = selectdim(bd.w, bd.head.ndim+1, var_)
+   end
 
-   w = selectdim(bd.w, bd.head.ndim+1, var_)
+   w
 end
 
 @inline @Base.propagate_inbounds Base.getindex(bd::BATLData, var::AbstractString) =
@@ -201,10 +206,34 @@ function getvars(bd::BATLData{U}, Names::Vector{T}) where {U, T<:AbstractString}
    dict
 end
 
+"Construct vectors from scalar components."
+function _fill_vector_from_scalars(bd::BATLData, vstr1, vstr2, vstr3)
+   v1 = getvar(bd, vstr1)
+   v2 = getvar(bd, vstr2)
+   v3 = getvar(bd, vstr3)
+   v = Array{eltype(v1), ndims(v1)+1}(undef, 3, size(v1)...)
 
+   Rpost = CartesianIndices(size(v1))
+   for Ipost in Rpost
+      v[1,Ipost] = v1[Ipost]
+      v[2,Ipost] = v2[Ipost]
+      v[3,Ipost] = v3[Ipost]
+   end
+
+   v
+end
+
+# Define derived parameters
 const variables_predefined = Dict(
-   "B" => bd -> sqrt.(getvar(bd, "Bx").^2 .+ getvar(bd, "By").^2 .+ getvar(bd, "Bz").^2),
-   "E" => bd -> sqrt.(getvar(bd, "Ex").^2 .+ getvar(bd, "Ey").^2 .+ getvar(bd, "Ez").^2),
-   "U" => bd -> sqrt.(getvar(bd, "Ux").^2 .+ getvar(bd, "Uy").^2 .+ getvar(bd, "Uz").^2),
-   #"beta" => bd -> getvar(bd, "P") ./ getvar(bd, "B").^2 * 2μ,
+   "B2" => (bd -> @. $getvar(bd, "Bx")^2 + $getvar(bd, "By")^2 + $getvar(bd, "Bz")^2),
+   "E2" => (bd -> @. $getvar(bd, "Ex")^2 + $getvar(bd, "Ey")^2 + $getvar(bd, "Ez")^2),
+   "U2" => (bd -> @. $getvar(bd, "Ux")^2 + $getvar(bd, "Uy")^2 + $getvar(bd, "Uz")^2),
+   "Ue2" => (bd -> @. $getvar(bd, "uxS0")^2 + $getvar(bd, "uyS0")^2 + $getvar(bd, "uzS0")^2),
+   "Ui2" => (bd -> @. $getvar(bd, "uxS1")^2 + $getvar(bd, "uyS1")^2 + $getvar(bd, "uzS1")^2),
+   "Bmag" => (bd -> @. sqrt($getvar(bd, "B2"))),
+   "Emag" => (bd -> @. sqrt($getvar(bd, "E2"))),
+   "Umag" => (bd -> @. sqrt($getvar(bd, "U2"))),
+   "B" => (bd -> _fill_vector_from_scalars(bd, "Bx", "By", "Bz")),
+   "E" => (bd -> _fill_vector_from_scalars(bd, "Ex", "Ey", "Ez")),
+   "U" => (bd -> _fill_vector_from_scalars(bd, "Ux", "Uy", "Uz")),
 )

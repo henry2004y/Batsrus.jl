@@ -52,6 +52,7 @@ end
       plotrange = [-10.0, 10.0, -Inf, Inf]
       x, y, w = Batsrus.getdata2d(bd, "rho", plotrange)
       @test w[1,end] == 0.6848978549242021
+      @test bd["B"][:,end,end] == Float32[1.118034, -0.559017, 0.0]
    end
 
    @testset "Reading 2D unstructured binary" begin
