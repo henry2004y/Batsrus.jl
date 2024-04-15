@@ -6,7 +6,7 @@
 [![][codecov-img]][codecov-url]
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4761843.svg)](https://doi.org/10.5281/zenodo.4761843)
 
-Fast [BATSRUS](https://github.com/MSTEM-QUDA/BATSRUS)/[SWMF](https://github.com/MSTEM-QUDA/SWMF) data reading, converting, and visualizing using Julia, successor of [VisAnaMatlab](https://github.com/henry2004y/VisAnaMatlab).
+Fast [BATSRUS](https://github.com/MSTEM-QUDA/BATSRUS)/[SWMF](https://github.com/MSTEM-QUDA/SWMF) data loading, conversion, and visualization using Julia, successor of [VisAnaMatlab](https://github.com/henry2004y/VisAnaMatlab).
 
 This package provides the following functionalities:
 
@@ -32,7 +32,7 @@ Pkg.add("Batsrus")
 
 ## Usage
 
-See the [examples](https://henry2004y.github.io/Batsrus.jl/dev/man/examples/).
+Please refer to the [manual](https://henry2004y.github.io/Batsrus.jl/dev/man/manual/).
 
 ### Using from Python
 
