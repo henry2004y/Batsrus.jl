@@ -487,7 +487,7 @@ end
 
 Wrapper over `contourf` in matplotlib.
 """
-function PyPlot.contourf(bd::BATLData, var::AbstractString, ax=nothing; levels::Int=0, 
+function PyPlot.contourf(bd::BATLData, var::AbstractString, ax=nothing; levels::Int=0,
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...)
 
    Xi, Yi, Wi = getdata2d(bd, var, plotrange, plotinterval; innermask)
@@ -707,7 +707,7 @@ function PyPlot.streamplot(bd::BATLData, var::AbstractString, ax=nothing;
          yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
          interp1 = cubic_spline_interpolation((xrange, yrange), w1)
          v1 = [interp1(i, j) for j in yi, i in xi]
-   
+
          interp2 = cubic_spline_interpolation((xrange, yrange), w2)
          v2 = [interp2(i, j) for j in yi, i in xi]
       end
