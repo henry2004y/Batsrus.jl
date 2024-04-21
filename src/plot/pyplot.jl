@@ -487,7 +487,7 @@ end
 
 Wrapper over `contourf` in matplotlib.
 """
-function PyPlot.contourf(bd::BATLData, var::AbstractString, ax=nothing; levels::Int=0, 
+function PyPlot.contourf(bd::BATLData, var::AbstractString, ax=nothing; levels::Int=0,
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...)
 
    Xi, Yi, Wi = getdata2d(bd, var, plotrange, plotinterval; innermask)
@@ -674,8 +674,8 @@ function PyPlot.streamplot(bd::BATLData, var::AbstractString, ax=nothing;
       end
 
       # Create grid values first.
-      xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
-      yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
+      xi = range(Float64(plotrange[1]), stop=Float64(plotrange[2]), step=plotinterval)
+      yi = range(Float64(plotrange[3]), stop=Float64(plotrange[4]), step=plotinterval)
 
       # Is there a triangulation method in Julia?
       tr = matplotlib.tri.Triangulation(X, Y)
@@ -688,16 +688,17 @@ function PyPlot.streamplot(bd::BATLData, var::AbstractString, ax=nothing;
       v2 = interpolator(Xi, Yi)
 
    else # Cartesian coordinates
-      xrange = range(x[1,1,1], x[end,1,1], size(x,1))
-      yrange = range(x[1,1,2], x[1,end,2], size(x,2))
+      # Convert to Float64 to satisfy the equal space checking in streamplot.py
+      xrange = range(Float64(x[1,1,1]), Float64(x[end,1,1]), size(x,1))
+      yrange = range(Float64(x[1,1,2]), Float64(x[1,end,2]), size(x,2))
       if all(isinf.(plotrange))
          xi = xrange
          yi = yrange
          v1 = w[:,:,var1_]'
          v2 = w[:,:,var2_]'
       else
-	      if plotrange[1] == -Inf plotrange[1] = xrange[1] end
-	      if plotrange[2] ==  Inf plotrange[2] = xrange[end] end
+         if plotrange[1] == -Inf plotrange[1] = xrange[1] end
+         if plotrange[2] ==  Inf plotrange[2] = xrange[end] end
          if plotrange[3] == -Inf plotrange[3] = yrange[1] end
          if plotrange[4] ==  Inf plotrange[4] = yrange[end] end
 
@@ -706,7 +707,7 @@ function PyPlot.streamplot(bd::BATLData, var::AbstractString, ax=nothing;
          yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
          interp1 = cubic_spline_interpolation((xrange, yrange), w1)
          v1 = [interp1(i, j) for j in yi, i in xi]
-   
+
          interp2 = cubic_spline_interpolation((xrange, yrange), w2)
          v2 = [interp2(i, j) for j in yi, i in xi]
       end
