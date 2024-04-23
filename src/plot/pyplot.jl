@@ -186,7 +186,7 @@ function plotdata(bd::BATLData, func::AbstractString; dir="x", plotmode="contbar
             elseif plotmode[ivar] == "trisurf"
                c = ax.plot_trisurf(X, Y, W'; kwargs...)
             elseif plotmode[ivar] == "tricont"
-               c = ax.tricontourf(X, Y, W'; kwargs...)
+               c = ax.tricontourf(X, Y, W'; levels, kwargs...)
                fig.colorbar(c; ax)
             elseif plotmode[ivar] == "tristream"
                throw(ArgumentError("tristream not yet implemented!"))
@@ -502,13 +502,12 @@ function PyPlot.contourf(bd::BATLData, var::AbstractString, ax=nothing; levels::
 end
 
 """
-    tricontourf(data, var, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1,
-       kwargs...)
+    tricontourf(data, var, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf], kwargs...)
 
 Wrapper over `tricontourf` in matplotlib.
 """
 function PyPlot.tricontourf(bd::BATLData, var::AbstractString, ax=nothing;
-   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, kwargs...)
+   plotrange=[-Inf,Inf,-Inf,Inf], kwargs...)
 
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
