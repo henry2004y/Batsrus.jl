@@ -66,7 +66,7 @@ Plot the variable from SWMF output.
 `plotdata(data, func, plotmode="trimesh", plotrange=[-1.0, 1.0, -1.0, 1.0], plotinterval=0.2)`
 
 # Arguments
-- `bd::BATLData`: BATSRUS data to be visualized.
+- `bd::BATLData`: BATSRUS data.
 - `func::String`: variables for plotting.
 
 # Keywords
@@ -328,7 +328,6 @@ end
 """
 function cutplot(bd::BATLData, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], dir="x", sequence=1, levels::Int=20)
-
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
 
@@ -381,7 +380,6 @@ separated with `;`.
 """
 function streamslice(bd::BATLData, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], dir="x", sequence=1, kwargs...)
-
    x,w = bd.x, bd.w
    varstream  = split(var, ";")
    var1_ = findindex(bd, varstream[1])
@@ -469,9 +467,7 @@ Wrapper over `contour` in matplotlib.
 """
 function PyPlot.contour(bd::BATLData, var::AbstractString, ax=nothing; levels::Int=0,
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...)
-
    Xi, Yi, Wi = getdata2d(bd, var, plotrange, plotinterval; innermask)
-
    if isnothing(ax) ax = plt.gca() end
 
    if levels != 0
@@ -489,9 +485,7 @@ Wrapper over `contourf` in matplotlib.
 """
 function PyPlot.contourf(bd::BATLData, var::AbstractString, ax=nothing; levels::Int=0,
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...)
-
    Xi, Yi, Wi = getdata2d(bd, var, plotrange, plotinterval; innermask)
-
    if isnothing(ax) ax = plt.gca() end
 
    if levels != 0
@@ -508,7 +502,6 @@ Wrapper over `tricontourf` in matplotlib.
 """
 function PyPlot.tricontourf(bd::BATLData, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], kwargs...)
-
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
 
@@ -516,7 +509,7 @@ function PyPlot.tricontourf(bd::BATLData, var::AbstractString, ax=nothing;
    Y = vec(x[:,:,2])
    W = vec(w[:,:,varIndex_])
 
-   # This needs to be modified!!!
+   #TODO This needs improvement.
    if !all(isinf.(plotrange))
       xyIndex = X .> plotrange[1] .& X .< plotrange[2] .&
          Y .> plotrange[3] .& Y .< plotrange[4]
@@ -537,7 +530,6 @@ Wrapper over `plot_trisurf` in matplotlib.
 """
 function PyPlot.plot_trisurf(bd::BATLData, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], kwargs...)
-
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
 
@@ -545,7 +537,7 @@ function PyPlot.plot_trisurf(bd::BATLData, var::AbstractString, ax=nothing;
    Y = vec(x[:,:,2])
    W = vec(w[:,:,varIndex_])
 
-   # This needs to be modified!!!
+   #TODO This needs improvement.
    if !all(isinf.(plotrange))
       xyIndex = X .> plotrange[1] .& X .< plotrange[2] .&
          Y .> plotrange[3] .& Y .< plotrange[4]
@@ -567,7 +559,6 @@ Wrapper over `plot_surface` in matplotlib.
 """
 function PyPlot.plot_surface(bd::BATLData, var::AbstractString;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...)
-
    xi, yi, Wi = getdata2d(bd, var, plotrange, plotinterval; innermask)
    Xi, Yi = meshgrid(xi, yi)
 
@@ -583,7 +574,6 @@ Wrapper over `pcolormesh` in matplotlib.
 """
 function PyPlot.pcolormesh(bd::BATLData, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...)
-
    xi, yi, Wi = getdata2d(bd, var, plotrange, plotinterval; innermask)
 
    if isnothing(ax) ax = plt.gca() end
@@ -600,7 +590,6 @@ Wrapper over `tripcolor` in matplotlib.
 """
 function PyPlot.tripcolor(bd::BATLData, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], innermask=false, kwargs...)
-
    x, w, ndim = bd.x, bd.w, bd.head.ndim
 
    varIndex_ = findindex(bd, var)
@@ -609,13 +598,7 @@ function PyPlot.tripcolor(bd::BATLData, var::AbstractString, ax=nothing;
    Y = @view x[:,:,2]
    W = vec(w[:,:,varIndex_])
 
-   if any(abs.(plotrange) .== Inf)
-      if plotrange[1] == -Inf plotrange[1] = minimum(X) end
-      if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
-      if plotrange[3] == -Inf plotrange[3] = minimum(Y) end
-      if plotrange[4] ==  Inf plotrange[4] = maximum(Y) end
-   end
-
+   adjust_plotrange!(plotrange, extrema(X), extrema(Y))
    triang = matplotlib.tri.Triangulation(vec(X), vec(Y))
 
    # Mask off unwanted triangles at the inner boundary.
@@ -635,8 +618,6 @@ function PyPlot.tripcolor(bd::BATLData, var::AbstractString, ax=nothing;
 
       triang.set_mask(mask)
    end
-
-
    if isnothing(ax) ax = plt.gca() end
 
    c = ax.tripcolor(triang, W; kwargs...)
@@ -656,21 +637,15 @@ Wrapper over `streamplot` in matplotlib .
 """
 function PyPlot.streamplot(bd::BATLData, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, kwargs...)
-
    x, w = bd.x, bd.w
-   varstream  = split(var,";")
+   varstream = split(var, ";")
    wnames = lowercase.(bd.head.wnames)
    var1_ = findfirst(x->x==lowercase(varstream[1]), wnames)
    var2_ = findfirst(x->x==lowercase(varstream[2]), wnames)
 
    if bd.head.gencoord # generalized coordinates
       X, Y = vec(x[:,:,1]), vec(x[:,:,2])
-      if any(isinf.(plotrange))
-         if plotrange[1] == -Inf plotrange[1] = minimum(X) end
-	      if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
-         if plotrange[3] == -Inf plotrange[3] = minimum(Y) end
-	      if plotrange[4] ==  Inf plotrange[4] = maximum(Y) end
-      end
+      adjust_plotrange!(plotrange, extrema(X), extrema(Y))
 
       # Create grid values first.
       xi = range(Float64(plotrange[1]), stop=Float64(plotrange[2]), step=plotinterval)
@@ -685,7 +660,6 @@ function PyPlot.streamplot(bd::BATLData, var::AbstractString, ax=nothing;
 
       interpolator = matplotlib.tri.LinearTriInterpolator(tr, w[:,1,var2_])
       v2 = interpolator(Xi, Yi)
-
    else # Cartesian coordinates
       # Convert to Float64 to satisfy the equal space checking in streamplot.py
       xrange = range(Float64(x[1,1,1]), Float64(x[end,1,1]), size(x,1))
@@ -696,18 +670,16 @@ function PyPlot.streamplot(bd::BATLData, var::AbstractString, ax=nothing;
          v1 = w[:,:,var1_]'
          v2 = w[:,:,var2_]'
       else
-         if plotrange[1] == -Inf plotrange[1] = xrange[1] end
-         if plotrange[2] ==  Inf plotrange[2] = xrange[end] end
-         if plotrange[3] == -Inf plotrange[3] = yrange[1] end
-         if plotrange[4] ==  Inf plotrange[4] = yrange[end] end
+         adjust_plotrange!(plotrange, (xrange[1], xrange[end]), (yrange[1], yrange[end]))
 
          w1, w2 = @views w[:,:,var1_], w[:,:,var2_]
          xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
          yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
-         interp1 = cubic_spline_interpolation((xrange, yrange), w1)
+         xyrange = (xrange, yrange)
+         interp1 = cubic_spline_interpolation(xyrange, w1)
          v1 = [interp1(i, j) for j in yi, i in xi]
 
-         interp2 = cubic_spline_interpolation((xrange, yrange), w2)
+         interp2 = cubic_spline_interpolation(xyrange, w2)
          v2 = [interp2(i, j) for j in yi, i in xi]
       end
    end
@@ -760,4 +732,13 @@ function set_colorbar(colorscale, vmin, vmax, data=[1.0])
    end
 
    cnorm, ticks
+end
+
+function adjust_plotrange!(plotrange, xlimit, ylimit)
+   plotrange[1] = ifelse(isinf(plotrange[1]), xlimit[1], plotrange[1])
+   plotrange[2] = ifelse(isinf(plotrange[2]), xlimit[2], plotrange[2])
+   plotrange[3] = ifelse(isinf(plotrange[3]), ylimit[1], plotrange[3])
+   plotrange[4] = ifelse(isinf(plotrange[4]), ylimit[2], plotrange[4])
+
+   return
 end
