@@ -725,12 +725,3 @@ function set_colorbar(colorscale, vmin, vmax, data=[1.0])
 
    cnorm, ticks
 end
-
-function adjust_plotrange!(plotrange, xlimit, ylimit)
-   plotrange[1] = ifelse(isinf(plotrange[1]), xlimit[1], plotrange[1])
-   plotrange[2] = ifelse(isinf(plotrange[2]), xlimit[2], plotrange[2])
-   plotrange[3] = ifelse(isinf(plotrange[3]), ylimit[1], plotrange[3])
-   plotrange[4] = ifelse(isinf(plotrange[4]), ylimit[2], plotrange[4])
-
-   return
-end

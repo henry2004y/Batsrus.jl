@@ -8,7 +8,6 @@ The returned 2D data lies in the `sequence` plane from - to + in `dir`.
 """
 function cutdata(bd::BATLData, var::AbstractString;
    plotrange=[-Inf,Inf,-Inf,Inf], dir::String="x", sequence::Int=1)
-
    x, w = bd.x, bd.w
    var_ = findfirst(x->x==lowercase(var), lowercase.(bd.head.wnames))
    isempty(var_) && error("$(var) not found in header variables!")
@@ -57,10 +56,10 @@ end
    hx = @view x[:,1]
    hy = @view y[1,:]
 
-   if isinf(limits[1]) limits[1] = hx[1] end
-   if isinf(limits[3]) limits[3] = hy[1] end
-   if isinf(limits[2]) limits[2] = hx[end] end
-   if isinf(limits[4]) limits[4] = hy[end] end
+   limits[1] = ifelse(isinf(limits[1]), hx[1], limits[1])
+   limits[2] = ifelse(isinf(limits[2]), hx[end], limits[2])
+   limits[3] = ifelse(isinf(limits[3]), hy[1], limits[3])
+   limits[4] = ifelse(isinf(limits[4]), hy[end], limits[4])
 
    xind = searchsortedfirst(hx, limits[1]):searchsortedlast(hx, limits[2])
    yind = searchsortedfirst(hy, limits[3]):searchsortedlast(hy, limits[4])
@@ -73,12 +72,12 @@ end
    hy = @view y[1,:,1]
    hz = @view z[1,1,:]
 
-   if isinf(limits[1]) limits[1] = hx[1] end
-   if isinf(limits[3]) limits[3] = hy[1] end
-   if isinf(limits[5]) limits[5] = hz[1] end
-   if isinf(limits[2]) limits[2] = hx[end] end
-   if isinf(limits[4]) limits[4] = hy[end] end
-   if isinf(limits[6]) limits[6] = hz[end] end
+   limits[1] = ifelse(isinf(limits[1]), hx[1], limits[1])
+   limits[2] = ifelse(isinf(limits[2]), hx[end], limits[2])
+   limits[3] = ifelse(isinf(limits[3]), hy[1], limits[3])
+   limits[4] = ifelse(isinf(limits[4]), hy[end], limits[4])
+   limits[5] = ifelse(isinf(limits[5]), hz[1], limits[5])
+   limits[6] = ifelse(isinf(limits[6]), hz[end], limits[6])
 
    xind = searchsortedfirst(hx, limits[1]):searchsortedlast(hx, limits[2])
    yind = searchsortedfirst(hy, limits[3]):searchsortedlast(hy, limits[4])
