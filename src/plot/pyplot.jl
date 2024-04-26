@@ -40,7 +40,7 @@ function plotlogdata(data, head::NamedTuple, func::AbstractString; plotmode="lin
 
       figure()
       if plotmode[ivar] == "line"
-         plot(data[1,:],data[varIndex_,:])
+         plot(data[1,:], data[varIndex_,:])
       elseif plotmode[ivar] == "scatter"
          scatter(data[1,:], data[varIndex_,:])
       else
@@ -105,11 +105,9 @@ function plotdata(bd::BATLData, func::AbstractString; dir="x", plotmode="contbar
          if occursin(";",var) continue end # skip the vars for streamline
          varIndex_ = findindex(bd, var)
          if ndim == 1
-            wmin[ivar] = minimum(w[:,varIndex_])
-            wmax[ivar] = maximum(w[:,varIndex_])
+            wmin[ivar], wmax[ivar] = extrema(@view w[:,varIndex_])
          elseif ndim == 2
-            wmin[ivar] = minimum(w[:,:,varIndex_])
-            wmax[ivar] = maximum(w[:,:,varIndex_])
+            wmin[ivar], wmax[ivar] = extrema(@view w[:,:,varIndex_])
          end
          println("Min & Max value for $(var) :$(wmin[ivar])",", $(wmax[ivar])")
       end
@@ -171,7 +169,7 @@ function plotdata(bd::BATLData, func::AbstractString; dir="x", plotmode="contbar
             Y = vec(x[:,:,2])
             W = vec(w[:,:,varIndex_])
 
-            # This needs to be modified!!!
+            #TODO This needs to be modified!!!
             if !all(isinf.(plotrange))
                xyIndex = X .> plotrange[1] .& X .< plotrange[2] .&
                   Y .> plotrange[3] .& Y .< plotrange[4]
@@ -201,7 +199,7 @@ function plotdata(bd::BATLData, func::AbstractString; dir="x", plotmode="contbar
             q = quiver(bd, var; stride, color="w", kwargs...)
          elseif occursin("grid", plotmode[ivar])
             # This does not take subdomain plot into account!
-            X, Y = x[:,:,1], x[:,:,2]
+            X, Y = eachslice(x, dims=3)
             scatter(X, Y, marker=".", alpha=0.6)
             title("Grid illustration")
          else
@@ -221,9 +219,7 @@ function plotdata(bd::BATLData, func::AbstractString; dir="x", plotmode="contbar
       end
 
    else # 2D cut from 3D output; now only for Cartesian output
-      X = @view x[:,:,:,1]
-      Y = @view x[:,:,:,2]
-      Z = @view x[:,:,:,3]
+      X, Y, Z = eachslice(x, dims=4)
       for (ivar,var) in enumerate(vars)
          if plotmode[ivar] ∈ ("surf","surfbar","surfbarlog","cont","contbar", "contlog",
                "contbarlog")
@@ -331,9 +327,7 @@ function cutplot(bd::BATLData, var::AbstractString, ax=nothing;
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
 
-   X = @view x[:,:,:,1]
-   Y = @view x[:,:,:,2]
-   Z = @view x[:,:,:,3]
+   X, Y, Z = eachslice(x, dims=4)
 
    W = @view w[:,:,:,varIndex_]
 
@@ -385,9 +379,7 @@ function streamslice(bd::BATLData, var::AbstractString, ax=nothing;
    var1_ = findindex(bd, varstream[1])
    var2_ = findindex(bd, varstream[2])
 
-   X = @view x[:,:,:,1]
-   Y = @view x[:,:,:,2]
-   Z = @view x[:,:,:,3]
+   X, Y, Z = eachslice(x, dims=4)
 
    v1 = @view w[:,:,:,var1_]
    v2 = @view w[:,:,:,var2_]
@@ -594,8 +586,8 @@ function PyPlot.tripcolor(bd::BATLData, var::AbstractString, ax=nothing;
 
    varIndex_ = findindex(bd, var)
 
-   X = @view x[:,:,1]
-   Y = @view x[:,:,2]
+   X, Y = eachslice(x, dims=3)
+   adjust_plotrange!(plotrange, extrema(X), extrema(Y))
    W = vec(w[:,:,varIndex_])
 
    adjust_plotrange!(plotrange, extrema(X), extrema(Y))
