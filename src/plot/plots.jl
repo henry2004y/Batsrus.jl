@@ -5,9 +5,7 @@ using RecipesBase
 # Build a recipe which acts on a custom type.
 @recipe function f(bd::BATLData, var::AbstractString;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1)
-
    ndim = bd.head.ndim
-
    hasunits = hasunit(bd)
 
    if ndim == 1

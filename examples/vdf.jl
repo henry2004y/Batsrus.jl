@@ -50,9 +50,7 @@ function dist_select(fnameParticle, xC=-1.90, yC=0.0, zC=-0.1, xL=0.005, yL=0.2,
 
    data = load(joinpath(dir, fnameParticle))
 
-   x = @view data.x[:,:,:,1]
-   y = @view data.x[:,:,:,2]
-   z = @view data.x[:,:,:,3]
+   x, y, z = eachslice(data.x, dims=4)
 
    ux_ = findfirst(x->x=="ux", data.head.wnames)
    uy_ = findfirst(x->x=="uy", data.head.wnames)

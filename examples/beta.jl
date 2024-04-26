@@ -10,9 +10,7 @@ data = load(file)
 sequence = 65 # cut plane index from -
 p_ = 18 # thermal pressure index
 
-X = @view data.x[:,:,:,1]
-Y = @view data.x[:,:,:,2]
-Z = @view data.x[:,:,:,3]
+X, Y, Z = eachslice(data.x, dims=4)
 
 fig, ax = plt.subplots(1, 1)
 fig.set_size_inches(3.3, 6)

@@ -16,20 +16,13 @@ function getdata2d(bd::BATLData, var::AbstractString,
    varIndex_ = findindex(bd, var)
 
    if bd.head.gencoord # Generalized coordinates
-      X = @view x[:,:,1]
-      Y = @view x[:,:,2]
+      X, Y = eachslice(x, dims=3)
       W = @view w[:,:,varIndex_]
 
-      if any(abs.(plotrange) .== Inf)
-         if plotrange[1] == -Inf plotrange[1] = minimum(X) end
-         if plotrange[2] ==  Inf plotrange[2] = maximum(X) end
-         if plotrange[3] == -Inf plotrange[3] = minimum(Y) end
-         if plotrange[4] ==  Inf plotrange[4] = maximum(Y) end
-      end
-
+      adjust_plotrange!(plotrange, extrema(X), extrema(Y))
+      # Set a heuristic value if not set
       if isinf(plotinterval)
-         # set a heuristic value
-         plotinterval = (plotrange[2] - plotrange[1]) / size(X,1)
+         plotinterval = (plotrange[2] - plotrange[1]) / size(X, 1)
       end
       xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
       yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
@@ -45,10 +38,7 @@ function getdata2d(bd::BATLData, var::AbstractString,
          xi, yi = xrange, yrange
          Wi = w[:,:,varIndex_]' # Matplotlib does not accept view!
       else
-         if plotrange[1] == -Inf plotrange[1] = xrange[1] end
-         if plotrange[2] ==  Inf plotrange[2] = xrange[end] end
-         if plotrange[3] == -Inf plotrange[3] = yrange[1] end
-         if plotrange[4] ==  Inf plotrange[4] = yrange[end] end
+         adjust_plotrange!(plotrange, (xrange[1], xrange[end]), (yrange[1], yrange[end]))
 
          if isinf(plotinterval)
             xi = range(plotrange[1], stop=plotrange[2], step=xrange[2] - xrange[1])
@@ -100,4 +90,14 @@ end
    else
       return true
    end
+end
+
+"Adjust 2D plot ranges."
+function adjust_plotrange!(plotrange, xlimit, ylimit)
+   plotrange[1] = ifelse(isinf(plotrange[1]), xlimit[1], plotrange[1])
+   plotrange[2] = ifelse(isinf(plotrange[2]), xlimit[2], plotrange[2])
+   plotrange[3] = ifelse(isinf(plotrange[3]), ylimit[1], plotrange[3])
+   plotrange[4] = ifelse(isinf(plotrange[4]), ylimit[2], plotrange[4])
+
+   return
 end

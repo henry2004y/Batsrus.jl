@@ -109,7 +109,7 @@ function convertTECtoVTU(head, data, connectivity, filename="out")
 
    vtkfile = vtk_grid(filename, points, cells)
 
-   for ivar = head.nDim+1:nVar
+   for ivar in head.nDim+1:nVar
       if endswith(head.variables[ivar],"_x") # vector
          if head.nDim == 3
             var1 = @view data[ivar,:]
@@ -238,7 +238,7 @@ function convertIDLtoVTK(filename::AbstractString; gridType::Int=1, verbose::Boo
 
       vtkfile = vtk_grid(filename, points, cells)
 
-      for ivar = 1:nVar
+      for ivar in 1:nVar
          if endswith(data.head.wnames[ivar], "x") # vector
             if nDim == 3
                var1 = @view data.w[:,1,1,ivar]
@@ -450,7 +450,7 @@ function find_tree_node(batl::Batl, Coord_D)
       floor.(Int32, (Coord_D[iDimAmr_D] - iRoot_D[iDimAmr_D])*maxCoord_I[nLevelMax+1]))
 
    # Go down the tree using bit information
-   for iLevel = nLevelMax-1:-1:0
+   for iLevel in nLevelMax-1:-1:0
       # Get the binary bits based on the coordinates
       iBit_D = ibits.(iCoord_D, iLevel, 1)
 
@@ -502,15 +502,11 @@ function order_tree(batl::Batl)
 
    iNodeMorton_I = fill(Int32(unset_), nNodeUsed)
 
-   for kRoot = 1:nRoot_D[3]
-      for jRoot = 1:nRoot_D[2]
-         for iRoot = 1:nRoot_D[1]
-            # Root nodes are the first ones
-            iNode += Int32(1)
-            # All root nodes are handled as if they were first child
-            iMorton = order_children!(batl, iNode, iMorton, iNodeMorton_I)
-         end
-      end
+   for kRoot in 1:nRoot_D[3], jRoot in 1:nRoot_D[2], iRoot in 1:nRoot_D[1]
+      # Root nodes are the first ones
+      iNode += Int32(1)
+      # All root nodes are handled as if they were first child
+      iMorton = order_children!(batl, iNode, iMorton, iNodeMorton_I)
    end
 
    nNodeUsed = iMorton
@@ -518,7 +514,7 @@ function order_tree(batl::Batl)
    # Set min and max refinement levels
    nLevelMin = maxLevel
    nLevelMax = 0
-   for iMorton = 1:nNodeUsed
+   for iMorton in 1:nNodeUsed
       iNode = iNodeMorton_I[iMorton]
       iLevel = iTree_IA[level_,iNode]
       nLevelMin = min(iLevel, nLevelMin)
@@ -543,7 +539,7 @@ function order_children!(batl::Batl, iNode::Int32, iMorton::Int,
       iMorton += 1
       iNodeMorton_I[iMorton] = iNode
    else
-      for iChild = child1_:size(iTree_IA,1)
+      for iChild in child1_:size(iTree_IA,1)
          iMorton = order_children!(batl, iTree_IA[iChild, iNode], iMorton, iNodeMorton_I)
       end
    end
@@ -636,7 +632,7 @@ function find_neighbor_for_anynode(batl::Batl, iNode::Int)
          y0 = y
          for i in 0:3
             # Exclude inner points
-            if 0<i<3 && 0<j<3 && 0<k<3 continue end
+            if 0 < i < 3 && 0 < j < 3 && 0 < k < 3 continue end
 
             Di = round(Int8, (i - 1.5)/1.5)
 
@@ -728,7 +724,7 @@ function getConnectivity(batl::Batl)
    nProc = maximum(iTree_IA[proc_,:]) + 1
    nBlock_P = fill(Int32(0), nProc)
    if nProc > 1
-      for iProc = 1:nProc-1
+      for iProc in 1:nProc-1
          nBlock_P[iProc+1] = nBlock_P[iProc] + count(==(iProc-1), iTree_IA[proc_,:])
       end
    end
@@ -736,13 +732,13 @@ function getConnectivity(batl::Batl)
    # Pre-allocate just to let Julia know this variable.
    connectivity = Array{Int32,2}(undef, nConn, nElem)
 
-   for iRound = 1:2
+   for iRound in 1:2
       if iRound == 2
          connectivity = Array{Int32,2}(undef, nConn, nElem)
          iElem = 0
          nBlockBefore = 0 # Reset
       end
-      for iProc = 0:nProc-1
+      for iProc in 0:nProc-1
          localNodes_B = findall(x->x==iProc, iTree_IA[proc_,:])
          # It needs to be sorted for filling the correct iCell_G indexes!
          localBlocks_B = iTree_IA[block_,localNodes_B]
@@ -751,7 +747,7 @@ function getConnectivity(batl::Batl)
 
          nBlock = length(localNodes_B) # number of blocks on this processor
 
-         for iBlock = 1:nBlock
+         for iBlock in 1:nBlock
             # initial cell index
             iCell = nI*nJ*nK*(nBlockBefore + iBlock - 1)
 
