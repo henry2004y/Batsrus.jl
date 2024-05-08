@@ -1,5 +1,13 @@
 using Batsrus, Documenter, PyPlot
 using Batsrus.UnitfulBatsrus
+using DemoCards
+
+branch = "master"
+# generate demo files
+demos, postprocess_cb, demo_assets = makedemos("examples"; branch)
+# if there are generated css assets, pass it to Documenter.HTML
+assets = String[]
+isnothing(demo_assets) || (push!(assets, demo_assets))
 
 makedocs(;
     modules=[Batsrus],
@@ -13,6 +21,7 @@ makedocs(;
     pages=[
         "Home" => "index.md",
         "Manual" => "man/manual.md",
+        "Examples" => demos,
         "Internal" => "man/internal.md",
         "Log" => "man/log.md",
     ],

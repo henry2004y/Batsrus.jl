@@ -1,5 +1,6 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+DemoCards = "311a05b2-6137-4a5a-b473-18580a3d38b5"
 PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
 Batsrus = "e74ebddf-6ac1-4047-a0e5-c32c99e57753"
 

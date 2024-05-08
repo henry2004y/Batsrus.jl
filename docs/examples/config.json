@@ -1,0 +1,10 @@
+{
+   "theme": "nocoverlist",
+   "order": [
+     "basics",
+     "advanced"
+   ],
+   "properties": {
+     "notebook": "false"
+   }
+}

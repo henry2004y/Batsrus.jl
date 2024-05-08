@@ -1,0 +1,7 @@
+{
+   "theme": "nocoverlist",
+   "order": [
+     "demo_animate_1d.jl",
+     "demo_animate_2d.jl"
+   ]
+}
