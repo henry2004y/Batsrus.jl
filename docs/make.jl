@@ -16,7 +16,8 @@ makedocs(;
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
         canonical="https://henry2004y.github.io/Batsrus.jl",
-        assets=String[],
+        assets,
+        sidebar_sitename=false
     ),
     pages=[
         "Home" => "index.md",

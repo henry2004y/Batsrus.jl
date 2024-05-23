@@ -5,4 +5,4 @@ PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
 Batsrus = "e74ebddf-6ac1-4047-a0e5-c32c99e57753"
 
 [compat]
-Documenter = "0.24"
+Documenter = "0.27, 1"
