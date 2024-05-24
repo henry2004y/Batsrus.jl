@@ -1,4 +1,4 @@
-using Batsrus, Documenter, PyPlot
+using Batsrus, Documenter
 using Batsrus.UnitfulBatsrus
 using DemoCards
 
