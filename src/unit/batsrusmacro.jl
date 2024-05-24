@@ -5,7 +5,7 @@ String macro to easily recall Batsrus units located in the `UnitfulBatsrus` pack
 Although all unit symbols in that package are suffixed with `_bu`, the suffix should not be
 used when using this macro.
 Note that what goes inside must be parsable as a valid Julia expression.
-Examples:
+# Example
 ```
 julia> 1.0bu"u"
 1.0 u
