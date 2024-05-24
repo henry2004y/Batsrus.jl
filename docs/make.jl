@@ -1,5 +1,4 @@
 using Batsrus, Documenter
-using Batsrus.UnitfulBatsrus
 using DemoCards
 
 branch = "master"
@@ -10,7 +9,7 @@ assets = String[]
 isnothing(demo_assets) || (push!(assets, demo_assets))
 
 makedocs(;
-    modules=[Batsrus],
+    modules=[Batsrus, Batsrus.UnitfulBatsrus, Batsrus.HDF],
     authors="Hongyang Zhou <hyzhou@umich.edu>",
     sitename="Batsrus.jl",
     format=Documenter.HTML(;
