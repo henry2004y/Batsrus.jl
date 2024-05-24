@@ -1,32 +1,31 @@
 # APIs
 
-## Public
+## Batsrus
 
-### Types
-
-```@autodocs
-Modules = [Batsrus]
-Private = false
-Order = [:type]
+```@meta
+CurrentModule = Batsrus
 ```
 
-### Functions
-
 ```@autodocs
 Modules = [Batsrus]
-Private = false
-Order = [:function]
+```
+
+## UnitfulBatsrus
+
+```@meta
+CurrentModule = Batsrus.UnitfulBatsrus
 ```
 
 ```@autodocs
 Modules = [UnitfulBatsrus]
-Private = false
-Order = [:function]
 ```
 
-## Private
+## HDF
+
+```@meta
+CurrentModule = Batsrus.HDF
+```
 
 ```@autodocs
-Modules = [Batsrus]
-Public = false
+Modules = [HDF]
 ```
