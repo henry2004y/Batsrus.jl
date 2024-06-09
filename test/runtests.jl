@@ -120,18 +120,15 @@ end
       end
 
       @testset "Makie" begin
-         #TODO: fix Issue #39!
-         #=
          file = "1d__raw_2_t25.60000_n00000258.out"
          bd = load(joinpath(datapath, file))
-         fig, ax, plt = lines(bd, "Rho")
+         fig, ax, plt = CairoMakie.lines(bd, "Rho")
          @test plt isa Lines
 
          file = "z=0_raw_1_t25.60000_n00000258.out"
          bd = load(joinpath(datapath, file))
-         fig, ax, plt = heatmap(bd, "p")
+         fig, ax, plt = CairoMakie.heatmap(bd, "p")
          @test plt isa Heatmap
-         =#
       end
 
       @testset "PyPlot" begin
