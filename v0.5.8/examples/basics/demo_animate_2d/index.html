@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Contour Animation · Batsrus.jl</title><meta name="title" content="Contour Animation · Batsrus.jl"/><meta property="og:title" content="Contour Animation · Batsrus.jl"/><meta property="twitter:title" content="Contour Animation · Batsrus.jl"/><meta name="description" content="Documentation for Batsrus.jl."/><meta property="og:description" content="Documentation for Batsrus.jl."/><meta property="twitter:description" content="Documentation for Batsrus.jl."/><meta property="og:url" content="https://henry2004y.github.io/Batsrus.jl/examples/basics/demo_animate_2d/"/><meta property="twitter:url" content="https://henry2004y.github.io/Batsrus.jl/examples/basics/demo_animate_2d/"/><link rel="canonical" href="https://henry2004y.github.io/Batsrus.jl/examples/basics/demo_animate_2d/"/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script><link href="../../../democards/nocoverlisttheme.css" rel="stylesheet" type="text/css"/></head><body><div id="documenter"><nav class="docs-sidebar"><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><a class="tocitem" href="../../../man/manual/">Manual</a></li><li><a class="tocitem" href="../../">Examples</a></li><li><a class="tocitem" href="../../../man/internal/">Internal</a></li><li><a class="tocitem" href="../../../man/log/">Log</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Contour Animation</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Contour Animation</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/henry2004y/Batsrus.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/henry2004y/Batsrus.jl/blob/master/docs/examples/basics/demo_animate_2d.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="demo_contour_animation"><a class="docs-heading-anchor" href="#demo_contour_animation">Contour Animation</a><a id="demo_contour_animation-1"></a><a class="docs-heading-anchor-permalink" href="#demo_contour_animation" title="Permalink"></a></h1><p><a href="https://github.com/henry2004y"><img src="https://img.shields.io/badge/Author-Hongyang%20Zhou-blue" alt="Author"/></a> <img src="https://img.shields.io/date/1715126400" alt="Update time"/></p><p>This example shows how to create 2D colored contour animation from series of SWMF outputs.</p><ul><li>Time-dependent title.</li><li>Tweakable colorbar.</li><li>Plotting streamline on top of colored contours is a bit hacky because there is currently no intrinsic methods for removing the streamlines. Our solution here is to dispatch a streamline into lines and arrows and then remove them separately.</li></ul><pre><code class="language-julia hljs">using Batsrus, PyPlot, Printf
+
+&quot;&quot;&quot;
+    animate2d(files::Vector{String}, var::String; kwargs...)
+
+Saving series of plots of `var` from SWMF output `files`.
+
+# Keywords
+- `filedir::String=&quot;./&quot;`: input SWMF file directory.
+- `outdir::String=&quot;out/&quot;`: output directory.
+- `vmin=-4`: plot value lower bound.
+- `vmax=4`: plot value upper bound.
+- `cmap=matplotlib.cm.RdBu_r`: chosen colormap from Matplotlib.
+&quot;&quot;&quot;
+function animate2d(files::Vector{String}, var; filedir=&quot;./&quot;, outdir=&quot;out/&quot;, vmin=-4, vmax=4,
+   cmap = matplotlib.cm.RdBu_r)
+   nfile = length(files)
+   x, y = let bd = load(filedir*files[1])
+      range(bd.x[1,1,1], bd.x[end,1,1], length=size(bd.x,1)),
+      range(bd.x[1,1,2], bd.x[1,end,2], length=size(bd.x,2))
+   end
+   # colormap norm
+   norm = matplotlib.colors.Normalize(vmin, vmax)
+   
+   fig = plt.figure(figsize=(8, 3), constrained_layout=true)
+   ax = plt.axes()
+
+   c = let
+      fakedata = zeros(Float32, length(x), length(y))
+      ax.pcolormesh(x, y, fakedata&#39;; norm, cmap)
+   end
+   ax.set_xlabel(&quot;x [km]&quot;, fontsize=14)
+   ax.set_ylabel(&quot;y [km]&quot;, fontsize=14)
+   cb = colorbar(c; ax, orientation=&quot;horizontal&quot;, location=&quot;top&quot;, aspect=50)  
+   cb.ax.set_ylabel(&quot;Bz [nT]&quot;, fontsize=14)
+
+   for (i, file) in enumerate(files)
+      @info &quot;$i in $nfile&quot;
+      bd = load(joinpath(filedir, file))
+      c.set_array(bd[var]&#39;)
+   
+      title_str = @sprintf &quot;t = %4.1f s&quot; bd.head.time
+      ax.set_title(title_str)
+   
+      savefig(outdir*lpad(i, 4, &#39;0&#39;)*&quot;.png&quot;, bbox_inches=&quot;tight&quot;, dpi=200)
+   end
+   
+   close()
+end
+
+&quot;&quot;&quot;
+    animate2d_with_streamline(files::Vector{String}, var::String, streamvars; kwargs...)
+
+Saving series of plots of `var`, together with streamplots of `streamvars`, from SWMF output
+`files`.
+
+# Keywords
+- `filedir::String=&quot;./&quot;`: input SWMF file directory.
+- `outdir::String=&quot;out/&quot;`: output directory.
+- `vmin=-4`: plot value lower bound.
+- `vmax=4`: plot value upper bound.
+- `cmap=matplotlib.cm.RdBu_r`: chosen colormap from Matplotlib.
+&quot;&quot;&quot;
+function animate2d_with_streamline(files::Vector{String}, var, streamvars=&quot;Bx;By&quot;;
+   filedir=&quot;./&quot;, outdir=&quot;out/&quot;, vmin=-4, vmax=4, cmap=matplotlib.cm.RdBu_r)
+   nfile = length(files)
+   x, y = let bd = load(filedir*files[1])
+      range(bd.x[1,1,1], bd.x[end,1,1], length=size(bd.x,1)),
+      range(bd.x[1,1,2], bd.x[1,end,2], length=size(bd.x,2))
+   end
+   # colormap norm
+   norm = matplotlib.colors.Normalize(vmin, vmax)
+
+   fig = plt.figure(figsize=(8, 3), constrained_layout=true)
+   ax = plt.axes()
+
+   @info &quot;1 in $nfile&quot;
+   c = ax.pcolormesh(x, y, bd[var]&#39;; norm, cmap)
+
+   ax.set_xlabel(&quot;x [km]&quot;, fontsize=14)
+   ax.set_ylabel(&quot;y [km]&quot;, fontsize=14)
+   cb = colorbar(c; ax, orientation=&quot;horizontal&quot;, location=&quot;top&quot;, aspect=50)  
+   cb.ax.set_ylabel(&quot;Bz [nT]&quot;, fontsize=14)
+   title_str = @sprintf &quot;t = %4.1f s&quot; bd.head.time
+   ax.set_title(title_str)
+
+   st = streamplot(bd, streamvars, ax; color=&quot;gray&quot;, density=2)
+
+   save_and_clean!(1, outdir, st, ax)
+
+   for i in 2:nfile
+      @info &quot;$i out of $nfile&quot;
+      bd = load(joinpath(filedir, files[i]))
+      c.set_array(bd[&quot;Bz&quot;]&#39;)
+
+      st = streamplot(bd, streamvars, ax; color=&quot;gray&quot;, density=2)
+      ax.set_xlim(x[1], x[end])
+      ax.set_ylim(y[1], y[end])
+
+      title_str = @sprintf &quot;t = %4.1f s&quot; bd.head.time
+      ax.set_title(title_str)
+   
+      save_and_clean!(i, outdir, st, ax)
+   end
+   
+   close()
+end
+
+function save_and_clean!(i::Int, outdir::String, st, ax)
+   savefig(outdir*lpad(i, 4, &#39;0&#39;)*&quot;.png&quot;, bbox_inches=&quot;tight&quot;, dpi=200)
+   # Clean up streamlines
+   st.lines.remove()
+   for art in ax.get_children()
+      if !pybuiltin(:isinstance)(art, matplotlib.patches.FancyArrowPatch)
+         continue
+      end
+      art.remove()
+   end
+end
+
+####################
+# Data directory
+filedir = &quot;./&quot;
+# Plot variables
+var = &quot;By&quot;
+
+# Find simulation data
+files = let
+   pick_file = file -&gt; startswith(file, &quot;z&quot;) &amp;&amp; endswith(file, &quot;.out&quot;)
+   filter(pick_file, readdir(filedir))
+end
+
+animate2d(files, var)
+#animate2d_with_streamline(files, var, &quot;Bx;By&quot;)</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.1 on <span class="colophon-date" title="Sunday 9 June 2024 20:36">Sunday 9 June 2024</span>. Using Julia version 1.10.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
