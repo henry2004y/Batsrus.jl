@@ -59,22 +59,21 @@ Here is a full list of predefined derived quantities:
 
 We can convert 2D/3D BATSRUS outputs `*.dat` to VTK formats. It uses the VTK XML format writer [writeVTK](https://github.com/jipolanco/WriteVTK.jl) to generate files for Paraview and Tecplot. The default converted filename is `out.vtu`.
 
-ASCII Tecplot file (supports both `tec` and `tcp`) and binary Tecplot file (set `DOSAVETECBINARY=TRUE` in BATSRUS `PARAM.in`):
+- ASCII Tecplot file (supports both `tec` and `tcp`) and binary Tecplot file (set `DOSAVETECBINARY=TRUE` in BATSRUS `PARAM.in`):
 
 ```julia
 file = "x=0_mhd_1_n00000050.dat"
-head, data, connectivity = readtecdata(file)
-convertTECtoVTU(head, data, connectivity)
+convertTECtoVTU(file)
 ```
 
-3D structured IDL file (`gridType=1` returns rectilinear `vtr` file, `gridType=2` returns structured `vts` file):
+- 3D structured IDL file (`gridType=1` returns rectilinear `vtr` file, `gridType=2` returns structured `vts` file):
 
 ```julia
 file = "3d_structured.out"
 convertIDLtoVTK(file, gridType=1)
 ```
 
-3D unstructured IDL file together with header and tree file:
+- 3D unstructured IDL file together with header and tree file:
 
 ```julia
 filetag = "3d_var_1_n00002500"
@@ -84,52 +83,28 @@ convertIDLtoVTK(filetag)
 !!! note
     The file suffix should not be provided for this to work correctly!
 
-Multiple files:
+- Multiple files:
 
 ```julia
-using Batsrus, Glob
-filenamesIn = "3d*.dat"
 dir = "."
-filenames = Vector{String}(undef, 0)
-filesfound = glob(filenamesIn, dir)
-filenames = vcat(filenames, filesfound)
-tec = readtecdata.(filenames) # head, data, connectivity
-for (i, outname) in enumerate(filenames)
-   convertTECtoVTU(tec[i][1], tec[i][2], tec[i][3], outname[1:end-4])
+filenames = filter(file -> startswith(file, "3d") && endswith(file, ".dat"), readdir(dir))
+filenames = dir .* filenames
+
+for filename in filenames
+   convertTECtoVTU(filename, filename[1:end-4])
 end
 ```
 
-If each individual file size is large, consider using:
+* Processing multiple files with threads in parallel:
 
 ```julia
-using Batsrus, Glob
-filenamesIn = "3d*.dat"
 dir = "."
-filenames = Vector{String}(undef, 0)
-filesfound = glob(filenamesIn, dir)
-filenames = vcat(filenames, filesfound)
-for (i, outname) in enumerate(filenames)
-   head, data, connectivity = readtecdata(outname)
-   convertTECtoVTU(head, data, connectivity, outname[1:end-4])
-end
-```
+filenames = filter(file -> startswith(file, "3d") && endswith(file, ".dat"), readdir(dir))
+filenames = dir .* filenames
 
-Multiple files in parallel:
-
-```julia
-using Distributed
-@everywhere using Batsrus, Glob
-
-filenamesIn = "cut*.dat"
-dir = "."
-filenames = Vector{String}(undef, 0)
-filesfound = glob(filenamesIn, dir)
-filenames = vcat(filenames, filesfound)
-
-@sync @distributed for outname in filenames
-   println("filename=$(outname)")
-   head, data, connectivity = readtecdata(outname)
-   convertTECtoVTU(head, data, connectivity, outname[1:end-4])
+Threads.@threads for filename in filenames
+   println("filename=$filename")
+   convertTECtoVTU(filename, filename[1:end-4])
 end
 ```
 
