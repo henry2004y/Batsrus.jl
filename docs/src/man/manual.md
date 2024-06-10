@@ -86,7 +86,7 @@ convertIDLtoVTK(filetag)
 - Multiple files:
 
 ```julia
-dir = "."
+dir = "./"
 filenames = filter(file -> startswith(file, "3d") && endswith(file, ".dat"), readdir(dir))
 filenames = dir .* filenames
 
@@ -98,7 +98,7 @@ end
 * Processing multiple files with threads in parallel:
 
 ```julia
-dir = "."
+dir = "./"
 filenames = filter(file -> startswith(file, "3d") && endswith(file, ".dat"), readdir(dir))
 filenames = dir .* filenames
 
@@ -134,6 +134,7 @@ The recipes for Plots.jl and Makie.jl will work on all kinds of plots given the 
 
 ```julia
 using Plots
+
 plot(bd, "p")
 contourf(bd, "Mx", xlabel="x")
 ```
@@ -187,7 +188,6 @@ plotdata(bd, "rho", plotmode="contbar")
 ```julia
 plotdata(bd, "bx", plotmode="contbar", dir="y", sequence=1, level=20)
 plotdata(bd, "bx", plotmode="contbar", dir="y", plotrange=[-1.4,-1.1,0.70,0.78])
-using PyPlot
 plt.axis("scaled")
 
 subplot(2,2,(1,3))
@@ -225,7 +225,6 @@ scatter(bd, "p")
 - contour
 
 ```julia
-# 2D contour
 contour(bd, "p")
 ```
 
@@ -270,20 +269,18 @@ quiver(bd, "ux;uy", stride=50)
 - streamline + contourf
 
 ```julia
-using Batsrus, PyPlot
-
 file = "y.out"
 bd = load(file)
 
 DN = matplotlib.colors.DivergingNorm
-set_cmap("RdBu_r")
+cmap = matplotlib.cm.RdBu_r
 
-contourf(bd, "uxS0", 50, plotrange=[-3,3,-3,3], plotinterval=0.05, norm=DN(0))
+contourf(bd, "uxS0", 50; plotrange=[-3,3,-3,3], plotinterval=0.05, norm=DN(0), cmap)
 colorbar()
-streamplot(bd, "uxS0;uzS0", density=2.0, color="g", plotrange=[-3,3,-3,3])
+streamplot(bd, "uxS0;uzS0"; density=2.0, color="g", plotrange=[-3,3,-3,3])
 xlabel("x"); ylabel("y"); title("Ux [km/s]")
 
-contourf(bd,"uxS0", 50, plotinterval=0.05, norm=DN(0))
+contourf(bd, "uxS0", 50; plotinterval=0.05, norm=DN(0), cmap)
 colorbar()
 axis("scaled")
 xlabel("x"); ylabel("y"); title("uxS0")
@@ -296,8 +293,6 @@ The built-in `streamplot` function in Matplotlib is not satisfactory for accurat
 An example of tracing in a 2D cut and plot the field lines over contour:
 
 ```julia
-using Batsrus, PyPlot
-
 file = "test/y=0_var_1_t00000000_n00000000.out"
 bd = load(file)
 
@@ -308,12 +303,12 @@ z  = bd.x[1,:,2]
 
 seeds = select_seeds(x, z; nSeed=100) # randomly select the seeding points
 
-for i = 1:size(seeds)[2]
+for i in 1:size(seeds)[2]
    xs = seeds[1,i]
    zs = seeds[2,i]
    # Tracing in both direction. Check the document for more options.
    x1, z1 = trace2d_eul(bx, bz, xs, zs, x, z, ds=0.1, maxstep=1000, gridType="ndgrid")
-   plot(x1,z1,"--")
+   plot(x1, z1, "--")
 end
 axis("equal")
 ```
