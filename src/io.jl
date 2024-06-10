@@ -62,8 +62,8 @@ function readlogdata(file::AbstractString)
    nx        = 1
    nw        = length(variables)
 
-   data = zeros(nw,nLine)
-   for i in 1:nLine
+   data = zeros(nw, nLine)
+   @inbounds for i in 1:nLine
       line = split(readline(f))
       data[:,i] = parse.(Float64, line)
    end
@@ -411,7 +411,7 @@ end
 function getascii!(x, w, fileID::IOStream, filehead::NamedTuple)
    ndim = filehead.ndim
    Ids = CartesianIndices(size(x)[1:ndim])
-   for ids in Ids
+   @inbounds @views for ids in Ids
       temp = parse.(Float64, split(readline(fileID)))
       x[ids,:] = temp[1:ndim]
       w[ids,:] = temp[ndim+1:end]
@@ -425,7 +425,7 @@ function getbinary!(x, w, fileID::IOStream, filehead::NamedTuple)
    dimlast = filehead.ndim + 1
    read!(fileID, x)
    skip(fileID, 2*TAG)
-   for iw in axes(w, dimlast)
+   @inbounds for iw in axes(w, dimlast)
       read!(fileID, selectdim(w, dimlast, iw))
       skip(fileID, 2*TAG)
    end

@@ -82,9 +82,7 @@ end
 
    @testset "VTK" begin
       file = joinpath(datapath, "3d_bin.dat")
-      head, bd, connectivity = readtecdata(file)
-      @test maximum(connectivity) ≤ head[:nNode] # check if it's read correctly
-      convertTECtoVTU(head, bd, connectivity)
+      convertTECtoVTU(file)
       sha_str = bytes2hex(open(sha1, "out.vtu"))
       @test sha_str == "5b04747666542d802357dec183177f757754a254"
       rm("out.vtu")

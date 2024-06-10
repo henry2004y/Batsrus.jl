@@ -69,6 +69,7 @@ struct Head
    dxPlot_D::Vector{Float64}
 end
 
+"BATSRUS output high-level struct."
 struct Batl
    head::Head
    iTree_IA::Array{Int32,2}
@@ -76,9 +77,9 @@ struct Batl
    nDim::Int8
 end
 
-
 """
-    convertTECtoVTU(head, data, connectivity, filename="out")
+    convertTECtoVTU(file::AbstractString, outname="out")
+    convertTECtoVTU(head, data, connectivity, outname="out")
 
 Convert unstructured Tecplot data to VTK. Note that if using voxel type data in VTK, the
 connectivity sequence is different from Tecplot: the 3D connectivity sequence in Tecplot is
@@ -92,7 +93,12 @@ for i in 1:2
 end
 ```
 """
-function convertTECtoVTU(head, data, connectivity, filename="out")
+function convertTECtoVTU(file::AbstractString, outname="out")
+   head, data, connectivity = readtecdata(file)
+   convertTECtoVTU(head, data, connectivity, outname)
+end
+
+function convertTECtoVTU(head, data, connectivity, outname="out")
    nVar = length(head.variables)
    points = @view data[1:head.nDim,:]
    cells = Vector{MeshCell{VTKCellType,Array{Int32,1}}}(undef, head.nCell)
@@ -107,7 +113,7 @@ function convertTECtoVTU(head, data, connectivity, filename="out")
       end
    end
 
-   vtkfile = vtk_grid(filename, points, cells)
+   vtkfile = vtk_grid(outname, points, cells)
 
    for ivar in head.nDim+1:nVar
       if endswith(head.variables[ivar],"_x") # vector
@@ -123,7 +129,7 @@ function convertTECtoVTU(head, data, connectivity, filename="out")
             namevar = replace(head.variables[ivar], "_x"=>"")
             vtk_point_data(vtkfile, (var1, var2), namevar)
          end
-      elseif endswith(head.variables[ivar],r"_y|_z")
+      elseif endswith(head.variables[ivar], r"_y|_z")
          continue
       else
          var = @view data[ivar,:]
@@ -161,7 +167,7 @@ function convertIDLtoVTK(filename::AbstractString; gridType::Int=1, verbose::Boo
          z = @view data.x[1,1,:,3]
 
          outfiles = vtk_grid(outname, x,y,z) do vtk
-            for ivar = 1:nVar
+            for ivar in 1:nVar
                if data.head.wnames[ivar][end] == 'x' # vector
                   var1 = @view data.w[:,:,:,ivar]
                   var2 = @view data.w[:,:,:,ivar+1]
@@ -180,7 +186,7 @@ function convertIDLtoVTK(filename::AbstractString; gridType::Int=1, verbose::Boo
          xyz = permutedims(data.x, [4,1,2,3])
 
          outfiles = vtk_grid(outname, xyz) do vtk
-            for ivar = 1:nVar
+            for ivar in 1:nVar
                if data.head.wnames[ivar][end] == 'x' # vector
                   var1 = @view data.w[:,:,:,ivar]
                   var2 = @view data.w[:,:,:,ivar+1]
@@ -732,7 +738,7 @@ function getConnectivity(batl::Batl)
    # Pre-allocate just to let Julia know this variable.
    connectivity = Array{Int32,2}(undef, nConn, nElem)
 
-   for iRound in 1:2
+   @inbounds for iRound in 1:2
       if iRound == 2
          connectivity = Array{Int32,2}(undef, nConn, nElem)
          iElem = 0
@@ -751,7 +757,7 @@ function getConnectivity(batl::Batl)
             # initial cell index
             iCell = nI*nJ*nK*(nBlockBefore + iBlock - 1)
 
-            @inbounds for k in 1:nK, j in 1:nJ, i in 1:nI
+            for k in 1:nK, j in 1:nJ, i in 1:nI
                iCell += 1
                iCell_G[i+1,j+1,k+1] = iCell
             end
