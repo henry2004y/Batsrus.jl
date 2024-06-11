@@ -457,7 +457,7 @@ end
 
 Wrapper over `contour` in matplotlib.
 """
-function PyPlot.contour(bd::BATLData, var::AbstractString, ax=nothing; levels::Int=0,
+function PyPlot.contour(bd::BATLData, var::AbstractString, ax=nothing; levels=0,
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...)
    Xi, Yi, Wi = getdata2d(bd, var, plotrange, plotinterval; innermask)
    if isnothing(ax) ax = plt.gca() end

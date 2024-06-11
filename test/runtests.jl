@@ -148,6 +148,8 @@ end
          @test_throws ErrorException PyPlot.contourf(bd, "rho", innermask=true)
          PyPlot.contour(bd, "rho")
          @test isa(gca(), PyPlot.PyObject)
+         PyPlot.contour(bd, "rho"; levels=[1.0])
+         @test isa(gca(), PyPlot.PyObject)
          c = PyPlot.tricontourf(bd, "rho")
          @static if matplotlib.__version__ < "3.8"
             @test c.get_array()[end] == 1.0500000000000003
