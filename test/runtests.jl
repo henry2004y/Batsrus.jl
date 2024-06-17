@@ -143,13 +143,14 @@ end
          bd = load(joinpath(datapath, file))
          plotdata(bd, "p bx;by", plotmode="contbar streamover")
          @test isa(gca(), PyPlot.PyObject)
-         PyPlot.contourf(bd, "p")
-         @test isa(gca(), PyPlot.PyObject)
-         @test_throws ErrorException PyPlot.contourf(bd, "rho", innermask=true)
-         PyPlot.contour(bd, "rho")
-         @test isa(gca(), PyPlot.PyObject)
-         PyPlot.contour(bd, "rho"; levels=[1.0])
-         @test isa(gca(), PyPlot.PyObject)
+         c = PyPlot.contourf(bd, "p")
+         @test c.get_array()[end] == 1.0500000000000003
+         c = PyPlot.contourf(bd, "rho", innermask=true)
+         @test c.get_array()[end] == 1.0500000000000003
+         c = PyPlot.contour(bd, "rho")
+         @test c.get_array()[end] == 1.0500000000000003
+         c=  PyPlot.contour(bd, "rho"; levels=[1.0])
+         @test c.get_array()[end] == 1.0
          c = PyPlot.tricontourf(bd, "rho")
          @static if matplotlib.__version__ < "3.8"
             @test c.get_array()[end] == 1.0500000000000003

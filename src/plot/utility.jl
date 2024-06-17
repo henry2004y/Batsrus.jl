@@ -61,7 +61,7 @@ function getdata2d(bd::BATLData, var::AbstractString,
       if isnothing(varIndex_)
          @info "rbody not found in file header parameters; use keyword rbody"
          @inbounds @simd for i in CartesianIndices(Wi)
-            if xi[i[1]]^2 + yi[i[2]]^2 < rbody^2
+            if xi[i[2]]^2 + yi[i[1]]^2 < rbody^2
                Wi[i] = NaN
             end
          end
