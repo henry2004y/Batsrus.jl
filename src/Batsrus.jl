@@ -3,7 +3,8 @@ module Batsrus
 #
 # Hongyang Zhou, hyzhou@umich.edu
 
-using Printf, Reexport, Requires 
+using Printf, Reexport, Requires
+using NaturalNeighbours: interpolate, Triangle
 
 export BATLData,
    load, readlogdata, readtecdata, showhead, # io

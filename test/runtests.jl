@@ -55,10 +55,12 @@ end
       @test bd["B"][:,end,end] == Float32[1.118034, -0.559017, 0.0]
    end
 
-   @testset "Reading 2D unstructured binary" begin
-      #file = "z=0_raw_1_t25.60000_n00000258.out"
-      #bd = load(file)
-      #TODO test getdata2d on gencoord
+   @testset "Reading 2D unstructured" begin
+      file = "bx0_mhd_6_t00000100_n00000352.out"
+      bd = load(joinpath(datapath, file))
+      plotrange = [-Inf, Inf, -Inf, Inf]
+      x, y, w = Batsrus.getdata2d(bd, "rho", plotrange, useMatplotlib=false)
+      @test w[1,2] == 5.000018304080387
    end
 
    @testset "Reading 3D structured binary" begin
@@ -149,18 +151,14 @@ end
          else
             @test c.get_array()[end] == 0.9750000000000002
          end
-         c = PyPlot.contourf(bd, "rho", innermask=true)
+         c = @suppress_err PyPlot.contourf(bd, "rho", innermask=true)
          @static if matplotlib.__version__ < "3.8"
             @test c.get_array()[end] == 1.0500000000000003
          else
             @test c.get_array()[end] == 0.9750000000000002
          end
          c = PyPlot.contour(bd, "rho")
-         @static if matplotlib.__version__ < "3.8"
-            @test c.get_array()[end] == 1.0500000000000003
-         else
-            @test c.get_array()[end] == 0.9750000000000002
-         end
+         @test c.get_array()[end] == 1.0500000000000003
          c=  PyPlot.contour(bd, "rho"; levels=[1.0])
          @test c.get_array()[end] == 1.0
          c = PyPlot.tricontourf(bd, "rho")
@@ -186,8 +184,7 @@ end
          file = "bx0_mhd_6_t00000100_n00000352.out"
          bd = load(joinpath(datapath, file))
          plotdata(bd, "P", plotmode="contbar")
-         ax = gca()
-         @test isa(ax, PyPlot.PyObject)
+         @test isa(gca(), PyPlot.PyObject)
       end
    end
 

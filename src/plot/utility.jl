@@ -7,11 +7,12 @@
 Return 2D slices of data `var` from `bd`. If `plotrange` is not set, output data resolution
 is the same as the original. If `innermask==true`, then the inner boundary cells are set to
 NaN. If `innermask == true` but the rbody parameter is not found in the header, we use the
-keyword `rbody` as the inner radius.
+keyword `rbody` as the inner radius. If `useMatplotlib==false`, a native Julia scattered
+interpolation is used (but is somehow slower than Matplotlib).
 """
 function getdata2d(bd::BATLData, var::AbstractString,
    plotrange::Vector=[-Inf, Inf, -Inf, Inf], plotinterval::Real=Inf;
-   innermask::Bool=false, rbody=1.0)
+   innermask::Bool=false, rbody::Real=1.0, useMatplotlib::Bool=true)
    x, w, ndim = bd.x, bd.w, bd.head.ndim
    @assert ndim == 2 "data must be in 2D!"
 
@@ -19,7 +20,8 @@ function getdata2d(bd::BATLData, var::AbstractString,
 
    if bd.head.gencoord # Generalized coordinates
       X, Y = eachslice(x, dims=3)
-      W = @view w[:,:,varIndex_]
+      X, Y = vec(X), vec(Y)
+      W = @views w[:,:,varIndex_] |> vec
 
       adjust_plotrange!(plotrange, extrema(X), extrema(Y))
       # Set a heuristic value if not set
@@ -28,11 +30,16 @@ function getdata2d(bd::BATLData, var::AbstractString,
       end
       xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
       yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
-      # Perform linear interpolation of the data (x,y) on grid(xi,yi)
-      triang = @views matplotlib.tri.Triangulation(X[:], Y[:])
-      interpolator = @views matplotlib.tri.LinearTriInterpolator(triang, W[:])
-      Xi, Yi = meshgrid(xi, yi)
-      Wi = interpolator(Xi, Yi)
+
+      if useMatplotlib
+         triang = matplotlib.tri.Triangulation(X, Y)
+         # Perform linear interpolation on the triangle mesh
+         interpolator = matplotlib.tri.LinearTriInterpolator(triang, W)
+         Xi, Yi = meshgrid(xi, yi)
+         Wi = interpolator(Xi, Yi)
+      else
+         xi, yi, Wi = interpolate2d_generalized_coords(X, Y, W, plotrange, plotinterval)
+      end
    else # Cartesian coordinates
       xrange = range(x[1,1,1], x[end,1,1], length=size(x,1))
       yrange = range(x[1,1,2], x[1,end,2], length=size(x,2))
@@ -73,7 +80,7 @@ function getdata2d(bd::BATLData, var::AbstractString,
             end
          end
       end
-      
+
    end
 
    xi, yi, Wi
@@ -111,4 +118,16 @@ function adjust_plotrange!(plotrange, xlimit, ylimit)
    plotrange[4] = ifelse(isinf(plotrange[4]), ylimit[2], plotrange[4])
 
    return
+end
+
+"Perform Triangle interpolation of 2D data `W` on grid `X`, `Y`."
+function interpolate2d_generalized_coords(X::T, Y::T, W::T,
+   plotrange::Vector{<:AbstractFloat}, plotinterval::Real) where
+   {T<:AbstractVector}
+   xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
+   yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
+   itp = interpolate(X, Y, W)
+   Wi = [itp(x, y; method=Triangle()) for y in yi, x in xi]::Matrix{eltype(W)}
+
+   xi, yi, Wi
 end
