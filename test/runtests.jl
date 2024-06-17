@@ -144,11 +144,23 @@ end
          plotdata(bd, "p bx;by", plotmode="contbar streamover")
          @test isa(gca(), PyPlot.PyObject)
          c = PyPlot.contourf(bd, "p")
-         @test c.get_array()[end] == 1.0500000000000003
+         @static if matplotlib.__version__ < "3.8"
+            @test c.get_array()[end] == 1.0500000000000003
+         else
+            @test c.get_array()[end] == 0.9750000000000002
+         end
          c = PyPlot.contourf(bd, "rho", innermask=true)
-         @test c.get_array()[end] == 1.0500000000000003
+         @static if matplotlib.__version__ < "3.8"
+            @test c.get_array()[end] == 1.0500000000000003
+         else
+            @test c.get_array()[end] == 0.9750000000000002
+         end
          c = PyPlot.contour(bd, "rho")
-         @test c.get_array()[end] == 1.0500000000000003
+         @static if matplotlib.__version__ < "3.8"
+            @test c.get_array()[end] == 1.0500000000000003
+         else
+            @test c.get_array()[end] == 0.9750000000000002
+         end
          c=  PyPlot.contour(bd, "rho"; levels=[1.0])
          @test c.get_array()[end] == 1.0
          c = PyPlot.tricontourf(bd, "rho")
