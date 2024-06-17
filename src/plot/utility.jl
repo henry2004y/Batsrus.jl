@@ -2,14 +2,16 @@
 
 """
     getdata2d(bd::BATLData, var::AbstractString, plotrange=[-Inf, Inf, -Inf, Inf],
-       plotinterval=Inf; innermask=false)
+       plotinterval=Inf; innermask=false, rbody=1.0)
 
 Return 2D slices of data `var` from `bd`. If `plotrange` is not set, output data resolution
 is the same as the original. If `innermask==true`, then the inner boundary cells are set to
-NaN.
+NaN. If `innermask == true` but the rbody parameter is not found in the header, we use the
+keyword `rbody` as the inner radius.
 """
 function getdata2d(bd::BATLData, var::AbstractString,
-   plotrange::Vector=[-Inf, Inf, -Inf, Inf], plotinterval::Real=Inf; innermask::Bool=false)
+   plotrange::Vector=[-Inf, Inf, -Inf, Inf], plotinterval::Real=Inf;
+   innermask::Bool=false, rbody=1.0)
    x, w, ndim = bd.x, bd.w, bd.head.ndim
    @assert ndim == 2 "data must be in 2D!"
 
@@ -56,13 +58,22 @@ function getdata2d(bd::BATLData, var::AbstractString,
    # Mask a circle at the inner boundary
    if innermask
       varIndex_ = findlast(x->x=="rbody", bd.head.variables)
-      isnothing(varIndex_) && error("rbody not found in file header parameters!")
-      ParamIndex_ = varIndex_ - ndim - bd.head.nw
-      @inbounds for i in CartesianIndices(Wi)
-         if xi[i[1]]^2 + yi[i[2]]^2 < bd.head.eqpar[ParamIndex_]^2
-            Wi[i] = NaN
+      if isnothing(varIndex_)
+         @info "rbody not found in file header parameters; use keyword rbody"
+         @inbounds @simd for i in CartesianIndices(Wi)
+            if xi[i[1]]^2 + yi[i[2]]^2 < rbody^2
+               Wi[i] = NaN
+            end
+         end
+      else
+         ParamIndex_ = varIndex_ - ndim - bd.head.nw
+         @inbounds @simd for i in CartesianIndices(Wi)
+            if xi[i[1]]^2 + yi[i[2]]^2 < bd.head.eqpar[ParamIndex_]^2
+               Wi[i] = NaN
+            end
          end
       end
+      
    end
 
    xi, yi, Wi
