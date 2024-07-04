@@ -50,7 +50,7 @@ end
 
 "Read information from log file."
 function readlogdata(file::AbstractString)
-   f = open(file, "r")
+   f = open(file)
    nLine = countlines(f) - 2
    seekstart(f)
    headline  = readline(f)
@@ -65,7 +65,7 @@ function readlogdata(file::AbstractString)
    data = zeros(nw, nLine)
    @inbounds for i in 1:nLine
       line = split(readline(f))
-      data[:,i] = parse.(Float64, line)
+      data[:,i] = Parsers.parse.(Float64, line)
    end
 
    close(f)
@@ -113,7 +113,7 @@ function readtecdata(file::AbstractString; verbose::Bool=false)
          ln = readline(f) |> strip
       end
       VARS = split(varline, '\"')
-      deleteat!(VARS,findall(x -> x in (" ",", ") || isempty(x), VARS))
+      deleteat!(VARS, findall(x -> x in (" ",", ") || isempty(x), VARS))
    else
       @warn "No variable names provided."
    end
@@ -131,9 +131,9 @@ function readtecdata(file::AbstractString; verbose::Bool=false)
          if name == "T" # ZONE title
             T = value
          elseif name in ("NODES","N")
-            nNode = parse(Int32, value)
+            nNode = Parsers.parse(Int32, value)
          elseif name in ("ELEMENTS","E")
-            nCell = parse(Int32, value)
+            nCell = Parsers.parse(Int32, value)
          elseif name in ("ET","ZONETYPE")
             if uppercase(value) in ("BRICK","FEBRICK")
                nDim = 3
@@ -155,9 +155,9 @@ function readtecdata(file::AbstractString; verbose::Bool=false)
       name = string(name[9:end-1])
       str = string(strip(value))
       if name in ("ITER","NPROC")
-         str = parse(Int32, value)
+         str = Parsers.parse(Int32, value)
       elseif name == "TIMESIM"
-         sec = split(str,"=")
+         sec = split(str, "=")
          str = string(strip(sec[2]))
       end
       push!(auxdataname, name)
@@ -179,7 +179,7 @@ function readtecdata(file::AbstractString; verbose::Bool=false)
 
    IsBinary = false
    try
-      parse.(Float32, split(readline(f)))
+      Parsers.parse.(Float32, split(readline(f)))
    catch
       IsBinary = true
       verbose && @info "reading binary file"
@@ -197,11 +197,11 @@ function readtecdata(file::AbstractString; verbose::Bool=false)
    else
       @inbounds for i in 1:nNode
          x = readline(f)
-         data[:,i] .= parse.(Float32, split(x))
+         data[:,i] .= Parsers.parse.(Float32, split(x))
       end
 	   @inbounds for i in 1:nCell
 		   x = readline(f)
-		   connectivity[:,i] .= parse.(Int32, split(x))
+		   connectivity[:,i] .= Parsers.parse.(Int32, split(x))
 	   end
    end
 
@@ -273,16 +273,16 @@ function getfilehead(fileID::IOStream, filelist::FileList)
       headline = readline(fileID)
       line = readline(fileID)
       line = split(line)
-      it = parse(Int, line[1])
-      t = parse(Float64, line[2])
-      ndim = parse(Int8, line[3])
-      neqpar = parse(Int32, line[4])
-      nw = parse(Int8, line[5])
+      it = Parsers.parse(Int, line[1])
+      t = Parsers.parse(Float64, line[2])
+      ndim = Parsers.parse(Int8, line[3])
+      neqpar = Parsers.parse(Int32, line[4])
+      nw = Parsers.parse(Int8, line[5])
       gencoord = ndim < 0
       ndim = abs(ndim)
-      nx = parse.(Int64, split(readline(fileID)))
+      nx = Parsers.parse.(Int64, split(readline(fileID)))
       if neqpar > 0
-         eqpar = parse.(Float64, split(readline(fileID)))
+         eqpar = Parsers.parse.(Float64, split(readline(fileID)))
       end
       varname = readline(fileID)
    elseif type ∈ (:real4, :binary)
@@ -342,12 +342,12 @@ function getfilesize(fileID::IOStream, type::Symbol, lenstr::Int32)
       skipline(fileID)
       line = readline(fileID)
       line = split(line)
-      ndim = parse(Int32, line[3])
-      neqpar = parse(Int32, line[4])
-      nw = parse(Int8, line[5])
+      ndim = Parsers.parse(Int32, line[3])
+      neqpar = Parsers.parse(Int32, line[4])
+      nw = Parsers.parse(Int8, line[5])
       gencoord = ndim < 0
       ndim = abs(ndim)
-      nx = parse.(Int64, split(readline(fileID)))
+      nx = Parsers.parse.(Int64, split(readline(fileID)))
       neqpar > 0 && skipline(fileID)
       skipline(fileID)
    elseif type ∈ (:real4, :binary)
@@ -412,7 +412,7 @@ function getascii!(x, w, fileID::IOStream, filehead::NamedTuple)
    ndim = filehead.ndim
    Ids = CartesianIndices(size(x)[1:ndim])
    @inbounds @views for ids in Ids
-      temp = parse.(Float64, split(readline(fileID)))
+      temp = Parsers.parse.(Float64, split(readline(fileID)))
       x[ids,:] = temp[1:ndim]
       w[ids,:] = temp[ndim+1:end]
    end
