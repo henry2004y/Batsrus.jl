@@ -4,6 +4,7 @@ module Batsrus
 # Hongyang Zhou, hyzhou@umich.edu
 
 using Printf, Reexport, Requires
+using Parsers
 using NaturalNeighbours: interpolate, Triangle
 
 export BATLData,
