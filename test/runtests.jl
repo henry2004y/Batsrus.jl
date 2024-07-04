@@ -74,6 +74,10 @@ end
       vars = getvars(bd, ["p"])
       @test size(vars["p"]) == (8,8,8)
    end
+   #TODO: add tecplot tests
+   #@testset "Reading Tecplot" begin
+
+   #end
 
    @testset "Log" begin
       logfilename = joinpath(datapath, "log_n000001.log")
