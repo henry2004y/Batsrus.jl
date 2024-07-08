@@ -2,13 +2,15 @@
 
 """
     getdata2d(bd::BATLData, var::AbstractString, plotrange=[-Inf, Inf, -Inf, Inf],
-       plotinterval=Inf; innermask=false, rbody=1.0)
+       plotinterval=Inf; kwargs...)
 
 Return 2D slices of data `var` from `bd`. If `plotrange` is not set, output data resolution
-is the same as the original. If `innermask==true`, then the inner boundary cells are set to
-NaN. If `innermask == true` but the rbody parameter is not found in the header, we use the
-keyword `rbody` as the inner radius. If `useMatplotlib==false`, a native Julia scattered
-interpolation is used (but is somehow slower than Matplotlib).
+is the same as the original.
+
+# Keyword Arguments 
+- `innermask=false`: Whether to mask the inner boundary with NaN.
+- `rbody=1.0`: Radius of the inner mask. Used when the rbody parameter is not found in the header.
+- `useMatplotlib=true`: Whether to Matplotlib (somehow faster) or NaturalNeighbours for scattered interpolation.
 """
 function getdata2d(bd::BATLData, var::AbstractString,
    plotrange::Vector=[-Inf, Inf, -Inf, Inf], plotinterval::Real=Inf;

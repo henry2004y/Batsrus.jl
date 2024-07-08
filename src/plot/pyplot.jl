@@ -55,15 +55,16 @@ end
 
 
 """
-    plotdata(data, func, args, kwargs...)
+    plotdata(bd, func, args, kwargs...)
 
 Plot the variable from SWMF output.
 
-`plotdata(data, "p", plotmode="contbar")`
+# Examples
+`plotdata(bd, "p", plotmode="contbar")`
 
-`plotdata(data, "p", plotmode="grid")`
+`plotdata(bd, "p", plotmode="grid")`
 
-`plotdata(data, func, plotmode="trimesh", plotrange=[-1.0, 1.0, -1.0, 1.0], plotinterval=0.2)`
+`plotdata(bd, func, plotmode="trimesh", plotrange=[-1.0, 1.0, -1.0, 1.0], plotinterval=0.2)`
 
 # Arguments
 - `bd::BATLData`: BATSRUS data.
@@ -317,13 +318,12 @@ end
 
 
 """
-    cutplot(data, var, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf], dir="x", sequence=1,
-       levels=20)
+    cutplot(data, var, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf], dir="x", sequence=1)
 
-2D plane cut contourf of 3D box data.
+2D plane cut pcolormesh of 3D box data. `sequence` is the index along `dir`.
 """
 function cutplot(bd::BATLData, var::AbstractString, ax=nothing;
-   plotrange=[-Inf,Inf,-Inf,Inf], dir="x", sequence=1, levels::Int=20)
+   plotrange=[-Inf,Inf,-Inf,Inf], dir="x", sequence=1)
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
 
@@ -349,7 +349,7 @@ function cutplot(bd::BATLData, var::AbstractString, ax=nothing;
       cut1, cut2, W = subsurface(cut1, cut2, W, plotrange)
    end
    if isnothing(ax) ax = plt.gca() end
-   c = ax.contourf(cut1, cut2, W, levels)
+   c = ax.pcolormesh(cut1, cut2, W)
 
    title(bd.head.wnames[varIndex_])
 
@@ -473,7 +473,7 @@ end
     contourf(data, var, ax=nothing; levels=0, plotrange=[-Inf,Inf,-Inf,Inf],
        plotinterval=0.1, innermask=false, kwargs...)
 
-Wrapper over `contourf` in matplotlib.
+Wrapper over `contourf` in matplotlib. See [`getdata2d`](@ref) for some related keywords.
 """
 function PyPlot.contourf(bd::BATLData, var::AbstractString, ax=nothing; levels::Int=0,
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...)
