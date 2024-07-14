@@ -5,13 +5,14 @@ module Batsrus
 
 using Printf, Reexport, Requires
 using Parsers
-using NaturalNeighbours: interpolate, Triangle
+using Interpolations: cubic_spline_interpolation, BSpline, Linear, scale, interpolate
+import NaturalNeighbours as NN
 
 export BATLData,
    load, readlogdata, readtecdata, showhead, # io
    getvars, getvar, cutdata, subvolume, subsurface, # select
    Batl, convertTECtoVTU, convertIDLtoVTK, readhead, readtree, getConnectivity, # vtk
-   getdata2d # plot/utility
+   getdata, getdata2d # plot/utility
 
 "Type for the file information."
 struct FileList

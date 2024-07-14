@@ -51,8 +51,11 @@ end
       @test extrema(bd.w) == (-0.79985905f0, 1.9399388f0)
       plotrange = [-10.0, 10.0, -Inf, Inf]
       x, y, w = Batsrus.getdata2d(bd, "rho", plotrange)
-      @test w[1,end] == 0.6848978549242021
+      @test w[1,end] == 0.6848635077476501
       @test bd["B"][:,end,end] == Float32[1.118034, -0.559017, 0.0]
+      # Linear interpolation at a given point
+      d = getdata(bd, "rho", Float32[0.0, 0.0])
+      @test d == 0.6936918f0
    end
 
    @testset "Reading 2D unstructured" begin

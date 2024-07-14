@@ -1,7 +1,6 @@
 # Plotting functionalities.
 
 using PyPlot
-using Interpolations: cubic_spline_interpolation
 
 export plotdata, plotlogdata, plot, scatter, contour, contourf, plot_surface, tripcolor,
    tricontourf, plot_trisurf, streamplot, streamslice, quiver, cutplot, pcolormesh

@@ -58,9 +58,9 @@ function getdata2d(bd::BATLData, var::AbstractString,
             xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
             yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
          end
-
-         interp = @views cubic_spline_interpolation((xrange, yrange), w[:,:,varIndex_])
-         Wi = [interp(i, j) for j in yi, i in xi]
+         itp = @views scale(interpolate(w[:,:,varIndex_], BSpline(Linear())),
+            (xrange, yrange))
+         Wi = [itp(i, j) for j in yi, i in xi]
       end
    end
 
@@ -128,8 +128,24 @@ function interpolate2d_generalized_coords(X::T, Y::T, W::T,
    {T<:AbstractVector}
    xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
    yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
-   itp = interpolate(X, Y, W)
-   Wi = [itp(x, y; method=Triangle()) for y in yi, x in xi]::Matrix{eltype(W)}
+   itp = NN.interpolate(X, Y, W)
+   Wi = [itp(x, y; method=NN.Triangle()) for y in yi, x in xi]::Matrix{eltype(W)}
 
    xi, yi, Wi
+end
+
+"""
+    getcell(meta::MetaVLSV, location:::AbstractVector{<:AbstractFloat}) -> Int
+
+Return cell ID containing the given spatial `location` in meter, excluding domain boundaries.
+"""
+function getdata(bd::BATLData, var::AbstractString, loc::AbstractVector{<:AbstractFloat})
+   @assert !bd.head.gencoord "Only accept Structured grid!"
+   x, w = bd.x, bd.w
+   varIndex_ = findindex(bd, var)
+   v = @view w[:,:,varIndex_]
+   xrange = range(x[1,1,1], x[end,1,1], length=size(x,1))
+   yrange = range(x[1,1,2], x[1,end,2], length=size(x,2))
+   itp = scale(interpolate(v, BSpline(Linear())), (xrange, yrange))
+   Wi = itp(loc...)
 end
