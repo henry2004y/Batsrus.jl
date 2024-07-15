@@ -167,9 +167,9 @@ function readtecdata(file::AbstractString; verbose::Bool=false)
    data = Array{Float32,2}(undef, length(VARS), nNode)
 
    if nDim == 3
-	   connectivity = Array{Int32,2}(undef,8,nCell)
+	   connectivity = Array{Int32,2}(undef, 8, nCell)
    elseif nDim == 2
-	   connectivity = Array{Int32,2}(undef,4,nCell)
+	   connectivity = Array{Int32,2}(undef, 4, nCell)
    end
 
    IsBinary = false
@@ -432,9 +432,9 @@ end
 
 "Read binary format coordinates and data values."
 function getbinary!(x::Array{T, 2}, w, fileID::IOStream) where T
-   dimlast = 2
    read!(fileID, x)
    skip(fileID, 2*TAG)
+   dimlast = 2
    @inbounds for iw in axes(w, dimlast)
       read!(fileID, selectdim(w, dimlast, iw))
       skip(fileID, 2*TAG)
@@ -444,9 +444,9 @@ function getbinary!(x::Array{T, 2}, w, fileID::IOStream) where T
 end
 
 function getbinary!(x::Array{T, 3}, w, fileID::IOStream) where T
-   dimlast = 3
    read!(fileID, x)
    skip(fileID, 2*TAG)
+   dimlast = 3
    @inbounds for iw in axes(w, dimlast)
       read!(fileID, selectdim(w, dimlast, iw))
       skip(fileID, 2*TAG)
@@ -456,9 +456,9 @@ function getbinary!(x::Array{T, 3}, w, fileID::IOStream) where T
 end
 
 function getbinary!(x::Array{T, 4}, w, fileID::IOStream) where T
-   dimlast = 4
    read!(fileID, x)
    skip(fileID, 2*TAG)
+   dimlast = 4
    @inbounds for iw in axes(w, dimlast)
       read!(fileID, selectdim(w, dimlast, iw))
       skip(fileID, 2*TAG)
