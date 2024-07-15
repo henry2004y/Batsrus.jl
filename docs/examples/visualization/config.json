@@ -2,6 +2,7 @@
    "theme": "nocoverlist",
    "order": [
      "demo_animate_1d.md",
+     "demo_animate_1d_lines.md",
      "demo_animate_2d.md"
    ]
 }
