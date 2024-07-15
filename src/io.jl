@@ -21,7 +21,7 @@ function load(file::AbstractString; npict::Int=1, verbose::Bool=false)
    seekstart(fileID) # Rewind to start
 
    ## Read data from files
-   # Skip npict-1 snapshots (because we only want the npict-th snapshot)
+   # Skip npict-1 snapshots (since we only want the npict-th snapshot)
    skip(fileID, pictsize*(npict-1))
 
    filehead = getfilehead(fileID, filelist)
@@ -29,12 +29,12 @@ function load(file::AbstractString; npict::Int=1, verbose::Bool=false)
    # Read data
    if filelist.type == :ascii
       x, w = allocateBuffer(filehead, Float64) # why Float64?
-      getascii!(x, w, fileID, filehead)
+      getascii!(x, w, fileID, filehead.ndim)
    else
       skip(fileID, TAG) # skip record start tag
       T = filelist.type == :real4 ? Float32 : Float64
       x, w = allocateBuffer(filehead, T)
-      getbinary!(x, w, fileID, filehead)
+      getbinary!(x, w, fileID, filehead.ndim)
    end
 
    close(fileID)
@@ -42,10 +42,6 @@ function load(file::AbstractString; npict::Int=1, verbose::Bool=false)
    #setunits(filehead,"")
 
 	data = BATLData{Int(filehead.ndim), eltype(w)}(filehead, x, w, filelist)
-
-   verbose && @info "Finished reading $(filelist.name)"
-
-   data
 end
 
 "Read information from log file."
@@ -271,8 +267,7 @@ function getfilehead(fileID::IOStream, filelist::FileList)
 
    if type == :ascii
       headline = readline(fileID)
-      line = readline(fileID)
-      line = split(line)
+      line = readline(fileID) |> split
       it = Parsers.parse(Int, line[1])
       t = Parsers.parse(Float64, line[2])
       ndim = Parsers.parse(Int8, line[3])
@@ -367,11 +362,9 @@ function getfilesize(fileID::IOStream, type::Symbol, lenstr::Int32)
       read(fileID, lenstr)
       skip(fileID, TAG)
    end
-
    # Header length
    pointer1 = position(fileID)
    headlen = pointer1 - pointer0
-
    # Calculate the snapshot size = header + data + recordmarks
    nxs = prod(nx)
    pictsize =
@@ -408,8 +401,7 @@ function allocateBuffer(filehead::NamedTuple, T::DataType)
 end
 
 "Read ascii format coordinates and data values."
-function getascii!(x, w, fileID::IOStream, filehead::NamedTuple)
-   ndim = filehead.ndim
+function getascii!(x, w, fileID::IOStream, ndim)
    Ids = CartesianIndices(size(x)[1:ndim])
    @inbounds @views for ids in Ids
       temp = Parsers.parse.(Float64, split(readline(fileID)))
@@ -421,8 +413,8 @@ function getascii!(x, w, fileID::IOStream, filehead::NamedTuple)
 end
 
 "Read binary format coordinates and data values."
-function getbinary!(x, w, fileID::IOStream, filehead::NamedTuple)
-   dimlast = filehead.ndim + 1
+function getbinary!(x, w, fileID::IOStream, ndim)
+   dimlast = ndim + 1
    read!(fileID, x)
    skip(fileID, 2*TAG)
    @inbounds for iw in axes(w, dimlast)
