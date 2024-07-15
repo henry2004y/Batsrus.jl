@@ -172,17 +172,17 @@ function readtecdata(file::AbstractString; verbose::Bool=false)
 	   connectivity = Array{Int32,2}(undef, 4, nCell)
    end
 
-   IsBinary = false
+   isBinary = false
    try
       Parsers.parse.(Float32, split(readline(f)))
    catch
-      IsBinary = true
+      isBinary = true
       verbose && @info "reading binary file"
    end
 
    seek(f, pt0)
 
-   if IsBinary
+   if isBinary
 	   @inbounds for i in 1:nNode
 		   read!(f, @view data[:,i])
 	   end
@@ -320,8 +320,8 @@ end
 
 function skipline(s::IO)
    while !eof(s)
-       c = read(s, Char)
-       c == '\n' && break
+      c = read(s, Char)
+      c == '\n' && break
    end
 
    return
@@ -406,8 +406,6 @@ function getascii!(x::Array{T, 2}, w, fileID::IOStream) where T
       x[id] = temp[1]
       w[id,:] = temp[2:end]
    end
-
-   return
 end
 
 function getascii!(x::Array{T, 3}, w, fileID::IOStream) where T
@@ -416,8 +414,6 @@ function getascii!(x::Array{T, 3}, w, fileID::IOStream) where T
       x[id,:] = temp[1:2]
       w[id,:] = temp[3:end]
    end
-
-   return
 end
 
 function getascii!(x::Array{T, 4}, w, fileID::IOStream) where T
@@ -426,8 +422,6 @@ function getascii!(x::Array{T, 4}, w, fileID::IOStream) where T
       x[id,:] = temp[1:3]
       w[id,:] = temp[4:end]
    end
-
-   return
 end
 
 "Read binary format coordinates and data values."
@@ -439,8 +433,6 @@ function getbinary!(x::Array{T, 2}, w, fileID::IOStream) where T
       read!(fileID, selectdim(w, dimlast, iw))
       skip(fileID, 2*TAG)
    end
-
-   return
 end
 
 function getbinary!(x::Array{T, 3}, w, fileID::IOStream) where T
@@ -451,8 +443,6 @@ function getbinary!(x::Array{T, 3}, w, fileID::IOStream) where T
       read!(fileID, selectdim(w, dimlast, iw))
       skip(fileID, 2*TAG)
    end
-
-   return
 end
 
 function getbinary!(x::Array{T, 4}, w, fileID::IOStream) where T
@@ -463,8 +453,6 @@ function getbinary!(x::Array{T, 4}, w, fileID::IOStream) where T
       read!(fileID, selectdim(w, dimlast, iw))
       skip(fileID, 2*TAG)
    end
-
-   return
 end
 
 """
