@@ -21,31 +21,26 @@ function load(file::AbstractString; npict::Int=1, verbose::Bool=false)
    seekstart(fileID) # Rewind to start
 
    ## Read data from files
-   # Skip npict-1 snapshots (because we only want the npict-th snapshot)
+   # Skip npict-1 snapshots (since we only want the npict-th snapshot)
    skip(fileID, pictsize*(npict-1))
 
    filehead = getfilehead(fileID, filelist)
-
    # Read data
    if filelist.type == :ascii
       x, w = allocateBuffer(filehead, Float64) # why Float64?
-      getascii!(x, w, fileID, filehead)
+      getascii!(x, w, fileID)
    else
       skip(fileID, TAG) # skip record start tag
       T = filelist.type == :real4 ? Float32 : Float64
       x, w = allocateBuffer(filehead, T)
-      getbinary!(x, w, fileID, filehead)
+      getbinary!(x, w, fileID)
    end
 
    close(fileID)
 
    #setunits(filehead,"")
 
-	data = BATLData(filehead, x, w, filelist)
-
-   verbose && @info "Finished reading $(filelist.name)"
-
-   data
+	data = BATLData{Int(filehead.ndim), eltype(w)}(filehead, x, w, filelist)
 end
 
 "Read information from log file."
@@ -172,22 +167,22 @@ function readtecdata(file::AbstractString; verbose::Bool=false)
    data = Array{Float32,2}(undef, length(VARS), nNode)
 
    if nDim == 3
-	   connectivity = Array{Int32,2}(undef,8,nCell)
+	   connectivity = Array{Int32,2}(undef, 8, nCell)
    elseif nDim == 2
-	   connectivity = Array{Int32,2}(undef,4,nCell)
+	   connectivity = Array{Int32,2}(undef, 4, nCell)
    end
 
-   IsBinary = false
+   isBinary = false
    try
       Parsers.parse.(Float32, split(readline(f)))
    catch
-      IsBinary = true
+      isBinary = true
       verbose && @info "reading binary file"
    end
 
    seek(f, pt0)
 
-   if IsBinary
+   if isBinary
 	   @inbounds for i in 1:nNode
 		   read!(f, @view data[:,i])
 	   end
@@ -271,8 +266,7 @@ function getfilehead(fileID::IOStream, filelist::FileList)
 
    if type == :ascii
       headline = readline(fileID)
-      line = readline(fileID)
-      line = split(line)
+      line = readline(fileID) |> split
       it = Parsers.parse(Int, line[1])
       t = Parsers.parse(Float64, line[2])
       ndim = Parsers.parse(Int8, line[3])
@@ -326,8 +320,8 @@ end
 
 function skipline(s::IO)
    while !eof(s)
-       c = read(s, Char)
-       c == '\n' && break
+      c = read(s, Char)
+      c == '\n' && break
    end
 
    return
@@ -367,11 +361,9 @@ function getfilesize(fileID::IOStream, type::Symbol, lenstr::Int32)
       read(fileID, lenstr)
       skip(fileID, TAG)
    end
-
    # Header length
    pointer1 = position(fileID)
    headlen = pointer1 - pointer0
-
    # Calculate the snapshot size = header + data + recordmarks
    nxs = prod(nx)
    pictsize =
@@ -408,29 +400,59 @@ function allocateBuffer(filehead::NamedTuple, T::DataType)
 end
 
 "Read ascii format coordinates and data values."
-function getascii!(x, w, fileID::IOStream, filehead::NamedTuple)
-   ndim = filehead.ndim
-   Ids = CartesianIndices(size(x)[1:ndim])
-   @inbounds @views for ids in Ids
+function getascii!(x::Array{T, 2}, w, fileID::IOStream) where T
+   @inbounds @views for id in axes(x, 1)
       temp = Parsers.parse.(Float64, split(readline(fileID)))
-      x[ids,:] = temp[1:ndim]
-      w[ids,:] = temp[ndim+1:end]
+      x[id] = temp[1]
+      w[id,:] = temp[2:end]
    end
+end
 
-   return
+function getascii!(x::Array{T, 3}, w, fileID::IOStream) where T
+   @inbounds @views for id in CartesianIndices(size(x)[1:2])
+      temp = Parsers.parse.(Float64, split(readline(fileID)))
+      x[id,:] = temp[1:2]
+      w[id,:] = temp[3:end]
+   end
+end
+
+function getascii!(x::Array{T, 4}, w, fileID::IOStream) where T
+   @inbounds @views for id in CartesianIndices(size(x)[1:3])
+      temp = Parsers.parse.(Float64, split(readline(fileID)))
+      x[id,:] = temp[1:3]
+      w[id,:] = temp[4:end]
+   end
 end
 
 "Read binary format coordinates and data values."
-function getbinary!(x, w, fileID::IOStream, filehead::NamedTuple)
-   dimlast = filehead.ndim + 1
+function getbinary!(x::Array{T, 2}, w, fileID::IOStream) where T
    read!(fileID, x)
    skip(fileID, 2*TAG)
+   dimlast = 2
    @inbounds for iw in axes(w, dimlast)
       read!(fileID, selectdim(w, dimlast, iw))
       skip(fileID, 2*TAG)
    end
+end
 
-   return
+function getbinary!(x::Array{T, 3}, w, fileID::IOStream) where T
+   read!(fileID, x)
+   skip(fileID, 2*TAG)
+   dimlast = 3
+   @inbounds for iw in axes(w, dimlast)
+      read!(fileID, selectdim(w, dimlast, iw))
+      skip(fileID, 2*TAG)
+   end
+end
+
+function getbinary!(x::Array{T, 4}, w, fileID::IOStream) where T
+   read!(fileID, x)
+   skip(fileID, 2*TAG)
+   dimlast = 4
+   @inbounds for iw in axes(w, dimlast)
+      read!(fileID, selectdim(w, dimlast, iw))
+      skip(fileID, 2*TAG)
+   end
 end
 
 """

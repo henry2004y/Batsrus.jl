@@ -27,6 +27,12 @@ head, data = readlogdata(logfilename)
 
 ### Data Extraction
 
+- Checking variable range
+
+```julia
+get_var_range(bd, "rho")
+```
+
 - Raw variables
 
 ```julia
@@ -39,6 +45,21 @@ bd["rho"]
 ```julia
 v = getvars(bd, ["Bx", "By", "Bz"])
 Bmag = bd["Bmag"]
+```
+
+- Extracting data at a given location
+
+```julia
+loc = Float32[0.0, 0.0] # The type determines the output type
+d = interp1d(bd, "rho", loc)
+```
+
+- Extracting data along a given line
+
+```julia
+point1 = Float32[-10.0, -1.0]
+point2 = Float32[10.0, 1.0]
+w = slice1d(bd, "rho", point1, point2)
 ```
 
 Here is a full list of predefined derived quantities:

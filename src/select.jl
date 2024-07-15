@@ -8,7 +8,6 @@ The returned 2D data lies in the `sequence` plane from - to + in `dir`.
 """
 function cutdata(bd::BATLData, var::AbstractString;
    plotrange=[-Inf,Inf,-Inf,Inf], dir::String="x", sequence::Int=1)
-   x, w = bd.x, bd.w
    var_ = findfirst(x->x==lowercase(var), lowercase.(bd.head.wnames))
    isempty(var_) && error("$(var) not found in header variables!")
 
@@ -20,9 +19,9 @@ function cutdata(bd::BATLData, var::AbstractString;
       dim, d1, d2 = 3, 1, 2
    end
 
-   cut1 = selectdim(view(x,:,:,:,d1), dim, sequence)
-   cut2 = selectdim(view(x,:,:,:,d2), dim, sequence)
-   W = selectdim(view(w,:,:,:,var_), dim, sequence)
+   cut1 = selectdim(view(bd.x,:,:,:,d1), dim, sequence)
+   cut2 = selectdim(view(bd.x,:,:,:,d2), dim, sequence)
+   W = selectdim(view(bd.w,:,:,:,var_), dim, sequence)
 
    if !all(isinf.(plotrange))
       cut1, cut2, W = subsurface(cut1, cut2, W, plotrange)
@@ -175,13 +174,13 @@ bd["rho"]
 
 See also: [`getvars`](@ref).
 """
-function getvar(bd::BATLData, var::AbstractString)
+function getvar(bd::BATLData{ndim, T}, var::AbstractString) where {ndim, T}
    if var in keys(variables_predefined)
       w = variables_predefined[var](bd)
    else
       var_ = findfirst(x->x==lowercase(var), lowercase.(bd.head.wnames))
       isnothing(var_) && error("$var not found in file header variables!")
-      w = selectdim(bd.w, bd.head.ndim+1, var_)
+      w = selectdim(bd.w, ndim+1, var_)
    end
 
    w
@@ -191,14 +190,14 @@ end
    getvar(bd, var)
 
 """
-    getvars(bd::BATLData, Names::Vector) -> Dict
+    getvars(bd::BATLData, names::Vector) -> Dict
 
-Return variables' data as a dictionary from string vector.
+Return variables' data as a dictionary from vector of `names`.
 See also: [`getvar`](@ref).
 """
-function getvars(bd::BATLData{U}, Names::Vector{T}) where {U, T<:AbstractString}
+function getvars(bd::BATLData{ndim, U}, names::Vector{T}) where {ndim, U, T<:AbstractString}
    dict = Dict{T, Array{U}}()
-   for name in Names
+   for name in names
       dict[name] = getvar(bd, name)
    end
 
@@ -206,11 +205,11 @@ function getvars(bd::BATLData{U}, Names::Vector{T}) where {U, T<:AbstractString}
 end
 
 "Construct vectors from scalar components."
-function _fill_vector_from_scalars(bd::BATLData, vstr1, vstr2, vstr3)
+function _fill_vector_from_scalars(bd::BATLData{ndim, T}, vstr1, vstr2, vstr3) where {ndim, T}
    v1 = getvar(bd, vstr1)
    v2 = getvar(bd, vstr2)
    v3 = getvar(bd, vstr3)
-   v = Array{eltype(v1), ndims(v1)+1}(undef, 3, size(v1)...)
+   v = Array{T, ndims(v1)+1}(undef, 3, size(v1)...)
 
    Rpost = CartesianIndices(size(v1))
    for Ipost in Rpost

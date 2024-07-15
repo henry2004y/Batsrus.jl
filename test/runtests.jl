@@ -50,16 +50,26 @@ end
       @test extrema(bd.x) == (-127.5f0, 127.5f0)
       @test extrema(bd.w) == (-0.79985905f0, 1.9399388f0)
       plotrange = [-10.0, 10.0, -Inf, Inf]
-      x, y, w = Batsrus.getdata2d(bd, "rho", plotrange)
-      @test w[1,end] == 0.6848978549242021
+      x, y, w = slice2d(bd, "rho", plotrange)
+      @test w[1,end] == 0.6848635077476501
       @test bd["B"][:,end,end] == Float32[1.118034, -0.559017, 0.0]
+      # Linear interpolation at a given point
+      d = interp1d(bd, "rho", Float32[0.0, 0.0])
+      @test d == 0.6936918f0
+      # Linear interpolation along a line
+      point1 = Float32[-10.0, -1.0]
+      point2 = Float32[10.0, 1.0]
+      w = slice1d(bd, "rho", point1, point2)
+      @test sum(w) == 10.676028f0
+
+      @test get_var_range(bd, "rho") == (0.11626893f0, 1.0f0)
    end
 
    @testset "Reading 2D unstructured" begin
       file = "bx0_mhd_6_t00000100_n00000352.out"
       bd = load(joinpath(datapath, file))
       plotrange = [-Inf, Inf, -Inf, Inf]
-      x, y, w = Batsrus.getdata2d(bd, "rho", plotrange, useMatplotlib=false)
+      x, y, w = slice2d(bd, "rho", plotrange, useMatplotlib=false)
       @test w[1,2] == 5.000018304080387
    end
 
@@ -68,8 +78,7 @@ end
       bd = load(joinpath(datapath, file))
       plotrange = [-50.0, 50.0, -0.5, 0.5]
       X, Z, p = cutdata(bd, "p"; dir="y", sequence=1, plotrange)
-      @test p[1] ≈ 0.560976f0
-      @test p[2] ≈ 0.53704995f0
+      @test p[1] ≈ 0.560976f0 && p[2] ≈ 0.53704995f0
       @test size(bd["p"]) == (8,8,8)
       vars = getvars(bd, ["p"])
       @test size(vars["p"]) == (8,8,8)
@@ -96,8 +105,8 @@ end
       filetag = joinpath(datapath, "3d_mhd_amr/3d__mhd_1_t00000000_n00000000")
       batl = Batl(readhead(filetag*".info"), readtree(filetag)...)
       # local block index check
-      @test Batsrus.find_grid_block(batl, [1.0, 0.0, 0.0]) == 4
-      @test Batsrus.find_grid_block(batl, [100.0, 0.0, 0.0]) == -100
+      @test Batsrus.find_grid_block(batl, [1.0, 0.0, 0.0]) == 4 &&
+         Batsrus.find_grid_block(batl, [100.0, 0.0, 0.0]) == -100
       connectivity = getConnectivity(batl)
       sha_str = bytes2hex(sha256(string(connectivity)))
       @test sha_str == "c6c5a65a46d86a9ba4096228c1516f89275e45e295cd305eb70c281a770ede74"
