@@ -25,23 +25,22 @@ function load(file::AbstractString; npict::Int=1, verbose::Bool=false)
    skip(fileID, pictsize*(npict-1))
 
    filehead = getfilehead(fileID, filelist)
-   ndim = Int(filehead.ndim)
    # Read data
    if filelist.type == :ascii
       x, w = allocateBuffer(filehead, Float64) # why Float64?
-      getascii!(x, w, fileID, Val(ndim))
+      getascii!(x, w, fileID)
    else
       skip(fileID, TAG) # skip record start tag
       T = filelist.type == :real4 ? Float32 : Float64
       x, w = allocateBuffer(filehead, T)
-      getbinary!(x, w, fileID, Val(ndim))
+      getbinary!(x, w, fileID)
    end
 
    close(fileID)
 
    #setunits(filehead,"")
 
-	data = BATLData{ndim, eltype(w)}(filehead, x, w, filelist)
+	data = BATLData{Int(filehead.ndim), eltype(w)}(filehead, x, w, filelist)
 end
 
 "Read information from log file."
@@ -401,7 +400,7 @@ function allocateBuffer(filehead::NamedTuple, T::DataType)
 end
 
 "Read ascii format coordinates and data values."
-function getascii!(x, w, fileID::IOStream, ::Val{1})
+function getascii!(x::Array{T, 2}, w, fileID::IOStream) where T
    @inbounds @views for id in axes(x, 1)
       temp = Parsers.parse.(Float64, split(readline(fileID)))
       x[id] = temp[1]
@@ -411,8 +410,8 @@ function getascii!(x, w, fileID::IOStream, ::Val{1})
    return
 end
 
-function getascii!(x, w, fileID::IOStream, ::Val{2})
-   @inbounds @views for id in CartesianIndices(size(x))
+function getascii!(x::Array{T, 3}, w, fileID::IOStream) where T
+   @inbounds @views for id in CartesianIndices(size(x)[1:2])
       temp = Parsers.parse.(Float64, split(readline(fileID)))
       x[id,:] = temp[1:2]
       w[id,:] = temp[3:end]
@@ -421,8 +420,8 @@ function getascii!(x, w, fileID::IOStream, ::Val{2})
    return
 end
 
-function getascii!(x, w, fileID::IOStream, ::Val{3})
-   @inbounds @views for id in CartesianIndices(size(x))
+function getascii!(x::Array{T, 4}, w, fileID::IOStream) where T
+   @inbounds @views for id in CartesianIndices(size(x)[1:3])
       temp = Parsers.parse.(Float64, split(readline(fileID)))
       x[id,:] = temp[1:3]
       w[id,:] = temp[4:end]
@@ -432,7 +431,7 @@ function getascii!(x, w, fileID::IOStream, ::Val{3})
 end
 
 "Read binary format coordinates and data values."
-function getbinary!(x, w, fileID::IOStream, ::Val{1})
+function getbinary!(x::Array{T, 2}, w, fileID::IOStream) where T
    dimlast = 2
    read!(fileID, x)
    skip(fileID, 2*TAG)
@@ -444,7 +443,7 @@ function getbinary!(x, w, fileID::IOStream, ::Val{1})
    return
 end
 
-function getbinary!(x, w, fileID::IOStream, ::Val{2})
+function getbinary!(x::Array{T, 3}, w, fileID::IOStream) where T
    dimlast = 3
    read!(fileID, x)
    skip(fileID, 2*TAG)
@@ -456,7 +455,7 @@ function getbinary!(x, w, fileID::IOStream, ::Val{2})
    return
 end
 
-function getbinary!(x, w, fileID::IOStream, ::Val{3})
+function getbinary!(x::Array{T, 4}, w, fileID::IOStream) where T
    dimlast = 4
    read!(fileID, x)
    skip(fileID, 2*TAG)
