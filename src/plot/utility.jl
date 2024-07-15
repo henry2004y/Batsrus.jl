@@ -103,11 +103,7 @@ function meshgrid(x, y)
 end
 
 @inline function hasunit(bd::BATLData)
-   if startswith(bd.head.headline, "normalized")
-      return false
-   else
-      return true
-   end
+   startswith(bd.head.headline, "normalized") ? false : true
 end
 
 "Adjust 2D plot ranges."

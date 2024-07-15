@@ -3,19 +3,17 @@
 using RecipesBase
 
 # Build a recipe which acts on a custom type.
-@recipe function f(bd::BATLData{1, T}, var::AbstractString;
-   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1) where {T}
+@recipe function f(bd::BATLData{1, T}, var::AbstractString) where {T}
    hasunits = hasunit(bd)
 
-   VarIndex_ = findindex(bd, var)
    if hasunits
       unitx = getunit(bd, bd.head.variables[1])
       unitw = getunit(bd, var)
       x = bd.x .* unitx
-      y = bd.w[:,VarIndex_] .* unitw
+      y = getview(bd, var) .* unitw
    else
       x = bd.x
-      y = @view bd.w[:,VarIndex_]
+      y = getview(bd, var)
    end
 
    @series begin
