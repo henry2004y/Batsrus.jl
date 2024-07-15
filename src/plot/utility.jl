@@ -1,7 +1,7 @@
 # Utility functions for plotting.
 
 """
-    getdata2d(bd::BATLData, var::AbstractString, plotrange=[-Inf, Inf, -Inf, Inf],
+    slice2d(bd::BATLData, var::AbstractString, plotrange=[-Inf, Inf, -Inf, Inf],
        plotinterval=Inf; kwargs...)
 
 Return 2D slices of data `var` from `bd`. If `plotrange` is not set, output data resolution
@@ -12,12 +12,10 @@ is the same as the original.
 - `rbody=1.0`: Radius of the inner mask. Used when the rbody parameter is not found in the header.
 - `useMatplotlib=true`: Whether to Matplotlib (somehow faster) or NaturalNeighbours for scattered interpolation.
 """
-function getdata2d(bd::BATLData, var::AbstractString,
+function slice2d(bd::BATLData{2, T}, var::AbstractString,
    plotrange::Vector=[-Inf, Inf, -Inf, Inf], plotinterval::Real=Inf;
-   innermask::Bool=false, rbody::Real=1.0, useMatplotlib::Bool=true)
-   x, w, ndim = bd.x, bd.w, bd.head.ndim
-   @assert ndim == 2 "data must be in 2D!"
-
+   innermask::Bool=false, rbody::Real=1.0, useMatplotlib::Bool=true) where {T}
+   x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
 
    if bd.head.gencoord # Generalized coordinates
@@ -75,6 +73,7 @@ function getdata2d(bd::BATLData, var::AbstractString,
             end
          end
       else
+         ndim = 2
          ParamIndex_ = varIndex_ - ndim - bd.head.nw
          @inbounds @simd for i in CartesianIndices(Wi)
             if xi[i[1]]^2 + yi[i[2]]^2 < bd.head.eqpar[ParamIndex_]^2
@@ -82,7 +81,6 @@ function getdata2d(bd::BATLData, var::AbstractString,
             end
          end
       end
-
    end
 
    xi, yi, Wi
@@ -124,8 +122,7 @@ end
 
 "Perform Triangle interpolation of 2D data `W` on grid `X`, `Y`."
 function interpolate2d_generalized_coords(X::T, Y::T, W::T,
-   plotrange::Vector{<:AbstractFloat}, plotinterval::Real) where
-   {T<:AbstractVector}
+   plotrange::Vector{<:AbstractFloat}, plotinterval::Real) where {T<:AbstractVector}
    xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
    yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
    itp = NN.interpolate(X, Y, W)
@@ -135,17 +132,57 @@ function interpolate2d_generalized_coords(X::T, Y::T, W::T,
 end
 
 """
-    getcell(meta::MetaVLSV, location:::AbstractVector{<:AbstractFloat}) -> Int
+    interp1d(bd::BATLData, var::AbstractString, loc::AbstractVector{<:AbstractFloat})
 
-Return cell ID containing the given spatial `location` in meter, excluding domain boundaries.
+Interpolate `var` at spatial point `loc` in `bd`.
 """
-function getdata(bd::BATLData, var::AbstractString, loc::AbstractVector{<:AbstractFloat})
-   @assert !bd.head.gencoord "Only accept Structured grid!"
-   x, w = bd.x, bd.w
-   varIndex_ = findindex(bd, var)
-   v = @view w[:,:,varIndex_]
+function interp1d(bd::BATLData{2, T}, var::AbstractString, loc::AbstractVector{<:AbstractFloat}) where {T}
+   @assert !bd.head.gencoord "Only accept structured grids!"
+
+   x = bd.x
+   v = getview(bd, var)
    xrange = range(x[1,1,1], x[end,1,1], length=size(x,1))
    yrange = range(x[1,1,2], x[1,end,2], length=size(x,2))
    itp = scale(interpolate(v, BSpline(Linear())), (xrange, yrange))
+
    Wi = itp(loc...)
 end
+
+"""
+    slice1d(bd::BATLData, var::AbstractString, point1::Vector, point2::Vecto)
+
+Interpolate `var` along a line from `point1` to `point2` in `bd`.
+"""
+function slice1d(bd::BATLData{2, T}, var::AbstractString, point1::Vector, point2::Vector) where {T}
+   @assert !bd.head.gencoord "Only accept structured grids!"
+
+   x = bd.x
+   v = getview(bd, var)
+   xrange = range(x[1,1,1], x[end,1,1], length=size(x,1))
+   yrange = range(x[1,1,2], x[1,end,2], length=size(x,2))
+   itp = scale(interpolate(v, BSpline(Linear())), (xrange, yrange))
+   Δestimate = √(xrange.step^2 + yrange.step^2)
+   l = √(sum((point2 .- point1).^2))
+   ns = Int(l ÷ Δestimate)
+   dx = (point2[1] - point1[1]) / ns
+   dy = (point2[2] - point1[2]) / ns
+   points = [(point1[1] + i*dx, point1[2] + i*dy) for i in 0:ns]
+
+   Wi = [itp(loc...) for loc in points]
+end
+
+"Return view of variable `var` in `bd`."
+function getview(bd::BATLData{1, T}, var) where T
+   varIndex_ = findindex(bd, var)
+
+   v = @view bd.w[:,varIndex_]
+end
+
+function getview(bd::BATLData{2, T}, var) where T
+   varIndex_ = findindex(bd, var)
+
+   v = @view bd.w[:,:,varIndex_]
+end
+
+"Return value range of `var` in `bd`."
+get_var_range(bd::BATLData, var) = getview(bd, var) |> extrema

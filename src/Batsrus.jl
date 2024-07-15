@@ -12,7 +12,7 @@ export BATLData,
    load, readlogdata, readtecdata, showhead, # io
    getvars, getvar, cutdata, subvolume, subsurface, # select
    Batl, convertTECtoVTU, convertIDLtoVTK, readhead, readtree, getConnectivity, # vtk
-   getdata, getdata2d # plot/utility
+   interp1d, slice1d, slice2d, get_var_range # plot/utility
 
 "Type for the file information."
 struct FileList
@@ -31,7 +31,7 @@ struct FileList
 end
 
 "Primary Batsrus data storage type."
-struct BATLData{T<:AbstractFloat}
+struct BATLData{dim, T<:AbstractFloat}
    "header information"
    head::NamedTuple
    "grid"

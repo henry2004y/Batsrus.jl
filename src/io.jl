@@ -41,7 +41,7 @@ function load(file::AbstractString; npict::Int=1, verbose::Bool=false)
 
    #setunits(filehead,"")
 
-	data = BATLData(filehead, x, w, filelist)
+	data = BATLData{Int(filehead.ndim), eltype(w)}(filehead, x, w, filelist)
 
    verbose && @info "Finished reading $(filelist.name)"
 
