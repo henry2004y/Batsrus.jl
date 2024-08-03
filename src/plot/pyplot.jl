@@ -651,10 +651,19 @@ end
     streamplot(data, var, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1,
        kwargs...)
 
-Wrapper over `streamplot` in matplotlib .
+Wrapper over `streamplot` in matplotlib.
 """
 function PyPlot.streamplot(bd::BATLData{2, T}, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, kwargs...) where T
+   xi, yi, v1, v2 = _getvector(bd, var; plotrange, plotinterval)
+
+   if isnothing(ax) ax = plt.gca() end
+
+   ax.streamplot(xi, yi, v1, v2; kwargs...)
+end
+
+function _getvector(bd::BATLData{2, T}, var::AbstractString;
+   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1) where T
    x, w = bd.x, bd.w
    varstream = split(var, ";")
    wnames = lowercase.(bd.head.wnames)
@@ -701,9 +710,8 @@ function PyPlot.streamplot(bd::BATLData{2, T}, var::AbstractString, ax=nothing;
          v2 = [interp2(i, j) for j in yi, i in xi]
       end
    end
-   if isnothing(ax) ax = plt.gca() end
 
-   ax.streamplot(xi, yi, v1, v2; kwargs...)
+   xi, yi, v1, v2
 end
 
 """

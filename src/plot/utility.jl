@@ -122,6 +122,7 @@ function interpolate2d_generalized_coords(X::T, Y::T, W::T,
    xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
    yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
    itp = NN.interpolate(X, Y, W)
+   #TODO Interpolate as a whole using predicates with multithreading
    Wi = [itp(x, y; method=NN.Triangle()) for y in yi, x in xi]::Matrix{eltype(W)}
 
    xi, yi, Wi
