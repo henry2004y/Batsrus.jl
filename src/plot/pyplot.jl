@@ -654,7 +654,7 @@ end
 Wrapper over `streamplot` in matplotlib.
 """
 function PyPlot.streamplot(bd::BATLData{2, T}, var::AbstractString, ax=nothing;
-   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, kwargs...) where T
+   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=Inf, kwargs...) where T
    xi, yi, v1, v2 = _getvector(bd, var; plotrange, plotinterval)
 
    if isnothing(ax) ax = plt.gca() end
@@ -663,13 +663,15 @@ function PyPlot.streamplot(bd::BATLData{2, T}, var::AbstractString, ax=nothing;
 end
 
 function _getvector(bd::BATLData{2, T}, var::AbstractString;
-   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1) where T
+   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=Inf) where T
    x, w = bd.x, bd.w
    varstream = split(var, ";")
    wnames = lowercase.(bd.head.wnames)
    var1_ = findfirst(x->x==lowercase(varstream[1]), wnames)
    var2_ = findfirst(x->x==lowercase(varstream[2]), wnames)
-
+   if isinf(plotinterval)
+      plotinterval = (x[end,1,1] - x[1,1,1]) / size(x, 1)
+   end
    if bd.head.gencoord # generalized coordinates
       X, Y = vec(x[:,:,1]), vec(x[:,:,2])
       adjust_plotrange!(plotrange, extrema(X), extrema(Y))
