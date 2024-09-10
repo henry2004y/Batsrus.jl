@@ -110,12 +110,12 @@ function create_figure()
    axs, ls
 end
 
-function slice1d(bd, var, icol)
-   selectdim(bd[var], 2, icol)
+function slice1d_avg(bd, var, dir::Int=2)
+   mean(bd[var], dims=dir) |&gt; vec
 end
 
 function animate(files::Vector{String}, axs, ls; outdir=&quot;out/&quot;, overwrite::Bool=false,
-   icol::Int=1)
+   icut::Int=1, nbox::Int=1, dir=2, doAverage::Bool=false)
    l11, l12, l211, l212, l213, l221, l222, l223, l311, l312, l313, l321, l322, l323,
       l41, l42, l43, l51, l52, l53 = ls
 
@@ -130,30 +130,57 @@ function animate(files::Vector{String}, axs, ls; outdir=&quot;out/&quot;, overwr
 
       x = @views bd.x[:,1,1]
 
-      l11.set_data(x, slice1d(bd, &quot;rhos0&quot;, icol))
-      l12.set_data(x, slice1d(bd, &quot;rhos1&quot;, icol))
+      if doAverage
+         slice = let bd = bd, dir = dir, nbox = nbox
+            var -&gt; moving_average(slice1d_avg(bd, var, dir), nbox)
+         end
+      else
+         slice = let bd = bd, dir = dir, nbox = nbox, icut = icut
+            var -&gt; moving_average(slice1d(bd, var, icut, dir), nbox)
+         end
+      end
 
-      l211.set_data(x, slice1d(bd, &quot;Uxs0&quot;, icol))
-      l212.set_data(x, slice1d(bd, &quot;Uys0&quot;, icol))
-      l213.set_data(x, slice1d(bd, &quot;Uzs0&quot;, icol))
-      l221.set_data(x, slice1d(bd, &quot;Uxs1&quot;, icol))
-      l222.set_data(x, slice1d(bd, &quot;Uys1&quot;, icol))
-      l223.set_data(x, slice1d(bd, &quot;Uzs1&quot;, icol))
+      d = slice(&quot;rhos0&quot;)
+      l11.set_data(x, d)
+      d = slice(&quot;rhos1&quot;)
+      l12.set_data(x, d)
+      d = slice(&quot;Uxs0&quot;)
+      l211.set_data(x, d)
+      d = slice(&quot;Uys0&quot;)
+      l212.set_data(x, d)
+      d = slice(&quot;Uzs0&quot;)
+      l213.set_data(x, d)
+      d = slice(&quot;Uxs1&quot;)
+      l221.set_data(x, d)
+      d = slice(&quot;Uys1&quot;)
+      l222.set_data(x, d)
+      d = slice(&quot;Uzs1&quot;)
+      l223.set_data(x, d)
+      d = slice(&quot;PXXS0&quot;)
+      l311.set_data(x, d)
+      d = slice(&quot;PYYS0&quot;)
+      l312.set_data(x, d)
+      d = slice(&quot;PZZS0&quot;)
+      l313.set_data(x, d)
+      d = slice(&quot;PXXS1&quot;)
+      l321.set_data(x, d)
+      d = slice(&quot;PYYS1&quot;)
+      l322.set_data(x, d)
+      d = slice(&quot;PZZS1&quot;)
+      l323.set_data(x, d)
 
-      l311.set_data(x, slice1d(bd, &quot;PXXS0&quot;, icol))
-      l312.set_data(x, slice1d(bd, &quot;PYYS0&quot;, icol))
-      l313.set_data(x, slice1d(bd, &quot;PZZS0&quot;, icol))
-      l321.set_data(x, slice1d(bd, &quot;PXXS1&quot;, icol))
-      l322.set_data(x, slice1d(bd, &quot;PYYS1&quot;, icol))
-      l323.set_data(x, slice1d(bd, &quot;PZZS1&quot;, icol))
-
-      l41.set_data(x, slice1d(bd, &quot;Bx&quot;, icol))
-      l42.set_data(x, slice1d(bd, &quot;By&quot;, icol))
-      l43.set_data(x, slice1d(bd, &quot;Bz&quot;, icol))
-
-      l51.set_data(x, slice1d(bd, &quot;Ex&quot;, icol) ./ 1000)
-      l52.set_data(x, slice1d(bd, &quot;Ey&quot;, icol) ./ 1000)
-      l53.set_data(x, slice1d(bd, &quot;Ez&quot;, icol) ./ 1000)
+      d = slice_data(&quot;Bx&quot;)
+      l41.set_data(x, d)
+      d = slice_data(&quot;By&quot;)
+      l42.set_data(x, d)
+      d = slice_data(&quot;Bz&quot;)
+      l43.set_data(x, d)
+      d = slice_data(&quot;Ex&quot;) ./ 1000
+      l51.set_data(x, d)
+      d = slice_data(&quot;Ey&quot;) ./ 1000
+      l52.set_data(x, d)
+      d = slice_data(&quot;Ez&quot;) ./ 1000
+      l53.set_data(x, d)
 
       title_str = @sprintf &quot;t = %4.1f s&quot; bd.head.time
       axs[1].set_title(title_str; fontsize)
@@ -169,7 +196,7 @@ end
 # Data directory
 filedir = &quot;./&quot;
 
-const fontsize = 15
+const fontsize = 16
 
 pick_file = file -&gt; startswith(file, &quot;z&quot;) &amp;&amp; endswith(file, &quot;.out&quot;)
 
@@ -178,4 +205,4 @@ files = filter(pick_file, readdir(filedir))
 axs, ls = create_figure()
 animate(files, axs, ls; icol=1, outdir=&quot;figures/&quot;, overwrite=true)
 
-close()</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.7.0 on <span class="colophon-date" title="Tuesday 10 September 2024 14:10">Tuesday 10 September 2024</span>. Using Julia version 1.10.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+close()</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.7.0 on <span class="colophon-date" title="Tuesday 10 September 2024 14:19">Tuesday 10 September 2024</span>. Using Julia version 1.10.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
