@@ -50,7 +50,7 @@ end
       @test extrema(bd.x) == (-127.5f0, 127.5f0)
       @test extrema(bd.w) == (-0.79985905f0, 1.9399388f0)
       plotrange = [-10.0, 10.0, -Inf, Inf]
-      x, y, w = slice2d(bd, "rho", plotrange)
+      x, y, w = interp2d(bd, "rho", plotrange)
       @test w[1,end] == 0.6848635077476501
       @test bd["B"][:,end,end] == Float32[1.118034, -0.559017, 0.0]
       # Linear interpolation at a given point
@@ -59,9 +59,10 @@ end
       # Linear interpolation along a line
       point1 = Float32[-10.0, -1.0]
       point2 = Float32[10.0, 1.0]
-      w = slice1d(bd, "rho", point1, point2)
+      w = interp1d(bd, "rho", point1, point2)
       @test sum(w) == 10.676028f0
-
+      w = slice1d(bd, "rho", 1, 1)
+      @test sum(w) == 4.0f0
       @test get_var_range(bd, "rho") == (0.11626893f0, 1.0f0)
    end
 
@@ -69,7 +70,7 @@ end
       file = "bx0_mhd_6_t00000100_n00000352.out"
       bd = load(joinpath(datapath, file))
       plotrange = [-Inf, Inf, -Inf, Inf]
-      x, y, w = slice2d(bd, "rho", plotrange, useMatplotlib=false)
+      x, y, w = interp2d(bd, "rho", plotrange, useMatplotlib=false)
       @test w[1,2] == 5.000018304080387
    end
 

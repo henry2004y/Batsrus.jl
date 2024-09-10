@@ -59,7 +59,7 @@ d = interp1d(bd, "rho", loc)
 ```julia
 point1 = Float32[-10.0, -1.0]
 point2 = Float32[10.0, 1.0]
-w = slice1d(bd, "rho", point1, point2)
+w = interp1d(bd, "rho", point1, point2)
 ```
 
 Here is a full list of predefined derived quantities:

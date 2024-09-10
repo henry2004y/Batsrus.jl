@@ -485,7 +485,7 @@ Wrapper over `contour` in matplotlib.
 """
 function PyPlot.contour(bd::BATLData{2, T}, var::AbstractString, ax=nothing; levels=0,
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...) where T
-   Xi, Yi, Wi = slice2d(bd, var, plotrange, plotinterval; innermask)
+   Xi, Yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask)
    if isnothing(ax) ax = plt.gca() end
 
    if levels != 0
@@ -499,11 +499,11 @@ end
     contourf(data, var, ax=nothing; levels=0, plotrange=[-Inf,Inf,-Inf,Inf],
        plotinterval=0.1, innermask=false, kwargs...)
 
-Wrapper over `contourf` in matplotlib. See [`slice2d`](@ref) for some related keywords.
+Wrapper over `contourf` in matplotlib. See [`interp2d`](@ref) for some related keywords.
 """
 function PyPlot.contourf(bd::BATLData{2, T}, var::AbstractString, ax=nothing; levels::Int=0,
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...) where T
-   Xi, Yi, Wi = slice2d(bd, var, plotrange, plotinterval; innermask)
+   Xi, Yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask)
    if isnothing(ax) ax = plt.gca() end
 
    if levels != 0
@@ -577,7 +577,7 @@ Wrapper over `plot_surface` in matplotlib.
 """
 function PyPlot.plot_surface(bd::BATLData{2, T}, var::AbstractString;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...) where T
-   xi, yi, Wi = slice2d(bd, var, plotrange, plotinterval; innermask)
+   xi, yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask)
    Xi, Yi = meshgrid(xi, yi)
 
    plot_surface(Xi, Yi, Wi; kwargs...)
@@ -592,7 +592,7 @@ Wrapper over `pcolormesh` in matplotlib.
 """
 function PyPlot.pcolormesh(bd::BATLData{2, T}, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...) where T
-   xi, yi, Wi = slice2d(bd, var, plotrange, plotinterval; innermask)
+   xi, yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask)
 
    if isnothing(ax) ax = plt.gca() end
 

@@ -1,18 +1,18 @@
 # Utility functions for plotting.
 
 """
-    slice2d(bd::BATLData, var::AbstractString, plotrange=[-Inf, Inf, -Inf, Inf],
+    interp2d(bd::BATLData, var::AbstractString, plotrange=[-Inf, Inf, -Inf, Inf],
        plotinterval=Inf; kwargs...)
 
-Return 2D slices of data `var` from `bd`. If `plotrange` is not set, output data resolution
-is the same as the original.
+Return 2D interpolated slices of data `var` from `bd`. If `plotrange` is not set, output
+data resolution is the same as the original.
 
 # Keyword Arguments 
 - `innermask=false`: Whether to mask the inner boundary with NaN.
 - `rbody=1.0`: Radius of the inner mask. Used when the rbody parameter is not found in the header.
 - `useMatplotlib=true`: Whether to Matplotlib (somehow faster) or NaturalNeighbours for scattered interpolation.
 """
-function slice2d(bd::BATLData{2, T}, var::AbstractString,
+function interp2d(bd::BATLData{2, T}, var::AbstractString,
    plotrange::Vector=[-Inf, Inf, -Inf, Inf], plotinterval::Real=Inf;
    innermask::Bool=false, rbody::Real=1.0, useMatplotlib::Bool=true) where {T}
    x, w = bd.x, bd.w
@@ -146,11 +146,11 @@ function interp1d(bd::BATLData{2, T}, var::AbstractString, loc::AbstractVector{<
 end
 
 """
-    slice1d(bd::BATLData, var::AbstractString, point1::Vector, point2::Vecto)
+    interp1d(bd::BATLData, var::AbstractString, point1::Vector, point2::Vecto)
 
 Interpolate `var` along a line from `point1` to `point2` in `bd`.
 """
-function slice1d(bd::BATLData{2, T}, var::AbstractString, point1::Vector, point2::Vector) where {T}
+function interp1d(bd::BATLData{2, T}, var::AbstractString, point1::Vector, point2::Vector) where {T}
    @assert !bd.head.gencoord "Only accept structured grids!"
 
    x = bd.x
@@ -166,6 +166,16 @@ function slice1d(bd::BATLData{2, T}, var::AbstractString, point1::Vector, point2
    points = [(point1[1] + i*dx, point1[2] + i*dy) for i in 0:ns]
 
    Wi = [itp(loc...) for loc in points]
+end
+
+"""
+    slice1d(bd, var, icut::Int=1, dir::Int=2)
+
+Return view of variable `var` in `bd` along 1D slice. `icut` is the index along axis `dir`.
+`dir == 1` means align with the 2nd (y) axis, `dir == 2` means align with the 1st (x) axis.
+"""
+function slice1d(bd, var, icut::Int=1, dir::Int=2)
+   selectdim(bd[var], dir, icut)
 end
 
 "Return view of variable `var` in `bd`."

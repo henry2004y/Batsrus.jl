@@ -26,7 +26,7 @@ end
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1) where {T}
    hasunits = hasunit(bd)
 
-   x, y, w = slice2d(bd, var, plotrange, plotinterval)
+   x, y, w = interp2d(bd, var, plotrange, plotinterval)
    if hasunits
       unitx = getunit(bd, bd.head.variables[1])
       unity = getunit(bd, bd.head.variables[2])
