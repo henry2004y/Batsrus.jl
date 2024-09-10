@@ -127,12 +127,12 @@ function create_figure()
    axs, ls
 end
 
-function slice1d(bd, var, icol)
-   selectdim(bd[var], 2, icol)
+function slice1d_avg(bd, var, dir::Int=2)
+   mean(bd[var], dims=dir) |> vec
 end
 
 function animate(files::Vector{String}, axs, ls; outdir="out/", overwrite::Bool=false,
-   icol::Int=1)
+   icut::Int=1, nbox::Int=1, dir=2, doAverage::Bool=false)
    l11, l12, l211, l212, l213, l221, l222, l223, l311, l312, l313, l321, l322, l323,
       l41, l42, l43, l51, l52, l53 = ls
 
@@ -147,30 +147,57 @@ function animate(files::Vector{String}, axs, ls; outdir="out/", overwrite::Bool=
 
       x = @views bd.x[:,1,1]
 
-      l11.set_data(x, slice1d(bd, "rhos0", icol))
-      l12.set_data(x, slice1d(bd, "rhos1", icol))
+      if doAverage
+         slice = let bd = bd, dir = dir, nbox = nbox
+            var -> moving_average(slice1d_avg(bd, var, dir), nbox)
+         end
+      else
+         slice = let bd = bd, dir = dir, nbox = nbox, icut = icut
+            var -> moving_average(slice1d(bd, var, icut, dir), nbox)
+         end
+      end
 
-      l211.set_data(x, slice1d(bd, "Uxs0", icol))
-      l212.set_data(x, slice1d(bd, "Uys0", icol))
-      l213.set_data(x, slice1d(bd, "Uzs0", icol))
-      l221.set_data(x, slice1d(bd, "Uxs1", icol))
-      l222.set_data(x, slice1d(bd, "Uys1", icol))
-      l223.set_data(x, slice1d(bd, "Uzs1", icol))
+      d = slice("rhos0")
+      l11.set_data(x, d)
+      d = slice("rhos1")
+      l12.set_data(x, d)
+      d = slice("Uxs0")
+      l211.set_data(x, d)
+      d = slice("Uys0")
+      l212.set_data(x, d)
+      d = slice("Uzs0")
+      l213.set_data(x, d)
+      d = slice("Uxs1")
+      l221.set_data(x, d)
+      d = slice("Uys1")
+      l222.set_data(x, d)
+      d = slice("Uzs1")
+      l223.set_data(x, d)
+      d = slice("PXXS0")
+      l311.set_data(x, d)
+      d = slice("PYYS0")
+      l312.set_data(x, d)
+      d = slice("PZZS0")
+      l313.set_data(x, d)
+      d = slice("PXXS1")
+      l321.set_data(x, d)
+      d = slice("PYYS1")
+      l322.set_data(x, d)
+      d = slice("PZZS1")
+      l323.set_data(x, d)
 
-      l311.set_data(x, slice1d(bd, "PXXS0", icol))
-      l312.set_data(x, slice1d(bd, "PYYS0", icol))
-      l313.set_data(x, slice1d(bd, "PZZS0", icol))
-      l321.set_data(x, slice1d(bd, "PXXS1", icol))
-      l322.set_data(x, slice1d(bd, "PYYS1", icol))
-      l323.set_data(x, slice1d(bd, "PZZS1", icol))
-
-      l41.set_data(x, slice1d(bd, "Bx", icol))
-      l42.set_data(x, slice1d(bd, "By", icol))
-      l43.set_data(x, slice1d(bd, "Bz", icol))
-
-      l51.set_data(x, slice1d(bd, "Ex", icol) ./ 1000)
-      l52.set_data(x, slice1d(bd, "Ey", icol) ./ 1000)
-      l53.set_data(x, slice1d(bd, "Ez", icol) ./ 1000)
+      d = slice_data("Bx")
+      l41.set_data(x, d)
+      d = slice_data("By")
+      l42.set_data(x, d)
+      d = slice_data("Bz")
+      l43.set_data(x, d)
+      d = slice_data("Ex") ./ 1000
+      l51.set_data(x, d)
+      d = slice_data("Ey") ./ 1000
+      l52.set_data(x, d)
+      d = slice_data("Ez") ./ 1000
+      l53.set_data(x, d)
 
       title_str = @sprintf "t = %4.1f s" bd.head.time
       axs[1].set_title(title_str; fontsize)
@@ -186,7 +213,7 @@ end
 # Data directory
 filedir = "./"
 
-const fontsize = 15
+const fontsize = 16
 
 pick_file = file -> startswith(file, "z") && endswith(file, ".out")
 
