@@ -193,3 +193,10 @@ end
 
 "Return value range of `var` in `bd`."
 get_var_range(bd::BATLData, var) = getview(bd, var) |> extrema
+
+"Squeeze singleton dimensions for an array `A`."
+function squeeze(A::AbstractArray)
+   singleton_dims = tuple((d for d in 1:ndims(A) if size(A, d) == 1)...)
+   
+   dropdims(A, dims=singleton_dims)
+end

@@ -3,7 +3,7 @@ module HDF
 
 using HDF5
 
-export BatsrusHDF5Uniform, extract_field, squeeze
+export BatsrusHDF5Uniform, extract_field
 
 abstract type BatsrusHDF5File end
 
@@ -42,7 +42,7 @@ struct HDF5Common{TI<:Signed, TF<:AbstractFloat} <: BatsrusHDF5File
    function HDF5Common(filename::AbstractString)
       fid = h5open(filename, "r")
       meta_int = read(fid["Integer Plot Metadata"])::Vector{Int32}
-      meta_real = read(fid["Real Plot Metadata"])::Vector{Float32}
+      meta_real = read(fid["Real Plot Metadata"])::Vector{<:AbstractFloat}
 
       version = meta_int[1]
       geometry = meta_int[11]
@@ -274,13 +274,6 @@ function extract_field(file::BatsrusHDF5Uniform, var::String;
    end
 
    output, (xl_new, yl_new, zl_new), (xu_new, yu_new, zu_new)
-end
-
-"Squeeze singleton dimensions for an array `A`."
-function squeeze(A::AbstractArray)
-   singleton_dims = tuple((d for d in 1:ndims(A) if size(A, d) == 1)...)
-   
-   dropdims(A, dims=singleton_dims)
 end
 
 end
