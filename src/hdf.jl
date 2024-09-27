@@ -3,14 +3,14 @@ module HDF
 
 using HDF5
 
-export BatsrusHDF5Uniform, extract_field
+export BatsrusHDF5Uniform, extract_var
 
 abstract type BatsrusHDF5File end
 
 """
 BATSRUS hdf5 file wrapper.
 
-The data are stored in blocks, i.e., each field component is stored in a 4d array in the
+The data are stored in blocks, i.e., each field component is stored in a 4D array in the
 order (iblock, iz, iy, ix). This is a generic wrapper and does not assume grid type, i.e.,
 uniform, stretched nonuniform, or AMR, etc. Classes to handle data with different grids can
 be derived from this class.
@@ -101,13 +101,17 @@ findparam(::HDF5Common{TI, TF}) where {TI, TF} = (TI, TF)
 
 
 function Base.show(io::IO, file::BatsrusHDF5Uniform)
-   println(io, "Dimension: ", file.common.ndim)
-   println(io, "Mesh coordmin: ", file.common.coordmin)
-   println(io, "Mesh coordmax: ", file.common.coordmax)
-   println(io, "Number of blocks: ", file.nb)
+   println(io, "Dimension                : ", file.common.ndim)
+   println(io, "Mesh coordmin            : ", file.common.coordmin)
+   println(io, "Mesh coordmax            : ", file.common.coordmax)
+   println(io, "Number of blocks         : ", file.nb)
    println(io, "Number of cells per block: ", file.common.ncb)
-   println(io, "Grid resolution: ", file.dcoord)
-   println(io, "Time: ", file.common.time)
+   println(io, "Grid resolution          : ", file.dcoord)
+   println(io, "Time                     : ", file.common.time)
+   vars = HDF5.keys(file.common.fid)
+   idBegin_ = findfirst(x->x == "bounding box", vars) + 1
+   idEnd_ = findlast(x->x == "iCoord_DB", vars) - 1
+   println(io, "Variables                : ", vars[idBegin_:idEnd_])
 end
 
 
@@ -139,6 +143,7 @@ function prep_extract(file::BatsrusHDF5Uniform;
       ibmax += 1
    end
    ibmax = max(ibmax, ibmin)
+
    return gslc, vmin_new, vmax_new, ibmin:ibmax
 end
 
@@ -183,7 +188,7 @@ function trimslice(start, stop, step, stop_max)
    if start < 1
       start += (-start ÷ step) * step
       if start < 1
-          start += step
+         start += step
       end
    end
    start = min(start, stop_max)
@@ -229,7 +234,9 @@ function global_slice_to_local_slice(file::BatsrusHDF5Uniform, dim::Int, gslc::O
 end
 
 """
-    extract_field(file::BatsrusHDF5Uniform, var::String; kwargs...)
+    extract_var(file::BatsrusHDF5Uniform, var::String; kwargs...)
+
+Extract variable `var` from HDF5 `file`.
 
 # Keywords
 - `xmin`: minimum extracted coordinate in x.
@@ -241,11 +248,11 @@ end
 - `zmin`: minimum extracted coordinate in z.
 - `zmax`: maximum extracted coordinate in z.
 - `stepz`: extracted stride in z.
-- `verbose::Bool=true`: display type and size information of output field.
+- `verbose::Bool=true`: display type and size information of output variable.
 """
-function extract_field(file::BatsrusHDF5Uniform, var::String;
+function extract_var(file::BatsrusHDF5Uniform{TI, TF}, var::String;
    xmin=-Inf32, xmax=Inf32, stepx::Int=1, ymin=-Inf32, ymax=Inf32, stepy::Int=1,
-   zmin=-Inf32, zmax=Inf32, stepz::Int=1, verbose::Bool=false)
+   zmin=-Inf32, zmax=Inf32, stepz::Int=1, verbose::Bool=false) where {TI, TF}
    nbx, nby, nbz = file.nb
 
    gslcx, xl_new, xu_new, ibx_ = prep_extract(file; dim=1, vmin=xmin, vmax=xmax, step=stepx)
@@ -253,8 +260,8 @@ function extract_field(file::BatsrusHDF5Uniform, var::String;
    gslcz, zl_new, zu_new, ibz_ = prep_extract(file; dim=3, vmin=zmin, vmax=zmax, step=stepz)
    nsize = (length(gslcx), length(gslcy), length(gslcz))
 
-   input = read(file.common.fid[var])::Array{Float32, 4}
-   output = Array{eltype(input), 3}(undef, nsize)
+   input = read(file.common.fid[var])::Array{TF, 4}
+   output = Array{TF, 3}(undef, nsize)
 
    if verbose
       @info "output $(typeof(output))"

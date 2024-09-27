@@ -140,11 +140,19 @@ file = BatsrusHDF5Uniform(filename)
 
 ### Field extraction
 
+Variable `var` can be extracted in the whole domain:
+
+```julia
+var, (xl_new, yl_new, zl_new), (xu_new, yu_new, zu_new) = extract_var(file, "bx")
+```
+
+where `(xl_new, yl_new, zl_new)` and `(xu_new, yu_new, zu_new)` return the lower and upper bound, respectively.
+
 Variables within a box region can be extracted as following:
 
 ```julia
-out, (xl_new, yl_new, zl_new), (xu_new, yu_new, zu_new) =
-   extract_field(file, "bx"; xmin, xmax, ymin, ymax, zmin, zmax)
+var, (xl_new, yl_new, zl_new), (xu_new, yu_new, zu_new) =
+   extract_var(file, "bx"; xmin, xmax, ymin, ymax, zmin, zmax)
 ```
 
 ## Data visualization
