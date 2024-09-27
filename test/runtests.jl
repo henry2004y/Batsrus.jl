@@ -114,8 +114,14 @@ end
    end
 
    @testset "HDF5" begin
-      #TODO: add test HDF5 file
-      @test size(squeeze(zeros(2,3,1))) == (2,3)
+      file = "3d__var_3_n00000000_single.batl"
+      bd = BatsrusHDF5Uniform(joinpath(datapath, file))
+      var, _, _ = extract_var(bd, "bx")
+      @test size(var) == (8, 8, 4) && eltype(var) == Float32
+      file = "3d__var_3_n00000000_double.batl"
+      bd = BatsrusHDF5Uniform(joinpath(datapath, file))
+      var, _, _ = extract_var(bd, "bx")
+      @test size(var) == (8, 8, 4) && eltype(var) == Float64
    end
 
    @testset "Plotting" begin
@@ -146,6 +152,7 @@ end
       end
 
       @testset "PyPlot" begin
+         @test size(squeeze(zeros(2,3,1))) == (2,3)
          # 1D ascii
          file = "1d__raw_2_t25.60000_n00000258.out"
          bd = load(joinpath(datapath, file), verbose=false)
