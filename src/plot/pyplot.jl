@@ -484,8 +484,9 @@ end
 Wrapper over `contour` in matplotlib.
 """
 function PyPlot.contour(bd::BATLData{2, T}, var::AbstractString, ax=nothing; levels=0,
-   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...) where T
-   Xi, Yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask)
+   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, rbody=1.0,
+   kwargs...) where T
+   Xi, Yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
    if isnothing(ax) ax = plt.gca() end
 
    if levels != 0
@@ -502,8 +503,9 @@ end
 Wrapper over `contourf` in matplotlib. See [`interp2d`](@ref) for some related keywords.
 """
 function PyPlot.contourf(bd::BATLData{2, T}, var::AbstractString, ax=nothing; levels::Int=0,
-   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...) where T
-   Xi, Yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask)
+   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, rbody=1.0,
+   kwargs...) where T
+   Xi, Yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
    if isnothing(ax) ax = plt.gca() end
 
    if levels != 0
@@ -576,8 +578,9 @@ end
 Wrapper over `plot_surface` in matplotlib.
 """
 function PyPlot.plot_surface(bd::BATLData{2, T}, var::AbstractString;
-   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...) where T
-   xi, yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask)
+   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, rbody=1.0,
+   kwargs...) where T
+   xi, yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
    Xi, Yi = meshgrid(xi, yi)
 
    plot_surface(Xi, Yi, Wi; kwargs...)
@@ -591,8 +594,9 @@ end
 Wrapper over `pcolormesh` in matplotlib.
 """
 function PyPlot.pcolormesh(bd::BATLData{2, T}, var::AbstractString, ax=nothing;
-   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, kwargs...) where T
-   xi, yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask)
+   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, rbody=1.0,
+   kwargs...) where T
+   xi, yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody) 
 
    if isnothing(ax) ax = plt.gca() end
 
