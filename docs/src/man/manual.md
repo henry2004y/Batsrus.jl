@@ -176,73 +176,16 @@ Check out the documentation for more details.
 
 ### Quick exploration of data
 
-A general `plotdata` function is provided for quick visualizations using Matplotlib.
-
-- 1D binary
-
-```julia
-plotdata(bd, "p", plotmode="line")
-plotdata(bd, "p", plotmode="linegrid")
-```
-
-- 2D Cartesian (structured)
-
-```julia
-plotdata(bd, "p bx;by", plotmode="contbar streamover")
-plotdata(bd, "p bx;by", plotmode="contbar quiverover")
-plotdata(bd, "p bx;by", plotmode="contbar streamover", density=2.0)
-plotdata(bd, "p", plotmode="grid")
-plotdata(bd, "p", plotmode="contbar", plotrange=[-50., 50., -1., 1.])
-plotdata(bd, "p", plotmode="contbar")
-plotdata(bd, "p", plotmode="contbarlog")
-plotdata(bd, "p", plotmode="surfbar")
-```
-
-- 2D unstructured
-
-```julia
-plotdata(bd, "rho", plotmode="contbar")
-plotdata(bd, "rho", plotmode="trimesh")
-plotdata(bd, "rho", plotmode="tricont")
-```
-
-- 2D structured spherical coordinates
-
-```julia
-plotdata(bd, "rho", plotmode="contbar")
-```
-
-- 3D box
-
-```julia
-plotdata(bd, "bx", plotmode="contbar", dir="y", sequence=1, level=20)
-plotdata(bd, "bx", plotmode="contbar", dir="y", plotrange=[-1.4,-1.1,0.70,0.78])
-plt.axis("scaled")
-
-subplot(2,2,(1,3))
-cutplot(bd, "Ex"; dir="y", sequence=128, plotrange)
-```
-
-#### Finding indexes
-
-To get the index of a certain quantity, e.g. electron number density
-
-```julia
-ρe_= findfirst(x->x=="rhoS0", bd.head.wnames)
-```
-
-### Multiple dispatch for Matplotlib functions
-
-Using the same plotting functions as in Matplotlib is allowed, and actually recommended.
+Using the same plotting functions as in Matplotlib is allowed, and actually recommended. This takes advantage of multiple dispatch mechanism in Julia.
 Some plotting functions can be directly called as shown below, which allows for more control from the user.
 `using PyPlot` to import the full capability of the package, etc. adding colorbar, changing line colors, setting colorbar range with `clim`.
+
+For 1D outputs, we can use `plot` or `scatter`.
 
 - line plot
 
 ```julia
-plot(bd, "p", linewidth=2, color="green")
-c = plot(bd, "p")
-plt.setp(c, linestyle="--", linewidth=2);
+plot(bd, "p", linewidth=2, color="tab:red", linestyle="--", linewidth=2)
 ```
 
 - scatter plot
@@ -250,6 +193,18 @@ plt.setp(c, linestyle="--", linewidth=2);
 ```julia
 scatter(bd, "p")
 ```
+
+For 2D outputs, we can select the following functions:
+
+* `contour`
+* `contourf`
+* `pcolormesh`
+* `plot_surface`
+* `plot_tricontour`
+* `plot_tricontourf`
+* `plot_trisurf`
+
+with either `quiver` or `streamplot`.
 
 - contour
 
@@ -313,6 +268,23 @@ contourf(bd, "uxS0", 50; plotinterval=0.05, norm=DN(0), cmap)
 colorbar()
 axis("scaled")
 xlabel("x"); ylabel("y"); title("uxS0")
+```
+
+For 3D outputs, we may use `cutplot` for visualizing on a sliced plane.
+
+
+#### Finding indexes
+
+To get the index of a certain quantity, e.g. electron number density
+
+```julia
+ρe_= findfirst(x->x=="rhoS0", bd.head.wnames)
+```
+
+#### Get variable range
+
+```julia
+wmin, wmax = get_range(bd, var)
 ```
 
 ### Tracing
