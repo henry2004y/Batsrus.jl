@@ -244,25 +244,34 @@ function PyPlot.contour(bd::BATLData{2, T}, var::AbstractString, ax=nothing; lev
    else
       c = ax.contour(Xi, Yi, Wi; kwargs...)
    end
+   add_titles(bd, var, ax)
+
+   c
 end
 
 """
     contourf(data, var, ax=nothing; levels=0, plotrange=[-Inf,Inf,-Inf,Inf],
-       plotinterval=0.1, innermask=false, kwargs...)
+       plotinterval=0.1, innermask=false, add_colorbar=true, vmin=-Inf, vmax=Inf,
+       colorscale=:linear, kwargs...)
 
 Wrapper over `contourf` in matplotlib. See [`interp2d`](@ref) for some related keywords.
 """
 function PyPlot.contourf(bd::BATLData{2, T}, var::AbstractString, ax=nothing; levels::Int=0,
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, rbody=1.0,
-   add_colorbar=true, kwargs...) where T
+   add_colorbar=true, vmin=-Inf, vmax=Inf, colorscale=:linear, kwargs...) where T
    Xi, Yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
    if isnothing(ax) ax = plt.gca() end
 
+   norm, _ = set_colorbar(colorscale, vmin, vmax, Wi)
    if levels != 0
-      c = ax.contourf(Xi, Yi, Wi, levels; kwargs...)
+      c = ax.contourf(Xi, Yi, Wi, levels; norm, kwargs...)
    else
-      c = ax.contourf(Xi, Yi, Wi; kwargs...)
+      c = ax.contourf(Xi, Yi, Wi; norm, kwargs...)
    end
+   add_colorbar && colorbar(c; ax, fraction=0.04, pad=0.02)
+   add_titles(bd, var, ax)
+
+   c
 end
 
 """
@@ -289,7 +298,11 @@ function PyPlot.tricontourf(bd::BATLData{2, T}, var::AbstractString, ax=nothing;
    end
    if isnothing(ax) ax = plt.gca() end
 
-   ax.tricontourf(X, Y, W; kwargs...)
+   c = ax.tricontourf(X, Y, W; kwargs...)
+
+   add_titles(bd, var, ax)
+
+   c
 end
 
 function PyPlot.triplot(bd::BATLData{2, T}, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf],
@@ -315,7 +328,7 @@ end
 
 Wrapper over `plot_trisurf` in matplotlib.
 """
-function PyPlot.plot_trisurf(bd::BATLData{2, T}, var::AbstractString, ax=nothing;
+function PyPlot.plot_trisurf(bd::BATLData{2, T}, var::AbstractString;
    plotrange=[-Inf,Inf,-Inf,Inf], kwargs...) where T
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
@@ -334,7 +347,12 @@ function PyPlot.plot_trisurf(bd::BATLData{2, T}, var::AbstractString, ax=nothing
    end
    if isnothing(ax) ax = plt.gca() end
 
-   ax.plot_trisurf(X, Y, W)
+   ax = plt.figure().add_subplot(projection="3d")
+   c = ax.plot_trisurf(X, Y, W)
+
+   add_titles(bd, var, ax)
+
+   c
 end
 
 
@@ -344,19 +362,25 @@ end
 
 Wrapper over `plot_surface` in matplotlib.
 """
-function PyPlot.plot_surface(bd::BATLData{2, T}, var::AbstractString;
+function PyPlot.plot_surface(bd::BATLData{2, T}, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, rbody=1.0,
    kwargs...) where T
+   if isnothing(ax) ax = plt.gca() end
    xi, yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
    Xi, Yi = meshgrid(xi, yi)
 
-   plot_surface(Xi, Yi, Wi; kwargs...)
+   c = plot_surface(Xi, Yi, Wi; kwargs...)
+
+   add_titles(bd, var, ax)
+
+   c
 end
 
 
 """
     pcolormesh(data, var, levels=0; ax=nothing, plotrange=[-Inf,Inf,-Inf,Inf],
-       plotinterval=0.1, innermask=false, kwargs...)
+       plotinterval=0.1, innermask=false, vmin=-Inf, vmax=Inf, colorscale=:linear,
+       add_colorbar=true, kwargs...)
 
 # Keywords
 - `rbody=1.0`: inner body radius.
@@ -377,20 +401,10 @@ function PyPlot.pcolormesh(bd::BATLData{2, T}, var::AbstractString, ax=nothing;
 
    add_colorbar && colorbar(c; ax, fraction=0.04, pad=0.02)
 
-   varIndex_ = findindex(bd, var)
-   title(bd.head.wnames[varIndex_])
-
-   xlabel(bd.head.variables[1]); ylabel(bd.head.variables[2])
-   str = @sprintf "it=%d, time=%4.2f" bd.head.it bd.head.time
-   at = matplotlib.offsetbox.AnchoredText(str,
-      loc="lower left", prop=Dict("size"=>8), frameon=true,
-      bbox_to_anchor=(0., 1.), bbox_transform=ax.transAxes)
-   at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
-   ax.add_artist(at)
+   add_titles(bd, var, ax)
 
    c
 end
-
 
 """
     tripcolor(data, var, levels=0; ax=nothing, plotrange=[-Inf,Inf,-Inf,Inf],
@@ -434,6 +448,8 @@ function PyPlot.tripcolor(bd::BATLData{2, T}, var::AbstractString, ax=nothing;
 
    ax.set_xlim(plotrange[1], plotrange[2])
    ax.set_ylim(plotrange[3], plotrange[4])
+
+   add_titles(bd, var, ax)
 
    c
 end
@@ -552,4 +568,17 @@ function set_colorbar(colorscale, vmin, vmax, data=[1.0])
    end
 
    cnorm, ticks
+end
+
+function add_titles(bd::BATLData, var, ax)
+   varIndex_ = findindex(bd, var)
+   title(bd.head.wnames[varIndex_])
+
+   xlabel(bd.head.variables[1]); ylabel(bd.head.variables[2])
+   str = @sprintf "it=%d, time=%4.2f" bd.head.it bd.head.time
+   at = matplotlib.offsetbox.AnchoredText(str,
+      loc="lower left", prop=Dict("size"=>8), frameon=true,
+      bbox_to_anchor=(0., 1.), bbox_transform=ax.transAxes)
+   at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
+   ax.add_artist(at)
 end

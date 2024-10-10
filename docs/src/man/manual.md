@@ -203,8 +203,9 @@ For 2D outputs, we can select the following functions:
 * `plot_tricontour`
 * `plot_tricontourf`
 * `plot_trisurf`
+* `tripcolor`
 
-with either `quiver` or `streamplot`.
+with either `quiver` or `streamplot`. By default the linear colorscale is applied. If you want to switch to logarithmic, set argument `colorscale=:log`.
 
 - contour
 
@@ -270,8 +271,7 @@ axis("scaled")
 xlabel("x"); ylabel("y"); title("uxS0")
 ```
 
-For 3D outputs, we may use `cutplot` for visualizing on a sliced plane.
-
+For 3D outputs, we may use `cutplot` for visualizing on a sliced plane, or `streamslice` to plot streamlines on a given slice.
 
 #### Finding indexes
 
