@@ -2,7 +2,7 @@
 
 using PyPlot
 
-export plotdata, plotlogdata, plot, scatter, contour, contourf, plot_surface, tripcolor,
+export plotlogdata, plot, scatter, contour, contourf, plot_surface, tripcolor,
    tricontourf, plot_trisurf, streamplot, streamslice, quiver, cutplot, pcolormesh
 
 @static if matplotlib.__version__ >= "3.3"
@@ -52,295 +52,28 @@ function plotlogdata(data, head::NamedTuple, func::AbstractString; plotmode="lin
 
 end
 
-
 """
-    plotdata(bd::BATLData, func, args, kwargs...)
+    plotgrid(bd::BATLData, var, ax=nothing; kwargs...)
 
-Plot the variable from SWMF output.
-
-# Examples
-`plotdata(bd, "p", plotmode="contbar")`
-
-`plotdata(bd, "p", plotmode="grid")`
-
-`plotdata(bd, func, plotmode="trimesh", plotrange=[-1.0, 1.0, -1.0, 1.0], plotinterval=0.2)`
-
-# Arguments
-- `bd::BATLData`: BATSRUS data.
-- `func::String`: variables for plotting.
-
-# Keywords
-- `plotmode::String`: type of plotting ["cont","contbar"]...
-- `plotrange::Vector`: range of plotting.
-- `plotinterval`: interval for interpolation.
-- `levels`: levels of contour.
-- `innermask`: Bool for masking a circle at the inner boundary.
-- `dir`: 2D cut plane orientation from 3D outputs ["x","y","z"].
-- `sequence`: sequence of plane from - to + in that direction.
-- `multifigure::Bool`: whether to use multifigure display or subplots.
-- `verbose`: display additional information.
-- `density`: density for streamlines.
-- `stride`: quiver strides in number of cells.
-Right now this can only deal with 2D plots or 3D cuts. Full 3D plots may be supported in the
-future.
+Plot 2D mesh.
 """
-function plotdata(bd::BATLData{1, T}, func::AbstractString; verbose::Bool=false,
-   plotmode="contbar", multifigure::Bool=true, kwargs...) where T
-   x, w = bd.x, bd.w
-   plotmode = split(plotmode)
-   vars     = split(func)
-   nvar     = length(vars)
+function plotgrid(bd::BATLData{2, T}, func::AbstractString, ax=nothing; kwargs...) where T
+   if isnothing(ax) ax = plt.gca() end
 
-   verbose && show_ranges(bd, vars)
+   # This does not take subdomain plot into account!
+   X, Y = eachslice(bd.x, dims=3)
+   scatter(X, Y, marker=".", alpha=0.6)
+   title("Grid illustration")
 
-   ## plot multiple variables with same plotmode
-   if length(plotmode) < nvar
-      [push!(plotmode, plotmode[i]) for i in 1:nvar-length(plotmode)]
-   end
-
-   ## Plot
-   for (ivar, var) in enumerate(vars)
-      varIndex_ = findindex(bd, var)
-      if ivar == 1 || multifigure fig, ax = subplots() else ax = gca() end
-      if !occursin("scatter", plotmode[ivar])
-         plot(x, w[:,varIndex_]; kwargs...)
-      else
-         scatter(x, w[:,varIndex_]; kwargs...)
-      end
-      if occursin("grid", plotmode[ivar])
-         grid(true)
-      end
-      xlabel("x"); ylabel("$(var)")
-      str = @sprintf "it=%d, time=%4.2f" bd.head.it bd.head.time
-      at = matplotlib.offsetbox.AnchoredText(str,
-         loc="lower left", prop=Dict("size"=>8), frameon=true,
-         bbox_to_anchor=(0., 1.), bbox_transform=ax.transAxes)
-      at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
-      ax.add_artist(at)
-   end
+   xlabel(bd.head.variables[1]); ylabel(bd.head.variables[2])
+   str = @sprintf "it=%d, time=%4.2f" bd.head.it bd.head.time
+   at = matplotlib.offsetbox.AnchoredText(str,
+      loc="lower left", prop=Dict("size"=>8), frameon=true,
+      bbox_to_anchor=(0., 1.), bbox_transform=ax.transAxes)
+   at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
+   ax.add_artist(at)
 
    return
-end
-
-
-function plotdata(bd::BATLData{2, T}, func::AbstractString; verbose::Bool=false,
-   plotmode="contbar", plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, density=1.0,
-   multifigure::Bool=true, levels::Int=0, innermask::Bool=false, stride::Int=10, kwargs...) where T
-   x, w = bd.x, bd.w
-   plotmode = split(plotmode)
-   vars     = split(func)
-   nvar     = length(vars)
-
-   verbose && show_ranges(bd, vars)
-
-   ## plot multiple variables with same plotmode
-   if length(plotmode) < nvar
-      [push!(plotmode, plotmode[i]) for i in 1:nvar-length(plotmode)]
-   end
-
-   for (ivar, var) in enumerate(vars)
-      occursin("over", plotmode[ivar]) && (multifigure = false)
-      if ivar == 1 || multifigure fig, ax = subplots() else ax = gca() end
-      if !occursin(";", var)
-         varIndex_ = findindex(bd, var)
-      end
-
-      if plotmode[ivar] ∈ ("surf", "surfbar", "surfbarlog", "cont", "contbar",
-         "contlog", "contbarlog")
-
-         if plotmode[ivar] ∈ ("contbar", "contbarlog")
-            c = contourf(bd, var; levels, plotrange, plotinterval, innermask, kwargs...)
-         elseif plotmode[ivar] ∈ ("cont", "contlog")
-            c = contour(bd, var; levels, plotrange, plotinterval, innermask, kwargs...)
-         elseif plotmode[ivar] ∈ ("surfbar", "surfbarlog")
-            c = plot_surface(bd, var; plotrange, plotinterval, innermask, kwargs...)
-         end
-
-         occursin("bar", plotmode[ivar]) && colorbar(c; fraction=0.04, pad=0.02)
-         occursin("log", plotmode[ivar]) && (c.locator = matplotlib.ticker.LogLocator())
-         title(bd.head.wnames[varIndex_])
-
-      elseif plotmode[ivar] ∈ ("trimesh","trisurf","tricont","tristream")
-         X = vec(x[:,:,1])
-         Y = vec(x[:,:,2])
-         W = vec(w[:,:,varIndex_])
-
-         #TODO This needs to be modified!!!
-         if !all(isinf.(plotrange))
-            xyIndex = X .> plotrange[1] .& X .< plotrange[2] .&
-               Y .> plotrange[3] .& Y .< plotrange[4]
-            X = X[xyIndex]
-            Y = Y[xyIndex]
-            W = W[xyIndex]
-         end
-
-         if plotmode[ivar] == "trimesh"
-            triang = matplotlib.tri.Triangulation(X, Y)
-            c = ax.triplot(triang, kwargs...)
-         elseif plotmode[ivar] == "trisurf"
-            c = ax.plot_trisurf(X, Y, W'; kwargs...)
-         elseif plotmode[ivar] == "tricont"
-            c = ax.tricontourf(X, Y, W'; levels, kwargs...)
-            fig.colorbar(c; ax)
-         elseif plotmode[ivar] == "tristream"
-            throw(ArgumentError("tristream not yet implemented!"))
-         end
-
-         title(bd.head.wnames[varIndex_])
-
-      elseif plotmode[ivar] ∈ ("stream","streamover")
-         s = streamplot(bd, var; plotrange, plotinterval, color="w", linewidth=1.0,
-            density, kwargs...)
-      elseif occursin("quiver", plotmode[ivar])
-         q = quiver(bd, var; stride, color="w", kwargs...)
-      elseif occursin("grid", plotmode[ivar])
-         # This does not take subdomain plot into account!
-         X, Y = eachslice(x, dims=3)
-         scatter(X, Y, marker=".", alpha=0.6)
-         title("Grid illustration")
-      else
-         throw(ArgumentError("unknown plot mode: $(plotmode[ivar])"))
-      end
-
-      xlabel(bd.head.variables[1]); ylabel(bd.head.variables[2])
-      str = @sprintf "it=%d, time=%4.2f" bd.head.it bd.head.time
-      at = matplotlib.offsetbox.AnchoredText(str,
-         loc="lower left", prop=Dict("size"=>8), frameon=true,
-         bbox_to_anchor=(0., 1.), bbox_transform=ax.transAxes)
-      at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
-      ax.add_artist(at)
-      # recover status
-      occursin("over", plotmode[ivar]) && (multifigure = true)
-   end
-
-   return
-end
-
-function plotdata(bd::BATLData{3, T}, func::AbstractString; dir="x", plotmode="contbar",
-   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, sequence=1, multifigure=true,
-   levels::Int=0, innermask::Bool=false, verbose::Bool=false, density=1.0, kwargs...) where T
-   x, w = bd.x, bd.w
-   plotmode = split(plotmode)
-   vars     = split(func)
-   nvar     = length(vars)
-
-   verbose && show_ranges(bd, vars)
-
-   ## plot multiple variables with same plotmode
-   if length(plotmode) < nvar
-      [push!(plotmode, plotmode[i]) for i = 1:nvar-length(plotmode)]
-   end
-
-   # 2D cut from 3D output; now only for Cartesian output
-   X, Y, Z = eachslice(x, dims=4)
-   for (ivar, var) in enumerate(vars)
-      if plotmode[ivar] ∈ ("surf","surfbar","surfbarlog","cont","contbar", "contlog",
-            "contbarlog")
-         varIndex_ = findindex(bd, var)
-
-         if ivar == 1 || multifigure fig, ax = subplots() else ax = gca() end
-
-         W = w[:,:,:,varIndex_]
-
-         if dir == "x"
-            cut1 = @view X[sequence,:,:]
-            cut2 = @view Y[sequence,:,:]
-            W    = @view W[sequence,:,:]
-         elseif dir == "y"
-            cut1 = @view X[:,sequence,:]
-            cut2 = @view Z[:,sequence,:]
-            W    = @view W[:,sequence,:]
-         elseif dir == "z"
-            cut1 = @view X[:,:,sequence]
-            cut2 = @view Y[:,:,sequence]
-            W    = @view W[:,:,sequence]
-         end
-      elseif plotmode[ivar] ∈ ("stream","streamover")
-         varstream  = split(var,";")
-         var1_ = findindex(bd, varstream[1])
-         var2_ = findindex(bd, varstream[2])
-
-         v1 = @view w[:,:,:,var1_]
-         v2 = @view w[:,:,:,var2_]
-
-         if dir == "x"
-            cut1 = @view Y[sequence,:,:]
-            cut2 = @view Z[sequence,:,:]
-            v1   = v1[sequence,:,:]'
-            v2   = v2[sequence,:,:]'
-         elseif dir == "y"
-            cut1 = @view X[:,sequence,:]
-            cut2 = @view Z[:,sequence,:]
-            v1   = v1[:,sequence,:]'
-            v2   = v2[:,sequence,:]'
-         elseif dir == "z"
-            cut1 = @view X[:,:,sequence]
-            cut2 = @view Y[:,:,sequence]
-            v1   = v1[:,:,sequence]'
-            v2   = v2[:,:,sequence]'
-         end
-         cut1, cut2 = cut1', cut2'
-      end
-
-      if !all(isinf.(plotrange))
-         cut1, cut2, v1, v2 = subsurface(cut1, cut2, v1, v2, plotrange)
-      end
-
-      if plotmode[ivar] ∈ ("surf", "surfbar", "surfbarlog", "cont", "contbar", "contlog",
-            "contbarlog")
-         if levels == 0
-            c = ax.contourf(cut1, cut2, W'; kwargs...)
-         else
-            c = ax.contourf(cut1, cut2, W', levels; kwargs...)
-         end
-         fig.colorbar(c, ax=ax)
-         title(bd.head.wnames[varIndex_])
-
-      elseif plotmode[ivar] ∈ ("stream", "streamover")
-         xi = range(cut1[1,1], stop=cut1[1,end],
-            step=(cut1[1,end] - cut1[1,1]) / (size(cut1,2) - 1))
-         yi = range(cut2[1,1], stop=cut2[end,1],
-            step=(cut2[end,1] - cut2[1,1]) / (size(cut2,1) - 1))
-         s = streamplot(xi, yi, v1, v2; color="w", linewidth=1.0, density, kwargs...)
-      end
-
-      if dir == "x"
-         xlabel("y"); ylabel("z")
-      elseif dir == "y"
-         xlabel("x"); ylabel("z")
-      elseif dir == "z"
-         xlabel("x"); ylabel("y")
-      end
-
-      ax = gca()
-      str = @sprintf "it=%d, time=%4.2f" bd.head.it bd.head.time
-      at = matplotlib.offsetbox.AnchoredText(str,
-         loc="lower left", prop=Dict("size"=>8), frameon=true,
-         bbox_to_anchor=(0., 1.), bbox_transform=ax.transAxes)
-      at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
-      ax.add_artist(at)
-   end
-
-   return
-end
-
-function show_ranges(bd::BATLData, vars)
-   @info "============ PLOTTING PARAMETERS ==============="
-   @info "wnames = $(bd.head.wnames)"
-   nvar = length(vars)
-   wmin = Vector{Float64}(undef, nvar)
-   wmax = Vector{Float64}(undef, nvar)
-   # Display min & max for each variable
-   for (ivar,var) in enumerate(vars)
-      if occursin(";",var) continue end # skip the vars for streamline
-      varIndex_ = findindex(bd, var)
-      if ndim == 1
-         wmin[ivar], wmax[ivar] = extrema(@view w[:,varIndex_])
-      elseif ndim == 2
-         wmin[ivar], wmax[ivar] = extrema(@view w[:,:,varIndex_])
-      end
-      println("Min & Max value for $(var) :$(wmin[ivar])",", $(wmax[ivar])")
-   end
 end
 
 """
@@ -386,6 +119,13 @@ function cutplot(bd::BATLData{3, T}, var::AbstractString, ax=nothing;
    elseif dir == "z"
       xlabel("x"); ylabel("y")
    end
+
+   str = @sprintf "it=%d, time=%4.2f" bd.head.it bd.head.time
+   at = matplotlib.offsetbox.AnchoredText(str,
+      loc="lower left", prop=Dict("size"=>8), frameon=true,
+      bbox_to_anchor=(0., 1.), bbox_transform=ax.transAxes)
+   at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
+   ax.add_artist(at)
 
    c
 end
@@ -452,9 +192,9 @@ end
 
 
 """
-    plot(data, var, ax=nothing; kwargs...)
+    plot(bd::BATLData{1, T}, var, ax=nothing; kwargs...)
 
-Wrapper over `plot` in matplotlib.
+Wrapper over `plot` in matplotlib. Plot 1D outputs.
 """
 function PyPlot.plot(bd::BATLData{1, T}, var::AbstractString, ax=nothing; kwargs...) where T
    x, w = bd.x, bd.w
@@ -462,6 +202,16 @@ function PyPlot.plot(bd::BATLData{1, T}, var::AbstractString, ax=nothing; kwargs
    if isnothing(ax) ax = plt.gca() end
 
    c = ax.plot(x, w[:,varIndex_]; kwargs...)
+
+   xlabel("x"); ylabel("$(var)")
+   str = @sprintf "it=%d, time=%4.2f" bd.head.it bd.head.time
+   at = matplotlib.offsetbox.AnchoredText(str,
+      loc="lower left", prop=Dict("size"=>8), frameon=true,
+      bbox_to_anchor=(0., 1.), bbox_transform=ax.transAxes)
+   at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
+   ax.add_artist(at)
+
+   c
 end
 
 """
@@ -494,25 +244,34 @@ function PyPlot.contour(bd::BATLData{2, T}, var::AbstractString, ax=nothing; lev
    else
       c = ax.contour(Xi, Yi, Wi; kwargs...)
    end
+   add_titles(bd, var, ax)
+
+   c
 end
 
 """
     contourf(data, var, ax=nothing; levels=0, plotrange=[-Inf,Inf,-Inf,Inf],
-       plotinterval=0.1, innermask=false, kwargs...)
+       plotinterval=0.1, innermask=false, add_colorbar=true, vmin=-Inf, vmax=Inf,
+       colorscale=:linear, kwargs...)
 
 Wrapper over `contourf` in matplotlib. See [`interp2d`](@ref) for some related keywords.
 """
 function PyPlot.contourf(bd::BATLData{2, T}, var::AbstractString, ax=nothing; levels::Int=0,
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, rbody=1.0,
-   kwargs...) where T
+   add_colorbar=true, vmin=-Inf, vmax=Inf, colorscale=:linear, kwargs...) where T
    Xi, Yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
    if isnothing(ax) ax = plt.gca() end
 
+   norm, _ = set_colorbar(colorscale, vmin, vmax, Wi)
    if levels != 0
-      c = ax.contourf(Xi, Yi, Wi, levels; kwargs...)
+      c = ax.contourf(Xi, Yi, Wi, levels; norm, kwargs...)
    else
-      c = ax.contourf(Xi, Yi, Wi; kwargs...)
+      c = ax.contourf(Xi, Yi, Wi; norm, kwargs...)
    end
+   add_colorbar && colorbar(c; ax, fraction=0.04, pad=0.02)
+   add_titles(bd, var, ax)
+
+   c
 end
 
 """
@@ -539,7 +298,28 @@ function PyPlot.tricontourf(bd::BATLData{2, T}, var::AbstractString, ax=nothing;
    end
    if isnothing(ax) ax = plt.gca() end
 
-   ax.tricontourf(X, Y, W; kwargs...)
+   c = ax.tricontourf(X, Y, W; kwargs...)
+
+   add_titles(bd, var, ax)
+
+   c
+end
+
+function PyPlot.triplot(bd::BATLData{2, T}, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf],
+   kwargs...) where T
+   X = vec(bd.x[:,:,1])
+   Y = vec(bd.x[:,:,2])
+   triang = matplotlib.tri.Triangulation(X, Y)
+   #TODO This needs improvement.
+   if !all(isinf.(plotrange))
+      xyIndex = X .> plotrange[1] .& X .< plotrange[2] .&
+         Y .> plotrange[3] .& Y .< plotrange[4]
+      X = X[xyIndex]
+      Y = Y[xyIndex]
+   end
+   if isnothing(ax) ax = plt.gca() end
+
+   c = ax.triplot(triang, kwargs...)
 end
 
 """
@@ -548,7 +328,7 @@ end
 
 Wrapper over `plot_trisurf` in matplotlib.
 """
-function PyPlot.plot_trisurf(bd::BATLData{2, T}, var::AbstractString, ax=nothing;
+function PyPlot.plot_trisurf(bd::BATLData{2, T}, var::AbstractString;
    plotrange=[-Inf,Inf,-Inf,Inf], kwargs...) where T
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
@@ -567,7 +347,12 @@ function PyPlot.plot_trisurf(bd::BATLData{2, T}, var::AbstractString, ax=nothing
    end
    if isnothing(ax) ax = plt.gca() end
 
-   ax.plot_trisurf(X, Y, W)
+   ax = plt.figure().add_subplot(projection="3d")
+   c = ax.plot_trisurf(X, Y, W)
+
+   add_titles(bd, var, ax)
+
+   c
 end
 
 
@@ -577,32 +362,49 @@ end
 
 Wrapper over `plot_surface` in matplotlib.
 """
-function PyPlot.plot_surface(bd::BATLData{2, T}, var::AbstractString;
+function PyPlot.plot_surface(bd::BATLData{2, T}, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, rbody=1.0,
    kwargs...) where T
+   if isnothing(ax) ax = plt.gca() end
    xi, yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
    Xi, Yi = meshgrid(xi, yi)
 
-   plot_surface(Xi, Yi, Wi; kwargs...)
+   c = plot_surface(Xi, Yi, Wi; kwargs...)
+
+   add_titles(bd, var, ax)
+
+   c
 end
 
 
 """
     pcolormesh(data, var, levels=0; ax=nothing, plotrange=[-Inf,Inf,-Inf,Inf],
-       plotinterval=0.1, innermask=false, kwargs...)
+       plotinterval=0.1, innermask=false, vmin=-Inf, vmax=Inf, colorscale=:linear,
+       add_colorbar=true, kwargs...)
+
+# Keywords
+- `rbody=1.0`: inner body radius.
+- `colorscale::Symbol`: colormap scale from [`:linear`, `:log`].
+- `add_colorbar=true`: turn on colorbar.
 
 Wrapper over `pcolormesh` in matplotlib.
 """
 function PyPlot.pcolormesh(bd::BATLData{2, T}, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, rbody=1.0,
-   kwargs...) where T
+   vmin=-Inf, vmax=Inf, colorscale=:linear, add_colorbar=true, kwargs...) where T
    xi, yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody) 
 
    if isnothing(ax) ax = plt.gca() end
 
-   c = ax.pcolormesh(xi, yi, Wi; kwargs...)
-end
+   norm, _ = set_colorbar(colorscale, vmin, vmax, Wi)
+   c = ax.pcolormesh(xi, yi, Wi; norm, kwargs...)
 
+   add_colorbar && colorbar(c; ax, fraction=0.04, pad=0.02)
+
+   add_titles(bd, var, ax)
+
+   c
+end
 
 """
     tripcolor(data, var, levels=0; ax=nothing, plotrange=[-Inf,Inf,-Inf,Inf],
@@ -646,6 +448,8 @@ function PyPlot.tripcolor(bd::BATLData{2, T}, var::AbstractString, ax=nothing;
 
    ax.set_xlim(plotrange[1], plotrange[2])
    ax.set_ylim(plotrange[3], plotrange[4])
+
+   add_titles(bd, var, ax)
 
    c
 end
@@ -764,4 +568,17 @@ function set_colorbar(colorscale, vmin, vmax, data=[1.0])
    end
 
    cnorm, ticks
+end
+
+function add_titles(bd::BATLData, var, ax)
+   varIndex_ = findindex(bd, var)
+   title(bd.head.wnames[varIndex_])
+
+   xlabel(bd.head.variables[1]); ylabel(bd.head.variables[2])
+   str = @sprintf "it=%d, time=%4.2f" bd.head.it bd.head.time
+   at = matplotlib.offsetbox.AnchoredText(str,
+      loc="lower left", prop=Dict("size"=>8), frameon=true,
+      bbox_to_anchor=(0., 1.), bbox_transform=ax.transAxes)
+   at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
+   ax.add_artist(at)
 end
