@@ -30,10 +30,16 @@ jobs:
         arch:
           - x64
     steps:
-      - name: Install dependencies
-        run: |
-          pip install matplotlib
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip
+      - run: pip install matplotlib
+        shell: bash
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
@@ -51,10 +57,16 @@ jobs:
     name: Documentation
     runs-on: ubuntu-latest
     steps:
-      - name: Install dependencies
-        run: |
-          pip install matplotlib
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip
+      - run: pip install matplotlib
+        shell: bash
       - uses: julia-actions/setup-julia@v2
         with:
           version: '1'
