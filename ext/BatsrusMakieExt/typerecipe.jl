@@ -31,5 +31,5 @@ function Makie.convert_arguments(P::Makie.GridBased, bd::BATLData, var::String;
       w *= unitw
    end
 
-   (x, y, w)
+   (x, y, w')
 end
