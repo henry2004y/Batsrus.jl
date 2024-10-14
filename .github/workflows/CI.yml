@@ -30,10 +30,12 @@ jobs:
         arch:
           - x64
     steps:
-      - name: Install dependencies
-        run: if [ "$RUNNER_OS" = "Linux" ]; then sudo apt-get install -y python3-matplotlib; fi
-        shell: bash
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip' # caching pip dependencies
+      - run: pip install matplotlib
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
@@ -51,10 +53,12 @@ jobs:
     name: Documentation
     runs-on: ubuntu-latest
     steps:
-      - name: Install dependencies
-        run: if [ "$RUNNER_OS" = "Linux" ]; then sudo apt-get install -y python3-matplotlib; fi
-        shell: bash
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip' # caching pip dependencies
+      - run: pip install matplotlib
       - uses: julia-actions/setup-julia@v2
         with:
           version: '1'
