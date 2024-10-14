@@ -32,6 +32,7 @@ jobs:
     steps:
       - name: Install dependencies
         run: if [ "$RUNNER_OS" = "Linux" ]; then sudo apt-get install -y python3-matplotlib; fi
+        shell: bash
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
         with:
@@ -52,6 +53,7 @@ jobs:
     steps:
       - name: Install dependencies
         run: if [ "$RUNNER_OS" = "Linux" ]; then sudo apt-get install -y python3-matplotlib; fi
+        shell: bash
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
         with:
