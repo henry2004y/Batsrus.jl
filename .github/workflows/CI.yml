@@ -31,6 +31,14 @@ jobs:
           - x64
     steps:
       - uses: actions/checkout@v4
+      - name: Hack setup-python cache
+        # Create an empty requirements.txt if this file (or pyproject.toml) doesn't exist.
+        # This has been reported at: https://github.com/actions/setup-python/issues/807
+        # In the future this might be addressed by: https://github.com/actions/setup-python/pull/762
+        # or https://github.com/actions/setup-python/issues/751
+        if: hashFiles('**/requirements.txt', '**/pyproject.toml') == ''
+        run: |
+          touch ./requirements.txt
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -54,6 +62,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Hack setup-python cache
+      # Create an empty requirements.txt if this file (or pyproject.toml) doesn't exist.
+      # This has been reported at: https://github.com/actions/setup-python/issues/807
+      # In the future this might be addressed by: https://github.com/actions/setup-python/pull/762
+      # or https://github.com/actions/setup-python/issues/751
+      if: hashFiles('**/requirements.txt', '**/pyproject.toml') == ''
+      run: |
+        touch ./requirements.txt
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
