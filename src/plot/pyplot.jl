@@ -262,7 +262,7 @@ function PyPlot.contourf(bd::BATLData{2, T}, var::AbstractString, ax=nothing; le
    Xi, Yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
    if isnothing(ax) ax = plt.gca() end
 
-   norm, _ = set_colorbar(colorscale, vmin, vmax, Wi)
+   norm = set_colorbar(colorscale, vmin, vmax, Wi)
    if levels != 0
       c = ax.contourf(Xi, Yi, Wi, levels; norm, kwargs...)
    else
@@ -392,11 +392,11 @@ Wrapper over `pcolormesh` in matplotlib.
 function PyPlot.pcolormesh(bd::BATLData{2, T}, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, rbody=1.0,
    vmin=-Inf, vmax=Inf, colorscale=:linear, add_colorbar=true, kwargs...) where T
-   xi, yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody) 
+   xi, yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
 
    if isnothing(ax) ax = plt.gca() end
 
-   norm, _ = set_colorbar(colorscale, vmin, vmax, Wi)
+   norm = set_colorbar(colorscale, vmin, vmax, Wi)
    c = ax.pcolormesh(xi, yi, Wi; norm, kwargs...)
 
    add_colorbar && colorbar(c; ax, fraction=0.04, pad=0.02)
@@ -552,22 +552,19 @@ end
 function set_colorbar(colorscale, vmin, vmax, data=[1.0])
    if colorscale == :linear || any(<(0), data)
       colorscale == :log && @warn "Nonpositive data detected: use linear scale instead!"
-      v1 = isinf(vmin) ? minimum(x->isnan(x) ? +Inf : x, data) : vmin
-      v2 = isinf(vmax) ? maximum(x->isnan(x) ? -Inf : x, data) : vmax
-      nticks = 7
-      levels = matplotlib.ticker.MaxNLocator(nbins=255).tick_values(v1, v2)
-      cnorm = matplotlib.colors.BoundaryNorm(levels, ncolors=256, clip=true)
-      ticks = range(v1, v2, length=nticks)
+      vmin = isinf(vmin) ? minimum(x->isnan(x) ? +Inf : x, data) : vmin
+      vmax = isinf(vmax) ? maximum(x->isnan(x) ? -Inf : x, data) : vmax
+      cnorm = matplotlib.colors.Normalize(vmin, vmax)
+   elseif colorscale == :symlog
+      cnorm = matplotlib.colors.SymLogNorm(linthresh=0.03, linscale=0.75; vmin, vmax)
    else # logarithmic
       datapositive = data[data .> 0.0]
-      v1 = isinf(vmin) ? minimum(datapositive) : vmin
-      v2 = isinf(vmax) ? maximum(x->isnan(x) ? -Inf : x, data) : vmax
-
-      cnorm = matplotlib.colors.LogNorm(vmin=v1, vmax=v2)
-      ticks = matplotlib.ticker.LogLocator(base=10,subs=collect(0:9))
+      vmin = isinf(vmin) ? minimum(datapositive) : vmin
+      vmax = isinf(vmax) ? maximum(x->isnan(x) ? -Inf : x, data) : vmax
+      cnorm = matplotlib.colors.LogNorm(vmin, vmax)
    end
 
-   cnorm, ticks
+   cnorm
 end
 
 function add_titles(bd::BATLData, var, ax)
