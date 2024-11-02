@@ -48,7 +48,7 @@ using .UnitfulBatsrus
 include("io.jl")
 include("select.jl")
 include("vtk.jl")
-include("plot/utility.jl")
+include("utility.jl")
 include("plot/plots.jl")
 
 include("hdf.jl")

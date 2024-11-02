@@ -1,4 +1,4 @@
-# Utility functions for plotting.
+# Utility functions for plotting and analyzing.
 
 """
     interp2d(bd::BATLData, var::AbstractString, plotrange=[-Inf, Inf, -Inf, Inf],
@@ -205,4 +205,47 @@ function get_range(bd::BATLData, var::AbstractString, verbose=true)
    varIndex_ = findindex(bd, var)
    w = selectdim(bd.w, bd.head.ndim+1, varIndex_)
    wmin, wmax = extrema(w)
+end
+
+"""
+    rotateTensorToVectorZ(tensor::AbstractMatrix, v::AbstractVector) -> SMatrix{3,3}
+
+Rotate `tensor` with a rotation matrix that aligns the 3rd direction with `vector`, which is equivalent to change the basis from (i,j,k) to (i′,j′,k′) where k′ ∥ vector.
+Reference: [Tensor rotation](https://math.stackexchange.com/questions/2303869/tensor-rotation)
+"""
+function rotateTensorToVectorZ(tensor::AbstractMatrix{T}, v) where T
+   k = SVector{3, T}(0.0, 0.0, 1.0)
+   axis = v × k |> normalize
+   if axis[1] == axis[2] == 0
+      return tensor
+   else
+      angle = acos(v ⋅ k / sqrt(v[1]^2 + v[2]^2 + v[3]^2))
+      R = getRotationMatrix(axis, angle)
+      return R * tensor * R'
+   end
+end
+
+"""
+    getRotationMatrix(axis::AbstractVector, angle::Real) --> SMatrix{3,3}
+
+Create a rotation matrix for rotating a 3D vector around a unit `axis` by an `angle` in radians.
+Reference: [Rotation matrix from axis and angle](https://en.wikipedia.org/wiki/Rotation_matrix#Rotation_matrix_from_axis_and_angle)
+
+# Example
+
+```julia
+using LinearAlgebra
+v = [-0.5, 1.0, 1.0]
+v̂ = normalize(v)
+θ = deg2rad(-74)
+R = getRotationMatrix(v̂, θ)
+```
+"""
+function getRotationMatrix(v::AbstractVector{<:AbstractFloat}, θ::Real)
+   sinθ, cosθ = sincos(eltype(v)(θ))
+   tmp = 1 - cosθ
+   m =  @SMatrix [
+        cosθ+v[1]^2*tmp         v[1]*v[2]*tmp-v[3]*sinθ v[1]*v[3]*tmp+v[2]*sinθ;
+        v[1]*v[2]*tmp+v[3]*sinθ cosθ+v[2]^2*tmp         v[2]*v[3]*tmp-v[1]*sinθ;
+        v[1]*v[3]*tmp-v[2]*sinθ v[3]*v[2]*tmp+v[1]*sinθ cosθ+v[3]^2*tmp]
 end
