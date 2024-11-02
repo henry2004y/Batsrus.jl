@@ -3,6 +3,7 @@ module Batsrus
 #
 # Hongyang Zhou, hyzhou@umich.edu
 
+using LinearAlgebra: normalize, ×, ⋅
 using Printf, Reexport, Requires
 using Parsers
 using Interpolations: cubic_spline_interpolation, BSpline, Linear, scale, interpolate
