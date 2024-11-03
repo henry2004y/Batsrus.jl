@@ -67,8 +67,8 @@ end
 
       file = "z=0_fluid_region0_0_t00001640_n00010142.out"
       bd = load(joinpath(datapath, file))
-      @test bd["Anisotropy0"][1:2,1] == Float32[1.2630985, 2.4700143]
-      @test bd["Anisotropy1"][1:2,1] == Float32[1.2906302, 2.6070855]
+      @test bd["Anisotropy0"][1:2,1] ≈ Float32[1.2630985, 2.4700143]
+      @test bd["Anisotropy1"][1:2,1] ≈ Float32[1.2906302, 2.6070855]
    end
 
    @testset "Reading 2D unstructured" begin
