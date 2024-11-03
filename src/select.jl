@@ -221,6 +221,33 @@ function _fill_vector_from_scalars(bd::BATLData{ndim, T}, vstr1, vstr2, vstr3) w
    v
 end
 
+function _get_anisotropy(bd::BATLData{2, T}, species=0) where {T}
+   Bx, By, Bz = bd["Bx"], bd["By"], bd["Bz"]
+   # Rotate the pressure tensor to align the 3rd direction with B
+   pop = string(species)
+   Pxx = bd["pXXS"*pop]
+   Pyy = bd["pYYS"*pop]
+   Pzz = bd["pZZS"*pop]
+   Pxy = bd["pXYS"*pop]
+   Pxz = bd["pXZS"*pop]
+   Pyz = bd["pYZS"*pop]
+
+   Paniso = similar(Pxx)
+
+   @inbounds for j in axes(Pxx, 2), i in axes(Pxx, 1)  
+      b̂ = normalize(SA[Bx[i,j], By[i,j], Bz[i,j]])
+      P =  @SMatrix [
+         Pxx[i,j] Pxy[i,j] Pxz[i,j];
+         Pxy[i,j] Pyy[i,j] Pyz[i,j];
+         Pxz[i,j] Pyz[i,j] Pzz[i,j]]
+
+      Prot = rotateTensorToVectorZ(P, b̂)
+      Paniso[i,j] = (Prot[1,1] + Prot[2,2]) / (2*Prot[3,3])
+   end
+
+   Paniso
+end
+
 # Define derived parameters
 const variables_predefined = Dict(
    "B2" => (bd -> @. $getvar(bd, "Bx")^2 + $getvar(bd, "By")^2 + $getvar(bd, "Bz")^2),
@@ -234,4 +261,6 @@ const variables_predefined = Dict(
    "B" => (bd -> _fill_vector_from_scalars(bd, "Bx", "By", "Bz")),
    "E" => (bd -> _fill_vector_from_scalars(bd, "Ex", "Ey", "Ez")),
    "U" => (bd -> _fill_vector_from_scalars(bd, "Ux", "Uy", "Uz")),
+   "Anisotropy0" => (bd -> _get_anisotropy(bd, 0)),
+   "Anisotropy1" => (bd -> _get_anisotropy(bd, 1)),
 )

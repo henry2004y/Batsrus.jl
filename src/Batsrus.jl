@@ -3,10 +3,12 @@ module Batsrus
 #
 # Hongyang Zhou, hyzhou@umich.edu
 
+using LinearAlgebra: normalize, ×, ⋅
 using Printf, Reexport, Requires
 using Parsers
 using Interpolations: cubic_spline_interpolation, BSpline, Linear, scale, interpolate
 import NaturalNeighbours as NN
+using StaticArrays: SVector, @SMatrix, SA
 
 export BATLData,
    load, readlogdata, readtecdata, showhead, # io
@@ -48,7 +50,7 @@ using .UnitfulBatsrus
 include("io.jl")
 include("select.jl")
 include("vtk.jl")
-include("plot/utility.jl")
+include("utility.jl")
 include("plot/plots.jl")
 
 include("hdf.jl")

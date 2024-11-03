@@ -66,15 +66,16 @@ Here is a full list of predefined derived quantities:
 
 | Derived variable name | Meaning                          | Required variable |
 |-----------------------|----------------------------------|-------------------|
-| B2                    | magnetic field magnitude squared | Bx, By, Bz        |
-| E2                    | electric field magnitude squared | Ex, Ey, Ez        |
-| U2                    | velocity magnitude squared       | Ux, Uy, Uz        |
-| Bmag                  | magnetic field magnitude         | Bx, By, Bz        |
-| Emag                  | electric field magnitude         | Ex, Ey, Ez        |
-| Umag                  | velocity magnitude               | Ux, Uy, Uz        |
-| B                     | magnetic field vector            | Bx, By, Bz        |
-| E                     | electric field vector            | Ex, Ey, Ez        |
-| U                     | velocity vector                  | Ux, Uy, Uz        |
+| B2                    | Magnetic field magnitude squared | Bx, By, Bz        |
+| E2                    | Electric field magnitude squared | Ex, Ey, Ez        |
+| U2                    | Velocity magnitude squared       | Ux, Uy, Uz        |
+| Bmag                  | Magnetic field magnitude         | Bx, By, Bz        |
+| Emag                  | Electric field magnitude         | Ex, Ey, Ez        |
+| Umag                  | Velocity magnitude               | Ux, Uy, Uz        |
+| B                     | Magnetic field vector            | Bx, By, Bz        |
+| E                     | Electric field vector            | Ex, Ey, Ez        |
+| U                     | Velocity vector                  | Ux, Uy, Uz        |
+| Anisotropy            | Pressure/Temperature anisotropy  | B, P tensor       |
 
 ## Output format conversion
 
