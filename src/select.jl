@@ -234,19 +234,19 @@ function _get_anisotropy(bd::BATLData{2, T}, species=0) where {T}
 
    Paniso = similar(Pxx)
 
-   @inbounds for j in axes(b̂, 2), i in axes(b̂, 1)  
+   @inbounds for j in axes(Pxx, 2), i in axes(Pxx, 1)  
       b̂ = normalize(SA[Bx[i,j], By[i,j], Bz[i,j]])
       P =  @SMatrix [
          Pxx[i,j] Pxy[i,j] Pxz[i,j];
          Pxy[i,j] Pyy[i,j] Pyz[i,j];
          Pxz[i,j] Pyz[i,j] Pzz[i,j]]
 
-      Prot = rotateTensorToVectorZ(P, b̂[i,j])
+      Prot = rotateTensorToVectorZ(P, b̂)
       Paniso[i,j] = (Prot[1,1] + Prot[2,2]) / (2*Prot[3,3])
    end
 
    Paniso
-end,
+end
 
 # Define derived parameters
 const variables_predefined = Dict(

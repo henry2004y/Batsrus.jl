@@ -1,7 +1,7 @@
 [testdata]
-git-tree-sha1 = "ecff1c52f54b1847036f98d8000b7268a5c3c935"
+git-tree-sha1 = "d884abbeac09834475c56b256659becc1da64927"
 lazy = true
 
     [[testdata.download]]
     url = "https://github.com/henry2004y/batsrus_data/raw/master/batsrus_data.tar.gz"
-    sha256 = "fb2992dd3bca73162086be79c763603139740408ce87bbfe478593356d270600"
+    sha256 = "e344560deced105e684ed975276f34d7003427f5337c7e4b1def8274e5470a23"
