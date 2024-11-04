@@ -38,7 +38,6 @@ end
       end
       @test startswith(repr(bd), "filename : 1d")
       @test Batsrus.setunits(bd.head, "NORMALIZED")
-      @test isa(bd.head, NamedTuple)
       @test extrema(bd.x) == (-127.5, 127.5)
       @test extrema(bd.w) == (-0.79960780498, 1.9394335293)
    end
@@ -53,6 +52,7 @@ end
       x, y, w = interp2d(bd, "rho", plotrange)
       @test w[1,end] == 0.6848635077476501
       @test bd["B"][:,end,end] == Float32[1.118034, -0.559017, 0.0]
+      @test bd["Bmag"][128,2] == 0.9223745f0
       # Linear interpolation at a given point
       d = interp1d(bd, "rho", Float32[0.0, 0.0])
       @test d == 0.6936918f0
@@ -77,6 +77,7 @@ end
       plotrange = [-Inf, Inf, -Inf, Inf]
       x, y, w = interp2d(bd, "rho", plotrange, useMatplotlib=false)
       @test w[1,2] == 5.000018304080387
+      @test bd["Umag"][2] == 71.85452748407637
    end
 
    @testset "Reading 3D structured binary" begin
@@ -86,8 +87,6 @@ end
       X, Z, p = cutdata(bd, "p"; dir="y", sequence=1, plotrange)
       @test p[1] ≈ 0.560976f0 && p[2] ≈ 0.53704995f0
       @test size(bd["p"]) == (8,8,8)
-      vars = getvars(bd, ["p"])
-      @test size(vars["p"]) == (8,8,8)
    end
    #TODO: add tecplot tests
    #@testset "Reading Tecplot" begin

@@ -20,14 +20,14 @@ function load(file::AbstractString; npict::Int=1, verbose::Bool=false)
    end
    seekstart(fileID) # Rewind to start
 
-   ## Read data from files
    # Skip npict-1 snapshots (since we only want the npict-th snapshot)
    skip(fileID, pictsize*(npict-1))
 
    filehead = getfilehead(fileID, filelist)
    # Read data
    if filelist.type == :ascii
-      x, w = allocateBuffer(filehead, Float64) # why Float64?
+      T = Float64 # why Float64?
+      x, w = allocateBuffer(filehead, T)
       getascii!(x, w, fileID)
    else
       skip(fileID, TAG) # skip record start tag
@@ -40,7 +40,7 @@ function load(file::AbstractString; npict::Int=1, verbose::Bool=false)
 
    #setunits(filehead,"")
 
-	data = BATLData{Int(filehead.ndim), eltype(w)}(filehead, x, w, filelist)
+	data = BATLData{Int(filehead.ndim), T, typeof(w)}(filehead, x, w, filelist)
 end
 
 "Read information from log file."
@@ -313,9 +313,8 @@ function getfilehead(fileID::IOStream, filelist::FileList)
 	# Produce a wnames from the last file
    wnames = variables[ndim+1:ndim+nw]
 
-   head = (ndim=ndim, headline=headline, it=it, time=t, gencoord=gencoord,
-		neqpar=neqpar, nw=nw, nx=nx, eqpar=eqpar, variables=variables,
-		wnames=wnames)
+   head = BATLHead(ndim, headline, it, t, gencoord,
+		neqpar, nw, nx, eqpar, variables, wnames)
 end
 
 function skipline(s::IO)
@@ -381,7 +380,7 @@ function getfilesize(fileID::IOStream, type::Symbol, lenstr::Int32)
 end
 
 "Create buffer for x and w."
-function allocateBuffer(filehead::NamedTuple, T::DataType)
+function allocateBuffer(filehead::BATLHead, T::DataType)
    if filehead.ndim == 1
       n1 = filehead.nx[1]
       x  = Array{T,2}(undef, n1, filehead.ndim)

@@ -19,6 +19,9 @@ file = joinpath(directory, files[1])
 SUITE["read"]["ASCII"] = @benchmarkable load($file)
 
 file = joinpath(directory, files[2])
+bd = load(file)
+SUITE["read"]["Extract density"] = @benchmarkable Batsrus.getvar($bd, "Rho")
+SUITE["read"]["Extract B"] = @benchmarkable Batsrus.getvar($bd, "B")
 SUITE["read"]["Binary structured"] = @benchmarkable load($file)
 
 file = joinpath(directory, files[3])

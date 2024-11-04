@@ -40,13 +40,6 @@ get_var_range(bd, "rho")
 bd["rho"]
 ```
 
-- Derived variables
-
-```julia
-v = getvars(bd, ["Bx", "By", "Bz"])
-Bmag = bd["Bmag"]
-```
-
 - Extracting data at a given location
 
 ```julia
@@ -60,6 +53,12 @@ d = interp1d(bd, "rho", loc)
 point1 = Float32[-10.0, -1.0]
 point2 = Float32[10.0, 1.0]
 w = interp1d(bd, "rho", point1, point2)
+```
+
+- Derived variables
+
+```julia
+Bmag = bd["Bmag"]
 ```
 
 Here is a full list of predefined derived quantities:

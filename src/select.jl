@@ -163,7 +163,7 @@ function subvolume(x, y, z, u, v, w, limits)
 end
 
 """
-    getvars(bd::BATLData, var::AbstractString) -> Array
+    getvar(bd::BATLData, var::AbstractString) -> Array
 
 Return variable data from string `var`. This is also supported via direct indexing,
 
@@ -171,8 +171,6 @@ Return variable data from string `var`. This is also supported via direct indexi
 ```
 bd["rho"]
 ```
-
-See also: [`getvars`](@ref).
 """
 function getvar(bd::BATLData{ndim, T}, var::AbstractString) where {ndim, T}
    if var in keys(variables_predefined)
@@ -189,26 +187,11 @@ end
 @inline @Base.propagate_inbounds Base.getindex(bd::BATLData, var::AbstractString) =
    getvar(bd, var)
 
-"""
-    getvars(bd::BATLData, names::Vector) -> Dict
 
-Return variables' data as a dictionary from vector of `names`.
-See also: [`getvar`](@ref).
-"""
-function getvars(bd::BATLData{ndim, U}, names::Vector{T}) where {ndim, U, T<:AbstractString}
-   dict = Dict{T, Array{U}}()
-   for name in names
-      dict[name] = getvar(bd, name)
-   end
-
-   dict
-end
 
 "Construct vectors from scalar components."
-function _fill_vector_from_scalars(bd::BATLData{ndim, T}, vstr1, vstr2, vstr3) where {ndim, T}
-   v1 = getvar(bd, vstr1)
-   v2 = getvar(bd, vstr2)
-   v3 = getvar(bd, vstr3)
+function _fill_vector_from_scalars(bd::BATLData{ndim, T, U}, var) where {ndim, T, U}
+   v1, v2, v3 = _get_vectors(bd, var)
    v = Array{T, ndims(v1)+1}(undef, 3, size(v1)...)
 
    Rpost = CartesianIndices(size(v1))
@@ -221,7 +204,55 @@ function _fill_vector_from_scalars(bd::BATLData{ndim, T}, vstr1, vstr2, vstr3) w
    v
 end
 
-function _get_anisotropy(bd::BATLData{2, T}, species=0) where {T}
+function _get_magnitude2(bd::BATLData{2, T, U}, var=:B) where {T, U}
+   vx, vy, vz = _get_vectors(bd, var)
+   v = similar(vx)::Array{T, 2}
+
+   @simd for i in eachindex(v)
+      v[i] = vx[i]^2 + vy[i]^2 + vz[i]^2
+   end
+
+   v
+end
+
+function _get_magnitude(bd::BATLData{2, T, U}, var=:B) where {T, U}
+   vx, vy, vz = _get_vectors(bd, var)
+   v = similar(vx)::Array{T, 2}
+
+   @simd for i in eachindex(v)
+      v[i] = √(vx[i]^2 + vy[i]^2 + vz[i]^2)
+   end
+
+   v
+end
+
+function _get_vectors(bd::BATLData, var)
+   if var == :B
+      vx = bd["Bx"]
+      vy = bd["By"]
+      vz = bd["Bz"]
+   elseif var == :E
+      vx = bd["Ex"]
+      vy = bd["Ey"]
+      vz = bd["Ez"]
+   elseif var == :U
+      vx = bd["Ux"]
+      vy = bd["Uy"]
+      vz = bd["Uz"]
+   elseif var == :U0
+      vx = bd["UxS0"]
+      vy = bd["UyS0"]
+      vz = bd["UzS0"]
+   elseif var == :U1
+      vx = bd["UxS1"]
+      vy = bd["UyS1"]
+      vz = bd["UzS1"] 
+   end
+
+   vx, vy, vz
+end
+
+function _get_anisotropy(bd::BATLData{2, T, U}, species=0) where {T, U}
    Bx, By, Bz = bd["Bx"], bd["By"], bd["Bz"]
    # Rotate the pressure tensor to align the 3rd direction with B
    pop = string(species)
@@ -232,7 +263,7 @@ function _get_anisotropy(bd::BATLData{2, T}, species=0) where {T}
    Pxz = bd["pXZS"*pop]
    Pyz = bd["pYZS"*pop]
 
-   Paniso = similar(Pxx)
+   Paniso = similar(Pxx)::Array{T, 2}
 
    @inbounds for j in axes(Pxx, 2), i in axes(Pxx, 1)  
       b̂ = normalize(SA[Bx[i,j], By[i,j], Bz[i,j]])
@@ -249,18 +280,18 @@ function _get_anisotropy(bd::BATLData{2, T}, species=0) where {T}
 end
 
 # Define derived parameters
-const variables_predefined = Dict(
-   "B2" => (bd -> @. $getvar(bd, "Bx")^2 + $getvar(bd, "By")^2 + $getvar(bd, "Bz")^2),
-   "E2" => (bd -> @. $getvar(bd, "Ex")^2 + $getvar(bd, "Ey")^2 + $getvar(bd, "Ez")^2),
-   "U2" => (bd -> @. $getvar(bd, "Ux")^2 + $getvar(bd, "Uy")^2 + $getvar(bd, "Uz")^2),
-   "Ue2" => (bd -> @. $getvar(bd, "uxS0")^2 + $getvar(bd, "uyS0")^2 + $getvar(bd, "uzS0")^2),
-   "Ui2" => (bd -> @. $getvar(bd, "uxS1")^2 + $getvar(bd, "uyS1")^2 + $getvar(bd, "uzS1")^2),
-   "Bmag" => (bd -> @. sqrt($getvar(bd, "B2"))),
-   "Emag" => (bd -> @. sqrt($getvar(bd, "E2"))),
-   "Umag" => (bd -> @. sqrt($getvar(bd, "U2"))),
-   "B" => (bd -> _fill_vector_from_scalars(bd, "Bx", "By", "Bz")),
-   "E" => (bd -> _fill_vector_from_scalars(bd, "Ex", "Ey", "Ez")),
-   "U" => (bd -> _fill_vector_from_scalars(bd, "Ux", "Uy", "Uz")),
+const variables_predefined = Dict{String, Function}(
+   "B2" => (bd -> _get_magnitude2(bd, :B)),
+   "E2" => (bd -> _get_magnitude2(bd, :E)),
+   "U2" => (bd -> _get_magnitude2(bd, :U)),
+   "Ue2" => (bd -> _get_magnitude2(bd, :U0)),
+   "Ui2" => (bd -> _get_magnitude2(bd, :U1)),
+   "Bmag" => (bd -> _get_magnitude(bd, :B)),
+   "Emag" => (bd -> _get_magnitude(bd, :E)),
+   "Umag" => (bd -> _get_magnitude(bd, :U)),
+   "B" => (bd -> _fill_vector_from_scalars(bd, :B)),
+   "E" => (bd -> _fill_vector_from_scalars(bd, :E)),
+   "U" => (bd -> _fill_vector_from_scalars(bd, :U)),
    "Anisotropy0" => (bd -> _get_anisotropy(bd, 0)),
    "Anisotropy1" => (bd -> _get_anisotropy(bd, 1)),
 )
