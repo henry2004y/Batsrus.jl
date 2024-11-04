@@ -77,7 +77,7 @@ end
       plotrange = [-Inf, Inf, -Inf, Inf]
       x, y, w = interp2d(bd, "rho", plotrange, useMatplotlib=false)
       @test w[1,2] == 5.000018304080387
-      @test bd["Umag"][1] == 71.85452748407637
+      @test bd["Umag"][2] == 71.85452748407637
    end
 
    @testset "Reading 3D structured binary" begin
