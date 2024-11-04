@@ -195,7 +195,7 @@ end
 Return variables' data as a dictionary from vector of `names`.
 See also: [`getvar`](@ref).
 """
-function getvars(bd::BATLData{ndim, U}, names::Vector{T}) where {ndim, U, T<:AbstractString}
+function getvars(bd::BATLData{ndim, TU, U}, names::Vector{T}) where {ndim, TU, U, T<:AbstractString}
    dict = Dict{T, Array{U}}()
    for name in names
       dict[name] = getvar(bd, name)
@@ -205,7 +205,7 @@ function getvars(bd::BATLData{ndim, U}, names::Vector{T}) where {ndim, U, T<:Abs
 end
 
 "Construct vectors from scalar components."
-function _fill_vector_from_scalars(bd::BATLData{ndim, T}, vstr1, vstr2, vstr3) where {ndim, T}
+function _fill_vector_from_scalars(bd::BATLData{ndim, T, U}, vstr1, vstr2, vstr3) where {ndim, T, U}
    v1 = getvar(bd, vstr1)
    v2 = getvar(bd, vstr2)
    v3 = getvar(bd, vstr3)
@@ -221,7 +221,7 @@ function _fill_vector_from_scalars(bd::BATLData{ndim, T}, vstr1, vstr2, vstr3) w
    v
 end
 
-function _get_anisotropy(bd::BATLData{2, T}, species=0) where {T}
+function _get_anisotropy(bd::BATLData{2, T, U}, species=0) where {T, U}
    Bx, By, Bz = bd["Bx"], bd["By"], bd["Bz"]
    # Rotate the pressure tensor to align the 3rd direction with B
    pop = string(species)
@@ -232,7 +232,7 @@ function _get_anisotropy(bd::BATLData{2, T}, species=0) where {T}
    Pxz = bd["pXZS"*pop]
    Pyz = bd["pYZS"*pop]
 
-   Paniso = similar(Pxx)
+   Paniso = similar(Pxx)::Array{T, 2}
 
    @inbounds for j in axes(Pxx, 2), i in axes(Pxx, 1)  
       b̂ = normalize(SA[Bx[i,j], By[i,j], Bz[i,j]])
@@ -249,7 +249,7 @@ function _get_anisotropy(bd::BATLData{2, T}, species=0) where {T}
 end
 
 # Define derived parameters
-const variables_predefined = Dict(
+const variables_predefined = Dict{String, Function}(
    "B2" => (bd -> @. $getvar(bd, "Bx")^2 + $getvar(bd, "By")^2 + $getvar(bd, "Bz")^2),
    "E2" => (bd -> @. $getvar(bd, "Ex")^2 + $getvar(bd, "Ey")^2 + $getvar(bd, "Ez")^2),
    "U2" => (bd -> @. $getvar(bd, "Ux")^2 + $getvar(bd, "Uy")^2 + $getvar(bd, "Uz")^2),

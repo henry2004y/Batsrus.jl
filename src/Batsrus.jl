@@ -32,14 +32,28 @@ struct FileList
    lenhead::Int
 end
 
+struct BATLHead
+   ndim::Int32
+   headline::SubString{String}
+   it::Int32
+   time::Float32
+   gencoord::Bool
+   neqpar::Int32
+   nw::Int32
+   nx::Vector{Int32}
+   eqpar::Vector{Float32}
+   variables::Vector{SubString{String}}
+   wnames::Vector{SubString{String}}
+end
+
 "Primary Batsrus data storage type."
-struct BATLData{dim, T<:AbstractFloat}
+struct BATLData{dim, T<:AbstractFloat, U}
    "header information"
-   head::NamedTuple
+   head::BATLHead
    "grid"
-   x::Array{T}
+   x::U
    "variables"
-   w::Array{T}
+   w::U
    "file information"
    list::FileList
 end
