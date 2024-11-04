@@ -38,7 +38,6 @@ end
       end
       @test startswith(repr(bd), "filename : 1d")
       @test Batsrus.setunits(bd.head, "NORMALIZED")
-      @test isa(bd.head, NamedTuple)
       @test extrema(bd.x) == (-127.5, 127.5)
       @test extrema(bd.w) == (-0.79960780498, 1.9394335293)
    end
@@ -86,8 +85,6 @@ end
       X, Z, p = cutdata(bd, "p"; dir="y", sequence=1, plotrange)
       @test p[1] ≈ 0.560976f0 && p[2] ≈ 0.53704995f0
       @test size(bd["p"]) == (8,8,8)
-      vars = getvars(bd, ["p"])
-      @test size(vars["p"]) == (8,8,8)
    end
    #TODO: add tecplot tests
    #@testset "Reading Tecplot" begin
