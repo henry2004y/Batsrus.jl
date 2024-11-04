@@ -52,6 +52,7 @@ end
       x, y, w = interp2d(bd, "rho", plotrange)
       @test w[1,end] == 0.6848635077476501
       @test bd["B"][:,end,end] == Float32[1.118034, -0.559017, 0.0]
+      @test bd["Bmag"][128,2] == 0.9223745f0
       # Linear interpolation at a given point
       d = interp1d(bd, "rho", Float32[0.0, 0.0])
       @test d == 0.6936918f0
@@ -76,6 +77,7 @@ end
       plotrange = [-Inf, Inf, -Inf, Inf]
       x, y, w = interp2d(bd, "rho", plotrange, useMatplotlib=false)
       @test w[1,2] == 5.000018304080387
+      @test bd["Umag"][1] == 71.85452748407637
    end
 
    @testset "Reading 3D structured binary" begin
