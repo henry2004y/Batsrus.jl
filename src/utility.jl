@@ -1,7 +1,7 @@
 # Utility functions for plotting and analyzing.
 
 """
-    interp2d(bd::BATLData, var::AbstractString, plotrange=[-Inf, Inf, -Inf, Inf],
+    interp2d(bd::BATS, var::AbstractString, plotrange=[-Inf, Inf, -Inf, Inf],
        plotinterval=Inf; kwargs...)
 
 Return 2D interpolated slices of data `var` from `bd`. If `plotrange` is not set, output
@@ -12,9 +12,9 @@ data resolution is the same as the original.
 - `rbody=1.0`: Radius of the inner mask. Used when the rbody parameter is not found in the header.
 - `useMatplotlib=true`: Whether to Matplotlib (somehow faster) or NaturalNeighbours for scattered interpolation.
 """
-function interp2d(bd::BATLData{2, T, U}, var::AbstractString,
+function interp2d(bd::BATS{2, T}, var::AbstractString,
    plotrange::Vector=[-Inf, Inf, -Inf, Inf], plotinterval::Real=Inf;
-   innermask::Bool=false, rbody::Real=1.0, useMatplotlib::Bool=true) where {T, U}
+   innermask::Bool=false, rbody::Real=1.0, useMatplotlib::Bool=true) where T
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
 
@@ -87,7 +87,7 @@ function interp2d(bd::BATLData{2, T, U}, var::AbstractString,
 end
 
 "Find variable index in the BATSRUS data."
-function findindex(bd::BATLData, var::AbstractString)
+function findindex(bd::BATS, var::AbstractString)
    varIndex_ = findfirst(x->x==lowercase(var), lowercase.(bd.head.wnames))
    isnothing(varIndex_) && error("$(var) not found in file header variables!")
 
@@ -102,7 +102,7 @@ function meshgrid(x, y)
    X, Y
 end
 
-@inline function hasunit(bd::BATLData)
+@inline function hasunit(bd::BATS)
    startswith(bd.head.headline, "normalized") ? false : true
 end
 
@@ -129,11 +129,11 @@ function interpolate2d_generalized_coords(X::T, Y::T, W::T,
 end
 
 """
-    interp1d(bd::BATLData, var::AbstractString, loc::AbstractVector{<:AbstractFloat})
+    interp1d(bd::BATS, var::AbstractString, loc::AbstractVector{<:AbstractFloat})
 
 Interpolate `var` at spatial point `loc` in `bd`.
 """
-function interp1d(bd::BATLData{2, T, U}, var::AbstractString, loc::AbstractVector{<:AbstractFloat}) where {T, U}
+function interp1d(bd::BATS{2, T}, var::AbstractString, loc::AbstractVector{<:AbstractFloat}) where T
    @assert !bd.head.gencoord "Only accept structured grids!"
 
    x = bd.x
@@ -146,11 +146,11 @@ function interp1d(bd::BATLData{2, T, U}, var::AbstractString, loc::AbstractVecto
 end
 
 """
-    interp1d(bd::BATLData, var::AbstractString, point1::Vector, point2::Vecto)
+    interp1d(bd::BATS, var::AbstractString, point1::Vector, point2::Vecto)
 
 Interpolate `var` along a line from `point1` to `point2` in `bd`.
 """
-function interp1d(bd::BATLData{2, T, U}, var::AbstractString, point1::Vector, point2::Vector) where {T, U}
+function interp1d(bd::BATS{2, T}, var::AbstractString, point1::Vector, point2::Vector) where T
    @assert !bd.head.gencoord "Only accept structured grids!"
 
    x = bd.x
@@ -179,20 +179,20 @@ function slice1d(bd, var, icut::Int=1, dir::Int=2)
 end
 
 "Return view of variable `var` in `bd`."
-function getview(bd::BATLData{1, T, U}, var) where {T, U}
+function getview(bd::BATS{1, T}, var) where T
    varIndex_ = findindex(bd, var)
 
    v = @view bd.w[:,varIndex_]
 end
 
-function getview(bd::BATLData{2, T, U}, var) where {T, U}
+function getview(bd::BATS{2, T}, var) where T
    varIndex_ = findindex(bd, var)
 
    v = @view bd.w[:,:,varIndex_]
 end
 
 "Return value range of `var` in `bd`."
-get_var_range(bd::BATLData, var) = getview(bd, var) |> extrema
+get_var_range(bd::BATS, var) = getview(bd, var) |> extrema
 
 "Squeeze singleton dimensions for an array `A`."
 function squeeze(A::AbstractArray)
@@ -201,7 +201,7 @@ function squeeze(A::AbstractArray)
    dropdims(A, dims=singleton_dims)
 end
 
-function get_range(bd::BATLData, var::AbstractString, verbose=true)
+function get_range(bd::BATS, var::AbstractString, verbose=true)
    varIndex_ = findindex(bd, var)
    w = selectdim(bd.w, bd.head.ndim+1, varIndex_)
    wmin, wmax = extrema(w)

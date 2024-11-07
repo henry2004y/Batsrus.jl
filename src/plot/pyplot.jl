@@ -53,11 +53,11 @@ function plotlogdata(data, head::NamedTuple, func::AbstractString; plotmode="lin
 end
 
 """
-    plotgrid(bd::BATLData, var, ax=nothing; kwargs...)
+    plotgrid(bd::BATS, var, ax=nothing; kwargs...)
 
 Plot 2D mesh.
 """
-function plotgrid(bd::BATLData{2, T}, func::AbstractString, ax=nothing; kwargs...) where T
+function plotgrid(bd::BATS{2, T}, func::AbstractString, ax=nothing; kwargs...) where T
    if isnothing(ax) ax = plt.gca() end
 
    # This does not take subdomain plot into account!
@@ -81,7 +81,7 @@ end
 
 2D plane cut pcolormesh of 3D box data. `sequence` is the index along `dir`.
 """
-function cutplot(bd::BATLData{3, T}, var::AbstractString, ax=nothing;
+function cutplot(bd::BATS{3, T}, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], dir="x", sequence=1) where {T}
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
@@ -132,13 +132,13 @@ end
 
 
 """
-    streamslice(data::BATLData, var, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf], dir="x",
+    streamslice(data::BATS, var, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf], dir="x",
        sequence=1; kwargs...)
 
 Plot streamlines on 2D slices of 3D box data. Variable names in `var` string must be
 separated with `;`.
 """
-function streamslice(bd::BATLData{3, T}, var::AbstractString, ax=nothing;
+function streamslice(bd::BATS{3, T}, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], dir="x", sequence=1, kwargs...) where {T}
    x,w = bd.x, bd.w
    varstream  = split(var, ";")
@@ -192,11 +192,11 @@ end
 
 
 """
-    plot(bd::BATLData{1, T}, var, ax=nothing; kwargs...)
+    plot(bd::BATS{1, T}, var, ax=nothing; kwargs...)
 
 Wrapper over `plot` in matplotlib. Plot 1D outputs.
 """
-function PyPlot.plot(bd::BATLData{1, T}, var::AbstractString, ax=nothing; kwargs...) where T
+function PyPlot.plot(bd::BATS{1, T}, var::AbstractString, ax=nothing; kwargs...) where T
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
    if isnothing(ax) ax = plt.gca() end
@@ -219,7 +219,7 @@ end
 
 Wrapper over `scatter` in matplotlib.
 """
-function PyPlot.scatter(bd::BATLData{1, T}, var::AbstractString, ax=nothing; kwargs...) where T
+function PyPlot.scatter(bd::BATS{1, T}, var::AbstractString, ax=nothing; kwargs...) where T
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
    if isnothing(ax) ax = plt.gca() end
@@ -233,7 +233,7 @@ end
 
 Wrapper over `contour` in matplotlib.
 """
-function PyPlot.contour(bd::BATLData{2, T}, var::AbstractString, ax=nothing; levels=0,
+function PyPlot.contour(bd::BATS{2, T}, var::AbstractString, ax=nothing; levels=0,
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, rbody=1.0,
    kwargs...) where T
    Xi, Yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
@@ -256,7 +256,7 @@ end
 
 Wrapper over `contourf` in matplotlib. See [`interp2d`](@ref) for some related keywords.
 """
-function PyPlot.contourf(bd::BATLData{2, T}, var::AbstractString, ax=nothing; levels::Int=0,
+function PyPlot.contourf(bd::BATS{2, T}, var::AbstractString, ax=nothing; levels::Int=0,
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, rbody=1.0,
    add_colorbar=true, vmin=-Inf, vmax=Inf, colorscale=:linear, kwargs...) where T
    Xi, Yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
@@ -279,7 +279,7 @@ end
 
 Wrapper over `tricontourf` in matplotlib.
 """
-function PyPlot.tricontourf(bd::BATLData{2, T}, var::AbstractString, ax=nothing;
+function PyPlot.tricontourf(bd::BATS{2, T}, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], kwargs...) where T
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
@@ -305,7 +305,7 @@ function PyPlot.tricontourf(bd::BATLData{2, T}, var::AbstractString, ax=nothing;
    c
 end
 
-function PyPlot.triplot(bd::BATLData{2, T}, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf],
+function PyPlot.triplot(bd::BATS{2, T}, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf],
    kwargs...) where T
    X = vec(bd.x[:,:,1])
    Y = vec(bd.x[:,:,2])
@@ -323,12 +323,12 @@ function PyPlot.triplot(bd::BATLData{2, T}, ax=nothing; plotrange=[-Inf,Inf,-Inf
 end
 
 """
-    plot_trisurf(data::BATLData, var::String, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf],
+    plot_trisurf(data::BATS, var::String, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf],
        kwargs...)
 
 Wrapper over `plot_trisurf` in matplotlib.
 """
-function PyPlot.plot_trisurf(bd::BATLData{2, T}, var::AbstractString;
+function PyPlot.plot_trisurf(bd::BATS{2, T}, var::AbstractString;
    plotrange=[-Inf,Inf,-Inf,Inf], kwargs...) where T
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
@@ -362,7 +362,7 @@ end
 
 Wrapper over `plot_surface` in matplotlib.
 """
-function PyPlot.plot_surface(bd::BATLData{2, T}, var::AbstractString, ax=nothing;
+function PyPlot.plot_surface(bd::BATS{2, T}, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, rbody=1.0,
    kwargs...) where T
    if isnothing(ax) ax = plt.gca() end
@@ -389,7 +389,7 @@ end
 
 Wrapper over `pcolormesh` in matplotlib.
 """
-function PyPlot.pcolormesh(bd::BATLData{2, T}, var::AbstractString, ax=nothing;
+function PyPlot.pcolormesh(bd::BATS{2, T}, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, rbody=1.0,
    vmin=-Inf, vmax=Inf, colorscale=:linear, add_colorbar=true, kwargs...) where T
    xi, yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
@@ -412,7 +412,7 @@ end
 
 Wrapper over `tripcolor` in matplotlib.
 """
-function PyPlot.tripcolor(bd::BATLData{2, T}, var::AbstractString, ax=nothing;
+function PyPlot.tripcolor(bd::BATS{2, T}, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], innermask=false, kwargs...) where {T}
    x, w = bd.x, bd.w
 
@@ -461,7 +461,7 @@ end
 
 Wrapper over `streamplot` in matplotlib.
 """
-function PyPlot.streamplot(bd::BATLData{2, T}, var::AbstractString, ax=nothing;
+function PyPlot.streamplot(bd::BATS{2, T}, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=Inf, kwargs...) where T
    xi, yi, v1, v2 = _getvector(bd, var; plotrange, plotinterval)
 
@@ -470,7 +470,7 @@ function PyPlot.streamplot(bd::BATLData{2, T}, var::AbstractString, ax=nothing;
    ax.streamplot(xi, yi, v1, v2; kwargs...)
 end
 
-function _getvector(bd::BATLData{2, T}, var::AbstractString;
+function _getvector(bd::BATS{2, T}, var::AbstractString;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=Inf) where T
    x, w = bd.x, bd.w
    varstream = split(var, ";")
@@ -529,7 +529,7 @@ end
 
 Wrapper over `quiver` in matplotlib. Only supports Cartesian grid for now.
 """
-function PyPlot.quiver(bd::BATLData{2, T}, var::AbstractString, ax=nothing;
+function PyPlot.quiver(bd::BATS{2, T}, var::AbstractString, ax=nothing;
    stride::Integer=10, kwargs...) where T
    x, w = bd.x, bd.w
    VarQuiver  = split(var, ";")
@@ -567,7 +567,7 @@ function set_colorbar(colorscale, vmin, vmax, data=[1.0])
    cnorm
 end
 
-function add_titles(bd::BATLData, var, ax)
+function add_titles(bd::BATS, var, ax)
    varIndex_ = findindex(bd, var)
    title(bd.head.wnames[varIndex_])
 

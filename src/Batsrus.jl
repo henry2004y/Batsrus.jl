@@ -3,6 +3,7 @@ module Batsrus
 #
 # Hongyang Zhou, hyzhou@umich.edu
 
+using ComputedFieldTypes
 using LinearAlgebra: normalize, ×, ⋅
 using Printf, Reexport, Requires
 using Parsers
@@ -10,54 +11,13 @@ using Interpolations: cubic_spline_interpolation, BSpline, Linear, scale, interp
 import NaturalNeighbours as NN
 using StaticArrays: SVector, @SMatrix, SA
 
-export BATLData,
+export BATS,
    load, readlogdata, readtecdata, showhead, # io
    getvar, cutdata, subvolume, subsurface, # select
    Batl, convertTECtoVTU, convertIDLtoVTK, readhead, readtree, getConnectivity, # vtk
    interp1d, interp2d, slice1d, get_var_range, squeeze, get_range # plot/utility
 
-"Type for the file information."
-struct FileList
-   "filename"
-   name::String
-   "file type"
-   type::Symbol
-   "directory"
-   dir::String
-   "file size"
-   bytes::Int
-   "number of snapshots"
-   npictinfiles::Int
-   "length of meta data"
-   lenhead::Int
-end
-
-struct BATLHead
-   ndim::Int32
-   headline::SubString{String}
-   it::Int32
-   time::Float32
-   gencoord::Bool
-   neqpar::Int32
-   nw::Int32
-   nx::Vector{Int32}
-   eqpar::Vector{Float32}
-   variables::Vector{SubString{String}}
-   wnames::Vector{SubString{String}}
-end
-
-"Primary Batsrus data storage type."
-struct BATLData{dim, T<:AbstractFloat, U}
-   "header information"
-   head::BATLHead
-   "grid"
-   x::U
-   "variables"
-   w::U
-   "file information"
-   list::FileList
-end
-
+include("type.jl")
 include("unit/UnitfulBatsrus.jl")
 using .UnitfulBatsrus
 

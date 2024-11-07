@@ -6,7 +6,7 @@
 Get 2D plane cut in orientation `dir` for `var` out of 3D box `data` within `plotrange`.
 The returned 2D data lies in the `sequence` plane from - to + in `dir`.
 """
-function cutdata(bd::BATLData, var::AbstractString;
+function cutdata(bd::BATS, var::AbstractString;
    plotrange=[-Inf,Inf,-Inf,Inf], dir::String="x", sequence::Int=1)
    var_ = findfirst(x->x==lowercase(var), lowercase.(bd.head.wnames))
    isempty(var_) && error("$(var) not found in header variables!")
@@ -163,7 +163,7 @@ function subvolume(x, y, z, u, v, w, limits)
 end
 
 """
-    getvar(bd::BATLData, var::AbstractString) -> Array
+    getvar(bd::BATS, var::AbstractString) -> Array
 
 Return variable data from string `var`. This is also supported via direct indexing,
 
@@ -172,7 +172,7 @@ Return variable data from string `var`. This is also supported via direct indexi
 bd["rho"]
 ```
 """
-function getvar(bd::BATLData{ndim, T}, var::AbstractString) where {ndim, T}
+function getvar(bd::BATS{ndim, T}, var::AbstractString) where {ndim, T}
    if var in keys(variables_predefined)
       w = variables_predefined[var](bd)
    else
@@ -184,13 +184,13 @@ function getvar(bd::BATLData{ndim, T}, var::AbstractString) where {ndim, T}
    w
 end
 
-@inline @Base.propagate_inbounds Base.getindex(bd::BATLData, var::AbstractString) =
+@inline @Base.propagate_inbounds Base.getindex(bd::BATS, var::AbstractString) =
    getvar(bd, var)
 
 
 
 "Construct vectors from scalar components."
-function _fill_vector_from_scalars(bd::BATLData{ndim, T, U}, var) where {ndim, T, U}
+function _fill_vector_from_scalars(bd::BATS{ndim, T}, var) where {ndim, T}
    v1, v2, v3 = _get_vectors(bd, var)
    v = Array{T, ndims(v1)+1}(undef, 3, size(v1)...)
 
@@ -204,7 +204,7 @@ function _fill_vector_from_scalars(bd::BATLData{ndim, T, U}, var) where {ndim, T
    v
 end
 
-function _get_magnitude2(bd::BATLData{2, T, U}, var=:B) where {T, U}
+function _get_magnitude2(bd::BATS{2, T}, var=:B) where T
    vx, vy, vz = _get_vectors(bd, var)
    v = similar(vx)::Array{T, 2}
 
@@ -215,7 +215,7 @@ function _get_magnitude2(bd::BATLData{2, T, U}, var=:B) where {T, U}
    v
 end
 
-function _get_magnitude(bd::BATLData{2, T, U}, var=:B) where {T, U}
+function _get_magnitude(bd::BATS{2, T}, var=:B) where T
    vx, vy, vz = _get_vectors(bd, var)
    v = similar(vx)::Array{T, 2}
 
@@ -226,7 +226,7 @@ function _get_magnitude(bd::BATLData{2, T, U}, var=:B) where {T, U}
    v
 end
 
-function _get_vectors(bd::BATLData, var)
+function _get_vectors(bd::BATS, var)
    if var == :B
       vx = bd["Bx"]
       vy = bd["By"]
@@ -252,7 +252,7 @@ function _get_vectors(bd::BATLData, var)
    vx, vy, vz
 end
 
-function _get_anisotropy(bd::BATLData{2, T, U}, species=0) where {T, U}
+function _get_anisotropy(bd::BATS{2, T}, species=0) where T
    Bx, By, Bz = bd["Bx"], bd["By"], bd["Bz"]
    # Rotate the pressure tensor to align the 3rd direction with B
    pop = string(species)

@@ -40,7 +40,7 @@ function load(file::AbstractString; npict::Int=1, verbose::Bool=false)
 
    #setunits(filehead,"")
 
-	data = BATLData{Int(filehead.ndim), T, typeof(w)}(filehead, x, w, filelist)
+	data = BATS{Int(filehead.ndim), T}(filehead, x, w, filelist)
 end
 
 "Read information from log file."
@@ -313,7 +313,7 @@ function getfilehead(fileID::IOStream, filelist::FileList)
 	# Produce a wnames from the last file
    wnames = variables[ndim+1:ndim+nw]
 
-   head = BATLHead(ndim, headline, it, t, gencoord,
+   head = BatsHead(ndim, headline, it, t, gencoord,
 		neqpar, nw, nx, eqpar, variables, wnames)
 end
 
@@ -380,7 +380,7 @@ function getfilesize(fileID::IOStream, type::Symbol, lenstr::Int32)
 end
 
 "Create buffer for x and w."
-function allocateBuffer(filehead::BATLHead, T::DataType)
+function allocateBuffer(filehead::BatsHead, T::DataType)
    if filehead.ndim == 1
       n1 = filehead.nx[1]
       x  = Array{T,2}(undef, n1, filehead.ndim)
@@ -660,7 +660,7 @@ function setunits(filehead, type; distance=1.0, mp=1.0, me=1.0)
    return true
 end
 
-function Base.show(io::IO, data::BATLData)
+function Base.show(io::IO, data::BATS)
    showhead(io, data)
    if data.list.bytes ≥ 1e9
       println(io, "filesize: $(data.list.bytes/1e9) GB")
@@ -707,5 +707,5 @@ end
 
 Display file information of `data`.
 """
-showhead(data::BATLData) = showhead(data.list, data.head)
-showhead(io, data::BATLData) = showhead(data.list, data.head, io)
+showhead(data::BATS) = showhead(data.list, data.head)
+showhead(io, data::BATS) = showhead(data.list, data.head, io)
