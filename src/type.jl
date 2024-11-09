@@ -1,11 +1,13 @@
 abstract type AbstractBATS{Dim, T} end
 
+@enum FileType Real4Bat=1 Real8Bat=2 AsciiBat=3 LogBat=4 TecBat=5
+
 "Type for Batsrus file information."
 struct FileList
    "filename"
    name::String
    "file type"
-   type::Symbol
+   type::FileType
    "directory"
    dir::String
    "file size"
