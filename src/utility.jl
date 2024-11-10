@@ -88,7 +88,7 @@ end
 
 "Find variable index in the BATSRUS data."
 function findindex(bd::BATS, var::AbstractString)
-   varIndex_ = findfirst(x->x==lowercase(var), lowercase.(bd.head.wnames))
+   varIndex_ = findfirst(x->lowercase(x)==lowercase(var), bd.head.wnames)
    isnothing(varIndex_) && error("$(var) not found in file header variables!")
 
    varIndex_

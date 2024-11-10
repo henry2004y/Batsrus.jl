@@ -34,7 +34,7 @@ function plotlogdata(data, head::NamedTuple, func::AbstractString; plotmode="lin
    plotmode = split(plotmode)
 
    for (ivar, var) in enumerate(vars)
-      varIndex_ = findfirst(x->x==lowercase(var), lowercase.(head.variables))
+      varIndex_ = findfirst(x->lowercase(x)==lowercase(var), head.variables)
       isnothing(varIndex_) && error("$(var) not found in file header variables!")
 
       figure()
@@ -474,9 +474,8 @@ function _getvector(bd::BATS{2, 3, T}, var::AbstractString;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=Inf) where T
    x, w = bd.x, bd.w
    varstream = split(var, ";")
-   wnames = lowercase.(bd.head.wnames)
-   var1_ = findfirst(x->x==lowercase(varstream[1]), wnames)
-   var2_ = findfirst(x->x==lowercase(varstream[2]), wnames)
+   var1_ = findfirst(x->lowercase(x)==lowercase(varstream[1]), bd.head.wnames)
+   var2_ = findfirst(x->lowercase(x)==lowercase(varstream[2]), bd.head.wnames)
    if isinf(plotinterval)
       plotinterval = (x[end,1,1] - x[1,1,1]) / size(x, 1)
    end

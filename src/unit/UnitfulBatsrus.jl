@@ -48,7 +48,7 @@ end
 function getunit(data, var)
    # Batsrus has a bug in the 2D cuts of 3D runs: it always outputs the 3
    # coordinate units in the headline. To work around it, here the index is shifted by 1.
-   var_ = findfirst(x->x==lowercase(var), lowercase.(data.head.variables)) + 1
+   var_ = findfirst(x->lowercase(x)==lowercase(var), data.head.variables) + 1
    isnothing(var_) && error("$(var) not found in file header variables!")
    if data.head.headline in ("normalized variables", "PLANETARY")
       var_unit = nothing 

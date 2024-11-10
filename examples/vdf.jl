@@ -587,9 +587,9 @@ function HF_velocity()
    y = data.x[:,:,:,2]
    z = data.x[:,:,:,3]
 
-   ux_ = findfirst(x->x=="uxs1", lowercase.(data.head.wnames))
-   uy_ = findfirst(x->x=="uys1", lowercase.(data.head.wnames))
-   uz_ = findfirst(x->x=="uzs1", lowercase.(data.head.wnames))
+   ux_ = findfirst(x->lowercase(x)=="uxs1", data.head.wnames)
+   uy_ = findfirst(x->lowercase(x)=="uys1", data.head.wnames)
+   uz_ = findfirst(x->lowercase(x)=="uzs1", data.head.wnames)
 
    Ux = @view data.w[:,:,:,ux_]
    Uy = @view data.w[:,:,:,uy_]

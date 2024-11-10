@@ -8,7 +8,7 @@ The returned 2D data lies in the `sequence` plane from - to + in `dir`.
 """
 function cutdata(bd::BATS, var::AbstractString;
    plotrange=[-Inf,Inf,-Inf,Inf], dir::String="x", sequence::Int=1)
-   var_ = findfirst(x->x==lowercase(var), lowercase.(bd.head.wnames))
+   var_ = findfirst(x->lowercase(x)==lowercase(var), bd.head.wnames)
    isempty(var_) && error("$(var) not found in header variables!")
 
    if dir == "x"
@@ -176,7 +176,7 @@ function getvar(bd::BATS{ndim, ndimp1, T}, var::AbstractString) where {ndim, ndi
    if var in keys(variables_predefined)
       w = variables_predefined[var](bd)
    else
-      var_ = findfirst(x->x==lowercase(var), lowercase.(bd.head.wnames))
+      var_ = findfirst(x->lowercase(x)==lowercase(var), bd.head.wnames)
       isnothing(var_) && error("$var not found in file header variables!")
       w = selectdim(bd.w, ndim+1, var_)
    end
@@ -186,7 +186,6 @@ end
 
 @inline @Base.propagate_inbounds Base.getindex(bd::BATS, var::AbstractString) =
    getvar(bd, var)
-
 
 
 "Construct vectors from scalar components."
