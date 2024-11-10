@@ -18,8 +18,7 @@ function load(file::AbstractString; npict::Int=1, verbose::Bool=false)
       throw(ArgumentError("Select snapshot $npict out of range $(filelist.npictinfiles)!"))
    end
    seekstart(fileID) # Rewind to start
-
-   # Skip npict-1 snapshots (since we only want the npict-th snapshot)
+   # Jump to the npict-th snapshot
    skip(fileID, pictsize*(npict-1))
 
    filehead = getfilehead(fileID, filelist)
@@ -39,11 +38,6 @@ function load(file::AbstractString; npict::Int=1, verbose::Bool=false)
 
    #setunits(filehead,"")
 
-   _load(filehead, x, w, filelist)
-end
-
-function _load(filehead, x, w, filelist)
-   #BATS{Int(filehead.ndim), eltype(x)}(filehead, x, w, filelist)
    BATS(filehead, x, w, filelist)
 end
 
@@ -244,7 +238,7 @@ function getfiletype(file::AbstractString)
       end
       # Obtain file size & number of snapshots
       seekstart(fileID)
-      pictsize = getfilesize(fileID, lenhead, Val(type))
+      pictsize = getfilesize(fileID, lenhead, Val(type))::Int
       npictinfiles = bytes ÷ pictsize
    end
 
@@ -264,22 +258,19 @@ Obtain the header information from BATSRUS output file of `type` linked to `file
 function getfilehead(fileID::IOStream, filelist::FileList)
    type, lenstr = filelist.type, filelist.lenhead
 
-   ## Read header
-   pointer0 = position(fileID)
-
    if type == AsciiBat
       headline = readline(fileID)
       line = readline(fileID) |> split
-      it = Parsers.parse(Int, line[1])
-      t = Parsers.parse(Float64, line[2])
-      ndim = Parsers.parse(Int8, line[3])
+      it = Parsers.parse(Int32, line[1])
+      t = Parsers.parse(Float32, line[2])
+      ndim = Parsers.parse(Int32, line[3])
       neqpar = Parsers.parse(Int32, line[4])
-      nw = Parsers.parse(Int8, line[5])
+      nw = Parsers.parse(Int32, line[5])
       gencoord = ndim < 0
       ndim = abs(ndim)
-      nx = Parsers.parse.(Int64, split(readline(fileID)))
+      nx = Parsers.parse.(Int32, split(readline(fileID)))
       if neqpar > 0
-         eqpar = Parsers.parse.(Float64, split(readline(fileID)))
+         eqpar = Parsers.parse.(Float32, split(readline(fileID)))
       end
       varname = readline(fileID)
    elseif type ∈ (Real4Bat, Real8Bat)
@@ -289,7 +280,7 @@ function getfilehead(fileID::IOStream, filelist::FileList)
       it = read(fileID, Int32)
       t = read(fileID, Float32)
       ndim = read(fileID, Int32)
-      gencoord = (ndim < 0)
+      gencoord = ndim < 0
       ndim = abs(ndim)
       neqpar = read(fileID, Int32)
       nw = read(fileID, Int32)
@@ -306,18 +297,13 @@ function getfilehead(fileID::IOStream, filelist::FileList)
       skip(fileID, TAG)
    end
 
-   # Header length
-   pointer1 = position(fileID)
-   headlen = pointer1 - pointer0
-
-   # Set variables array
-   variables = split(varname) # returns a string array
-
-	# Produce a wnames from the last file
-   wnames = variables[ndim+1:ndim+nw]
+   # Obtain output array
+   variables = split(varname)
+	# Obtain variable names
+   wnames = @view variables[ndim+1:ndim+nw]
 
    head = BatsHead(ndim, headline, it, t, gencoord,
-		neqpar, nw, nx, eqpar, variables, wnames)
+      neqpar, nw, nx, eqpar, variables, wnames)
 end
 
 function skipline(s::IO)
@@ -354,7 +340,7 @@ function getfilesize(fileID::IOStream, lenstr::Int32, ::Val{Real4Bat})
    skip(fileID, TAG)
 
    pointer1 = position(fileID)
-   headlen = pointer1 - pointer0 # Header length
+   headlen = pointer1 - pointer0 # header length
    # Calculate the snapshot size = header + data + recordmarks
    pictsize = headlen + 8*(1 + nw) + 4*(ndim + nw)*prod(nx)
 end
@@ -379,7 +365,7 @@ function getfilesize(fileID::IOStream, lenstr::Int32, ::Val{Real8Bat})
    skip(fileID, TAG)
 
    pointer1 = position(fileID)
-   headlen = pointer1 - pointer0 # Header length
+   headlen = pointer1 - pointer0 # header length
    # Calculate the snapshot size = header + data + recordmarks
    pictsize = headlen + 8*(1 + nw) + 8*(ndim + nw)*prod(nx)
 end
@@ -392,15 +378,14 @@ function getfilesize(fileID::IOStream, lenstr::Int32, ::Val{AsciiBat})
    line = split(line)
    ndim = Parsers.parse(Int32, line[3])
    neqpar = Parsers.parse(Int32, line[4])
-   nw = Parsers.parse(Int8, line[5])
-   gencoord = ndim < 0
+   nw = Parsers.parse(Int32, line[5])
    ndim = abs(ndim)
    nx = Parsers.parse.(Int64, split(readline(fileID)))
    neqpar > 0 && skipline(fileID)
    skipline(fileID)
 
    pointer1 = position(fileID)
-   headlen = pointer1 - pointer0 # Header length
+   headlen = pointer1 - pointer0 # header length
    # Calculate the snapshot size = header + data + recordmarks
    pictsize = headlen + (18*(ndim + nw) + 1)*prod(nx)
 end

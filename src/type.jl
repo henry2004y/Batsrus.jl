@@ -41,7 +41,7 @@ struct BATS{Dim, Dimp1, T<:AbstractFloat} <: AbstractBATS{Dim, T}
    list::FileList
 
    function BATS(head, x::Array{T, Dimp1}, w::Array{T, Dimp1}, list) where {T, Dimp1}
-      @assert Int(head.ndim) + 1 == Dimp1 "Dimension mismatch!"
-      new{Int(head.ndim), Dimp1, T}(head, x, w, list)
+      @assert head.ndim + 1 == Dimp1 "Dimension mismatch!"
+      new{Dimp1-1, Dimp1, T}(head, x, w, list)
    end
 end
