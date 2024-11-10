@@ -33,9 +33,15 @@ struct BatsHead
    wnames::Vector{SubString{String}}
 end
 
-@computed struct BATS{Dim, T<:AbstractFloat} <: AbstractBATS{Dim, T}
+"Batsrus data container."
+struct BATS{Dim, Dimp1, T<:AbstractFloat} <: AbstractBATS{Dim, T}
    head::BatsHead
-   x::Array{T, Dim+1}
-   w::Array{T, Dim+1}
+   x::Array{T, Dimp1}
+   w::Array{T, Dimp1}
    list::FileList
+
+   function BATS(head, x::Array{T, Dimp1}, w::Array{T, Dimp1}, list) where {T, Dimp1}
+      @assert Int(head.ndim) + 1 == Dimp1 "Dimension mismatch!"
+      new{Int(head.ndim), Dimp1, T}(head, x, w, list)
+   end
 end

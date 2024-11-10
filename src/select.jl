@@ -172,7 +172,7 @@ Return variable data from string `var`. This is also supported via direct indexi
 bd["rho"]
 ```
 """
-function getvar(bd::BATS{ndim, T}, var::AbstractString) where {ndim, T}
+function getvar(bd::BATS{ndim, ndimp1, T}, var::AbstractString) where {ndim, ndimp1, T}
    if var in keys(variables_predefined)
       w = variables_predefined[var](bd)
    else
@@ -190,9 +190,9 @@ end
 
 
 "Construct vectors from scalar components."
-function _fill_vector_from_scalars(bd::BATS{ndim, T}, var) where {ndim, T}
+function _fill_vector_from_scalars(bd::BATS{ndim, ndimp1, T}, var) where {ndim, ndimp1, T}
    v1, v2, v3 = _get_vectors(bd, var)
-   v = Array{T, ndims(v1)+1}(undef, 3, size(v1)...)
+   v = Array{T, ndimp1}(undef, 3, size(v1)...)
 
    Rpost = CartesianIndices(size(v1))
    for Ipost in Rpost
@@ -204,7 +204,7 @@ function _fill_vector_from_scalars(bd::BATS{ndim, T}, var) where {ndim, T}
    v
 end
 
-function _get_magnitude2(bd::BATS{2, T}, var=:B) where T
+function _get_magnitude2(bd::BATS{2, 3, T}, var=:B) where T
    vx, vy, vz = _get_vectors(bd, var)
    v = similar(vx)::Array{T, 2}
 
@@ -215,7 +215,7 @@ function _get_magnitude2(bd::BATS{2, T}, var=:B) where T
    v
 end
 
-function _get_magnitude(bd::BATS{2, T}, var=:B) where T
+function _get_magnitude(bd::BATS{2, 3, T}, var=:B) where T
    vx, vy, vz = _get_vectors(bd, var)
    v = similar(vx)::Array{T, 2}
 
@@ -252,7 +252,7 @@ function _get_vectors(bd::BATS, var)
    vx, vy, vz
 end
 
-function _get_anisotropy(bd::BATS{2, T}, species=0) where T
+function _get_anisotropy(bd::BATS{2, 3, T}, species=0) where T
    Bx, By, Bz = bd["Bx"], bd["By"], bd["Bz"]
    # Rotate the pressure tensor to align the 3rd direction with B
    pop = string(species)

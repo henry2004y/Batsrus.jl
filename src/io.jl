@@ -43,7 +43,8 @@ function load(file::AbstractString; npict::Int=1, verbose::Bool=false)
 end
 
 function _load(filehead, x, w, filelist)
-   BATS{Int(filehead.ndim), eltype(x)}(filehead, x, w, filelist)
+   #BATS{Int(filehead.ndim), eltype(x)}(filehead, x, w, filelist)
+   BATS(filehead, x, w, filelist)
 end
 
 "Read information from log file."

@@ -12,7 +12,7 @@ data resolution is the same as the original.
 - `rbody=1.0`: Radius of the inner mask. Used when the rbody parameter is not found in the header.
 - `useMatplotlib=true`: Whether to Matplotlib (somehow faster) or NaturalNeighbours for scattered interpolation.
 """
-function interp2d(bd::BATS{2, T}, var::AbstractString,
+function interp2d(bd::BATS{2, 3, T}, var::AbstractString,
    plotrange::Vector=[-Inf, Inf, -Inf, Inf], plotinterval::Real=Inf;
    innermask::Bool=false, rbody::Real=1.0, useMatplotlib::Bool=true) where T
    x, w = bd.x, bd.w
@@ -133,7 +133,7 @@ end
 
 Interpolate `var` at spatial point `loc` in `bd`.
 """
-function interp1d(bd::BATS{2, T}, var::AbstractString, loc::AbstractVector{<:AbstractFloat}) where T
+function interp1d(bd::BATS{2, 3, T}, var::AbstractString, loc::AbstractVector{<:AbstractFloat}) where T
    @assert !bd.head.gencoord "Only accept structured grids!"
 
    x = bd.x
@@ -150,7 +150,7 @@ end
 
 Interpolate `var` along a line from `point1` to `point2` in `bd`.
 """
-function interp1d(bd::BATS{2, T}, var::AbstractString, point1::Vector, point2::Vector) where T
+function interp1d(bd::BATS{2, 3, T}, var::AbstractString, point1::Vector, point2::Vector) where T
    @assert !bd.head.gencoord "Only accept structured grids!"
 
    x = bd.x
@@ -179,13 +179,13 @@ function slice1d(bd, var, icut::Int=1, dir::Int=2)
 end
 
 "Return view of variable `var` in `bd`."
-function getview(bd::BATS{1, T}, var) where T
+function getview(bd::BATS{1, 2, T}, var) where T
    varIndex_ = findindex(bd, var)
 
    v = @view bd.w[:,varIndex_]
 end
 
-function getview(bd::BATS{2, T}, var) where T
+function getview(bd::BATS{2, 3, T}, var) where T
    varIndex_ = findindex(bd, var)
 
    v = @view bd.w[:,:,varIndex_]

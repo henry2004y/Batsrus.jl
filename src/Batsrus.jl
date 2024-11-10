@@ -3,7 +3,6 @@ module Batsrus
 #
 # Hongyang Zhou, hyzhou@umich.edu
 
-using ComputedFieldTypes
 using LinearAlgebra: normalize, ×, ⋅
 using Printf, Reexport, Requires
 using Parsers
