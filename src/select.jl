@@ -207,7 +207,7 @@ function _get_magnitude2(bd::BATS{2, 3, T}, var=:B) where T
    vx, vy, vz = _get_vectors(bd, var)
    v = similar(vx)::Array{T, 2}
 
-   @simd for i in eachindex(v)
+   @inbounds @simd for i in eachindex(v)
       v[i] = vx[i]^2 + vy[i]^2 + vz[i]^2
    end
 
@@ -218,49 +218,43 @@ function _get_magnitude(bd::BATS{2, 3, T}, var=:B) where T
    vx, vy, vz = _get_vectors(bd, var)
    v = similar(vx)::Array{T, 2}
 
-   @simd for i in eachindex(v)
+   @inbounds @simd for i in eachindex(v)
       v[i] = √(vx[i]^2 + vy[i]^2 + vz[i]^2)
    end
 
    v
 end
 
-function _get_vectors(bd::BATS, var)
+function _get_vectors(bd::BATS{Dim, Dimp1, T}, var) where {Dim, Dimp1,T}
+   VT = SubArray{T, Dim, Array{T, Dimp1}, Tuple{Base.Slice{Base.OneTo{Int64}},
+      Base.Slice{Base.OneTo{Int64}}, Int64}, true}
    if var == :B
-      vx = bd["Bx"]
-      vy = bd["By"]
-      vz = bd["Bz"]
+      vx, vy, vz = bd["Bx"]::VT, bd["By"]::VT, bd["Bz"]::VT
    elseif var == :E
-      vx = bd["Ex"]
-      vy = bd["Ey"]
-      vz = bd["Ez"]
+      vx, vy, vz = bd["Ex"]::VT, bd["Ey"]::VT, bd["Ez"]::VT
    elseif var == :U
-      vx = bd["Ux"]
-      vy = bd["Uy"]
-      vz = bd["Uz"]
+      vx, vy, vz = bd["Ux"]::VT, bd["Uy"]::VT, bd["Uz"]::VT
    elseif var == :U0
-      vx = bd["UxS0"]
-      vy = bd["UyS0"]
-      vz = bd["UzS0"]
+      vx, vy, vz = bd["UxS0"]::VT, bd["UyS0"]::VT, bd["UzS0"]::VT
    elseif var == :U1
-      vx = bd["UxS1"]
-      vy = bd["UyS1"]
-      vz = bd["UzS1"] 
+      vx, vy, vz = bd["UxS1"]::VT, bd["UyS1"]::VT, bd["UzS1"]::VT 
    end
 
    vx, vy, vz
 end
 
 function _get_anisotropy(bd::BATS{2, 3, T}, species=0) where T
-   Bx, By, Bz = bd["Bx"], bd["By"], bd["Bz"]
+   VT = SubArray{T, 2, Array{T, 3}, Tuple{Base.Slice{Base.OneTo{Int64}},
+      Base.Slice{Base.OneTo{Int64}}, Int64}, true}
+   Bx, By, Bz = bd["Bx"]::VT, bd["By"]::VT, bd["Bz"]::VT
    # Rotate the pressure tensor to align the 3rd direction with B
    pop = string(species)
-   Pxx = bd["pXXS"*pop]
-   Pyy = bd["pYYS"*pop]
-   Pzz = bd["pZZS"*pop]
-   Pxy = bd["pXYS"*pop]
-   Pxz = bd["pXZS"*pop]
-   Pyz = bd["pYZS"*pop]
+   Pxx = bd["pXXS"*pop]::VT
+   Pyy = bd["pYYS"*pop]::VT
+   Pzz = bd["pZZS"*pop]::VT
+   Pxy = bd["pXYS"*pop]::VT
+   Pxz = bd["pXZS"*pop]::VT
+   Pyz = bd["pYZS"*pop]::VT
 
    Paniso = similar(Pxx)::Array{T, 2}
 
