@@ -21,24 +21,24 @@ function load(file::AbstractString; npict::Int=1, verbose::Bool=false)
    # Jump to the npict-th snapshot
    skip(fileID, pictsize*(npict-1))
 
-   filehead = getfilehead(fileID, filelist)
+   head = getfilehead(fileID, filelist)
    # Read data
    if filelist.type == AsciiBat
       T = Float64 # why Float64?
-      x, w = allocateBuffer(filehead, T)
+      x, w = allocateBuffer(head, T)
       getascii!(x, w, fileID)
    else
       skip(fileID, TAG) # skip record start tag
       T = filelist.type == Real4Bat ? Float32 : Float64
-      x, w = allocateBuffer(filehead, T)
+      x, w = allocateBuffer(head, T)
       getbinary!(x, w, fileID)
    end
 
    close(fileID)
 
-   #setunits(filehead,"")
+   #setunits(head,"")
 
-   BATS(filehead, x, w, filelist)
+   BATS(head, x, w, filelist)
 end
 
 "Read information from log file."
@@ -468,7 +468,7 @@ function getbinary!(x::Array{T, 4}, w, fileID::IOStream) where T
 end
 
 """
-    setunits(filehead, type; distance=1.0, mp=1.0, me=1.0)
+    setunits(head, type; distance=1.0, mp=1.0, me=1.0)
 
 Set the units for the output files.
 If type is given as "SI", "CGS", "NORMALIZED", "PIC", "PLANETARY", "SOLAR", set
@@ -480,13 +480,13 @@ current density [jSI] in SI units. Distance unit [rplanet | rstar], ion and elec
 Also calculate convenient constants ti0, cs0 ... for typical formulas.
 This function is currently not used anywhere!
 """
-function setunits(filehead, type; distance=1.0, mp=1.0, me=1.0)
-   ndim      = filehead.ndim
-   headline  = filehead.headline
-   neqpar    = filehead.neqpar
-   nw        = filehead.nw
-   eqpar     = filehead.eqpar
-   variables = filehead.variables
+function setunits(head, type; distance=1.0, mp=1.0, me=1.0)
+   ndim      = head.ndim
+   headline  = head.headline
+   neqpar    = head.neqpar
+   nw        = head.nw
+   eqpar     = head.eqpar
+   variables = head.variables
 
    mu0SI = 4π*1e-7      # H/m
    cSI   = 2.9978e8       # speed of light, [m/s]
@@ -688,7 +688,7 @@ function Base.show(io::IO, data::BATS)
 end
 
 """
-    showhead(file, filehead)
+    showhead(file, head)
 
 Displaying file header information.
 """
