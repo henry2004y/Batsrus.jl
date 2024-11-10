@@ -38,7 +38,7 @@ function load(file::AbstractString; npict::Int=1, verbose::Bool=false)
 
    #setunits(head,"")
 
-   BATS(head, x, w, filelist)
+   BATS(head, filelist, x, w)
 end
 
 "Read information from log file."
