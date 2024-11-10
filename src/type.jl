@@ -36,9 +36,11 @@ end
 "Batsrus data container."
 struct BATS{Dim, Dimp1, T<:AbstractFloat} <: AbstractBATS{Dim, T}
    head::BatsHead
-   x::Array{T, Dimp1}
-   w::Array{T, Dimp1}
    list::FileList
+   "Grid"
+   x::Array{T, Dimp1}
+   "Variables"
+   w::Array{T, Dimp1}
 
    function BATS(head, x::Array{T, Dimp1}, w::Array{T, Dimp1}, list) where {T, Dimp1}
       @assert head.ndim + 1 == Dimp1 "Dimension mismatch!"
