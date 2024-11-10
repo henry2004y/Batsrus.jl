@@ -325,15 +325,15 @@ function getfilesize(fileID::IOStream, lenstr::Int32, ::Val{Real4Bat})
 
    skip(fileID, TAG + lenstr + 2*TAG + sizeof(Int32) + sizeof(Float32))
    ndim = abs(read(fileID, Int32))
-   tmp = read(fileID, Int32)
+   nt = read(fileID, Int32)
    nw = read(fileID, Int32)
    skip(fileID, 2*TAG)
    nx = Vector{Int32}(undef, ndim)
    read!(fileID, nx)
    skip(fileID, 2*TAG)
-   if tmp > 0
-      tmp2 = zeros(Float32, tmp)
-      read!(fileID, tmp2)
+   if nt > 0
+      tmp = zeros(Float32, nt)
+      read!(fileID, tmp)
       skip(fileID, 2*TAG)
    end
    read(fileID, lenstr)
@@ -350,15 +350,15 @@ function getfilesize(fileID::IOStream, lenstr::Int32, ::Val{Real8Bat})
 
    skip(fileID, TAG + lenstr + 2*TAG + sizeof(Int32) + sizeof(Float32))
    ndim = abs(read(fileID, Int32))
-   tmp = read(fileID, Int32)
+   nt = read(fileID, Int32)
    nw = read(fileID, Int32)
    skip(fileID, 2*TAG)
    nx = Vector{Int32}(undef, ndim)
    read!(fileID, nx)
    skip(fileID, 2*TAG)
-   if tmp > 0
-      tmp2 = zeros(Float32, tmp)
-      read!(fileID, tmp2)
+   if nt > 0
+      tmp = zeros(Float32, nt)
+      read!(fileID, tmp)
       skip(fileID, 2*TAG)
    end
    read(fileID, lenstr)
