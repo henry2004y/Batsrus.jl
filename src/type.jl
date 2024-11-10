@@ -20,14 +20,14 @@ end
 
 "Batsrus file head information."
 struct BatsHead
-   ndim::Int32
+   ndim::Int
    headline::SubString{String}
-   it::Int32
+   it::Int
    time::Float32
    gencoord::Bool
-   neqpar::Int32
-   nw::Int32
-   nx::Vector{Int32}
+   neqpar::Int
+   nw::Int
+   nx::Vector{Int}
    eqpar::Vector{Float32}
    variables::Vector{SubString{String}}
    wnames::Vector{SubString{String}}
