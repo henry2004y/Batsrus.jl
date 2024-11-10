@@ -393,19 +393,19 @@ end
 getfilesize(fileID::IOStream, lenstr::Int32, ::Val{LogBat}) = 1
 
 "Create buffer for x and w."
-function allocateBuffer(filehead::BatsHead, T::DataType)
-   if filehead.ndim == 1
-      n1 = filehead.nx[1]
-      x  = Array{T,2}(undef, n1, filehead.ndim)
-      w  = Array{T,2}(undef, n1, filehead.nw)
-   elseif filehead.ndim == 2
-      n1, n2 = filehead.nx
-      x  = Array{T,3}(undef, n1, n2, filehead.ndim)
-      w  = Array{T,3}(undef, n1, n2, filehead.nw)
-   elseif filehead.ndim == 3
-      n1, n2, n3 = filehead.nx
-      x  = Array{T,4}(undef, n1, n2, n3, filehead.ndim)
-      w  = Array{T,4}(undef, n1, n2, n3, filehead.nw)
+function allocateBuffer(head::BatsHead, T::DataType)
+   if head.ndim == 1
+      n1 = head.nx[1]
+      x  = Array{T,2}(undef, n1, head.ndim)
+      w  = Array{T,2}(undef, n1, head.nw)
+   elseif head.ndim == 2
+      n1, n2 = head.nx
+      x  = Array{T,3}(undef, n1, n2, head.ndim)
+      w  = Array{T,3}(undef, n1, n2, head.nw)
+   elseif head.ndim == 3
+      n1, n2, n3 = head.nx
+      x  = Array{T,4}(undef, n1, n2, n3, head.ndim)
+      w  = Array{T,4}(undef, n1, n2, n3, head.nw)
    end
 
    x, w
