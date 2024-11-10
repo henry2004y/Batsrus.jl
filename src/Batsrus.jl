@@ -8,7 +8,7 @@ using Printf, Reexport, Requires
 using Parsers
 using Interpolations: cubic_spline_interpolation, BSpline, Linear, scale, interpolate
 import NaturalNeighbours as NN
-using StaticArrays: SVector, @SMatrix, SA, MVector
+using StaticArrays: SVector, @SMatrix, SA
 
 export BATS,
    load, readlogdata, readtecdata, showhead, # io
