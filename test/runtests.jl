@@ -44,6 +44,7 @@ end
 
    @testset "Reading 2D structured binary" begin
       file = "z=0_raw_1_t25.60000_n00000258.out"
+      @test_throws ArgumentError load(joinpath(datapath, file), npict=2)
       bd = load(joinpath(datapath, file))
       @test bd.head.time == 25.6f0
       @test extrema(bd.x) == (-127.5f0, 127.5f0)
@@ -53,6 +54,7 @@ end
       @test w[1,end] == 0.6848635077476501
       @test bd["B"][:,end,end] == Float32[1.118034, -0.559017, 0.0]
       @test bd["Bmag"][128,2] == 0.9223745f0
+      @test bd["B2"][128,2] == 0.8507747f0
       # Linear interpolation at a given point
       d = interp1d(bd, "rho", Float32[0.0, 0.0])
       @test d == 0.6936918f0
@@ -67,17 +69,23 @@ end
 
       file = "z=0_fluid_region0_0_t00001640_n00010142.out"
       bd = load(joinpath(datapath, file))
+      @test bd["Emag"][2,1] == 2655.4805f0
+      @test bd["E2"][2,1] == 7.051577f6
+      @test bd["E"][:,2,1] == Float32[-241.05942, -2644.2058, -40.53219]
+      @test bd["Ue2"][2,1] == 33784.973f0
+      @test bd["Ui2"][2,1] == bd["Ui2"][2,1]
       @test bd["Anisotropy0"][1:2,1] ≈ Float32[1.2630985, 2.4700143]
       @test bd["Anisotropy1"][1:2,1] ≈ Float32[1.2906302, 2.6070855]
    end
 
-   @testset "Reading 2D unstructured" begin
+   @testset "Reading 2D unstructured ascii" begin
       file = "bx0_mhd_6_t00000100_n00000352.out"
       bd = load(joinpath(datapath, file))
       plotrange = [-Inf, Inf, -Inf, Inf]
       x, y, w = interp2d(bd, "rho", plotrange, useMatplotlib=false)
       @test w[1,2] == 5.000018304080387
       @test bd["Umag"][2] == 71.85452748407637
+      @test bd["U2"][2] == 5163.073119959886
    end
 
    @testset "Reading 3D structured binary" begin

@@ -3,7 +3,7 @@
 using RecipesBase
 
 # Build a recipe which acts on a custom type.
-@recipe function f(bd::BATLData{1, T}, var::AbstractString) where {T}
+@recipe function f(bd::BATS{1, 2, T}, var::AbstractString) where {T}
    hasunits = hasunit(bd)
 
    if hasunits
@@ -22,7 +22,7 @@ using RecipesBase
    end
 end
 
-@recipe function f(bd::BATLData{2, T}, var::AbstractString;
+@recipe function f(bd::BATS{2, 3, T}, var::AbstractString;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1) where {T}
    hasunits = hasunit(bd)
 

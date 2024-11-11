@@ -6,9 +6,9 @@
 Get 2D plane cut in orientation `dir` for `var` out of 3D box `data` within `plotrange`.
 The returned 2D data lies in the `sequence` plane from - to + in `dir`.
 """
-function cutdata(bd::BATLData, var::AbstractString;
+function cutdata(bd::BATS, var::AbstractString;
    plotrange=[-Inf,Inf,-Inf,Inf], dir::String="x", sequence::Int=1)
-   var_ = findfirst(x->x==lowercase(var), lowercase.(bd.head.wnames))
+   var_ = findfirst(x->lowercase(x)==lowercase(var), bd.head.wnames)
    isempty(var_) && error("$(var) not found in header variables!")
 
    if dir == "x"
@@ -163,7 +163,7 @@ function subvolume(x, y, z, u, v, w, limits)
 end
 
 """
-    getvar(bd::BATLData, var::AbstractString) -> Array
+    getvar(bd::BATS, var::AbstractString) -> Array
 
 Return variable data from string `var`. This is also supported via direct indexing,
 
@@ -172,11 +172,11 @@ Return variable data from string `var`. This is also supported via direct indexi
 bd["rho"]
 ```
 """
-function getvar(bd::BATLData{ndim, T}, var::AbstractString) where {ndim, T}
+function getvar(bd::BATS{ndim, ndimp1, T}, var::AbstractString) where {ndim, ndimp1, T}
    if var in keys(variables_predefined)
       w = variables_predefined[var](bd)
    else
-      var_ = findfirst(x->x==lowercase(var), lowercase.(bd.head.wnames))
+      var_ = findfirst(x->lowercase(x)==lowercase(var), bd.head.wnames)
       isnothing(var_) && error("$var not found in file header variables!")
       w = selectdim(bd.w, ndim+1, var_)
    end
@@ -184,15 +184,14 @@ function getvar(bd::BATLData{ndim, T}, var::AbstractString) where {ndim, T}
    w
 end
 
-@inline @Base.propagate_inbounds Base.getindex(bd::BATLData, var::AbstractString) =
+@inline @Base.propagate_inbounds Base.getindex(bd::BATS, var::AbstractString) =
    getvar(bd, var)
 
 
-
 "Construct vectors from scalar components."
-function _fill_vector_from_scalars(bd::BATLData{ndim, T, U}, var) where {ndim, T, U}
+function _fill_vector_from_scalars(bd::BATS{ndim, ndimp1, T}, var) where {ndim, ndimp1, T}
    v1, v2, v3 = _get_vectors(bd, var)
-   v = Array{T, ndims(v1)+1}(undef, 3, size(v1)...)
+   v = Array{T, ndimp1}(undef, 3, size(v1)...)
 
    Rpost = CartesianIndices(size(v1))
    for Ipost in Rpost
@@ -204,64 +203,58 @@ function _fill_vector_from_scalars(bd::BATLData{ndim, T, U}, var) where {ndim, T
    v
 end
 
-function _get_magnitude2(bd::BATLData{2, T, U}, var=:B) where {T, U}
+function _get_magnitude2(bd::BATS{2, 3, T}, var=:B) where T
    vx, vy, vz = _get_vectors(bd, var)
    v = similar(vx)::Array{T, 2}
 
-   @simd for i in eachindex(v)
+   @inbounds @simd for i in eachindex(v)
       v[i] = vx[i]^2 + vy[i]^2 + vz[i]^2
    end
 
    v
 end
 
-function _get_magnitude(bd::BATLData{2, T, U}, var=:B) where {T, U}
+function _get_magnitude(bd::BATS{2, 3, T}, var=:B) where T
    vx, vy, vz = _get_vectors(bd, var)
    v = similar(vx)::Array{T, 2}
 
-   @simd for i in eachindex(v)
+   @inbounds @simd for i in eachindex(v)
       v[i] = √(vx[i]^2 + vy[i]^2 + vz[i]^2)
    end
 
    v
 end
 
-function _get_vectors(bd::BATLData, var)
+function _get_vectors(bd::BATS{Dim, Dimp1, T}, var) where {Dim, Dimp1,T}
+   VT = SubArray{T, Dim, Array{T, Dimp1}, Tuple{Base.Slice{Base.OneTo{Int64}},
+      Base.Slice{Base.OneTo{Int64}}, Int64}, true}
    if var == :B
-      vx = bd["Bx"]
-      vy = bd["By"]
-      vz = bd["Bz"]
+      vx, vy, vz = bd["Bx"]::VT, bd["By"]::VT, bd["Bz"]::VT
    elseif var == :E
-      vx = bd["Ex"]
-      vy = bd["Ey"]
-      vz = bd["Ez"]
+      vx, vy, vz = bd["Ex"]::VT, bd["Ey"]::VT, bd["Ez"]::VT
    elseif var == :U
-      vx = bd["Ux"]
-      vy = bd["Uy"]
-      vz = bd["Uz"]
+      vx, vy, vz = bd["Ux"]::VT, bd["Uy"]::VT, bd["Uz"]::VT
    elseif var == :U0
-      vx = bd["UxS0"]
-      vy = bd["UyS0"]
-      vz = bd["UzS0"]
+      vx, vy, vz = bd["UxS0"]::VT, bd["UyS0"]::VT, bd["UzS0"]::VT
    elseif var == :U1
-      vx = bd["UxS1"]
-      vy = bd["UyS1"]
-      vz = bd["UzS1"] 
+      vx, vy, vz = bd["UxS1"]::VT, bd["UyS1"]::VT, bd["UzS1"]::VT 
    end
 
    vx, vy, vz
 end
 
-function _get_anisotropy(bd::BATLData{2, T, U}, species=0) where {T, U}
-   Bx, By, Bz = bd["Bx"], bd["By"], bd["Bz"]
+function _get_anisotropy(bd::BATS{2, 3, T}, species=0) where T
+   VT = SubArray{T, 2, Array{T, 3}, Tuple{Base.Slice{Base.OneTo{Int64}},
+      Base.Slice{Base.OneTo{Int64}}, Int64}, true}
+   Bx, By, Bz = bd["Bx"]::VT, bd["By"]::VT, bd["Bz"]::VT
    # Rotate the pressure tensor to align the 3rd direction with B
    pop = string(species)
-   Pxx = bd["pXXS"*pop]
-   Pyy = bd["pYYS"*pop]
-   Pzz = bd["pZZS"*pop]
-   Pxy = bd["pXYS"*pop]
-   Pxz = bd["pXZS"*pop]
-   Pyz = bd["pYZS"*pop]
+   Pxx = bd["pXXS"*pop]::VT
+   Pyy = bd["pYYS"*pop]::VT
+   Pzz = bd["pZZS"*pop]::VT
+   Pxy = bd["pXYS"*pop]::VT
+   Pxz = bd["pXZS"*pop]::VT
+   Pyz = bd["pYZS"*pop]::VT
 
    Paniso = similar(Pxx)::Array{T, 2}
 
@@ -289,6 +282,8 @@ const variables_predefined = Dict{String, Function}(
    "Bmag" => (bd -> _get_magnitude(bd, :B)),
    "Emag" => (bd -> _get_magnitude(bd, :E)),
    "Umag" => (bd -> _get_magnitude(bd, :U)),
+   "Uemag" => (bd -> _get_magnitude(bd, :U0)),
+   "Uimag" => (bd -> _get_magnitude(bd, :U1)),
    "B" => (bd -> _fill_vector_from_scalars(bd, :B)),
    "E" => (bd -> _fill_vector_from_scalars(bd, :E)),
    "U" => (bd -> _fill_vector_from_scalars(bd, :U)),
