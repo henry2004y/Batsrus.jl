@@ -22,6 +22,7 @@ bd = load(file)
 SUITE["read"]["Extract density"] = @benchmarkable Batsrus.getvar($bd, "Rho")
 SUITE["read"]["Extract B"] = @benchmarkable Batsrus.getvar($bd, "B")
 SUITE["read"]["Binary structured"] = @benchmarkable load($file)
+SUITE["read"]["Interp2d"] = @benchmarkable Batsrus.interp2d($bd, "rho")
 
 file = joinpath(directory, files[3])
 SUITE["read"]["Anisotropy"] = @benchmarkable bd["Anisotropy1"]
