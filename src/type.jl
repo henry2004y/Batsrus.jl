@@ -33,7 +33,7 @@ struct BatsHead
    wnames::Vector{SubString{String}}
 end
 
-"Batsrus data container."
+"Batsrus data container. `Dim` is the dimension of output, and `Dimp1` is an extra parameter for working around derived types."
 struct BATS{Dim, Dimp1, T<:AbstractFloat} <: AbstractBATS{Dim, T}
    head::BatsHead
    list::FileList
@@ -42,8 +42,8 @@ struct BATS{Dim, Dimp1, T<:AbstractFloat} <: AbstractBATS{Dim, T}
    "Variables"
    w::Array{T, Dimp1}
 
-   function BATS(head, x::Array{T, Dimp1}, w::Array{T, Dimp1}, list) where {T, Dimp1}
+   function BATS(head, list, x::Array{T, Dimp1}, w::Array{T, Dimp1}) where {T, Dimp1}
       @assert head.ndim + 1 == Dimp1 "Dimension mismatch!"
-      new{Dimp1-1, Dimp1, T}(head, x, w, list)
+      new{Dimp1-1, Dimp1, T}(head, list, x, w)
    end
 end
