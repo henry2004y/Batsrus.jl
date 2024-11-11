@@ -71,10 +71,12 @@ Here is a full list of predefined derived quantities:
 | Bmag                  | Magnetic field magnitude         | Bx, By, Bz        |
 | Emag                  | Electric field magnitude         | Ex, Ey, Ez        |
 | Umag                  | Velocity magnitude               | Ux, Uy, Uz        |
+| Uemag                 | Electron Velocity magnitude      | UxS0, UyS0, UzS0  |
+| Uimag                 | Ion Velocity magnitude           | UxS1, UyS1, UzS1  |
 | B                     | Magnetic field vector            | Bx, By, Bz        |
 | E                     | Electric field vector            | Ex, Ey, Ez        |
 | U                     | Velocity vector                  | Ux, Uy, Uz        |
-| Anisotropy            | Pressure/Temperature anisotropy  | B, P tensor       |
+| Anisotropy[0-1]       | Pressure/Temperature anisotropy  | B, P tensor       |
 
 ## Output format conversion
 

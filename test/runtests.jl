@@ -78,7 +78,7 @@ end
       @test bd["Anisotropy1"][1:2,1] ≈ Float32[1.2906302, 2.6070855]
    end
 
-   @testset "Reading 2D unstructured" begin
+   @testset "Reading 2D unstructured ascii" begin
       file = "bx0_mhd_6_t00000100_n00000352.out"
       bd = load(joinpath(datapath, file))
       plotrange = [-Inf, Inf, -Inf, Inf]

@@ -9,8 +9,7 @@ println()
 
 directory = artifact"testdata"
 files = ("1d__raw_2_t25.60000_n00000258.out", "z=0_raw_1_t25.60000_n00000258.out",
-   "bx0_mhd_6_t00000100_n00000352.out")
-
+   "z=0_fluid_region0_0_t00001640_n00010142.out")
 
 const SUITE = BenchmarkGroup()
 
@@ -25,4 +24,4 @@ SUITE["read"]["Extract B"] = @benchmarkable Batsrus.getvar($bd, "B")
 SUITE["read"]["Binary structured"] = @benchmarkable load($file)
 
 file = joinpath(directory, files[3])
-SUITE["read"]["Binary unstructured"] = @benchmarkable load($file)
+SUITE["read"]["Anisotropy"] = @benchmarkable bd["Anisotropy1"]
