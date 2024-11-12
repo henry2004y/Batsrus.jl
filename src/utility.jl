@@ -13,10 +13,13 @@ data resolution is the same as the original.
 - `useMatplotlib=true`: Whether to Matplotlib (somehow faster) or NaturalNeighbours for scattered interpolation.
 """
 function interp2d(bd::BATS{2, 3, T}, var::AbstractString,
-   plotrange::Vector=[-Inf, Inf, -Inf, Inf], plotinterval::Real=Inf;
+   plotrangeIn::Vector=[-Inf32, Inf32, -Inf32, Inf32], plotinterval::Real=Inf32;
    innermask::Bool=false, rbody::Real=1.0, useMatplotlib::Bool=true) where T
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
+   plotrange = T.(plotrangeIn)
+
+   local Wi::Union{Matrix{T}, Adjoint{T, Matrix{T}}}
 
    if bd.head.gencoord # Generalized coordinates
       X, Y = eachslice(x, dims=3)
