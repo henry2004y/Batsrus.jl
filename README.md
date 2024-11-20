@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![](https://img.shields.io/badge/docs-latest-blue.svg)][Batsrus-doc]
 [![][codecov-img]][codecov-url]
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4761843.svg)](https://doi.org/10.5281/zenodo.4761843)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4761843.svg)](https://doi.org/10.5281/zenodo.4761842)
 
 Fast [BATSRUS](https://github.com/MSTEM-QUDA/BATSRUS)/[SWMF](https://github.com/MSTEM-QUDA/SWMF) data loading, conversion, and visualization using Julia, successor of [VisAnaMatlab](https://github.com/henry2004y/VisAnaMatlab).
 
