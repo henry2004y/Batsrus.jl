@@ -19,7 +19,7 @@ function interp2d(bd::BATS{2, 3, T}, var::AbstractString,
    varIndex_ = findindex(bd, var)
    plotrange = T.(plotrangeIn)
 
-   local Wi::Union{Matrix{T}, Adjoint{T, Matrix{T}}}
+   local Wi::Union{Matrix{T}, Adjoint{T, Matrix{T}}, Matrix{Float64}}
 
    if bd.head.gencoord # Generalized coordinates
       X, Y = eachslice(x, dims=3)
@@ -39,7 +39,7 @@ function interp2d(bd::BATS{2, 3, T}, var::AbstractString,
          # Perform linear interpolation on the triangle mesh
          interpolator = matplotlib.tri.LinearTriInterpolator(triang, W)
          Xi, Yi = meshgrid(xi, yi)
-         Wi = interpolator(Xi, Yi)
+         Wi = interpolator(Xi, Yi) # Always returns Float64!
       else
          xi, yi, Wi = interpolate2d_generalized_coords(X, Y, W, plotrange, plotinterval)
       end
