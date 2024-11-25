@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Subplot Line Animation · Batsrus.jl</title><meta name="title" content="Subplot Line Animation · Batsrus.jl"/><meta property="og:title" content="Subplot Line Animation · Batsrus.jl"/><meta property="twitter:title" content="Subplot Line Animation · Batsrus.jl"/><meta name="description" content="Documentation for Batsrus.jl."/><meta property="og:description" content="Documentation for Batsrus.jl."/><meta property="twitter:description" content="Documentation for Batsrus.jl."/><meta property="og:url" content="https://henry2004y.github.io/Batsrus.jl/examples/visualization/demo_animate_1d_lines/"/><meta property="twitter:url" content="https://henry2004y.github.io/Batsrus.jl/examples/visualization/demo_animate_1d_lines/"/><link rel="canonical" href="https://henry2004y.github.io/Batsrus.jl/examples/visualization/demo_animate_1d_lines/"/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script><link href="../../../democards/nocoverlisttheme.css" rel="stylesheet" type="text/css"/></head><body><div id="documenter"><nav class="docs-sidebar"><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><a class="tocitem" href="../../../man/manual/">Manual</a></li><li><a class="tocitem" href="../../">Examples</a></li><li><a class="tocitem" href="../../../man/internal/">Internal</a></li><li><a class="tocitem" href="../../../man/log/">Log</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Subplot Line Animation</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Subplot Line Animation</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/henry2004y/Batsrus.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/henry2004y/Batsrus.jl/blob/master/docs/examples/visualization/demo_animate_1d_lines.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="demo_lines_animation"><a class="docs-heading-anchor" href="#demo_lines_animation">Subplot Line Animation</a><a id="demo_lines_animation-1"></a><a class="docs-heading-anchor-permalink" href="#demo_lines_animation" title="Permalink"></a></h1><p><a href="https://github.com/henry2004y"><img src="https://img.shields.io/badge/Author-Hongyang%20Zhou-blue" alt="Author"/></a> <img src="https://img.shields.io/date/1721001600" alt="Update time"/></p><p>This example shows how to create multi-panel 1D space line animation from a series of FLEKS outputs.</p><ul><li>Twin axes sharing the same x-axis for showing two quantities in one frame.</li><li>Time-dependent title.</li><li>Fixed value ranges.</li></ul><p>Since currently we don&#39;t have true 1D outputs, in this demo we show the way to extract the first column from 2D cuts.</p><pre><code class="language-julia hljs">using Batsrus, Printf, PyPlot
+
+function create_figure()
+   fig, axs = subplots(5, 1, figsize=(12, 8),
+      sharex=true, sharey=false, constrained_layout=true)
+
+   lw1 = 1.0
+   lw2 = 1.0
+   lw3 = 1.0
+
+   xmin, xmax = -6300.0, -1300.0
+
+   ρemin, ρemax = 0.0, 0.05 # mi/me = 400
+   ρimin, ρimax = 0.0, 20.0
+   vmin, vmax = -600.0, 300.0
+   pmin, pmax = 1e-3, 1.0
+   Bmin, Bmax = -3.0, 30.0
+   Emin, Emax = -5.0, 5.0
+
+   l11, = axs[1].plot([], [], lw=lw1)
+   l211, = axs[2].plot([], [], lw=lw1, label=&quot;Uex&quot;)
+   l212, = axs[2].plot([], [], lw=lw1, label=&quot;Uey&quot;)
+   l213, = axs[2].plot([], [], lw=lw1, label=&quot;Uez&quot;)
+   l311, = axs[3].plot([0.0, 1.0], [pmin, pmax], lw=lw1, alpha=0.8, label=L&quot;$P_{exx}$&quot;)
+   l312, = axs[3].plot([0.0, 1.0], [pmin, pmax], lw=lw1, alpha=0.8, label=L&quot;$P_{eyy}$&quot;)
+   l313, = axs[3].plot([0.0, 1.0], [pmin, pmax], lw=lw1, alpha=0.8, label=L&quot;$P_{ezz}$&quot;)
+   l41, = axs[4].plot([], [], lw=lw2, label=&quot;x&quot;)
+   l42, = axs[4].plot([], [], lw=lw2, label=&quot;y&quot;)
+   l43, = axs[4].plot([], [], lw=lw2, label=&quot;z&quot;)
+   l51, = axs[5].plot([], [], lw=lw2, label=&quot;x&quot;)
+   l52, = axs[5].plot([], [], lw=lw2, label=&quot;y&quot;)
+   l53, = axs[5].plot([], [], lw=lw2, label=&quot;z&quot;)
+
+   axs[1].set_xlim(xmin, xmax)
+   axs[1].set_ylim(ρemin, ρemax)
+   axs[2].set_ylim(vmin, vmax)
+   axs[3].set_yscale(&quot;log&quot;)
+   axs[3].set_ylim(pmin, pmax)
+   axs[4].set_ylim(Bmin, Bmax) # B
+   axs[5].set_ylim(Emin, Emax) # E
+
+   for ax in axs
+      ax.grid(true)
+   end
+
+   axs[4].set_ylabel(&quot;B [nT]&quot;; fontsize)
+   axs[5].set_ylabel(&quot;E [mV/m]&quot;; fontsize)
+
+   axs[end].set_xlabel(&quot;x [km]&quot;; fontsize)
+
+   axs[1].set_ylabel(L&quot;$\rho_e$ [amu/cc]&quot;; fontsize, color=&quot;tab:blue&quot;)
+   axs[1].tick_params(axis=&quot;y&quot;, labelcolor=&quot;tab:blue&quot;)
+
+   ax12 = axs[1].twinx()
+   ax12.set_ylim(ρimin, ρimax)
+
+   ax12.set_ylabel(L&quot;$\rho_i$ [amu/cc]&quot;; fontsize, color=&quot;tab:red&quot;)
+
+   l12, = ax12.plot([], []; lw=lw1, color=&quot;tab:red&quot;, alpha=0.8)
+   ax12.tick_params(axis=&quot;y&quot;, labelcolor=&quot;tab:red&quot;)
+
+   axs[2].set_ylabel(L&quot;$U_e$ [km/s]&quot;; fontsize)
+
+   ax22 = axs[2].twinx()
+   ax22.set_ylim(vmin, vmax)
+
+   ax22.set_ylabel(L&quot;$U_i$ [km/s]&quot;; fontsize)
+
+   l221, = ax22.plot([], [], lw=lw3, label=&quot;Uix&quot;, color=&quot;tab:red&quot;)
+   l222, = ax22.plot([], [], lw=lw3, label=&quot;Uiy&quot;, color=&quot;tab:purple&quot;)
+   l223, = ax22.plot([], [], lw=lw3, label=&quot;Uiz&quot;, color=&quot;tab:brown&quot;)
+
+   axs[3].set_ylabel(L&quot;$P_e$ [nT]&quot;; fontsize)
+
+   ax32 = axs[3].twinx()
+   ax32.set_ylabel(L&quot;$P_i$ [nT]&quot;; fontsize)
+
+   fake_range = [0.0, 1.0]
+   p_range = [pmin, pmax]
+   p_alpha = 0.8
+   l321, = ax32.plot(fake_range, p_range, lw=lw3, alpha=p_alpha, label=L&quot;$P_{ixx}$&quot;,
+      color=&quot;tab:red&quot;)
+   l322, = ax32.plot(fake_range, p_range, lw=lw3, alpha=p_alpha, label=L&quot;$P_{iyy}$&quot;,
+      color=&quot;tab:purple&quot;)
+   l323, = ax32.plot(fake_range, p_range, lw=lw3, alpha=p_alpha, label=L&quot;$P_{izz}$&quot;,
+      color=&quot;tab:brown&quot;)
+
+   ax32.set_yscale(&quot;log&quot;)
+   ax32.set_ylim(p_range...)
+
+   leg21 = axs[2].legend(;loc=(0.34, 0.05), ncols=3, frameon=false)
+   leg22 = ax22.legend(;loc=(0.0, 0.05), ncols=3, frameon=false)
+   leg31 = axs[3].legend(;loc=(0.34, -0.05), ncols=3, frameon=false)
+   leg32 = ax32.legend(;loc=(0.0, -0.05), ncols=3, frameon=false)
+   leg4 = axs[4].legend(;loc=&quot;upper left&quot;, ncols=3, frameon=false)
+   leg5 = axs[5].legend(;loc=&quot;upper left&quot;, ncols=3, frameon=false)
+
+   # set the linewidth of each legend object
+   legs = (leg21, leg22, leg31, leg32, leg4, leg5)
+   for leg in legs
+      for legobj in leg.legend_handles
+         legobj.set_linewidth(1.5)
+      end
+   end
+
+   ls = (l11, l12, l211, l212, l213, l221, l222, l223, l311, l312, l313, l321, l322, l323,
+      l41, l42, l43, l51, l52, l53)
+
+   axs, ls
+end
+
+function slice1d_avg(bd, var, dir::Int=2)
+   mean(bd[var], dims=dir) |&gt; vec
+end
+
+function animate(files::Vector{String}, axs, ls; outdir=&quot;out/&quot;, overwrite::Bool=false,
+   icut::Int=1, nbox::Int=1, dir=2, doAverage::Bool=false)
+   l11, l12, l211, l212, l213, l221, l222, l223, l311, l312, l313, l321, l322, l323,
+      l41, l42, l43, l51, l52, l53 = ls
+
+   for (i, file) in enumerate(files)
+      @info &quot;$i in $(length(files))&quot;
+      outname = outdir*lpad(i, 4, &#39;0&#39;)*&quot;.png&quot;
+      if !overwrite
+         isfile(outname) &amp;&amp; continue
+      end
+
+      bd = load(joinpath(filedir, file))
+
+      x = @views bd.x[:,1,1]
+
+      if doAverage
+         slice = let bd = bd, dir = dir, nbox = nbox
+            var -&gt; moving_average(slice1d_avg(bd, var, dir), nbox)
+         end
+      else
+         slice = let bd = bd, dir = dir, nbox = nbox, icut = icut
+            var -&gt; moving_average(slice1d(bd, var, icut, dir), nbox)
+         end
+      end
+
+      d = slice(&quot;rhos0&quot;)
+      l11.set_data(x, d)
+      d = slice(&quot;rhos1&quot;)
+      l12.set_data(x, d)
+      d = slice(&quot;Uxs0&quot;)
+      l211.set_data(x, d)
+      d = slice(&quot;Uys0&quot;)
+      l212.set_data(x, d)
+      d = slice(&quot;Uzs0&quot;)
+      l213.set_data(x, d)
+      d = slice(&quot;Uxs1&quot;)
+      l221.set_data(x, d)
+      d = slice(&quot;Uys1&quot;)
+      l222.set_data(x, d)
+      d = slice(&quot;Uzs1&quot;)
+      l223.set_data(x, d)
+      d = slice(&quot;PXXS0&quot;)
+      l311.set_data(x, d)
+      d = slice(&quot;PYYS0&quot;)
+      l312.set_data(x, d)
+      d = slice(&quot;PZZS0&quot;)
+      l313.set_data(x, d)
+      d = slice(&quot;PXXS1&quot;)
+      l321.set_data(x, d)
+      d = slice(&quot;PYYS1&quot;)
+      l322.set_data(x, d)
+      d = slice(&quot;PZZS1&quot;)
+      l323.set_data(x, d)
+
+      d = slice_data(&quot;Bx&quot;)
+      l41.set_data(x, d)
+      d = slice_data(&quot;By&quot;)
+      l42.set_data(x, d)
+      d = slice_data(&quot;Bz&quot;)
+      l43.set_data(x, d)
+      d = slice_data(&quot;Ex&quot;) ./ 1000
+      l51.set_data(x, d)
+      d = slice_data(&quot;Ey&quot;) ./ 1000
+      l52.set_data(x, d)
+      d = slice_data(&quot;Ez&quot;) ./ 1000
+      l53.set_data(x, d)
+
+      title_str = @sprintf &quot;t = %4.1f s&quot; bd.head.time
+      axs[1].set_title(title_str; fontsize)
+
+      savefig(outname, bbox_inches=&quot;tight&quot;, dpi=200)
+   end
+
+   return
+end
+
+#################
+
+# Data directory
+filedir = &quot;./&quot;
+
+const fontsize = 16
+
+pick_file = file -&gt; startswith(file, &quot;z&quot;) &amp;&amp; endswith(file, &quot;.out&quot;)
+
+files = filter(pick_file, readdir(filedir))
+
+axs, ls = create_figure()
+animate(files, axs, ls; icol=1, outdir=&quot;figures/&quot;, overwrite=true)
+
+close()</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.0 on <span class="colophon-date" title="Monday 25 November 2024 23:06">Monday 25 November 2024</span>. Using Julia version 1.11.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
