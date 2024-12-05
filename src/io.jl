@@ -676,14 +676,15 @@ end
 function Base.show(io::IO, data::BATS)
    showhead(io, data)
    if data.list.bytes ≥ 1e9
-      println(io, "filesize: $(data.list.bytes/1e9) GB")
+      str = @sprintf "filesize: %.1f GB" data.list.bytes/1e9
    elseif data.list.bytes ≥ 1e6
-      println(io, "filesize: $(data.list.bytes/1e6) MB")
+      str = @sprintf "filesize: %.1f MB" data.list.bytes/1e6
    elseif data.list.bytes ≥ 1e3
-      println(io, "filesize: $(data.list.bytes/1e3) KB")
+      str = @sprintf "filesize: %.1f KB" data.list.bytes/1e3
    else
-      println(io, "filesize: $(data.list.bytes) bytes")
+      str = @sprintf "filesize: %.1f Bytes" data.list.bytes
    end
+   println(io, str)
    println(io, "snapshots: $(data.list.npictinfiles)")
 end
 
