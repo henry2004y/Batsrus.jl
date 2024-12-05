@@ -66,12 +66,7 @@ function plotgrid(bd::BATS{2, 3, T}, func::AbstractString, ax=nothing; kwargs...
    title("Grid illustration")
 
    xlabel(bd.head.variables[1]); ylabel(bd.head.variables[2])
-   str = @sprintf "it=%d, time=%4.2f" bd.head.it bd.head.time
-   at = matplotlib.offsetbox.AnchoredText(str,
-      loc="lower left", prop=Dict("size"=>8), frameon=true,
-      bbox_to_anchor=(0., 1.), bbox_transform=ax.transAxes)
-   at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
-   ax.add_artist(at)
+   add_time_iteration!(bd, ax)
 
    return
 end
@@ -120,12 +115,7 @@ function cutplot(bd::BATS{3, 4, T}, var::AbstractString, ax=nothing;
       xlabel("x"); ylabel("y")
    end
 
-   str = @sprintf "it=%d, time=%4.2f" bd.head.it bd.head.time
-   at = matplotlib.offsetbox.AnchoredText(str,
-      loc="lower left", prop=Dict("size"=>8), frameon=true,
-      bbox_to_anchor=(0., 1.), bbox_transform=ax.transAxes)
-   at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
-   ax.add_artist(at)
+   add_time_iteration!(bd, ax)
 
    c
 end
@@ -204,12 +194,7 @@ function PyPlot.plot(bd::BATS{1, 2, T}, var::AbstractString, ax=nothing; kwargs.
    c = ax.plot(x, w[:,varIndex_]; kwargs...)
 
    xlabel("x"); ylabel("$(var)")
-   str = @sprintf "it=%d, time=%4.2f" bd.head.it bd.head.time
-   at = matplotlib.offsetbox.AnchoredText(str,
-      loc="lower left", prop=Dict("size"=>8), frameon=true,
-      bbox_to_anchor=(0., 1.), bbox_transform=ax.transAxes)
-   at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
-   ax.add_artist(at)
+   add_time_iteration!(bd, ax)
 
    c
 end
@@ -244,7 +229,7 @@ function PyPlot.contour(bd::BATS{2, 3, T}, var::AbstractString, ax=nothing; leve
    else
       c = ax.contour(Xi, Yi, Wi; kwargs...)
    end
-   add_titles(bd, var, ax)
+   add_titles!(bd, var, ax)
 
    c
 end
@@ -269,7 +254,7 @@ function PyPlot.contourf(bd::BATS{2, 3, T}, var::AbstractString, ax=nothing; lev
       c = ax.contourf(Xi, Yi, Wi; norm, kwargs...)
    end
    add_colorbar && colorbar(c; ax, fraction=0.04, pad=0.02)
-   add_titles(bd, var, ax)
+   add_titles!(bd, var, ax)
 
    c
 end
@@ -300,7 +285,7 @@ function PyPlot.tricontourf(bd::BATS{2, 3, T}, var::AbstractString, ax=nothing;
 
    c = ax.tricontourf(X, Y, W; kwargs...)
 
-   add_titles(bd, var, ax)
+   add_titles!(bd, var, ax)
 
    c
 end
@@ -350,7 +335,7 @@ function PyPlot.plot_trisurf(bd::BATS{2, 3, T}, var::AbstractString;
    ax = plt.figure().add_subplot(projection="3d")
    c = ax.plot_trisurf(X, Y, W)
 
-   add_titles(bd, var, ax)
+   add_titles!(bd, var, ax)
 
    c
 end
@@ -371,7 +356,7 @@ function PyPlot.plot_surface(bd::BATS{2, 3, T}, var::AbstractString, ax=nothing;
 
    c = plot_surface(Xi, Yi, Wi; kwargs...)
 
-   add_titles(bd, var, ax)
+   add_titles!(bd, var, ax)
 
    c
 end
@@ -401,7 +386,7 @@ function PyPlot.pcolormesh(bd::BATS{2, 3, T}, var::AbstractString, ax=nothing;
 
    add_colorbar && colorbar(c; ax, fraction=0.04, pad=0.02)
 
-   add_titles(bd, var, ax)
+   add_titles!(bd, var, ax)
 
    c
 end
@@ -449,7 +434,7 @@ function PyPlot.tripcolor(bd::BATS{2, 3, T}, var::AbstractString, ax=nothing;
    ax.set_xlim(plotrange[1], plotrange[2])
    ax.set_ylim(plotrange[3], plotrange[4])
 
-   add_titles(bd, var, ax)
+   add_titles!(bd, var, ax)
 
    c
 end
@@ -566,11 +551,15 @@ function set_colorbar(colorscale, vmin, vmax, data=[1.0])
    cnorm
 end
 
-function add_titles(bd::BATS, var, ax)
+function add_titles!(bd::BATS, var, ax)
    varIndex_ = findindex(bd, var)
    title(bd.head.wnames[varIndex_])
 
    xlabel(bd.head.variables[1]); ylabel(bd.head.variables[2])
+   add_time_iteration!(bd, ax)
+end
+
+function add_time_iteration!(bd::BATS, ax)
    str = @sprintf "it=%d, time=%4.2f" bd.head.it bd.head.time
    at = matplotlib.offsetbox.AnchoredText(str,
       loc="lower left", prop=Dict("size"=>8), frameon=true,
