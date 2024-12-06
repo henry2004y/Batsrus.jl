@@ -12,7 +12,9 @@ using StaticArrays: SVector, @SMatrix, SA
 
 export BATS,
    load, readlogdata, readtecdata, showhead, # io
-   getvar, cutdata, subvolume, subsurface, # select
+   getvar, cutdata, subvolume, subsurface, get_convection_E, get_hall_E, 
+   get_anisotropy, get_vectors, get_magnitude, get_magnitude2,
+   fill_vector_from_scalars, # select
    Batl, convertTECtoVTU, convertIDLtoVTK, readhead, readtree, getConnectivity, # vtk
    interp1d, interp2d, slice1d, get_var_range, squeeze, get_range # plot/utility
 

@@ -89,6 +89,43 @@ function interp2d(bd::BATS{2, 3, T}, var::AbstractString,
    xi, yi, Wi
 end
 
+"Return the axis range for 2D outputs. See [`interp2d`](@ref)."
+function meshgrid(bd::BATS,
+   plotrange::Vector=[-Inf32, Inf32, -Inf32, Inf32], plotinterval::Real=Inf32)
+   x = bd.x
+
+   if bd.head.gencoord # Generalized coordinates
+      X, Y = eachslice(x, dims=3)
+      X, Y = vec(X), vec(Y)
+
+      adjust_plotrange!(plotrange, extrema(X), extrema(Y))
+      # Set a heuristic value if not set
+      if isinf(plotinterval)
+         plotinterval = (plotrange[2] - plotrange[1]) / size(X, 1)
+      end
+      xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
+      yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
+   else # Cartesian coordinates
+      xrange = range(x[1,1,1], x[end,1,1], length=size(x,1))
+      yrange = range(x[1,1,2], x[1,end,2], length=size(x,2))
+      if all(isinf.(plotrange))
+         xi, yi = xrange, yrange
+      else
+         adjust_plotrange!(plotrange, (xrange[1], xrange[end]), (yrange[1], yrange[end]))
+
+         if isinf(plotinterval)
+            xi = range(plotrange[1], stop=plotrange[2], step=xrange[2] - xrange[1])
+            yi = range(plotrange[3], stop=plotrange[4], step=yrange[2] - yrange[1])
+         else
+            xi = range(plotrange[1], stop=plotrange[2], step=plotinterval)
+            yi = range(plotrange[3], stop=plotrange[4], step=plotinterval)
+         end
+      end
+   end
+
+   xi, yi
+end
+
 "Find variable index in the BATSRUS data."
 function findindex(bd::BATS, var::AbstractString)
    varIndex_ = findfirst(x->lowercase(x)==lowercase(var), bd.head.wnames)
