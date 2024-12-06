@@ -73,7 +73,6 @@ end
       @test length(x) == 601 && y[2] == 0.0f0
       x, y = Batsrus.meshgrid(bd, Float32[-100, 100, -Inf, Inf])
       @test length(x) == 4
-      @test length(x) == 601 && y[2] == 0.0f0
       @test bd["Emag"][2,1] == 2655.4805f0
       @test bd["E2"][2,1] == 7.051577f6
       @test bd["E"][:,2,1] == Float32[-241.05942, -2644.2058, -40.53219]
