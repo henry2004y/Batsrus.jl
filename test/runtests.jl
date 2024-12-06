@@ -71,6 +71,9 @@ end
       bd = load(joinpath(datapath, file))
       x, y = Batsrus.meshgrid(bd)
       @test length(x) == 601 && y[2] == 0.0f0
+      x, y = Batsrus.meshgrid(bd, Float32[-100, 100, -Inf, Inf])
+      @test length(x) == 4
+      @test length(x) == 601 && y[2] == 0.0f0
       @test bd["Emag"][2,1] == 2655.4805f0
       @test bd["E2"][2,1] == 7.051577f6
       @test bd["E"][:,2,1] == Float32[-241.05942, -2644.2058, -40.53219]
@@ -88,6 +91,8 @@ end
       file = "bx0_mhd_6_t00000100_n00000352.out"
       bd = load(joinpath(datapath, file))
       plotrange = [-Inf, Inf, -Inf, Inf]
+      x, y = Batsrus.meshgrid(bd)
+      @test length(x) == 117 && length(y) == 246
       x, y, w = interp2d(bd, "rho", plotrange, useMatplotlib=false)
       @test w[1,2] == 5.000018304080387
       @test bd["Umag"][2] == 71.85452748407637
