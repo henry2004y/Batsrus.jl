@@ -188,9 +188,14 @@ end
    getvar(bd, var)
 
 
-"Construct vectors from scalar components."
-function _fill_vector_from_scalars(bd::BATS{ndim, ndimp1, T}, var) where {ndim, ndimp1, T}
-   v1, v2, v3 = _get_vectors(bd, var)
+"""
+    fill_vector_from_scalars(bd::BATS, var)
+
+Construct vector of `var` from its scalar components.
+Alternatively, use [`get_vectors`](@ref) for returning the individual components.
+"""
+function fill_vector_from_scalars(bd::BATS{ndim, ndimp1, T}, var) where {ndim, ndimp1, T}
+   v1, v2, v3 = get_vectors(bd, var)
    v = Array{T, ndimp1}(undef, 3, size(v1)...)
 
    Rpost = CartesianIndices(size(v1))
@@ -203,8 +208,13 @@ function _fill_vector_from_scalars(bd::BATS{ndim, ndimp1, T}, var) where {ndim, 
    v
 end
 
-function _get_magnitude2(bd::BATS{2, 3, T}, var=:B) where T
-   vx, vy, vz = _get_vectors(bd, var)
+"""
+    get_magnitude2(bd::BATS, var)
+
+Calculate the magnitude square of vector `var`. See [`get_vectors`](@ref) for the options.
+"""
+function get_magnitude2(bd::BATS{2, 3, T}, var=:B) where T
+   vx, vy, vz = get_vectors(bd, var)
    v = similar(vx)::Array{T, 2}
 
    @inbounds @simd for i in eachindex(v)
@@ -214,8 +224,13 @@ function _get_magnitude2(bd::BATS{2, 3, T}, var=:B) where T
    v
 end
 
-function _get_magnitude(bd::BATS{2, 3, T}, var=:B) where T
-   vx, vy, vz = _get_vectors(bd, var)
+"""
+    get_magnitude(bd::BATS, var)
+
+Calculate the magnitude of vector `var`. See [`get_vectors`](@ref) for the options.
+"""
+function get_magnitude(bd::BATS{2, 3, T}, var=:B) where T
+   vx, vy, vz = get_vectors(bd, var)
    v = similar(vx)::Array{T, 2}
 
    @inbounds @simd for i in eachindex(v)
@@ -225,7 +240,12 @@ function _get_magnitude(bd::BATS{2, 3, T}, var=:B) where T
    v
 end
 
-function _get_vectors(bd::BATS{Dim, Dimp1, T}, var) where {Dim, Dimp1,T}
+"""
+    get_vectors(bd::BATS, var)
+
+Return a tuple of vectors of `var`. `var` can be `:B`, `:E`, `:U`, `:U0`, or `:U1`.
+"""
+function get_vectors(bd::BATS{Dim, Dimp1, T}, var) where {Dim, Dimp1, T}
    VT = SubArray{T, Dim, Array{T, Dimp1}, Tuple{Base.Slice{Base.OneTo{Int64}},
       Base.Slice{Base.OneTo{Int64}}, Int64}, true}
    if var == :B
@@ -243,7 +263,12 @@ function _get_vectors(bd::BATS{Dim, Dimp1, T}, var) where {Dim, Dimp1,T}
    vx, vy, vz
 end
 
-function _get_anisotropy(bd::BATS{2, 3, T}, species=0) where T
+"""
+    get_anisotropy(bd::BATS, species=0)
+
+Calculate the pressure anisotropy for `species`, indexing from 0.
+"""
+function get_anisotropy(bd::BATS{2, 3, T}, species=0) where T
    VT = SubArray{T, 2, Array{T, 3}, Tuple{Base.Slice{Base.OneTo{Int64}},
       Base.Slice{Base.OneTo{Int64}}, Int64}, true}
    Bx, By, Bz = bd["Bx"]::VT, bd["By"]::VT, bd["Bz"]::VT
@@ -272,30 +297,11 @@ function _get_anisotropy(bd::BATS{2, 3, T}, species=0) where T
    Paniso
 end
 
-# Define derived parameters
-const variables_predefined = Dict{String, Function}(
-   "B2" => (bd -> _get_magnitude2(bd, :B)),
-   "E2" => (bd -> _get_magnitude2(bd, :E)),
-   "U2" => (bd -> _get_magnitude2(bd, :U)),
-   "Ue2" => (bd -> _get_magnitude2(bd, :U0)),
-   "Ui2" => (bd -> _get_magnitude2(bd, :U1)),
-   "Bmag" => (bd -> _get_magnitude(bd, :B)),
-   "Emag" => (bd -> _get_magnitude(bd, :E)),
-   "Umag" => (bd -> _get_magnitude(bd, :U)),
-   "Uemag" => (bd -> _get_magnitude(bd, :U0)),
-   "Uimag" => (bd -> _get_magnitude(bd, :U1)),
-   "B" => (bd -> _fill_vector_from_scalars(bd, :B)),
-   "E" => (bd -> _fill_vector_from_scalars(bd, :E)),
-   "U" => (bd -> _fill_vector_from_scalars(bd, :U)),
-   "Anisotropy0" => (bd -> _get_anisotropy(bd, 0)),
-   "Anisotropy1" => (bd -> _get_anisotropy(bd, 1)),
-)
-
 "Return the convection electric field from PIC outputs."
 function get_convection_E(bd::BATS)
-   Bx, By, Bz = _get_vectors(bd, :B) # [nT]
+   Bx, By, Bz = get_vectors(bd, :B)
    # Let us use H+ velocities as the ion bulk velocity and ignore heavy ions
-   uix, uiy, uiz = _get_vectors(bd, :U1)
+   uix, uiy, uiz = get_vectors(bd, :U1)
 
    Econvx = similar(Bx)
    Econvy = similar(By)
@@ -312,10 +318,10 @@ end
 
 "Return the Hall electric field from PIC outputs."
 function get_hall_E(bd::BATS)
-   Bx, By, Bz = _get_vectors(bd, :B) # [nT]
-   uex, uey, uez = _get_vectors(bd, :U0) # [km/s]
+   Bx, By, Bz = get_vectors(bd, :B)
+   uex, uey, uez = get_vectors(bd, :U0)
    # Let us use H+ velocities as the ion bulk velocity and ignore heavy ions
-   uix, uiy, uiz = _get_vectors(bd, :U1)
+   uix, uiy, uiz = get_vectors(bd, :U1)
 
    Ehallx = similar(Bx)
    Ehally = similar(By)
@@ -329,3 +335,22 @@ function get_hall_E(bd::BATS)
 
    Ehallx, Ehally, Ehallz
 end
+
+# Define derived parameters
+const variables_predefined = Dict{String, Function}(
+   "B2" => (bd -> get_magnitude2(bd, :B)),
+   "E2" => (bd -> get_magnitude2(bd, :E)),
+   "U2" => (bd -> get_magnitude2(bd, :U)),
+   "Ue2" => (bd -> get_magnitude2(bd, :U0)),
+   "Ui2" => (bd -> get_magnitude2(bd, :U1)),
+   "Bmag" => (bd -> get_magnitude(bd, :B)),
+   "Emag" => (bd -> get_magnitude(bd, :E)),
+   "Umag" => (bd -> get_magnitude(bd, :U)),
+   "Uemag" => (bd -> get_magnitude(bd, :U0)),
+   "Uimag" => (bd -> get_magnitude(bd, :U1)),
+   "B" => (bd -> fill_vector_from_scalars(bd, :B)),
+   "E" => (bd -> fill_vector_from_scalars(bd, :E)),
+   "U" => (bd -> fill_vector_from_scalars(bd, :U)),
+   "Anisotropy0" => (bd -> get_anisotropy(bd, 0)),
+   "Anisotropy1" => (bd -> get_anisotropy(bd, 1)),
+)

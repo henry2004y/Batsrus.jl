@@ -290,7 +290,7 @@ function swaprows!(X::Matrix, i::Int, j::Int)
    end
 end
 
-"Return header from info file. Currently only designed for 2D and 3D."
+"Return BATL header from info file. Currently only designed for 2D and 3D."
 function readhead(filehead)
    nDim = 3
    nI, nJ, nK = 1, 1, 1
