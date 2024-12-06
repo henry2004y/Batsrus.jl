@@ -89,7 +89,7 @@ function interp2d(bd::BATS{2, 3, T}, var::AbstractString,
    xi, yi, Wi
 end
 
-"Return the axis range for 2D outputs."
+"Return the axis range for 2D outputs. See [`interp2d`](@ref)."
 function meshgrid(bd::BATS,
    plotrange::Vector=[-Inf32, Inf32, -Inf32, Inf32], plotinterval::Real=Inf32)
    x = bd.x
