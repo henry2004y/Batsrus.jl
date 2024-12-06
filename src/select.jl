@@ -290,3 +290,42 @@ const variables_predefined = Dict{String, Function}(
    "Anisotropy0" => (bd -> _get_anisotropy(bd, 0)),
    "Anisotropy1" => (bd -> _get_anisotropy(bd, 1)),
 )
+
+"Return the convection electric field from PIC outputs."
+function get_convection_E(bd::BATS)
+   Bx, By, Bz = _get_vectors(bd, :B) # [nT]
+   # Let us use H+ velocities as the ion bulk velocity and ignore heavy ions
+   uix, uiy, uiz = _get_vectors(bd, :U1)
+
+   Econvx = similar(Bx)
+   Econvy = similar(By)
+   Econvz = similar(Bz)
+   # -Ui × B
+   @simd for i in eachindex(Econvx)
+      Econvx[i] = -uiy[i]*Bz[i] + uiz[i]*By[i]
+      Econvy[i] = -uiz[i]*Bx[i] + uix[i]*Bz[i]
+      Econvz[i] = -uix[i]*By[i] + uiy[i]*Bx[i]
+   end
+
+   Econvx, Econvy, Econvz
+end
+
+"Return the Hall electric field from PIC outputs."
+function get_hall_E(bd::BATS)
+   Bx, By, Bz = _get_vectors(bd, :B) # [nT]
+   uex, uey, uez = _get_vectors(bd, :U0) # [km/s]
+   # Let us use H+ velocities as the ion bulk velocity and ignore heavy ions
+   uix, uiy, uiz = _get_vectors(bd, :U1)
+
+   Ehallx = similar(Bx)
+   Ehally = similar(By)
+   Ehallz = similar(Bz)
+   # (Ui - Ue) × B
+   for i in eachindex(Ehallx)
+      Ehallx[i] = (uiy[i] - uey[i])*Bz[i] - (uiz[i] - uez[i])*By[i]
+      Ehally[i] = (uiz[i] - uez[i])*Bx[i] - (uix[i] - uex[i])*Bz[i]
+      Ehallz[i] = (uix[i] - uex[i])*By[i] - (uiy[i] - uey[i])*Bx[i]
+   end
+
+   Ehallx, Ehally, Ehallz
+end
