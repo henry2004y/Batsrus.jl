@@ -47,13 +47,13 @@ function readlogdata(file::AbstractString)
    nLine = countlines(f) - 2
    seekstart(f)
    headline  = readline(f)
-   variables = split(readline(f))
+   variable = split(readline(f))
    ndim      = 1
    it        = 0
    t         = 0.0
    gencoord  = false
    nx        = 1
-   nw        = length(variables)
+   nw        = length(variable)
 
    data = zeros(nw, nLine)
    @inbounds for i in 1:nLine
@@ -64,7 +64,7 @@ function readlogdata(file::AbstractString)
    close(f)
 
    head = (ndim=ndim, headline=headline, it=it, time=t, gencoord=gencoord,
-      nw=nw, nx=nx, variables=variables)
+      nw=nw, nx=nx, variable=variable)
 
    head, data
 end
@@ -199,7 +199,7 @@ function readtecdata(file::AbstractString; verbose::Bool=false)
 
    close(f)
 
-   head = (variables=VARS, nNode=nNode, nCell=nCell, nDim=nDim, ET=ET,
+   head = (variable=VARS, nNode=nNode, nCell=nCell, nDim=nDim, ET=ET,
 		title=title, auxdataname=auxdataname, auxdata=auxdata)
 
    head, data, connectivity
@@ -297,13 +297,14 @@ function getfilehead(fileID::IOStream, filelist::FileList)
       skip(fileID, TAG)
    end
 
-   # Obtain output array
-   variables = split(varname)
-	# Obtain variable names
-   wnames = @view variables[ndim+1:ndim+nw]
+   # Obtain output variable names
+   variable = split(varname)
+   coord = @view variable[1:ndim]
+   wname = @view variable[ndim+1:ndim+nw]
+   param = @view variable[ndim+nw+1:end]
 
-   head = BatsHead(ndim, headline, it, t, gencoord,
-      neqpar, nw, nx, eqpar, variables, wnames)
+   head = BatsHead(ndim, headline, it, t, gencoord, neqpar, nw, nx, eqpar,
+      coord, wname, param)
 end
 
 function skipline(s::IO)
@@ -481,12 +482,12 @@ Also calculate convenient constants ti0, cs0 ... for typical formulas.
 This function is currently not used anywhere!
 """
 function setunits(head, type; distance=1.0, mp=1.0, me=1.0)
-   ndim      = head.ndim
-   headline  = head.headline
-   neqpar    = head.neqpar
-   nw        = head.nw
-   eqpar     = head.eqpar
-   variables = head.variables
+   ndim     = head.ndim
+   headline = head.headline
+   neqpar   = head.neqpar
+   nw       = head.nw
+   eqpar    = head.eqpar
+   param    = head.param
 
    mu0SI = 4π*1e-7      # H/m
    cSI   = 2.9978e8       # speed of light, [m/s]
@@ -588,7 +589,7 @@ function setunits(head, type; distance=1.0, mp=1.0, me=1.0)
 
    # Overwrite values if given by eqpar
    for ieqpar in 1:neqpar
-      var = variables[ndim+nw+ieqpar]
+      var = param[ieqpar]
       if var == "xSI"
          xSI   = eqpar[ieqpar]
       elseif var == "tSI"
@@ -707,9 +708,9 @@ function showhead(file::FileList, head, io=stdout)
 
    if head.neqpar > 0
       println(io, "parameters : $(head.eqpar)")
-      println(io, "coord names: $(head.variables[1:head.ndim])")
-      println(io, "var   names: $(head.variables[head.ndim+1:head.ndim+head.nw])")
-      println(io, "param names: $(head.variables[head.ndim+head.nw+1:end])")
+      println(io, "coordinate names: $(head.coord)")
+      println(io, "variable   names: $(head.wname)")
+      println(io, "parameter  names: $(head.param)")
    end
 
    return

@@ -8,7 +8,7 @@ The returned 2D data lies in the `sequence` plane from - to + in `dir`.
 """
 function cutdata(bd::BATS, var::AbstractString;
    plotrange=[-Inf,Inf,-Inf,Inf], dir::String="x", sequence::Int=1)
-   var_ = findfirst(x->lowercase(x)==lowercase(var), bd.head.wnames)
+   var_ = findfirst(x->lowercase(x)==lowercase(var), bd.head.wname)
    isempty(var_) && error("$(var) not found in header variables!")
 
    if dir == "x"
@@ -172,11 +172,11 @@ Return variable data from string `var`. This is also supported via direct indexi
 bd["rho"]
 ```
 """
-function getvar(bd::BATS{ndim, ndimp1, T}, var::AbstractString) where {ndim, ndimp1, T}
-   if var in keys(variables_predefined)
-      w = variables_predefined[var](bd)
+function getvar(bd::BATS{ndim, TV, T}, var::AbstractString) where {ndim, TV, T}
+   if var in keys(variable_predefined)
+      w = variable_predefined[var](bd)
    else
-      var_ = findfirst(x->lowercase(x)==lowercase(var), bd.head.wnames)
+      var_ = findfirst(x->lowercase(x)==lowercase(var), bd.head.wname)
       isnothing(var_) && error("$var not found in file header variables!")
       w = selectdim(bd.w, ndim+1, var_)
    end
@@ -191,12 +191,12 @@ end
 """
     fill_vector_from_scalars(bd::BATS, var)
 
-Construct vector of `var` from its scalar components.
-Alternatively, use [`get_vectors`](@ref) for returning the individual components.
+Construct vector of `var` from its scalar components. Alternatively, check
+[`get_vectors`](@ref) for returning vector components as saparate arrays.
 """
-function fill_vector_from_scalars(bd::BATS{ndim, ndimp1, T}, var) where {ndim, ndimp1, T}
+function fill_vector_from_scalars(bd::BATS{ndim, TV, T}, var) where {ndim, TV, T}
    v1, v2, v3 = get_vectors(bd, var)
-   v = Array{T, ndimp1}(undef, 3, size(v1)...)
+   v = Array{TV, ndim+1}(undef, 3, size(v1)...)
 
    Rpost = CartesianIndices(size(v1))
    for Ipost in Rpost
@@ -213,9 +213,9 @@ end
 
 Calculate the magnitude square of vector `var`. See [`get_vectors`](@ref) for the options.
 """
-function get_magnitude2(bd::BATS{2, 3, T}, var=:B) where T
+function get_magnitude2(bd::BATS{2, TV, T}, var=:B) where {TV, T}
    vx, vy, vz = get_vectors(bd, var)
-   v = similar(vx)::Array{T, 2}
+   v = similar(vx)
 
    @inbounds @simd for i in eachindex(v)
       v[i] = vx[i]^2 + vy[i]^2 + vz[i]^2
@@ -229,9 +229,9 @@ end
 
 Calculate the magnitude of vector `var`. See [`get_vectors`](@ref) for the options.
 """
-function get_magnitude(bd::BATS{2, 3, T}, var=:B) where T
+function get_magnitude(bd::BATS{2, TV, T}, var=:B) where {TV, T}
    vx, vy, vz = get_vectors(bd, var)
-   v = similar(vx)::Array{T, 2}
+   v = similar(vx)
 
    @inbounds @simd for i in eachindex(v)
       v[i] = √(vx[i]^2 + vy[i]^2 + vz[i]^2)
@@ -245,19 +245,17 @@ end
 
 Return a tuple of vectors of `var`. `var` can be `:B`, `:E`, `:U`, `:U0`, or `:U1`.
 """
-function get_vectors(bd::BATS{Dim, Dimp1, T}, var) where {Dim, Dimp1, T}
-   VT = SubArray{T, Dim, Array{T, Dimp1}, Tuple{Base.Slice{Base.OneTo{Int64}},
-      Base.Slice{Base.OneTo{Int64}}, Int64}, true}
+function get_vectors(bd::BATS{Dim, TV, T}, var) where {Dim, TV, T}
    if var == :B
-      vx, vy, vz = bd["Bx"]::VT, bd["By"]::VT, bd["Bz"]::VT
+      vx, vy, vz = bd["Bx"], bd["By"], bd["Bz"]
    elseif var == :E
-      vx, vy, vz = bd["Ex"]::VT, bd["Ey"]::VT, bd["Ez"]::VT
+      vx, vy, vz = bd["Ex"], bd["Ey"], bd["Ez"]
    elseif var == :U
-      vx, vy, vz = bd["Ux"]::VT, bd["Uy"]::VT, bd["Uz"]::VT
+      vx, vy, vz = bd["Ux"], bd["Uy"], bd["Uz"]
    elseif var == :U0
-      vx, vy, vz = bd["UxS0"]::VT, bd["UyS0"]::VT, bd["UzS0"]::VT
+      vx, vy, vz = bd["UxS0"], bd["UyS0"], bd["UzS0"]
    elseif var == :U1
-      vx, vy, vz = bd["UxS1"]::VT, bd["UyS1"]::VT, bd["UzS1"]::VT 
+      vx, vy, vz = bd["UxS1"], bd["UyS1"], bd["UzS1"]
    end
 
    vx, vy, vz
@@ -268,20 +266,20 @@ end
 
 Calculate the pressure anisotropy for `species`, indexing from 0.
 """
-function get_anisotropy(bd::BATS{2, 3, T}, species=0) where T
-   VT = SubArray{T, 2, Array{T, 3}, Tuple{Base.Slice{Base.OneTo{Int64}},
-      Base.Slice{Base.OneTo{Int64}}, Int64}, true}
-   Bx, By, Bz = bd["Bx"]::VT, bd["By"]::VT, bd["Bz"]::VT
+function get_anisotropy(bd::BATS{2, TV, T}, species=0) where {TV, T}
+   #VT = SubArray{TV, 2, Array{TV, 3}, Tuple{Base.Slice{Base.OneTo{Int64}},
+   #   Base.Slice{Base.OneTo{Int64}}, Int64}, true}
+   Bx, By, Bz = bd["Bx"], bd["By"], bd["Bz"]
    # Rotate the pressure tensor to align the 3rd direction with B
    pop = string(species)
-   Pxx = bd["pXXS"*pop]::VT
-   Pyy = bd["pYYS"*pop]::VT
-   Pzz = bd["pZZS"*pop]::VT
-   Pxy = bd["pXYS"*pop]::VT
-   Pxz = bd["pXZS"*pop]::VT
-   Pyz = bd["pYZS"*pop]::VT
+   Pxx = bd["pXXS"*pop]
+   Pyy = bd["pYYS"*pop]
+   Pzz = bd["pZZS"*pop]
+   Pxy = bd["pXYS"*pop]
+   Pxz = bd["pXZS"*pop]
+   Pyz = bd["pYZS"*pop]
 
-   Paniso = similar(Pxx)::Array{T, 2}
+   Paniso = similar(Pxx)#::Array{TV, 2}
 
    @inbounds for j in axes(Pxx, 2), i in axes(Pxx, 1)  
       b̂ = normalize(SA[Bx[i,j], By[i,j], Bz[i,j]])
@@ -337,7 +335,7 @@ function get_hall_E(bd::BATS)
 end
 
 # Define derived parameters
-const variables_predefined = Dict{String, Function}(
+const variable_predefined = Dict{String, Function}(
    "B2" => (bd -> get_magnitude2(bd, :B)),
    "E2" => (bd -> get_magnitude2(bd, :E)),
    "U2" => (bd -> get_magnitude2(bd, :U)),

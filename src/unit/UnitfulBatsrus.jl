@@ -45,15 +45,15 @@ function __init__()
 end
 
 
-function getunit(data, var)
+function getunit(bd, var)
    # Batsrus has a bug in the 2D cuts of 3D runs: it always outputs the 3
    # coordinate units in the headline. To work around it, here the index is shifted by 1.
-   var_ = findfirst(x->lowercase(x)==lowercase(var), data.head.variables) + 1
+   var_ = findfirst(x->lowercase(x)==lowercase(var), bd.head.wname) + bd.head.ndim + 1
    isnothing(var_) && error("$(var) not found in file header variables!")
-   if data.head.headline in ("normalized variables", "PLANETARY")
+   if bd.head.headline in ("normalized variables", "PLANETARY")
       var_unit = nothing 
    else
-      var_unit_strs = split(data.head.headline)
+      var_unit_strs = split(bd.head.headline)
  
       if var_unit_strs[var_] == "R"
          var_unit = bu"R"
@@ -71,8 +71,8 @@ function getunit(data, var)
    var_unit
 end
  
-function getunits(data)
-   var_unit_strs = split(data.head.headline)
+function getunits(bd)
+   var_unit_strs = split(bd.head.headline)
    var_units = [] # needs to be improved!
    for var_unit_str in var_unit_strs
       if var_unit_str == "R"
