@@ -51,7 +51,7 @@ struct BATS{Dim, TV<:AbstractFloat, TX, TW} <: AbstractBATS{Dim, TV}
       elseif ndims(x) == 4
          x = DimArray(x, (X, Y, Z, :dim))
          w = DimArray(w, (X, Y, Z, Dim{:var}(head.wname)))
-      elseif ndims(x) == 1
+      elseif ndims(x) == 2
          x = DimArray(x, (X, :dim))
          w = DimArray(w, (X, Dim{:var}(head.wname)))
       end
