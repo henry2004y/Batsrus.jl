@@ -27,4 +27,4 @@ SUITE["read"]["Interp2d"] = @benchmarkable Batsrus.interp2d($bd, "rho")
  
 file = joinpath(directory, files[3])
 bd = load(file)
-SUITE["read"]["Anisotropy"] = @benchmarkable bd["Anisotropy1"]
+SUITE["read"]["Anisotropy"] = @benchmarkable get_anisotropy($bd, 1)
