@@ -45,13 +45,13 @@ struct BATS{Dim, TV<:AbstractFloat, TX, TW} <: AbstractBATS{Dim, TV}
 
    function BATS(head, list, x::Array{TV, Dimp1}, w::Array{TV, Dimp1}) where {TV, Dimp1}
       @assert head.ndim + 1 == Dimp1 "Dimension mismatch!"
-      if ndims(x) == 3
+      if head.ndim == 2
          x = DimArray(x, (X, Y, :dim))
          w = DimArray(w, (X, Y, Dim{:var}(head.wname)))
-      elseif ndims(x) == 4
+      elseif head.ndim == 3
          x = DimArray(x, (X, Y, Z, :dim))
          w = DimArray(w, (X, Y, Z, Dim{:var}(head.wname)))
-      elseif ndims(x) == 2
+      elseif head.ndim == 1
          x = DimArray(x, (X, :dim))
          w = DimArray(w, (X, Dim{:var}(head.wname)))
       end
