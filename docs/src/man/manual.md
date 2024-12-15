@@ -57,26 +57,24 @@ w = interp1d(bd, "rho", point1, point2)
 
 - Derived variables
 
+We provide utility methods `get_magnitude`, `get_magnitude2`, and `fill_vector_from_scalars` for vector processing:
+
 ```julia
-Bmag = bd["Bmag"]
+Bmag = get_magnitude(bd, :B)
+B2 = get_magnitude2(bd, :B)
+Bvec = Batsrus.fill_vector_from_scalars(bd, :B)
+paniso0 = get_anisotropy(bd, 0)
 ```
 
-Here is a full list of predefined derived quantities:
+These are built upon `get_vectors`. Here is a full list of predefined derived quantities in `get_vectors`:
 
 | Derived variable name | Meaning                          | Required variable |
 |-----------------------|----------------------------------|-------------------|
-| B2                    | Magnetic field magnitude squared | Bx, By, Bz        |
-| E2                    | Electric field magnitude squared | Ex, Ey, Ez        |
-| U2                    | Velocity magnitude squared       | Ux, Uy, Uz        |
-| Bmag                  | Magnetic field magnitude         | Bx, By, Bz        |
-| Emag                  | Electric field magnitude         | Ex, Ey, Ez        |
-| Umag                  | Velocity magnitude               | Ux, Uy, Uz        |
-| Uemag                 | Electron Velocity magnitude      | UxS0, UyS0, UzS0  |
-| Uimag                 | Ion Velocity magnitude           | UxS1, UyS1, UzS1  |
-| B                     | Magnetic field vector            | Bx, By, Bz        |
-| E                     | Electric field vector            | Ex, Ey, Ez        |
-| U                     | Velocity vector                  | Ux, Uy, Uz        |
-| Anisotropy[0-1]       | Pressure/Temperature anisotropy  | B, P tensor       |
+| :B                    | Magnetic field vector            | Bx, By, Bz        |
+| :E                    | Electric field vector            | Ex, Ey, Ez        |
+| :U                    | Velocity vector                  | Ux, Uy, Uz        |
+| :U0                   | Electron velocity vector         | UxS0, UyS0, UzS0  |
+| :U1                   | Proton velocity vector           | UxS1, UyS1, UzS1  |
 
 ## Output format conversion
 

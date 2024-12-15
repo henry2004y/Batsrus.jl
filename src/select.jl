@@ -173,41 +173,7 @@ bd["rho"]
 ```
 """
 function getvar(bd::BATS{ndim, TV, TX, TW}, var::AbstractString) where {ndim, TV, TX, TW}
-   if var == "B2"
-      w = get_magnitude2(bd, :B)
-   elseif var == "E2"
-      w = get_magnitude2(bd, :E)
-   elseif var == "U2"
-      w = get_magnitude2(bd, :U)
-   elseif var == "Ue2"
-      w = get_magnitude2(bd, :U0)
-   elseif var == "Ui2"
-      w = get_magnitude2(bd, :U1)
-   elseif var == "Bmag"
-      w = get_magnitude(bd, :B)
-   elseif var == "Emag"
-      w = get_magnitude(bd, :E)
-   elseif var == "Umag"
-      w = get_magnitude(bd, :U)
-   elseif var == "Uemag"
-      w = get_magnitude(bd, :U0)
-   elseif var == "Uimag"
-      w = get_magnitude(bd, :U1)
-   elseif var == "B"
-      w = fill_vector_from_scalars(bd, :B)
-   elseif var == "E"
-      w = fill_vector_from_scalars(bd, :E)
-   elseif var == "U"
-      w = fill_vector_from_scalars(bd, :U)
-   elseif var == "Anisotropy0"
-      w = get_anisotropy(bd, 0)
-   elseif var == "Anisotropy1"
-      w = get_anisotropy(bd, 1)
-   else
-      w = @view bd.w[var=At(lowercase(var))]
-   end
-
-   w
+   w = @view bd.w[var=At(lowercase(var))]
 end
 
 @inline @Base.propagate_inbounds Base.getindex(bd::BATS, var::AbstractString) =
@@ -233,7 +199,7 @@ Calculate the magnitude square of vector `var`. See [`get_vectors`](@ref) for th
 """
 function get_magnitude2(bd::BATS, var=:B)
    vx, vy, vz = get_vectors(bd, var)
-   v = similar(vx)
+   v = similar(vx.data)
 
    @inbounds @simd for i in eachindex(v)
       v[i] = vx[i]^2 + vy[i]^2 + vz[i]^2
@@ -249,7 +215,7 @@ Calculate the magnitude of vector `var`. See [`get_vectors`](@ref) for the optio
 """
 function get_magnitude(bd::BATS, var=:B)
    vx, vy, vz = get_vectors(bd, var)
-   v = similar(vx)
+   v = similar(vx.data)
 
    @inbounds @simd for i in eachindex(v)
       v[i] = √(vx[i]^2 + vy[i]^2 + vz[i]^2)
@@ -295,7 +261,7 @@ function get_anisotropy(bd::BATS{2, TV, TX, TW}, species=0) where {TV, TX, TW}
    Pxz = bd["pXZS"*pop]
    Pyz = bd["pYZS"*pop]
    #TODO: Generalize to n-dimension with CartesianIndices
-   Paniso = similar(Pxx)
+   Paniso = similar(Pxx.data)
 
    @inbounds for j in axes(Pxx, 2), i in axes(Pxx, 1)  
       b̂ = normalize(SA[Bx[i,j], By[i,j], Bz[i,j]])
