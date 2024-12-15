@@ -220,18 +220,10 @@ end
 Construct vector of `var` from its scalar components. Alternatively, check
 [`get_vectors`](@ref) for returning vector components as saparate arrays.
 """
-function fill_vector_from_scalars(bd::BATS{ndim, TV, TX, TW}, var) where {ndim, TV, TX, TW}
-   v1, v2, v3 = get_vectors(bd, var)
-   v = Array{TV, ndim+1}(undef, 3, size(v1)...)
-
-   Rpost = CartesianIndices(size(v1))
-   for Ipost in Rpost
-      v[1,Ipost] = v1[Ipost]
-      v[2,Ipost] = v2[Ipost]
-      v[3,Ipost] = v3[Ipost]
-   end
-
-   v
+function fill_vector_from_scalars(bd::BATS, var)
+   vt = get_vectors(bd, var)
+   Rpost = CartesianIndices(size(bd.x)[1:bd.head.ndim])
+   v = [vt[iv][i] for iv in 1:3, i in Rpost]
 end
 
 """
@@ -239,7 +231,7 @@ end
 
 Calculate the magnitude square of vector `var`. See [`get_vectors`](@ref) for the options.
 """
-function get_magnitude2(bd::BATS{2, TV, TX, TW}, var=:B) where {TV, TX, TW}
+function get_magnitude2(bd::BATS, var=:B)
    vx, vy, vz = get_vectors(bd, var)
    v = similar(vx)
 
@@ -255,7 +247,7 @@ end
 
 Calculate the magnitude of vector `var`. See [`get_vectors`](@ref) for the options.
 """
-function get_magnitude(bd::BATS{2, TV, TX, TW}, var=:B) where {TV, TX, TW}
+function get_magnitude(bd::BATS, var=:B)
    vx, vy, vz = get_vectors(bd, var)
    v = similar(vx)
 
@@ -271,7 +263,7 @@ end
 
 Return a tuple of vectors of `var`. `var` can be `:B`, `:E`, `:U`, `:U0`, or `:U1`.
 """
-function get_vectors(bd::BATS{Dim, TV, TX, TW}, var) where {Dim, TV, TX, TW}
+function get_vectors(bd::BATS, var)
    if var == :B
       vx, vy, vz = bd["Bx"], bd["By"], bd["Bz"]
    elseif var == :E
@@ -302,8 +294,8 @@ function get_anisotropy(bd::BATS{2, TV, TX, TW}, species=0) where {TV, TX, TW}
    Pxy = bd["pXYS"*pop]
    Pxz = bd["pXZS"*pop]
    Pyz = bd["pYZS"*pop]
-
-   Paniso = similar(Pxx)#::Array{TV, 2}
+   #TD: Generalize to n-dimension with CartesianIndices
+   Paniso = similar(Pxx)
 
    @inbounds for j in axes(Pxx, 2), i in axes(Pxx, 1)  
       b̂ = normalize(SA[Bx[i,j], By[i,j], Bz[i,j]])
