@@ -13,9 +13,9 @@ data resolution is the same as the original.
 - `useMatplotlib=true`: Whether to Matplotlib (faster) or NaturalNeighbours for scattered
 interpolation. If true, a linear interpolation is performed on a constructed triangle mesh.
 """
-function interp2d(bd::BATS{2, TV, T}, var::AbstractString,
+function interp2d(bd::BATS{2, TV, TX, TW}, var::AbstractString,
    plotrangeIn::Vector=[-Inf32, Inf32, -Inf32, Inf32], plotinterval::Real=Inf32;
-   innermask::Bool=false, rbody::Real=1.0, useMatplotlib::Bool=true) where {TV, T}
+   innermask::Bool=false, rbody::Real=1.0, useMatplotlib::Bool=true) where {TV, TX, TW}
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
    plotrange = TV.(plotrangeIn)
@@ -171,7 +171,7 @@ end
 
 Interpolate `var` at spatial point `loc` in `bd`.
 """
-function interp1d(bd::BATS{2, TV, T}, var::AbstractString, loc::AbstractVector{<:AbstractFloat}) where {TV, T}
+function interp1d(bd::BATS{2, TV, TX, TW}, var::AbstractString, loc::AbstractVector{<:AbstractFloat}) where {TV, TX, TW}
    @assert !bd.head.gencoord "Only accept structured grids!"
 
    x = bd.x
@@ -188,7 +188,7 @@ end
 
 Interpolate `var` along a line from `point1` to `point2` in `bd`.
 """
-function interp1d(bd::BATS{2, TV, T}, var::AbstractString, point1::Vector, point2::Vector) where {TV, T}
+function interp1d(bd::BATS{2, TV, TX, TW}, var::AbstractString, point1::Vector, point2::Vector) where {TV, TX, TW}
    @assert !bd.head.gencoord "Only accept structured grids!"
 
    x = bd.x
@@ -217,13 +217,13 @@ function slice1d(bd, var, icut::Int=1, dir::Int=2)
 end
 
 "Return view of variable `var` in `bd`."
-function getview(bd::BATS{1, TV, T}, var) where {TV, T}
+function getview(bd::BATS{1, TV, TX, TW}, var) where {TV, TX, TW}
    varIndex_ = findindex(bd, var)
 
    v = @view bd.w[:,varIndex_]
 end
 
-function getview(bd::BATS{2, TV, T}, var) where {TV, T}
+function getview(bd::BATS{2, TV, TX, TW}, var) where {TV, TX, TW}
    varIndex_ = findindex(bd, var)
 
    v = @view bd.w[:,:,varIndex_]

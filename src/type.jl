@@ -35,27 +35,27 @@ struct BatsHead
 end
 
 "Batsrus data container, with `Dim` being the dimension of output."
-struct BATS{Dim, TV<:AbstractFloat, T} <: AbstractBATS{Dim, TV}
+struct BATS{Dim, TV<:AbstractFloat, TX, TW} <: AbstractBATS{Dim, TV}
    head::BatsHead
    list::FileList
    "Grid"
-   x::T
+   x::TX
    "Variables"
-   w::T
+   w::TW
 
    function BATS(head, list, x::Array{TV, Dimp1}, w::Array{TV, Dimp1}) where {TV, Dimp1}
       @assert head.ndim + 1 == Dimp1 "Dimension mismatch!"
       if ndims(x) == 3
          x = DimArray(x, (X, Y, :dim))
-         w = DimArray(w, (X, Y, :dim))
+         w = DimArray(w, (X, Y, Dim{:var}(head.wname)))
       elseif ndims(x) == 4
          x = DimArray(x, (X, Y, Z, :dim))
-         w = DimArray(w, (X, Y, Z, :dim))
+         w = DimArray(w, (X, Y, Z, Dim{:var}(head.wname)))
       elseif ndims(x) == 1
          x = DimArray(x, (X, :dim))
-         w = DimArray(w, (X, :dim))
+         w = DimArray(w, (X, Dim{:var}(head.wname)))
       end
 
-      new{head.ndim, TV, typeof(x)}(head, list, x, w)
+      new{head.ndim, TV, typeof(x), typeof(w)}(head, list, x, w)
    end
 end

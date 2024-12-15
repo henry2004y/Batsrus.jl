@@ -97,7 +97,7 @@ function readtecdata(file::AbstractString; verbose::Bool=false)
    ln = readline(f) |> strip
    if startswith(ln, "VARIABLES")
       # Read until another keyword appears
-      varline = split(ln,'=')[2]
+      varline = split(ln, '=')[2]
 
       ln = readline(f) |> strip
       while !startswith(ln, "ZONE")
@@ -122,12 +122,12 @@ function readtecdata(file::AbstractString; verbose::Bool=false)
          name = uppercase(name)
          if name == "T" # ZONE title
             T = value
-         elseif name in ("NODES","N")
+         elseif name in ("NODES", "N")
             nNode = Parsers.parse(Int32, value)
-         elseif name in ("ELEMENTS","E")
+         elseif name in ("ELEMENTS", "E")
             nCell = Parsers.parse(Int32, value)
-         elseif name in ("ET","ZONETYPE")
-            if uppercase(value) in ("BRICK","FEBRICK")
+         elseif name in ("ET", "ZONETYPE")
+            if uppercase(value) in ("BRICK", "FEBRICK")
                nDim = 3
             elseif uppercase(value) in ("QUADRILATERAL", "FEQUADRILATERAL")
                nDim = 2
@@ -146,7 +146,7 @@ function readtecdata(file::AbstractString; verbose::Bool=false)
       name, value = split(ln,'"', keepempty=false)
       name = string(name[9:end-1])
       str = string(strip(value))
-      if name in ("ITER","NPROC")
+      if name in ("ITER", "NPROC")
          str = Parsers.parse(Int32, value)
       elseif name == "TIMESIM"
          sec = split(str, "=")
@@ -298,7 +298,7 @@ function getfilehead(fileID::IOStream, filelist::FileList)
    end
 
    # Obtain output variable names
-   variable = split(varname)
+   variable = lowercase.(split(varname))
    coord = @view variable[1:ndim]
    wname = @view variable[ndim+1:ndim+nw]
    param = @view variable[ndim+nw+1:end]

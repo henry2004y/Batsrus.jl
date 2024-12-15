@@ -172,13 +172,39 @@ Return variable data from string `var`. This is also supported via direct indexi
 bd["rho"]
 ```
 """
-function getvar(bd::BATS{ndim, TV, T}, var::AbstractString) where {ndim, TV, T}
-   if var in keys(variable_predefined)
-      w = variable_predefined[var](bd)
+function getvar(bd::BATS{ndim, TV, TX, TW}, var::AbstractString) where {ndim, TV, TX, TW}
+   if var == "B2"
+      w = get_magnitude2(bd, :B)
+   elseif var == "E2"
+      w = get_magnitude2(bd, :E)
+   elseif var == "U2"
+      w = get_magnitude2(bd, :U)
+   elseif var == "Ue2"
+      w = get_magnitude2(bd, :U0)
+   elseif var == "Ui2"
+      w = get_magnitude2(bd, :U1)
+   elseif var == "Bmag"
+      w = get_magnitude(bd, :B)
+   elseif var == "Emag"
+      w = get_magnitude(bd, :E)
+   elseif var == "Umag"
+      w = get_magnitude(bd, :U)
+   elseif var == "Uemag"
+      w = get_magnitude(bd, :U0)
+   elseif var == "Uimag"
+      w = get_magnitude(bd, :U1)
+   elseif var == "B"
+      w = fill_vector_from_scalars(bd, :B)
+   elseif var == "E"
+      w = fill_vector_from_scalars(bd, :E)
+   elseif var == "U"
+      w = fill_vector_from_scalars(bd, :U)
+   elseif var == "Anisotropy0"
+      w = get_anisotropy(bd, 0)
+   elseif var == "Anisotropy1"
+      w = get_anisotropy(bd, 1)
    else
-      var_ = findfirst(x->lowercase(x)==lowercase(var), bd.head.wname)
-      isnothing(var_) && error("$var not found in file header variables!")
-      w = selectdim(bd.w, ndim+1, var_)
+      w = @view bd.w[var=At(lowercase(var))]
    end
 
    w
@@ -194,7 +220,7 @@ end
 Construct vector of `var` from its scalar components. Alternatively, check
 [`get_vectors`](@ref) for returning vector components as saparate arrays.
 """
-function fill_vector_from_scalars(bd::BATS{ndim, TV, T}, var) where {ndim, TV, T}
+function fill_vector_from_scalars(bd::BATS{ndim, TV, TX, TW}, var) where {ndim, TV, TX, TW}
    v1, v2, v3 = get_vectors(bd, var)
    v = Array{TV, ndim+1}(undef, 3, size(v1)...)
 
@@ -213,7 +239,7 @@ end
 
 Calculate the magnitude square of vector `var`. See [`get_vectors`](@ref) for the options.
 """
-function get_magnitude2(bd::BATS{2, TV, T}, var=:B) where {TV, T}
+function get_magnitude2(bd::BATS{2, TV, TX, TW}, var=:B) where {TV, TX, TW}
    vx, vy, vz = get_vectors(bd, var)
    v = similar(vx)
 
@@ -229,7 +255,7 @@ end
 
 Calculate the magnitude of vector `var`. See [`get_vectors`](@ref) for the options.
 """
-function get_magnitude(bd::BATS{2, TV, T}, var=:B) where {TV, T}
+function get_magnitude(bd::BATS{2, TV, TX, TW}, var=:B) where {TV, TX, TW}
    vx, vy, vz = get_vectors(bd, var)
    v = similar(vx)
 
@@ -245,7 +271,7 @@ end
 
 Return a tuple of vectors of `var`. `var` can be `:B`, `:E`, `:U`, `:U0`, or `:U1`.
 """
-function get_vectors(bd::BATS{Dim, TV, T}, var) where {Dim, TV, T}
+function get_vectors(bd::BATS{Dim, TV, TX, TW}, var) where {Dim, TV, TX, TW}
    if var == :B
       vx, vy, vz = bd["Bx"], bd["By"], bd["Bz"]
    elseif var == :E
@@ -266,9 +292,7 @@ end
 
 Calculate the pressure anisotropy for `species`, indexing from 0.
 """
-function get_anisotropy(bd::BATS{2, TV, T}, species=0) where {TV, T}
-   #VT = SubArray{TV, 2, Array{TV, 3}, Tuple{Base.Slice{Base.OneTo{Int64}},
-   #   Base.Slice{Base.OneTo{Int64}}, Int64}, true}
+function get_anisotropy(bd::BATS{2, TV, TX, TW}, species=0) where {TV, TX, TW}
    Bx, By, Bz = bd["Bx"], bd["By"], bd["Bz"]
    # Rotate the pressure tensor to align the 3rd direction with B
    pop = string(species)
@@ -333,22 +357,3 @@ function get_hall_E(bd::BATS)
 
    Ehallx, Ehally, Ehallz
 end
-
-# Define derived parameters
-const variable_predefined = Dict{String, Function}(
-   "B2" => (bd -> get_magnitude2(bd, :B)),
-   "E2" => (bd -> get_magnitude2(bd, :E)),
-   "U2" => (bd -> get_magnitude2(bd, :U)),
-   "Ue2" => (bd -> get_magnitude2(bd, :U0)),
-   "Ui2" => (bd -> get_magnitude2(bd, :U1)),
-   "Bmag" => (bd -> get_magnitude(bd, :B)),
-   "Emag" => (bd -> get_magnitude(bd, :E)),
-   "Umag" => (bd -> get_magnitude(bd, :U)),
-   "Uemag" => (bd -> get_magnitude(bd, :U0)),
-   "Uimag" => (bd -> get_magnitude(bd, :U1)),
-   "B" => (bd -> fill_vector_from_scalars(bd, :B)),
-   "E" => (bd -> fill_vector_from_scalars(bd, :E)),
-   "U" => (bd -> fill_vector_from_scalars(bd, :U)),
-   "Anisotropy0" => (bd -> get_anisotropy(bd, 0)),
-   "Anisotropy1" => (bd -> get_anisotropy(bd, 1)),
-)
