@@ -29,21 +29,33 @@ struct BatsHead
    nw::Int
    nx::Vector{Int}
    eqpar::Vector{Float32}
-   variables::Vector{SubString{String}}
-   wnames::Vector{SubString{String}}
+   coord::Vector{SubString{String}}
+   wname::Vector{SubString{String}}
+   param::Vector{SubString{String}}
 end
 
-"Batsrus data container. `Dim` is the dimension of output, and `Dimp1` is an extra parameter for working around derived types."
-struct BATS{Dim, Dimp1, T<:AbstractFloat} <: AbstractBATS{Dim, T}
+"Batsrus data container, with `Dim` being the dimension of output."
+struct BATS{Dim, TV<:AbstractFloat, TX, TW} <: AbstractBATS{Dim, TV}
    head::BatsHead
    list::FileList
    "Grid"
-   x::Array{T, Dimp1}
+   x::TX
    "Variables"
-   w::Array{T, Dimp1}
+   w::TW
 
-   function BATS(head, list, x::Array{T, Dimp1}, w::Array{T, Dimp1}) where {T, Dimp1}
+   function BATS(head, list, x::Array{TV, Dimp1}, w::Array{TV, Dimp1}) where {TV, Dimp1}
       @assert head.ndim + 1 == Dimp1 "Dimension mismatch!"
-      new{Dimp1-1, Dimp1, T}(head, list, x, w)
+      if head.ndim == 2
+         x = DimArray(x, (X, Y, :dim))
+         w = DimArray(w, (X, Y, Dim{:var}(head.wname)))
+      elseif head.ndim == 3
+         x = DimArray(x, (X, Y, Z, :dim))
+         w = DimArray(w, (X, Y, Z, Dim{:var}(head.wname)))
+      elseif head.ndim == 1
+         x = DimArray(x, (X, :dim))
+         w = DimArray(w, (X, Dim{:var}(head.wname)))
+      end
+
+      new{head.ndim, TV, typeof(x), typeof(w)}(head, list, x, w)
    end
 end

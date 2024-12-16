@@ -52,9 +52,9 @@ end
       plotrange = [-10.0, 10.0, -Inf, Inf]
       x, y, w = interp2d(bd, "rho", plotrange)
       @test w[1,end] == 0.6848635077476501
-      @test bd["B"][:,end,end] == Float32[1.118034, -0.559017, 0.0]
-      @test bd["Bmag"][128,2] == 0.9223745f0
-      @test bd["B2"][128,2] == 0.8507747f0
+      @test Batsrus.fill_vector_from_scalars(bd, :B)[:,end,end] == Float32[1.118034, -0.559017, 0.0]
+      @test get_magnitude(bd, :B)[128,2] == 0.9223745f0
+      @test get_magnitude2(bd, :B)[128,2] == 0.8507747f0
       # Linear interpolation at a given point
       d = interp1d(bd, "rho", Float32[0.0, 0.0])
       @test d == 0.6936918f0
@@ -73,13 +73,12 @@ end
       @test length(x) == 601 && y[2] == 0.0f0
       x, y = Batsrus.meshgrid(bd, Float32[-100, 100, -Inf, Inf])
       @test length(x) == 4
-      @test bd["Emag"][2,1] == 2655.4805f0
-      @test bd["E2"][2,1] == 7.051577f6
-      @test bd["E"][:,2,1] == Float32[-241.05942, -2644.2058, -40.53219]
-      @test bd["Ue2"][2,1] == 33784.973f0
-      @test bd["Ui2"][2,1] == bd["Ui2"][2,1]
-      @test bd["Anisotropy0"][1:2,1] ≈ Float32[1.2630985, 2.4700143]
-      @test bd["Anisotropy1"][1:2,1] ≈ Float32[1.2906302, 2.6070855]
+      @test get_magnitude(bd, :E)[2,1] == 2655.4805f0
+      @test get_magnitude2(bd, :E)[2,1] == 7.051577f6
+      @test Batsrus.fill_vector_from_scalars(bd, :E)[:,2,1] == Float32[-241.05942, -2644.2058, -40.53219]
+      @test get_magnitude2(bd, :U0)[2,1] == 33784.973f0
+      @test get_anisotropy(bd, 0)[1:2,1] ≈ Float32[1.2630985, 2.4700143]
+      @test get_anisotropy(bd, 1)[1:2,1] ≈ Float32[1.2906302, 2.6070855]
       w = get_convection_E(bd)
       @test w[2][2,1] ≈ -2454.3933f0
       w = get_hall_E(bd)
@@ -94,8 +93,8 @@ end
       @test length(x) == 117 && length(y) == 246
       x, y, w = interp2d(bd, "rho", plotrange, useMatplotlib=false)
       @test w[1,2] == 5.000018304080387
-      @test bd["Umag"][2] == 71.85452748407637
-      @test bd["U2"][2] == 5163.073119959886
+      @test get_magnitude(bd, :U)[2] == 71.85452748407637
+      @test get_magnitude2(bd, :U)[2] == 5163.073119959886
    end
 
    @testset "Reading 3D structured binary" begin
@@ -189,27 +188,15 @@ end
          c = PyPlot.streamplot(bd, "bx;by")
          @test c.lines.get_segments()[2][3] ≈ -118.68871477694084
          c = PyPlot.contourf(bd, "p")
-         @static if matplotlib.__version__ < "3.8"
-            @test c.get_array()[end] == 1.0500000000000003
-         else
-            @test c.get_array()[end] == 0.9750000000000002
-         end
+         @test c.get_array()[end] == 0.9750000000000002
          c = @suppress_err PyPlot.contourf(bd, "rho", innermask=true)
-         @static if matplotlib.__version__ < "3.8"
-            @test c.get_array()[end] == 1.0500000000000003
-         else
-            @test c.get_array()[end] == 0.9750000000000002
-         end
+         @test c.get_array()[end] == 0.9750000000000002
          c = PyPlot.contour(bd, "rho")
          @test c.get_array()[end] == 1.0500000000000003
-         c=  PyPlot.contour(bd, "rho"; levels=[1.0])
+         c = PyPlot.contour(bd, "rho"; levels=[1.0])
          @test c.get_array()[end] == 1.0
          c = PyPlot.tricontourf(bd, "rho")
-         @static if matplotlib.__version__ < "3.8"
-            @test c.get_array()[end] == 1.0500000000000003
-         else
-            @test c.get_array()[end] == 0.9750000000000002
-         end
+         @test c.get_array()[end] == 0.9750000000000002
          PyPlot.tripcolor(bd, "rho")
          @test isa(gca(), PyPlot.PyObject)
          p = PyPlot.pcolormesh(bd, "p").get_array()

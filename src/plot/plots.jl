@@ -3,11 +3,11 @@
 using RecipesBase
 
 # Build a recipe which acts on a custom type.
-@recipe function f(bd::BATS{1, 2, T}, var::AbstractString) where {T}
+@recipe function f(bd::BATS{1, TV, TX, TW}, var::AbstractString) where {TV, TX, TW}
    hasunits = hasunit(bd)
 
    if hasunits
-      unitx = getunit(bd, bd.head.variables[1])
+      unitx = getunit(bd, bd.head.wname[1])
       unitw = getunit(bd, var)
       x = bd.x .* unitx
       y = getview(bd, var) .* unitw
@@ -22,14 +22,14 @@ using RecipesBase
    end
 end
 
-@recipe function f(bd::BATS{2, 3, T}, var::AbstractString;
-   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1) where {T}
+@recipe function f(bd::BATS{2, TV, TX, TW}, var::AbstractString;
+   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1) where {TV, TX, TW}
    hasunits = hasunit(bd)
 
    x, y, w = interp2d(bd, var, plotrange, plotinterval)
    if hasunits
-      unitx = getunit(bd, bd.head.variables[1])
-      unity = getunit(bd, bd.head.variables[2])
+      unitx = getunit(bd, bd.head.wname[1])
+      unity = getunit(bd, bd.head.wname[2])
       unitw = getunit(bd, var)
 
       if unitx isa UnitfulBatsrus.Unitlike

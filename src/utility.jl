@@ -10,16 +10,15 @@ data resolution is the same as the original.
 # Keyword Arguments 
 - `innermask=false`: Whether to mask the inner boundary with NaN.
 - `rbody=1.0`: Radius of the inner mask. Used when the rbody parameter is not found in the header.
-- `useMatplotlib=true`: Whether to Matplotlib (somehow faster) or NaturalNeighbours for scattered interpolation.
+- `useMatplotlib=true`: Whether to Matplotlib (faster) or NaturalNeighbours for scattered
+interpolation. If true, a linear interpolation is performed on a constructed triangle mesh.
 """
-function interp2d(bd::BATS{2, 3, T}, var::AbstractString,
+function interp2d(bd::BATS{2, TV, TX, TW}, var::AbstractString,
    plotrangeIn::Vector=[-Inf32, Inf32, -Inf32, Inf32], plotinterval::Real=Inf32;
-   innermask::Bool=false, rbody::Real=1.0, useMatplotlib::Bool=true) where T
+   innermask::Bool=false, rbody::Real=1.0, useMatplotlib::Bool=true) where {TV, TX, TW}
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
-   plotrange = T.(plotrangeIn)
-
-   local Wi::Union{Matrix{T}, Adjoint{T, Matrix{T}}, Matrix{Float64}}
+   plotrange = TV.(plotrangeIn)
 
    if bd.head.gencoord # Generalized coordinates
       X, Y = eachslice(x, dims=3)
@@ -36,7 +35,6 @@ function interp2d(bd::BATS{2, 3, T}, var::AbstractString,
 
       if useMatplotlib
          triang = matplotlib.tri.Triangulation(X, Y)
-         # Perform linear interpolation on the triangle mesh
          interpolator = matplotlib.tri.LinearTriInterpolator(triang, W)
          Xi, Yi = meshgrid(xi, yi)
          Wi = interpolator(Xi, Yi) # Always returns Float64!
@@ -48,7 +46,7 @@ function interp2d(bd::BATS{2, 3, T}, var::AbstractString,
       yrange = range(x[1,1,2], x[1,end,2], length=size(x,2))
       if all(isinf.(plotrange))
          xi, yi = xrange, yrange
-         Wi = w[:,:,varIndex_]' # Matplotlib does not accept view!
+         Wi = w[:,:,varIndex_].data' # Matplotlib does not accept view!
       else
          adjust_plotrange!(plotrange, (xrange[1], xrange[end]), (yrange[1], yrange[end]))
 
@@ -67,7 +65,7 @@ function interp2d(bd::BATS{2, 3, T}, var::AbstractString,
 
    # Mask a circle at the inner boundary
    if innermask
-      varIndex_ = findlast(x->x=="rbody", bd.head.variables)
+      varIndex_ = findlast(x->x=="rbody", bd.head.param)
       if isnothing(varIndex_)
          @info "rbody not found in file header parameters; use keyword rbody"
          @inbounds @simd for i in CartesianIndices(Wi)
@@ -128,7 +126,7 @@ end
 
 "Find variable index in the BATSRUS data."
 function findindex(bd::BATS, var::AbstractString)
-   varIndex_ = findfirst(x->lowercase(x)==lowercase(var), bd.head.wnames)
+   varIndex_ = findfirst(x->lowercase(x)==lowercase(var), bd.head.wname)
    isnothing(varIndex_) && error("$(var) not found in file header variables!")
 
    varIndex_
@@ -173,7 +171,7 @@ end
 
 Interpolate `var` at spatial point `loc` in `bd`.
 """
-function interp1d(bd::BATS{2, 3, T}, var::AbstractString, loc::AbstractVector{<:AbstractFloat}) where T
+function interp1d(bd::BATS{2, TV, TX, TW}, var::AbstractString, loc::AbstractVector{<:AbstractFloat}) where {TV, TX, TW}
    @assert !bd.head.gencoord "Only accept structured grids!"
 
    x = bd.x
@@ -190,7 +188,7 @@ end
 
 Interpolate `var` along a line from `point1` to `point2` in `bd`.
 """
-function interp1d(bd::BATS{2, 3, T}, var::AbstractString, point1::Vector, point2::Vector) where T
+function interp1d(bd::BATS{2, TV, TX, TW}, var::AbstractString, point1::Vector, point2::Vector) where {TV, TX, TW}
    @assert !bd.head.gencoord "Only accept structured grids!"
 
    x = bd.x
@@ -219,13 +217,13 @@ function slice1d(bd, var, icut::Int=1, dir::Int=2)
 end
 
 "Return view of variable `var` in `bd`."
-function getview(bd::BATS{1, 2, T}, var) where T
+function getview(bd::BATS{1, TV, TX, TW}, var) where {TV, TX, TW}
    varIndex_ = findindex(bd, var)
 
    v = @view bd.w[:,varIndex_]
 end
 
-function getview(bd::BATS{2, 3, T}, var) where T
+function getview(bd::BATS{2, TV, TX, TW}, var) where {TV, TX, TW}
    varIndex_ = findindex(bd, var)
 
    v = @view bd.w[:,:,varIndex_]

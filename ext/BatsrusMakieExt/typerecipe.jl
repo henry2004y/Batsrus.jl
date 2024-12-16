@@ -4,7 +4,7 @@
 function Makie.convert_arguments(P::Makie.PointBased, bd::BATS, var::String)
    var_ = findindex(bd, var)
    if hasunit(bd)
-      unitx = getunit(bd, bd.head.variables[1])
+      unitx = getunit(bd, bd.head.wname[1])
       unitw = getunit(bd, var)
       x = bd.x .* unitx
       y = bd.w[:,var_] .* unitw
@@ -21,8 +21,8 @@ function Makie.convert_arguments(P::Makie.GridBased, bd::BATS, var::String;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1)
    x, y, w = interp2d(bd, var, plotrange, plotinterval)
 
-   unitx = getunit(bd, bd.head.variables[1])
-   unity = getunit(bd, bd.head.variables[2])
+   unitx = getunit(bd, bd.head.wname[1])
+   unity = getunit(bd, bd.head.wname[2])
    unitw = getunit(bd, var)
 
    if unitx isa UnitfulBatsrus.Unitlike

@@ -34,7 +34,7 @@ function plotlogdata(data, head::NamedTuple, func::AbstractString; plotmode="lin
    plotmode = split(plotmode)
 
    for (ivar, var) in enumerate(vars)
-      varIndex_ = findfirst(x->lowercase(x)==lowercase(var), head.variables)
+      varIndex_ = findfirst(x->lowercase(x)==lowercase(var), head.variable)
       isnothing(varIndex_) && error("$(var) not found in file header variables!")
 
       figure()
@@ -45,8 +45,8 @@ function plotlogdata(data, head::NamedTuple, func::AbstractString; plotmode="lin
       else
          throw(ArgumentError("unknown plot mode $(plotmode[ivar])!"))
       end
-      xlabel(head.variables[1])
-      ylabel(head.variables[varIndex_])
+      xlabel(head.variable[1])
+      ylabel(head.variable[varIndex_])
       title("log file data")
    end
 
@@ -57,7 +57,7 @@ end
 
 Plot 2D mesh.
 """
-function plotgrid(bd::BATS{2, 3, T}, func::AbstractString, ax=nothing; kwargs...) where T
+function plotgrid(bd::BATS{2, TV, TX, TW}, func::AbstractString, ax=nothing; kwargs...) where {TV, TX, TW}
    if isnothing(ax) ax = plt.gca() end
 
    # This does not take subdomain plot into account!
@@ -65,7 +65,7 @@ function plotgrid(bd::BATS{2, 3, T}, func::AbstractString, ax=nothing; kwargs...
    scatter(X, Y, marker=".", alpha=0.6)
    title("Grid illustration")
 
-   xlabel(bd.head.variables[1]); ylabel(bd.head.variables[2])
+   xlabel(bd.head.wname[1]); ylabel(bd.head.wname[2])
    add_time_iteration!(bd, ax)
 
    return
@@ -76,8 +76,8 @@ end
 
 2D plane cut pcolormesh of 3D box data. `sequence` is the index along `dir`.
 """
-function cutplot(bd::BATS{3, 4, T}, var::AbstractString, ax=nothing;
-   plotrange=[-Inf,Inf,-Inf,Inf], dir="x", sequence=1) where {T}
+function cutplot(bd::BATS{3, TV, TX, TW}, var::AbstractString, ax=nothing;
+   plotrange=[-Inf,Inf,-Inf,Inf], dir="x", sequence=1) where {TV, TX, TW}
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
 
@@ -105,7 +105,7 @@ function cutplot(bd::BATS{3, 4, T}, var::AbstractString, ax=nothing;
    if isnothing(ax) ax = plt.gca() end
    c = ax.pcolormesh(cut1, cut2, W)
 
-   title(bd.head.wnames[varIndex_])
+   title(bd.head.wname[varIndex_])
 
    if dir == "x"
       xlabel("y"); ylabel("z")
@@ -128,8 +128,8 @@ end
 Plot streamlines on 2D slices of 3D box data. Variable names in `var` string must be
 separated with `;`.
 """
-function streamslice(bd::BATS{3, T}, var::AbstractString, ax=nothing;
-   plotrange=[-Inf,Inf,-Inf,Inf], dir="x", sequence=1, kwargs...) where {T}
+function streamslice(bd::BATS{3, TV, TX, TW}, var::AbstractString, ax=nothing;
+   plotrange=[-Inf,Inf,-Inf,Inf], dir="x", sequence=1, kwargs...) where {TV, TX, TW}
    x,w = bd.x, bd.w
    varstream  = split(var, ";")
    var1_ = findindex(bd, varstream[1])
@@ -182,11 +182,11 @@ end
 
 
 """
-    plot(bd::BATS{1, T}, var, ax=nothing; kwargs...)
+    plot(bd::BATS{1, TV, T}, var, ax=nothing; kwargs...)
 
 Wrapper over `plot` in matplotlib. Plot 1D outputs.
 """
-function PyPlot.plot(bd::BATS{1, 2, T}, var::AbstractString, ax=nothing; kwargs...) where T
+function PyPlot.plot(bd::BATS{1, TV, TX, TW}, var::AbstractString, ax=nothing; kwargs...) where {TV, TX, TW}
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
    if isnothing(ax) ax = plt.gca() end
@@ -204,7 +204,7 @@ end
 
 Wrapper over `scatter` in matplotlib.
 """
-function PyPlot.scatter(bd::BATS{1, 2, T}, var::AbstractString, ax=nothing; kwargs...) where T
+function PyPlot.scatter(bd::BATS{1, TV, TX, TW}, var::AbstractString, ax=nothing; kwargs...) where {TV, TX, TW}
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
    if isnothing(ax) ax = plt.gca() end
@@ -218,9 +218,9 @@ end
 
 Wrapper over `contour` in matplotlib.
 """
-function PyPlot.contour(bd::BATS{2, 3, T}, var::AbstractString, ax=nothing; levels=0,
+function PyPlot.contour(bd::BATS{2, TV, TX, TW}, var::AbstractString, ax=nothing; levels=0,
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, rbody=1.0,
-   kwargs...) where T
+   kwargs...) where {TV, TX, TW}
    Xi, Yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
    if isnothing(ax) ax = plt.gca() end
 
@@ -241,9 +241,9 @@ end
 
 Wrapper over `contourf` in matplotlib. See [`interp2d`](@ref) for some related keywords.
 """
-function PyPlot.contourf(bd::BATS{2, 3, T}, var::AbstractString, ax=nothing; levels::Int=0,
+function PyPlot.contourf(bd::BATS{2, TV, TX, TW}, var::AbstractString, ax=nothing; levels::Int=0,
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, rbody=1.0,
-   add_colorbar=true, vmin=-Inf, vmax=Inf, colorscale=:linear, kwargs...) where T
+   add_colorbar=true, vmin=-Inf, vmax=Inf, colorscale=:linear, kwargs...) where {TV, TX, TW}
    Xi, Yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
    if isnothing(ax) ax = plt.gca() end
 
@@ -264,8 +264,8 @@ end
 
 Wrapper over `tricontourf` in matplotlib.
 """
-function PyPlot.tricontourf(bd::BATS{2, 3, T}, var::AbstractString, ax=nothing;
-   plotrange=[-Inf,Inf,-Inf,Inf], kwargs...) where T
+function PyPlot.tricontourf(bd::BATS{2, TV, TX, TW}, var::AbstractString, ax=nothing;
+   plotrange=[-Inf,Inf,-Inf,Inf], kwargs...) where {TV, TX, TW}
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
 
@@ -290,8 +290,8 @@ function PyPlot.tricontourf(bd::BATS{2, 3, T}, var::AbstractString, ax=nothing;
    c
 end
 
-function PyPlot.triplot(bd::BATS{2, 3, T}, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf],
-   kwargs...) where T
+function PyPlot.triplot(bd::BATS{2, TV, TX, TW}, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf],
+   kwargs...) where {TV, TX, TW}
    X = vec(bd.x[:,:,1])
    Y = vec(bd.x[:,:,2])
    triang = matplotlib.tri.Triangulation(X, Y)
@@ -313,8 +313,8 @@ end
 
 Wrapper over `plot_trisurf` in matplotlib.
 """
-function PyPlot.plot_trisurf(bd::BATS{2, 3, T}, var::AbstractString;
-   plotrange=[-Inf,Inf,-Inf,Inf], kwargs...) where T
+function PyPlot.plot_trisurf(bd::BATS{2, TV, TX, TW}, var::AbstractString;
+   plotrange=[-Inf,Inf,-Inf,Inf], kwargs...) where {TV, TX, TW}
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
 
@@ -347,9 +347,9 @@ end
 
 Wrapper over `plot_surface` in matplotlib.
 """
-function PyPlot.plot_surface(bd::BATS{2, 3, T}, var::AbstractString, ax=nothing;
+function PyPlot.plot_surface(bd::BATS{2, TV, TX, TW}, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, rbody=1.0,
-   kwargs...) where T
+   kwargs...) where {TV, TX, TW}
    if isnothing(ax) ax = plt.gca() end
    xi, yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
    Xi, Yi = meshgrid(xi, yi)
@@ -374,9 +374,9 @@ end
 
 Wrapper over `pcolormesh` in matplotlib.
 """
-function PyPlot.pcolormesh(bd::BATS{2, 3, T}, var::AbstractString, ax=nothing;
+function PyPlot.pcolormesh(bd::BATS{2, TV, TX, TW}, var::AbstractString, ax=nothing;
    plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, rbody=1.0,
-   vmin=-Inf, vmax=Inf, colorscale=:linear, add_colorbar=true, kwargs...) where T
+   vmin=-Inf, vmax=Inf, colorscale=:linear, add_colorbar=true, kwargs...) where {TV, TX, TW}
    xi, yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
 
    if isnothing(ax) ax = plt.gca() end
@@ -397,8 +397,8 @@ end
 
 Wrapper over `tripcolor` in matplotlib.
 """
-function PyPlot.tripcolor(bd::BATS{2, 3, T}, var::AbstractString, ax=nothing;
-   plotrange=[-Inf,Inf,-Inf,Inf], innermask=false, kwargs...) where {T}
+function PyPlot.tripcolor(bd::BATS{2, TV, TX, TW}, var::AbstractString, ax=nothing;
+   plotrange=[-Inf,Inf,-Inf,Inf], innermask=false, kwargs...) where {TV, TX, TW}
    x, w = bd.x, bd.w
 
    varIndex_ = findindex(bd, var)
@@ -412,7 +412,7 @@ function PyPlot.tripcolor(bd::BATS{2, 3, T}, var::AbstractString, ax=nothing;
 
    # Mask off unwanted triangles at the inner boundary.
    if innermask
-      varIndex_ = findlast(x->x=="rbody", bd.head.variables)
+      varIndex_ = findlast(x->x=="rbody", bd.head.param)
       isnothing(varIndex_) && error("rbody not found in file header parameters!")
       ParamIndex_ = varIndex_ - 2 - bd.head.nw
       r2 = bd.head.eqpar[ParamIndex_]^2
@@ -441,13 +441,13 @@ end
 
 
 """
-    streamplot(data, var, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1,
+    streamplot(bd, var, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1,
        kwargs...)
 
 Wrapper over `streamplot` in matplotlib.
 """
-function PyPlot.streamplot(bd::BATS{2, 3, T}, var::AbstractString, ax=nothing;
-   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=Inf, kwargs...) where T
+function PyPlot.streamplot(bd::BATS{2, TV, TX, TW}, var::AbstractString, ax=nothing;
+   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=Inf, kwargs...) where {TV, TX, TW}
    xi, yi, v1, v2 = _getvector(bd, var; plotrange, plotinterval)
 
    if isnothing(ax) ax = plt.gca() end
@@ -455,12 +455,12 @@ function PyPlot.streamplot(bd::BATS{2, 3, T}, var::AbstractString, ax=nothing;
    ax.streamplot(xi, yi, v1, v2; kwargs...)
 end
 
-function _getvector(bd::BATS{2, 3, T}, var::AbstractString;
-   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=Inf) where T
+function _getvector(bd::BATS{2, TV, TX, TW}, var::AbstractString;
+   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=Inf) where {TV, TX, TW}
    x, w = bd.x, bd.w
    varstream = split(var, ";")
-   var1_ = findfirst(x->lowercase(x)==lowercase(varstream[1]), bd.head.wnames)
-   var2_ = findfirst(x->lowercase(x)==lowercase(varstream[2]), bd.head.wnames)
+   var1_ = findfirst(x->lowercase(x)==lowercase(varstream[1]), bd.head.wname)
+   var2_ = findfirst(x->lowercase(x)==lowercase(varstream[2]), bd.head.wname)
    if isinf(plotinterval)
       plotinterval = (x[end,1,1] - x[1,1,1]) / size(x, 1)
    end
@@ -488,8 +488,8 @@ function _getvector(bd::BATS{2, 3, T}, var::AbstractString;
       if all(isinf.(plotrange))
          xi = xrange
          yi = yrange
-         v1 = w[:,:,var1_]'
-         v2 = w[:,:,var2_]'
+         v1 = w[:,:,var1_].data'
+         v2 = w[:,:,var2_].data'
       else
          adjust_plotrange!(plotrange, (xrange[1], xrange[end]), (yrange[1], yrange[end]))
 
@@ -513,8 +513,8 @@ end
 
 Wrapper over `quiver` in matplotlib. Only supports Cartesian grid for now.
 """
-function PyPlot.quiver(bd::BATS{2, 3, T}, var::AbstractString, ax=nothing;
-   stride::Integer=10, kwargs...) where T
+function PyPlot.quiver(bd::BATS{2, TV, TX, TW}, var::AbstractString, ax=nothing;
+   stride::Integer=10, kwargs...) where {TV, TX, TW}
    x, w = bd.x, bd.w
    VarQuiver  = split(var, ";")
    var1_ = findindex(bd, VarQuiver[1])
@@ -553,9 +553,9 @@ end
 
 function add_titles!(bd::BATS, var, ax)
    varIndex_ = findindex(bd, var)
-   title(bd.head.wnames[varIndex_])
+   title(bd.head.wname[varIndex_])
 
-   xlabel(bd.head.variables[1]); ylabel(bd.head.variables[2])
+   xlabel(bd.head.wname[1]); ylabel(bd.head.wname[2])
    add_time_iteration!(bd, ax)
 end
 

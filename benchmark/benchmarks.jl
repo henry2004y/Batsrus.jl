@@ -19,11 +19,11 @@ SUITE["read"]["ASCII"] = @benchmarkable load($file)
 
 file = joinpath(directory, files[2])
 bd = load(file)
-SUITE["read"]["Binary structured"] = @benchmarkable load($file)
+SUITE["read"]["Load binary structured"] = @benchmarkable load($file)
 SUITE["read"]["Extract density"] = @benchmarkable Batsrus.getvar($bd, "Rho")
-SUITE["read"]["Extract B"] = @benchmarkable Batsrus.getvar($bd, "B")
+SUITE["read"]["Extract Bmag"] = @benchmarkable get_magnitude($bd, :B)
 SUITE["read"]["Interp2d"] = @benchmarkable Batsrus.interp2d($bd, "rho")
  
 file = joinpath(directory, files[3])
 bd = load(file)
-SUITE["read"]["Anisotropy"] = @benchmarkable bd["Anisotropy1"]
+SUITE["read"]["Anisotropy"] = @benchmarkable get_anisotropy($bd, 1)

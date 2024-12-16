@@ -9,10 +9,11 @@ using Parsers
 using Interpolations: cubic_spline_interpolation, BSpline, Linear, scale, interpolate
 import NaturalNeighbours as NN
 using StaticArrays: SVector, @SMatrix, SA
+using DimensionalData
 
 export BATS,
    load, readlogdata, readtecdata, showhead, # io
-   getvar, cutdata, subvolume, subsurface, get_convection_E, get_hall_E, 
+   getvar, getderivedvar, cutdata, subvolume, subsurface, get_convection_E, get_hall_E, 
    get_anisotropy, get_vectors, get_magnitude, get_magnitude2,
    fill_vector_from_scalars, # select
    Batl, convertTECtoVTU, convertIDLtoVTK, readhead, readtree, getConnectivity, # vtk

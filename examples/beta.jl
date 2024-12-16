@@ -31,7 +31,7 @@ PBcut = hypot.(Bx, By, Bz)
 c = ax.contourf(cut1, cut2, Pcut./PBcut)
 fig.colorbar(c; ax)
 ax.axis("scaled")
-title(data.head[:wnames][p_])
+title(data.head.wname[p_])
 
 xlabel("x"); ylabel("z")
 

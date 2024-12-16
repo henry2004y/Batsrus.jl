@@ -99,7 +99,7 @@ function convertTECtoVTU(file::AbstractString, outname="out")
 end
 
 function convertTECtoVTU(head, data, connectivity, outname="out")
-   nVar = length(head.variables)
+   nVar = length(head.variable)
    points = @view data[1:head.nDim,:]
    cells = Vector{MeshCell{VTKCellType,Array{Int32,1}}}(undef, head.nCell)
 
@@ -116,24 +116,24 @@ function convertTECtoVTU(head, data, connectivity, outname="out")
    vtkfile = vtk_grid(outname, points, cells)
 
    for ivar in head.nDim+1:nVar
-      if endswith(head.variables[ivar],"_x") # vector
+      if endswith(head.variable[ivar],"_x") # vector
          if head.nDim == 3
             var1 = @view data[ivar,:]
             var2 = @view data[ivar+1,:]
             var3 = @view data[ivar+2,:]
-            namevar = replace(head.variables[ivar], "_x"=>"")
+            namevar = replace(head.variable[ivar], "_x"=>"")
             vtk_point_data(vtkfile, (var1, var2, var3), namevar)
          elseif head.nDim == 2
             var1 = @view data[ivar,:]
             var2 = @view data[ivar+1,:]
-            namevar = replace(head.variables[ivar], "_x"=>"")
+            namevar = replace(head.variable[ivar], "_x"=>"")
             vtk_point_data(vtkfile, (var1, var2), namevar)
          end
-      elseif endswith(head.variables[ivar], r"_y|_z")
+      elseif endswith(head.variable[ivar], r"_y|_z")
          continue
       else
          var = @view data[ivar,:]
-         vtk_point_data(vtkfile, var, head.variables[ivar])
+         vtk_point_data(vtkfile, var, head.variable[ivar])
       end
    end
 
@@ -157,7 +157,7 @@ function convertIDLtoVTK(filename::AbstractString; gridType::Int=1, verbose::Boo
    if endswith(filename, ".out")
       data = load(filename)
 
-      nVar = length(data.head.wnames)
+      nVar = length(data.head.wname)
 
       outname = filename[1:end-4]
 
@@ -168,17 +168,17 @@ function convertIDLtoVTK(filename::AbstractString; gridType::Int=1, verbose::Boo
 
          outfiles = vtk_grid(outname, x,y,z) do vtk
             for ivar in 1:nVar
-               if data.head.wnames[ivar][end] == 'x' # vector
+               if data.head.wname[ivar][end] == 'x' # vector
                   var1 = @view data.w[:,:,:,ivar]
                   var2 = @view data.w[:,:,:,ivar+1]
                   var3 = @view data.w[:,:,:,ivar+2]
-                  namevar = data.head.wnames[ivar][1:end-1]
+                  namevar = data.head.wname[ivar][1:end-1]
                   vtk_point_data(vtk, (var1, var2, var3), namevar)
-               elseif data.head.wnames[ivar][end] in ('y','z')
+               elseif data.head.wname[ivar][end] in ('y','z')
                   continue
                else
                   var = @view data.w[:,:,:,ivar]
-                  vtk_point_data(vtk, var, data.head.wnames[ivar])
+                  vtk_point_data(vtk, var, data.head.wname[ivar])
                end
             end
          end
@@ -187,17 +187,17 @@ function convertIDLtoVTK(filename::AbstractString; gridType::Int=1, verbose::Boo
 
          outfiles = vtk_grid(outname, xyz) do vtk
             for ivar in 1:nVar
-               if data.head.wnames[ivar][end] == 'x' # vector
+               if data.head.wname[ivar][end] == 'x' # vector
                   var1 = @view data.w[:,:,:,ivar]
                   var2 = @view data.w[:,:,:,ivar+1]
                   var3 = @view data.w[:,:,:,ivar+2]
-                  namevar = data.head.wnames[ivar][1:end-1]
+                  namevar = data.head.wname[ivar][1:end-1]
                   vtk_point_data(vtk, (var1, var2, var3), namevar)
-               elseif data.head.wnames[ivar][end] in ('y','z')
+               elseif data.head.wname[ivar][end] in ('y','z')
                   continue
                else
                   var = @view data.w[:,:,:,ivar]
-                  vtk_point_data(vtk, var, data.head.wnames[ivar])
+                  vtk_point_data(vtk, var, data.head.wname[ivar])
                end
             end
          end
@@ -214,7 +214,7 @@ function convertIDLtoVTK(filename::AbstractString; gridType::Int=1, verbose::Boo
       outname = filename
 
       nDim = batl.nDim
-      nVar = length(data.head.wnames)
+      nVar = length(data.head.wname)
       nCell = size(connectivity, 2)
       if nDim == 3
          if batl.head.dxPlot_D[1] ≥ 0.0
@@ -245,19 +245,19 @@ function convertIDLtoVTK(filename::AbstractString; gridType::Int=1, verbose::Boo
       vtkfile = vtk_grid(filename, points, cells)
 
       for ivar in 1:nVar
-         if endswith(data.head.wnames[ivar], "x") # vector
+         if endswith(data.head.wname[ivar], "x") # vector
             if nDim == 3
                var1 = @view data.w[:,1,1,ivar]
                var2 = @view data.w[:,1,1,ivar+1]
                var3 = @view data.w[:,1,1,ivar+2]
                var = (var1, var2, var3)
-               vtkfile[data.head.wnames[ivar][1:end-1], VTKPointData()] = var
+               vtkfile[data.head.wname[ivar][1:end-1], VTKPointData()] = var
             elseif nDim == 2 # not sure how VTK handles 2D vector!
                var1 = @view data.w[:,1,ivar]
                var2 = @view data.w[:,1,ivar+1]
-               vtkfile[data.head.wnames[ivar][1:end-1], VTKPointData()] = (var1, var2)
+               vtkfile[data.head.wname[ivar][1:end-1], VTKPointData()] = (var1, var2)
             end
-         elseif endswith(data.head.wnames[ivar], r"y|z")
+         elseif endswith(data.head.wname[ivar], r"y|z")
             continue
          else
             if nDim == 3
@@ -265,7 +265,7 @@ function convertIDLtoVTK(filename::AbstractString; gridType::Int=1, verbose::Boo
             elseif nDim == 2
                var = @view data.w[:,1,ivar]
             end
-            vtkfile[data.head.wnames[ivar], VTKPointData()] = var
+            vtkfile[data.head.wname[ivar], VTKPointData()] = var
          end
       end
 

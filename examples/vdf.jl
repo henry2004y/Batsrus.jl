@@ -52,16 +52,16 @@ function dist_select(fnameParticle, xC=-1.90, yC=0.0, zC=-0.1, xL=0.005, yL=0.2,
 
    x, y, z = eachslice(data.x, dims=4)
 
-   ux_ = findfirst(x->x=="ux", data.head.wnames)
-   uy_ = findfirst(x->x=="uy", data.head.wnames)
-   uz_ = findfirst(x->x=="uz", data.head.wnames)
+   ux_ = findfirst(x->x=="ux", data.head.wname)
+   uy_ = findfirst(x->x=="uy", data.head.wname)
+   uz_ = findfirst(x->x=="uz", data.head.wname)
 
    ux = @view data.w[:,:,:,ux_]
    uy = @view data.w[:,:,:,uy_]
    uz = @view data.w[:,:,:,uz_]
 
    for ip in eachindex(x)
-      for iR = 1:nBox
+      for iR in 1:nBox
          if region[1,iR] < x[ip] < region[2,iR] &&
             region[3,iR] < y[ip] < region[4,iR] &&
             region[5,iR] < z[ip] < region[6,iR]
@@ -182,9 +182,9 @@ function GetMeanField(filefield, limits; dir=".")
    y = data.x[:,:,:,2]
    z = data.x[:,:,:,3]
 
-   bx_ = findfirst(x->x=="Bx", data.head.wnames)
-   by_ = findfirst(x->x=="By", data.head.wnames)
-   bz_ = findfirst(x->x=="Bz", data.head.wnames)
+   bx_ = findfirst(x->x=="Bx", data.head.wname)
+   by_ = findfirst(x->x=="By", data.head.wname)
+   bz_ = findfirst(x->x=="Bz", data.head.wname)
 
    Bx = @view data.w[:,:,:,bx_]
    By = @view data.w[:,:,:,by_]
@@ -211,8 +211,8 @@ function plotExCut(filefield::String, region, xC, yC, zC, xL, yL, zL;
    # Sample region plot over contour
    data = load(joinpath(dir, filefield))
 
-   bx_ = findfirst(x->x=="Bx", data.head.wnames)
-   bz_ = findfirst(x->x=="Bz", data.head.wnames)
+   bx_ = findfirst(x->x=="Bx", data.head.wname)
+   bz_ = findfirst(x->x=="Bz", data.head.wname)
 
    Bx = @view data.w[:,:,:,bx_]
    Bz = @view data.w[:,:,:,bz_]
@@ -280,9 +280,9 @@ function dist_plot(pType='e')
       y = @view data.x[:,:,:,2]
       z = @view data.x[:,:,:,3]
 
-      ux_ = findfirst(x->x=="ux", data.head.wnames)
-      uy_ = findfirst(x->x=="uy", data.head.wnames)
-      uz_ = findfirst(x->x=="uz", data.head.wnames)
+      ux_ = findfirst(x->x=="ux", data.head.wname)
+      uy_ = findfirst(x->x=="uy", data.head.wname)
+      uz_ = findfirst(x->x=="uz", data.head.wname)
 
       ux = @view data.w[:,:,:,ux_]
       uy = @view data.w[:,:,:,uy_]
@@ -319,9 +319,9 @@ function dist_plot(pType='e')
       y = @view data.x[:,:,:,2]
       z = @view data.x[:,:,:,3]
 
-      ux_ = findfirst(x->x=="ux", data.head.wnames)
-      uy_ = findfirst(x->x=="uy", data.head.wnames)
-      uz_ = findfirst(x->x=="uz", data.head.wnames)
+      ux_ = findfirst(x->x=="ux", data.head.wname)
+      uy_ = findfirst(x->x=="uy", data.head.wname)
+      uz_ = findfirst(x->x=="uz", data.head.wname)
 
       ux = @view data.w[:,:,:,ux_]
       uy = @view data.w[:,:,:,uy_]
@@ -587,9 +587,9 @@ function HF_velocity()
    y = data.x[:,:,:,2]
    z = data.x[:,:,:,3]
 
-   ux_ = findfirst(x->lowercase(x)=="uxs1", data.head.wnames)
-   uy_ = findfirst(x->lowercase(x)=="uys1", data.head.wnames)
-   uz_ = findfirst(x->lowercase(x)=="uzs1", data.head.wnames)
+   ux_ = findfirst(x->lowercase(x)=="uxs1", data.head.wname)
+   uy_ = findfirst(x->lowercase(x)=="uys1", data.head.wname)
+   uz_ = findfirst(x->lowercase(x)=="uzs1", data.head.wname)
 
    Ux = @view data.w[:,:,:,ux_]
    Uy = @view data.w[:,:,:,uy_]
