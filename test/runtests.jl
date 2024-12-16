@@ -188,13 +188,13 @@ end
          c = PyPlot.streamplot(bd, "bx;by")
          @test c.lines.get_segments()[2][3] ≈ -118.68871477694084
          c = PyPlot.contourf(bd, "p")
-         @static if startswith(matplotlib.__version__, "3.9") || Sys.isapple() || Sys.iswindows()
+         @static if startswith(matplotlib.__version__, "3.9")
             @test c.get_array()[end] == 1.0500000000000003
          else
             @test c.get_array()[end] == 0.9750000000000002
          end
          c = @suppress_err PyPlot.contourf(bd, "rho", innermask=true)
-         @static if startswith(matplotlib.__version__, "3.9") || Sys.isapple() || Sys.iswindows()
+         @static if startswith(matplotlib.__version__, "3.9")
             @test c.get_array()[end] == 1.0500000000000003
          else
             @test c.get_array()[end] == 0.9750000000000002
@@ -204,7 +204,7 @@ end
          c=  PyPlot.contour(bd, "rho"; levels=[1.0])
          @test c.get_array()[end] == 1.0
          c = PyPlot.tricontourf(bd, "rho")
-         @static if startswith(matplotlib.__version__, "3.9") || Sys.isapple() || Sys.iswindows()
+         @static if startswith(matplotlib.__version__, "3.9")
             @test c.get_array()[end] == 1.0500000000000003
          else
             @test c.get_array()[end] == 0.9750000000000002
