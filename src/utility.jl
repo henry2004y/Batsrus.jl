@@ -184,7 +184,7 @@ function interp1d(bd::BATS{2, TV, TX, TW}, var::AbstractString, loc::AbstractVec
 end
 
 """
-    interp1d(bd::BATS, var::AbstractString, point1::Vector, point2::Vecto)
+    interp1d(bd::BATS, var::AbstractString, point1::Vector, point2::Vector)
 
 Interpolate `var` along a line from `point1` to `point2` in `bd`.
 """
@@ -196,7 +196,8 @@ function interp1d(bd::BATS{2, TV, TX, TW}, var::AbstractString, point1::Vector, 
    xrange = range(x[1,1,1], x[end,1,1], length=size(x,1))
    yrange = range(x[1,1,2], x[1,end,2], length=size(x,2))
    itp = scale(interpolate(v, BSpline(Linear())), (xrange, yrange))
-   Δestimate = √(xrange.step^2 + yrange.step^2)
+   θ = atan(point2[2] - point1[2], point2[1] - point1[1])
+   Δestimate = √(xrange.step^2 + yrange.step^2) * cos(θ)
    l = √(sum((point2 .- point1).^2))
    ns = Int(l ÷ Δestimate)
    dx = (point2[1] - point1[1]) / ns
