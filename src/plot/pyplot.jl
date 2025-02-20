@@ -13,7 +13,7 @@ end
    matplotlib.rc("pcolor", shading="nearest") # newer version default "auto"
 end
 
-matplotlib.rc("font", size=14)
+matplotlib.rc("font", size=15)
 matplotlib.rc("xtick", labelsize=10)
 matplotlib.rc("ytick", labelsize=10)
 matplotlib.rc("xtick.minor", visible=true)
@@ -555,7 +555,7 @@ function add_titles!(bd::BATS, var, ax)
    varIndex_ = findindex(bd, var)
    title(bd.head.wname[varIndex_])
 
-   xlabel(bd.head.wname[1]); ylabel(bd.head.wname[2])
+   xlabel(bd.head.coord[1]); ylabel(bd.head.coord[2])
    add_time_iteration!(bd, ax)
 end
 
