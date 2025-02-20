@@ -196,14 +196,14 @@ scatter(bd, "p")
 
 For 2D outputs, we can select the following functions:
 
-* `contour`
-* `contourf`
-* `pcolormesh`
-* `plot_surface`
-* `plot_tricontour`
-* `plot_tricontourf`
-* `plot_trisurf`
-* `tripcolor`
+- `contour`
+- `contourf`
+- `pcolormesh`
+- `plot_surface`
+- `plot_tricontour`
+- `plot_tricontourf`
+- `plot_trisurf`
+- `tripcolor`
 
 with either `quiver` or `streamplot`. By default the linear colorscale is applied. If you want to switch to logarithmic, set argument `colorscale=:log`.
 
@@ -217,7 +217,7 @@ contour(bd, "p")
 
 ```julia
 contourf(bd, "p")
-contourf(bd, "p", levels, plotrange=[-10,10,-Inf,Inf], plotinterval=0.1)
+contourf(bd, "p"; levels, plotrange=[-10,10,-Inf,Inf], plotinterval=0.1)
 ```
 
 - surface plot
@@ -242,13 +242,13 @@ tricontourf(bd, "p")
 
 ```julia
 streamplot(bd, "bx;bz")
-streamplot(bd, "bx;bz", density=2.0, color="k", plotinterval=1.0, plotrange=[-10,10,-Inf,Inf])
+streamplot(bd, "bx;bz"; density=2.0, color="k", plotinterval=1.0, plotrange=[-10,10,-Inf,Inf])
 ```
 
 - quiver (currently only for Cartesian grid)
 
 ```julia
-quiver(bd, "ux;uy", stride=50)
+quiver(bd, "ux;uy"; stride=50)
 ```
 
 - streamline + contourf
