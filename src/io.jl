@@ -481,7 +481,7 @@ current density [jSI] in SI units. Distance unit [rplanet | rstar], ion and elec
 Also calculate convenient constants ti0, cs0 ... for typical formulas.
 This function is currently not used anywhere!
 """
-function setunits(head, type; distance=1.0, mp=1.0, me=1.0)
+function setunits(head::BatsHead, type; distance=1.0, mp=1.0, me=1.0)
    ndim     = head.ndim
    headline = head.headline
    neqpar   = head.neqpar
@@ -694,7 +694,7 @@ end
 
 Displaying file header information.
 """
-function showhead(file::FileList, head, io=stdout)
+function showhead(file::FileList, head::BatsHead, io::IO=stdout)
    println(io, "filename : $(file.name)")
    println(io, "filetype : $(file.type)")
    println(io, "headline : $(head.headline)")
@@ -723,4 +723,4 @@ end
 Display file information of `data`.
 """
 showhead(data::BATS) = showhead(data.list, data.head)
-showhead(io, data::BATS) = showhead(data.list, data.head, io)
+showhead(io::IO, data::BATS) = showhead(data.list, data.head, io)
