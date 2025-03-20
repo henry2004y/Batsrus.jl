@@ -20,7 +20,7 @@ For more details, please check the [document][Batsrus-doc].
 
 ## Prerequisites
 
-* Julia 1.6+
+* Julia 1.10+
 * (Optional) Python and Matplotlib
 
 ## Installation
