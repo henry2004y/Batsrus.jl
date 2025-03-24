@@ -110,7 +110,7 @@ function Base.show(io::IO, file::BatsrusHDF5Uniform)
    println(io, "Time                     : ", file.common.time)
    vars = HDF5.keys(file.common.fid)
    idBegin_ = findfirst(x->x == "bounding box", vars) + 1
-   idEnd_ = findlast(x->x == "iCoord_DB", vars) - 1
+   idEnd_ = findfirst(x -> endswith(x, "Ext"), vars) - 1
    println(io, "Variables                : ", vars[idBegin_:idEnd_])
 end
 
