@@ -58,22 +58,22 @@ struct Head
    # Number of children per node
    nChild::Int32
    # Number of root blocks
-   nRoot_D::Vector{Int32}
+   nRoot_D::MVector{3, Int32}
    # Grid lower and upper edges
-   CoordMin_D::Vector{Float64}
-   CoordMax_D::Vector{Float64}
+   CoordMin_D::MVector{3, Float64}
+   CoordMax_D::MVector{3, Float64}
    # Indexes of AMR dimensions
    iDimAmr_D::Vector{Int32}
-   isPeriodic_D::Vector{Bool}
+   isPeriodic_D::MVector{3, Bool}
    # Plotting resolution
-   dxPlot_D::Vector{Float64}
+   dxPlot_D::MVector{3, Float64}
 end
 
 "BATSRUS output high-level struct."
 struct Batl
    head::Head
-   iTree_IA::Array{Int32,2}
-   iRatio_D::Vector{Int32} # Array of refinement ratios
+   iTree_IA::Array{Int32, 2}
+   iRatio_D::MVector{3, Int32} # Array of refinement ratios
    nDim::Int8
 end
 
