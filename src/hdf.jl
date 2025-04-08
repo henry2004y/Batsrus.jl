@@ -2,6 +2,7 @@
 module HDF
 
 using HDF5
+using StaticArrays: SVector, MVector
 
 export BatsrusHDF5Uniform, extract_var
 
@@ -23,21 +24,21 @@ struct HDF5Common{TI<:Signed, TF<:AbstractFloat} <: BatsrusHDF5File
    "Saved snapshot timestamp."
    time::TF
    "Minimum coordinates for the whole grid."
-   coordmin::Vector{TF}
+   coordmin::SVector{3, TF}
    "Maximum coordinates for the whole grid."
-   coordmax::Vector{TF}
+   coordmax::SVector{3, TF}
    "Saved snapshot simulation timestep."
    timestep::TI
    "True dimension of the data despite the stored data dimension."
    ndim::TI
    "Number of cell in each block along x, y, z."
-   ncb::Vector{TI}
+   ncb::SVector{3, TI}
    "If boundary condition is periodic."
-   isperiodic::Vector{Bool}
+   isperiodic::SVector{3, Bool}
    "Vector of non-singleton dimensions."
-   multi_cell_dims::Vector{Bool}
+   multi_cell_dims::SVector{3, Bool}
    "Lengths along each direction for the whole grid."
-   extent::Vector{TF}
+   extent::SVector{3, TF}
 
    function HDF5Common(filename::AbstractString)
       fid = h5open(filename, "r")
@@ -47,16 +48,15 @@ struct HDF5Common{TI<:Signed, TF<:AbstractFloat} <: BatsrusHDF5File
       version = meta_int[1]
       geometry = meta_int[11]
       time = meta_real[1]
-      coordmin = meta_real[2:2:6]
-      coordmax = meta_real[3:2:7]
+      coordmin = SVector(meta_real[2:2:6]...)
+      coordmax = SVector(meta_real[3:2:7]...)
       timestep = meta_int[2]
       ndim = meta_int[3]
-      ncb = meta_int[8:10]
-      isperiodic = meta_int[12:14]
+      ncb = SVector(meta_int[8:10]...)
+      isperiodic = SVector(meta_int[12:14]...)
 
-      single_cell_dims = ncb .== 0
-      multi_cell_dims = .!single_cell_dims
-      extent = coordmax .- coordmin
+      multi_cell_dims = SVector(ncb[1] != 0, ncb[2] != 0, ncb[3] != 0)
+      extent = SVector(coordmax .- coordmin...)
 
       new{eltype(meta_int), eltype(meta_real)}(fid, version, geometry, time, coordmin,
          coordmax, timestep, ndim, ncb, isperiodic, multi_cell_dims, extent)
@@ -67,18 +67,18 @@ end
 struct BatsrusHDF5Uniform{TI, TF} <: BatsrusHDF5File
    common::HDF5Common{TI, TF}
    "Numbers of cells along each direction"
-   nc::Vector{TI}
+   nc::SVector{3, TI}
    "Number of blocks along each direction"
-   nb::Vector{TI}
+   nb::SVector{3, TI}
    "Grid resolution along each direction"
-   dcoord::Vector{TF}
+   dcoord::SVector{3, TF}
    "Block length along each direction"
-   dblock::Vector{TF}
+   dblock::SVector{3, TF}
 
    function BatsrusHDF5Uniform(filename::AbstractString)
       bf = HDF5Common(filename)
 
-      nc = Int32[1,1,1]
+      nc = MVector{3, Int32}(undef)
       try
          extent::Matrix{Int32} = bf.fid["MinLogicalExtents"] |> read
          nc[bf.multi_cell_dims] = extent[:, end] + bf.ncb[bf.multi_cell_dims]
@@ -86,14 +86,14 @@ struct BatsrusHDF5Uniform{TI, TF} <: BatsrusHDF5File
          iCoord_DB::Matrix{Int32} = bf.fid["iCoord_DB"] |> read
          nc[bf.multi_cell_dims] = iCoord_DB[:,end] + bf.ncb[bf.multi_cell_dims]
       end
-      nb = nc .÷ bf.ncb
+      nb = SVector(nc .÷ bf.ncb...)
 
-      dcoord = bf.extent ./ nc
-      dblock = bf.extent ./ nb
+      dcoord = SVector(bf.extent ./ nc...)
+      dblock = SVector(bf.extent ./ nb...)
 
       TI, TF = findparam(bf)
 
-      new{TI, TF}(bf, nc, nb, dcoord, dblock)
+      new{TI, TF}(bf, SVector{3}(nc), nb, dcoord, dblock)
    end
 end
 
