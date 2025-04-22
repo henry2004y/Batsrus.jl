@@ -201,6 +201,8 @@ end
          @test isa(gca(), PyPlot.PyObject)
          p = PyPlot.pcolormesh(bd, "p").get_array()
          @test p[end] == 0.1f0
+         p = PyPlot.imshow(bd, "p").get_array()
+         @test p[2,128] == 0.51229393f0
          plt.close()
          fig = plt.figure()
          ax = fig.add_subplot(111, projection="3d")

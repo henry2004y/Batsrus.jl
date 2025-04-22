@@ -363,7 +363,7 @@ end
 
 
 """
-    pcolormesh(data, var, levels=0; ax=nothing, plotrange=[-Inf,Inf,-Inf,Inf],
+    pcolormesh(data, var, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf],
        plotinterval=0.1, innermask=false, vmin=-Inf, vmax=Inf, colorscale=:linear,
        add_colorbar=true, kwargs...)
 
@@ -392,7 +392,7 @@ function PyPlot.pcolormesh(bd::BATS{2, TV, TX, TW}, var::AbstractString, ax=noth
 end
 
 """
-    tripcolor(data, var, levels=0; ax=nothing, plotrange=[-Inf,Inf,-Inf,Inf],
+    tripcolor(data, var, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf],
        plotinterval=0.1, innermask=false, kwargs...)
 
 Wrapper over `tripcolor` in matplotlib.
@@ -439,6 +439,33 @@ function PyPlot.tripcolor(bd::BATS{2, TV, TX, TW}, var::AbstractString, ax=nothi
    c
 end
 
+"""
+    imshow(data, var, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1,
+       innermask=false, colorscale=:linear, add_colorbar=true, kwargs...)
+
+# Keywords
+- `rbody=1.0`: inner body radius.
+- `colorscale::Symbol`: colormap scale from [`:linear`, `:log`].
+- `add_colorbar=true`: turn on colorbar.
+
+Wrapper over `imshow` in matplotlib. For large matrices, this is faster than `pcolormesh`.
+"""
+function PyPlot.imshow(bd::BATS{2, TV, TX, TW}, var::AbstractString, ax=nothing;
+   plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1, innermask=false, rbody=1.0,
+   add_colorbar=true, kwargs...) where {TV, TX, TW}
+   xi, yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
+
+   if isnothing(ax) ax = plt.gca() end
+
+   c = ax.imshow(Wi; extent=[xi[1], xi[end], yi[1], yi[end]],
+      origin="lower", aspect="auto", interpolation="nearest", kwargs...)
+
+   add_colorbar && colorbar(c; ax, fraction=0.04, pad=0.02)
+
+   add_titles!(bd, var, ax)
+
+   c
+end
 
 """
     streamplot(bd, var, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf], plotinterval=0.1,
