@@ -198,6 +198,7 @@ For 2D outputs, we can select the following functions:
 
 - `contour`
 - `contourf`
+- `imshow`
 - `pcolormesh`
 - `plot_surface`
 - `plot_tricontour`
