@@ -1,6 +1,7 @@
 {
    "theme": "nocoverlist",
    "order": [
+     "utility",
      "visualization"
    ],
    "properties": {

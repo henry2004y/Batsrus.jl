@@ -83,6 +83,8 @@ end
       @test w[2][2,1] ≈ -2454.3933f0
       w = get_hall_E(bd)
       @test w[2][2,1] ≈ -782.2945f0
+      w = get_timeseries([joinpath(datapath, file)], (0.0, 0.0))
+      @test w[2][end] == 17.973747f0
    end
 
    @testset "Reading 2D unstructured ascii" begin
