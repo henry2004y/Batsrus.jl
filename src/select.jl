@@ -317,3 +317,51 @@ function get_hall_E(bd::BATS)
 
 	Ehallx, Ehally, Ehallz
 end
+
+"""
+	 get_timeseries(files::AbstractArray, loc; tstep = 1.0)
+
+Extract plasma moments and EM field from PIC output `files` at `loc` with nearest neighbor.
+Currently only works for 2D outputs.
+"""
+function get_timeseries(files::AbstractArray, loc; tstep = 1.0)
+	nfiles = length(files)
+	bd = files[1] |> Batsrus.load
+	xrange = range(bd.x[1, 1, 1], bd.x[end, 1, 1], length = size(bd.x, 1))
+	yrange = range(bd.x[1, 1, 2], bd.x[1, end, 2], length = size(bd.x, 2))
+	trange = range(bd.head.time, step = tstep, length = nfiles)
+	@assert xrange[1] ≤ loc[1] ≤ xrange[end] "x location out of range!"
+	@assert yrange[1] ≤ loc[2] ≤ yrange[end] "y location out of range!"
+	x_ = searchsortedfirst(xrange, loc[1])
+	y_ = searchsortedfirst(yrange, loc[2])
+	v = zeros(Float32, 20, nfiles)
+
+	@showprogress dt=1 desc="Extracting..." for it in eachindex(files)
+		bd = files[it] |> Batsrus.load
+		v[1, it] = bd["rhos0"][x_, y_]
+		v[2, it] = bd["rhos1"][x_, y_]
+		v[3, it] = bd["uxs0"][x_, y_]
+		v[4, it] = bd["uys0"][x_, y_]
+		v[5, it] = bd["uzs0"][x_, y_]
+		v[6, it] = bd["uxs1"][x_, y_]
+		v[7, it] = bd["uys1"][x_, y_]
+		v[8, it] = bd["uzs1"][x_, y_]
+		v[9, it] = bd["pxxs0"][x_, y_]
+		v[10, it] = bd["pyys0"][x_, y_]
+		v[11, it] = bd["pzzs0"][x_, y_]
+		v[12, it] = bd["pxxs1"][x_, y_]
+		v[13, it] = bd["pyys1"][x_, y_]
+		v[14, it] = bd["pzzs1"][x_, y_]
+		v[15, it] = bd["Bx"][x_, y_]
+		v[16, it] = bd["By"][x_, y_]
+		v[17, it] = bd["Bz"][x_, y_]
+		v[18, it] = bd["Ex"][x_, y_]
+		v[19, it] = bd["Ey"][x_, y_]
+		v[20, it] = bd["Ez"][x_, y_]
+	end
+
+	trange, v
+end
+
+get_timeseries(files::AbstractArray, loc::Vector; tstep = 1.0) =
+	get_timeseries(files, SVector{length(loc)}(loc); tstep)

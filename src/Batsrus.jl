@@ -10,10 +10,11 @@ using Interpolations: cubic_spline_interpolation, BSpline, Linear, scale, interp
 import NaturalNeighbours as NN
 using StaticArrays: SVector, @SMatrix, SA, MVector
 using DimensionalData
+using ProgressMeter
 
 export BATS,
 	load, readlogdata, readtecdata, showhead, # io
-	getvar, cutdata, subvolume, subsurface, get_convection_E, get_hall_E,
+	getvar, cutdata, subvolume, subsurface, get_convection_E, get_hall_E, get_timeseries,
 	get_anisotropy, get_vectors, get_magnitude, get_magnitude2,
 	fill_vector_from_scalars, # select
 	Batl, convertTECtoVTU, convertIDLtoVTK, readhead, readtree, getConnectivity, # vtk
