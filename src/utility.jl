@@ -206,12 +206,13 @@ function interp1d(
 	xrange = range(x[1, 1, 1], x[end, 1, 1], length = size(x, 1))
 	yrange = range(x[1, 1, 2], x[1, end, 2], length = size(x, 2))
 	itp = scale(interpolate(v, BSpline(Linear())), (xrange, yrange))
-	θ = atan(point2[2] - point1[2], point2[1] - point1[1])
-	Δestimate = √(xrange.step^2 + yrange.step^2) * cos(θ)
-	l = √(sum((point2 .- point1) .^ 2))
-	ns = Int(l ÷ Δestimate)
-	dx = (point2[1] - point1[1]) / ns
-	dy = (point2[2] - point1[2]) / ns
+	lx = point2[1] - point1[1]
+	ly = point2[2] - point1[2]
+	nx = lx ÷ xrange.step |> Int
+	ny = ly ÷ yrange.step |> Int
+	ns = floor(Int, √(nx^2 + ny^2))
+	dx = lx / ns
+	dy = ly / ns
 	points = [(point1[1] + i*dx, point1[2] + i*dy) for i in 0:ns]
 
 	Wi = [itp(loc...) for loc in points]

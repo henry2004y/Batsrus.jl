@@ -62,7 +62,7 @@ end
       point1 = Float32[-10.0, -1.0]
       point2 = Float32[10.0, 1.0]
       w = interp1d(bd, "rho", point1, point2)
-      @test sum(w) == 10.676028f0
+      @test sum(w) == 14.942542f0
       w = slice1d(bd, "rho", 1, 1)
       @test sum(w) == 4.0f0
       @test get_var_range(bd, "rho") == (0.11626893f0, 1.0f0)
