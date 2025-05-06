@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Line Animation · Batsrus.jl</title><meta name="title" content="Line Animation · Batsrus.jl"/><meta property="og:title" content="Line Animation · Batsrus.jl"/><meta property="twitter:title" content="Line Animation · Batsrus.jl"/><meta name="description" content="Documentation for Batsrus.jl."/><meta property="og:description" content="Documentation for Batsrus.jl."/><meta property="twitter:description" content="Documentation for Batsrus.jl."/><meta property="og:url" content="https://henry2004y.github.io/Batsrus.jl/examples/visualization/demo_animate_1d/"/><meta property="twitter:url" content="https://henry2004y.github.io/Batsrus.jl/examples/visualization/demo_animate_1d/"/><link rel="canonical" href="https://henry2004y.github.io/Batsrus.jl/examples/visualization/demo_animate_1d/"/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script><link href="../../../democards/nocoverlisttheme.css" rel="stylesheet" type="text/css"/></head><body><div id="documenter"><nav class="docs-sidebar"><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><a class="tocitem" href="../../../man/manual/">Manual</a></li><li><a class="tocitem" href="../../">Examples</a></li><li><a class="tocitem" href="../../../man/internal/">Internal</a></li><li><a class="tocitem" href="../../../man/log/">Log</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Line Animation</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Line Animation</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/henry2004y/Batsrus.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/henry2004y/Batsrus.jl/blob/master/docs/examples/visualization/demo_animate_1d.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="demo_line_animation"><a class="docs-heading-anchor" href="#demo_line_animation">Line Animation</a><a id="demo_line_animation-1"></a><a class="docs-heading-anchor-permalink" href="#demo_line_animation" title="Permalink"></a></h1><p><a href="https://github.com/henry2004y"><img src="https://img.shields.io/badge/Author-Hongyang%20Zhou-blue" alt="Author"/></a> <img src="https://img.shields.io/date/1715126400" alt="Update time"/></p><p>This example shows how to create 1D space line animation from series of SWMF outputs.</p><ul><li>Vertical line moving at the solar wind speed for reference.</li><li>Twin axes sharing the same x-axis for showing two quantities in one frame.</li><li>Time-dependent title.</li></ul><pre><code class="language-julia hljs">using Batsrus, PyPlot, Printf
+
+&quot;&quot;&quot;
+    animate1d(files::Vector{String}, vars::Vector{String}; kwargs...)
+
+Saving series of plots of `vars` from SWMF output `files`.
+
+# Keywords
+- `filedir::String=&quot;./&quot;`: input SWMF file directory.
+- `outdir::String=&quot;out/&quot;`: output directory.
+- `output_interval::Int=1`: Timestep interval for output files.
+- `vmin=-1`: plot value lower bound.
+- `vmax=1`: plot value upper bound.
+- `refloc=1e5`: reference vertical line initial location.
+&quot;&quot;&quot;
+function animate1d(files::Vector{String}, vars::Vector{String};
+   filedir::String=&quot;./&quot;, outdir::String=&quot;out/&quot;, output_interval::Int=1,
+   vmin=-1, vmax=1, refloc=1e5)
+   nfile = length(files)
+   x = let
+      bd = load(joinpath(filedir, files[1]))
+      bd.x[:,1,1]
+   end
+
+   fig = plt.figure(figsize=(12,5), constrained_layout=true)
+   ax = plt.axes(xlim=extrema(x), ylim=(vmin, vmax))
+
+   line, = ax.plot([], [], lw=1)
+   # Move reference line forward in the canvas
+   vl = ax.axvline(0, ls=&quot;-&quot;, color=&quot;tab:brown&quot;, lw=1, zorder=10)
+
+   color = &quot;tab:blue&quot;
+   ax.set_xlabel(&quot;x [km]&quot;; fontsize=14)
+   ax.set_ylabel(var*&quot; [nT]&quot;; fontsize=14, color)
+   ax.tick_params(axis=&quot;y&quot;, labelcolor=color)
+
+   ax2 = ax.twinx()
+   ax2.set_ylim(-600, 0)
+
+   color = &quot;tab:red&quot;
+   ax2.set_ylabel(&quot;Ux [km/s]&quot;; fontsize=14, color)
+
+   line2, = ax2.plot([], []; color, alpha=0.7)
+   ax2.tick_params(axis=&quot;y&quot;, labelcolor=color)
+
+
+   for (i, file) in enumerate(files)
+      @info &quot;$i in $nfile&quot;
+      outname = outdir*lpad(i, 4, &#39;0&#39;)*&quot;.png&quot;
+      isfile(outname) &amp;&amp; continue
+
+      bd = load(joinpath(filedir, file))
+
+      d = bd[vars[1]][:,1]
+      title_str = @sprintf &quot;t = %4.1f s&quot; bd.head.time
+      line.set_data(x, d)
+      d2 = bd[vars[2]][:,1]
+      line2.set_data(x, d2)
+
+      ax.set_title(title_str)
+
+      refloc -= output_interval * VSW
+      if refloc &lt;= 0
+         refloc += 1e5
+      end
+      vl.set_xdata([refloc, refloc])
+
+      savefig(outname, bbox_inches=&quot;tight&quot;, dpi=200)
+   end
+
+   close()
+end
+
+####################
+# Constants
+const VSW = 500.0  # Solar wind speed, [km/s]
+
+# Data directory
+filedir = &quot;./&quot;
+# Plot variables
+vars = [&quot;By&quot;, &quot;uxs1&quot;]
+
+# Find simulation data
+files = let
+   pick_file = file -&gt; startswith(file, &quot;z&quot;) &amp;&amp; endswith(file, &quot;.out&quot;)
+   filter(pick_file, readdir(filedir))
+end
+
+animate1d(files, vars)</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.10.2 on <span class="colophon-date" title="Tuesday 6 May 2025 21:15">Tuesday 6 May 2025</span>. Using Julia version 1.11.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
