@@ -250,12 +250,6 @@ function squeeze(A::AbstractArray)
 	dropdims(A, dims = singleton_dims)
 end
 
-function get_range(bd::BATS, var::AbstractString, verbose = true)
-	varIndex_ = findindex(bd, var)
-	w = selectdim(bd.w, bd.head.ndim+1, varIndex_)
-	wmin, wmax = extrema(w)
-end
-
 """
 	 rotateTensorToVectorZ(tensor::AbstractMatrix, v::AbstractVector) -> SMatrix{3,3}
 

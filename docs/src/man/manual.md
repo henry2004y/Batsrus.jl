@@ -66,7 +66,7 @@ Bvec = Batsrus.fill_vector_from_scalars(bd, :B)
 paniso0 = get_anisotropy(bd, 0)
 ```
 
-These are built upon `get_vectors`. Here is a full list of predefined derived quantities in `get_vectors`:
+These are built upon `get_vectors`. `fill_vector_from_scalars` is slower than `get_vectors` since it involves additional array allocations. Here is a full list of predefined derived quantities in `get_vectors`:
 
 | Derived variable name | Meaning                          | Required variable |
 |-----------------------|----------------------------------|-------------------|
@@ -285,7 +285,7 @@ To get the index of a certain quantity, e.g. electron number density
 #### Get variable range
 
 ```julia
-wmin, wmax = get_range(bd, var)
+wmin, wmax = get_var_range(bd, var)
 ```
 
 ### Tracing

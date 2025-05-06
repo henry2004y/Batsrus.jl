@@ -179,7 +179,6 @@ end
          # 1D ascii
          file = "1d__raw_2_t25.60000_n00000258.out"
          bd = load(joinpath(datapath, file), verbose=false)
-         @test get_range(bd, "rho") == (0.11627036712, 1.0)
          c = PyPlot.plot(bd, "p")
          @test c[1].get_xdata() ≈ bd.x
          @test c[1].get_ydata() ≈ bd.w[:,10]
