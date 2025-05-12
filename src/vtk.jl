@@ -148,84 +148,114 @@ end
 """
 	 convertIDLtoVTK(filename; gridType=1, verbose=false)
 
-Convert 3D BATSRUS *.out to VTK. If `gridType==1`, it converts to the rectilinear grid; if
-`gridType==2`, it converts to the structured grid. If `filename` does not end with "out", it
-tries to find the ".info" and ".tree" file with the same name tag and generates 3D
-unstructured VTU file.
-"""
-function convertIDLtoVTK(filename::AbstractString; gridType::Int = 1, verbose::Bool = false)
-	if endswith(filename, ".out")
-		data = load(filename)
+Convert 3D BATSRUS *.out to VTK. If `filename` does not end with "out", it tries to find the ".info" and ".tree" file with the same name tag and generates 3D unstructured VTU file.
 
-		nVar = length(data.head.wname)
+# Keywords
+- `gridType::Symbol`: Type of target VTK grid (vti: image, vtr: rectilinear, vts: structured grid). 
+"""
+function convertIDLtoVTK(filename::AbstractString;
+	gridType::Symbol = :vti,
+	verbose::Bool = false,
+)
+	if endswith(filename, ".out")
+		bd = load(filename)
+
+		nVar = length(bd.head.wname)
 
 		outname = filename[1:(end-4)]
 
-		if gridType == 1 # rectilinear grid
-			x = @view data.x[:, 1, 1, 1]
-			y = @view data.x[1, :, 1, 2]
-			z = @view data.x[1, 1, :, 3]
-
-			outfiles = vtk_grid(outname, x, y, z) do vtk
-				for ivar in 1:nVar
-					if data.head.wname[ivar][end] == 'x' # vector
-						var1 = @view data.w[:, :, :, ivar]
-						var2 = @view data.w[:, :, :, ivar+1]
-						var3 = @view data.w[:, :, :, ivar+2]
-						namevar = data.head.wname[ivar][1:(end-1)]
-						vtk_point_data(vtk, (var1, var2, var3), namevar)
-					elseif data.head.wname[ivar][end] in ('y', 'z')
-						continue
-					else
-						var = @view data.w[:, :, :, ivar]
-						vtk_point_data(vtk, var, data.head.wname[ivar])
+		if bd.head.ndim == 2
+			if !bd.head.gencoord
+				x, y = get_range(bd)
+				outfiles = vtk_grid(outname, x, y) do vtk
+					for ivar in 1:nVar
+						if bd.head.wname[ivar][end] == 'x' # vector
+							var1 = @view bd.w[:, :, ivar]
+							var2 = @view bd.w[:, :, ivar+1]
+							var3 = @view bd.w[:, :, ivar+2]
+							namevar = bd.head.wname[ivar][1:(end-1)]
+							vtk_point_data(vtk, (var1, var2, var3), namevar)
+						elseif bd.head.wname[ivar][end] in ('y', 'z')
+							continue
+						else
+							var = @view bd.w[:, :, ivar]
+							vtk_point_data(vtk, var, bd.head.wname[ivar])
+						end
 					end
 				end
+			else
+				@error "2D generalized coordinate output conversion not supported!"
 			end
-		elseif gridType == 2 # structured grid
-			xyz = permutedims(data.x, [4, 1, 2, 3])
+		elseif bd.head.ndim == 3
+			if gridType in (:vti, :vtr)
+				if gridType == :vti # image
+					x, y, z = get_range(bd)
+				else # rectilinear
+					x = @view bd.x[:, 1, 1, 1]
+					y = @view bd.x[1, :, 1, 2]
+					z = @view bd.x[1, 1, :, 3]
+				end
 
-			outfiles = vtk_grid(outname, xyz) do vtk
-				for ivar in 1:nVar
-					if data.head.wname[ivar][end] == 'x' # vector
-						var1 = @view data.w[:, :, :, ivar]
-						var2 = @view data.w[:, :, :, ivar+1]
-						var3 = @view data.w[:, :, :, ivar+2]
-						namevar = data.head.wname[ivar][1:(end-1)]
-						vtk_point_data(vtk, (var1, var2, var3), namevar)
-					elseif data.head.wname[ivar][end] in ('y', 'z')
-						continue
-					else
-						var = @view data.w[:, :, :, ivar]
-						vtk_point_data(vtk, var, data.head.wname[ivar])
+				outfiles = vtk_grid(outname, x, y, z) do vtk
+					for ivar in 1:nVar
+						if bd.head.wname[ivar][end] == 'x' # vector
+							var1 = @view bd.w[:, :, :, ivar]
+							var2 = @view bd.w[:, :, :, ivar+1]
+							var3 = @view bd.w[:, :, :, ivar+2]
+							namevar = bd.head.wname[ivar][1:(end-1)]
+							vtk_point_data(vtk, (var1, var2, var3), namevar)
+						elseif bd.head.wname[ivar][end] in ('y', 'z')
+							continue
+						else
+							var = @view bd.w[:, :, :, ivar]
+							vtk_point_data(vtk, var, bd.head.wname[ivar])
+						end
 					end
 				end
+			elseif gridType == :vts # structured grid
+				xyz = permutedims(bd.x, [4, 1, 2, 3])
+
+				outfiles = vtk_grid(outname, xyz) do vtk
+					for ivar in 1:nVar
+						if bd.head.wname[ivar][end] == 'x' # vector
+							var1 = @view bd.w[:, :, :, ivar]
+							var2 = @view bd.w[:, :, :, ivar+1]
+							var3 = @view bd.w[:, :, :, ivar+2]
+							namevar = bd.head.wname[ivar][1:(end-1)]
+							vtk_point_data(vtk, (var1, var2, var3), namevar)
+						elseif bd.head.wname[ivar][end] in ('y', 'z')
+							continue
+						else
+							var = @view bd.w[:, :, :, ivar]
+							vtk_point_data(vtk, var, bd.head.wname[ivar])
+						end
+					end
+				end
+			else
+				@error "No tree information for conversion!"
 			end
-		elseif gridType == 3 # unstructured grid
-			@error "No tree information for conversion!"
 		end
-
 	else
 		# info, tree, and out files
-		data = load(filename*".out")
+		bd = load(filename*".out")
 		batl = Batl(readhead(filename*".info"), readtree(filename)...)
 		connectivity = getConnectivity(batl)
 
 		outname = filename
 
 		nDim = batl.nDim
-		nVar = length(data.head.wname)
+		nVar = length(bd.head.wname)
 		nCell = size(connectivity, 2)
 		if nDim == 3
 			if batl.head.dxPlot_D[1] ≥ 0.0
 				@error "Why are there duplicate points?"
 			else
-				points = data.x[:, 1, 1, :]'
+				points = bd.x[:, 1, 1, :]'
 			end
 		elseif nDim == 2
 			if batl.head.dxPlot_D[1] ≥ 0.0 # points are not sorted in postproc.f90
 				@error "Why are there duplicate points? Ask!"
-				points = data.x[:, 1, :]'
+				points = bd.x[:, 1, :]'
 			else # points are sorted in postproc.f90!
 				@error "point original order cannot be retrieved!"
 			end
@@ -245,27 +275,27 @@ function convertIDLtoVTK(filename::AbstractString; gridType::Int = 1, verbose::B
 		vtkfile = vtk_grid(filename, points, cells)
 
 		for ivar in 1:nVar
-			if endswith(data.head.wname[ivar], "x") # vector
+			if endswith(bd.head.wname[ivar], "x") # vector
 				if nDim == 3
-					var1 = @view data.w[:, 1, 1, ivar]
-					var2 = @view data.w[:, 1, 1, ivar+1]
-					var3 = @view data.w[:, 1, 1, ivar+2]
+					var1 = @view bd.w[:, 1, 1, ivar]
+					var2 = @view bd.w[:, 1, 1, ivar+1]
+					var3 = @view bd.w[:, 1, 1, ivar+2]
 					var = (var1, var2, var3)
-					vtkfile[data.head.wname[ivar][1:(end-1)], VTKPointData()] = var
+					vtkfile[bd.head.wname[ivar][1:(end-1)], VTKPointData()] = var
 				elseif nDim == 2 # not sure how VTK handles 2D vector!
-					var1 = @view data.w[:, 1, ivar]
-					var2 = @view data.w[:, 1, ivar+1]
-					vtkfile[data.head.wname[ivar][1:(end-1)], VTKPointData()] = (var1, var2)
+					var1 = @view bd.w[:, 1, ivar]
+					var2 = @view bd.w[:, 1, ivar+1]
+					vtkfile[bd.head.wname[ivar][1:(end-1)], VTKPointData()] = (var1, var2)
 				end
-			elseif endswith(data.head.wname[ivar], r"y|z")
+			elseif endswith(bd.head.wname[ivar], r"y|z")
 				continue
 			else
 				if nDim == 3
-					var = @view data.w[:, 1, 1, ivar]
+					var = @view bd.w[:, 1, 1, ivar]
 				elseif nDim == 2
-					var = @view data.w[:, 1, ivar]
+					var = @view bd.w[:, 1, ivar]
 				end
-				vtkfile[data.head.wname[ivar], VTKPointData()] = var
+				vtkfile[bd.head.wname[ivar], VTKPointData()] = var
 			end
 		end
 
