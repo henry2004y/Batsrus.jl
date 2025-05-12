@@ -131,6 +131,7 @@ end
 		convertIDLtoVTK(file)
 		sha_str = bytes2hex(open(sha1, "out.vti"))
 		@test sha_str == "8d535c0656daa9224aab048d036da0cc2f667bdc"
+		rm("out.vti")
 
 		file = joinpath(datapath, "3d_bin.dat")
 		convertTECtoVTU(file)
