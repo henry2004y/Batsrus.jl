@@ -327,8 +327,7 @@ Currently only works for 2D outputs. If a single point variable is needed, see [
 function get_timeseries(files::AbstractArray, loc; tstep = 1.0)
 	nfiles = length(files)
 	bd = files[1] |> Batsrus.load
-	xrange = range(bd.x[1, 1, 1], bd.x[end, 1, 1], length = size(bd.x, 1))
-	yrange = range(bd.x[1, 1, 2], bd.x[1, end, 2], length = size(bd.x, 2))
+	xrange, yrange = get_range(bd)
 	trange = range(bd.head.time, step = tstep, length = nfiles)
 	@assert xrange[1] ≤ loc[1] ≤ xrange[end] "x location out of range!"
 	@assert yrange[1] ≤ loc[2] ≤ yrange[end] "y location out of range!"

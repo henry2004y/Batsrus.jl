@@ -43,8 +43,7 @@ function interp2d(bd::BATS{2, TV, TX, TW}, var::AbstractString,
 			xi, yi, Wi = interpolate2d_generalized_coords(X, Y, W, plotrange, plotinterval)
 		end
 	else # Cartesian coordinates
-		xrange = range(x[1, 1, 1], x[end, 1, 1], length = size(x, 1))
-		yrange = range(x[1, 1, 2], x[1, end, 2], length = size(x, 2))
+		xrange, yrange = get_range(bd)
 		if all(isinf.(plotrange))
 			xi, yi = xrange, yrange
 			Wi = w[:, :, varIndex_].data' # Matplotlib does not accept view!
@@ -105,8 +104,7 @@ function meshgrid(bd::BATS,
 		xi = range(plotrange[1], stop = plotrange[2], step = plotinterval)
 		yi = range(plotrange[3], stop = plotrange[4], step = plotinterval)
 	else # Cartesian coordinates
-		xrange = range(x[1, 1, 1], x[end, 1, 1], length = size(x, 1))
-		yrange = range(x[1, 1, 2], x[1, end, 2], length = size(x, 2))
+		xrange, yrange = get_range(bd)
 		if all(isinf.(plotrange))
 			xi, yi = xrange, yrange
 		else
@@ -179,10 +177,8 @@ function interp1d(
 ) where {TV, TX, TW}
 	@assert !bd.head.gencoord "Only accept structured grids!"
 
-	x = bd.x
 	v = getview(bd, var)
-	xrange = range(x[1, 1, 1], x[end, 1, 1], length = size(x, 1))
-	yrange = range(x[1, 1, 2], x[1, end, 2], length = size(x, 2))
+	xrange, yrange = get_range(bd)
 	itp = scale(interpolate(v, BSpline(Linear())), (xrange, yrange))
 
 	Wi = itp(loc...)
@@ -201,10 +197,8 @@ function interp1d(
 ) where {TV, TX, TW}
 	@assert !bd.head.gencoord "Only accept structured grids!"
 
-	x = bd.x
 	v = getview(bd, var)
-	xrange = range(x[1, 1, 1], x[end, 1, 1], length = size(x, 1))
-	yrange = range(x[1, 1, 2], x[1, end, 2], length = size(x, 2))
+	xrange, yrange = get_range(bd)
 	itp = scale(interpolate(v, BSpline(Linear())), (xrange, yrange))
 	lx = point2[1] - point1[1]
 	ly = point2[2] - point1[2]
@@ -243,6 +237,24 @@ end
 
 "Return value range of `var` in `bd`."
 get_var_range(bd::BATS, var) = getview(bd, var) |> extrema
+
+"Return mesh range of `bd`."
+function get_range(bd::BATS{2, TV, TX, TW}) where {TV, TX, TW}
+	x = bd.x
+	xrange = range(x[1, 1, 1], x[end, 1, 1], length = size(x, 1))
+	yrange = range(x[1, 1, 2], x[1, end, 2], length = size(x, 2))
+
+	xrange, yrange
+end
+
+function get_range(bd::BATS{3, TV, TX, TW}) where {TV, TX, TW}
+	x = bd.x
+	xrange = range(x[1, 1, 1, 1], x[end, 1, 1, 1], length = size(x, 1))
+	yrange = range(x[1, 1, 1, 2], x[1, end, 1, 2], length = size(x, 2))
+	zrange = range(x[1, 1, 1, 3], x[1, 1, end, 3], length = size(x, 3))
+
+	xrange, yrange, zrange
+end
 
 "Squeeze singleton dimensions for an array `A`."
 function squeeze(A::AbstractArray)
