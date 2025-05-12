@@ -572,8 +572,7 @@ function _getvector(bd::BATS{2, TV, TX, TW}, var::AbstractString;
 		v2 = interpolator(Xi, Yi)
 	else # Cartesian coordinates
 		# Convert to Float64 to satisfy the equal space checking in streamplot.py
-		xrange = range(Float64(x[1, 1, 1]), Float64(x[end, 1, 1]), size(x, 1))
-		yrange = range(Float64(x[1, 1, 2]), Float64(x[1, end, 2]), size(x, 2))
+		xrange, yrange = get_range(bd)
 		if all(isinf.(plotrange))
 			xi = xrange
 			yi = yrange
