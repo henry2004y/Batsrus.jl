@@ -124,12 +124,12 @@ end
 	@testset "VTK" begin
 		file = joinpath(datapath, "z=0_fluid_region0_0_t00001640_n00010142.out")
 		convertIDLtoVTK(file)
-		sha_str = bytes2hex(open(sha1, "z=0_fluid_region0_0_t00001640_n00010142.vti"))
+		sha_str = bytes2hex(open(sha1, "out.vti"))
 		@test sha_str == "7c7540e684aaf1823b7e2792f555e89ad98bcd31"
 
 		file = joinpath(datapath, "3d_raw.out")
 		convertIDLtoVTK(file)
-		sha_str = bytes2hex(open(sha1, "3d_raw.vti"))
+		sha_str = bytes2hex(open(sha1, "out.vti"))
 		@test sha_str == "8d535c0656daa9224aab048d036da0cc2f667bdc"
 
 		file = joinpath(datapath, "3d_bin.dat")

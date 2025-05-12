@@ -155,14 +155,12 @@ Convert 3D BATSRUS *.out to VTK. If `filename` does not end with "out", it tries
 """
 function convertIDLtoVTK(filename::AbstractString;
 	gridType::Symbol = :vti,
+	outname = "out",
 	verbose::Bool = false,
 )
 	if endswith(filename, ".out")
 		bd = load(filename)
-
 		nVar = length(bd.head.wname)
-
-		outname = filename[1:(end-4)]
 
 		if bd.head.ndim == 2
 			if !bd.head.gencoord
