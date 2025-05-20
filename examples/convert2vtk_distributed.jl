@@ -17,27 +17,27 @@ dir = "IO2"
 # you need to make sure all the .tec files have been concatenated!
 headers = glob("*.T", dir)
 @sync @distributed for header in headers
-   name = basename(header)[1:end-2]
+   name = basename(header)[1:(end - 2)]
    println("header=$(header)")
    nameIn = glob(name*"*.tec", dir)
-   nameOut= joinpath(dir, name*".dat")
+   nameOut = joinpath(dir, name*".dat")
    run(pipeline(`cat $(nameIn)`, nameOut))
    rm(header)
    rm.(nameIn)
 end
 
 filenamesIn = "*.dat"
-filenames = Vector{String}(undef,0)
+filenames = Vector{String}(undef, 0)
 filesfound = glob(filenamesIn, dir)
 filenames = vcat(filenames, filesfound)
 # Do not work on files that have already been converted
 # This won't work if new files are generated with exactly the same name!
-filenames = [fname for fname in filenames if ~isfile(fname[1:end-3]*"vtu")]
+filenames = [fname for fname in filenames if ~isfile(fname[1:(end - 3)]*"vtu")]
 
 @sync @distributed for outname in filenames
    println("filename=$(outname)")
    head, data, connectivity = readtecdata(outname)
-   convertVTK(head, data, connectivity, outname[1:end-4])
+   convertVTK(head, data, connectivity, outname[1:(end - 4)])
 end
 
 # Choose whether or not to delete the original *.dat files.
