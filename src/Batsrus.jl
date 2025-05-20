@@ -13,12 +13,12 @@ using DimensionalData
 using ProgressMeter
 
 export BATS,
-	load, readlogdata, readtecdata, showhead, # io
-	getvar, cutdata, subvolume, subsurface, get_convection_E, get_hall_E, get_timeseries,
-	get_anisotropy, get_vectors, get_magnitude, get_magnitude2,
-	fill_vector_from_scalars, # select
-	Batl, convertTECtoVTU, convertIDLtoVTK, readhead, readtree, getConnectivity, # vtk
-	interp1d, interp2d, slice1d, get_range, get_var_range, squeeze # plot/utility
+       load, readlogdata, readtecdata, showhead, # io
+       getvar, cutdata, subvolume, subsurface, get_convection_E, get_hall_E, get_timeseries,
+       get_anisotropy, get_vectors, get_magnitude, get_magnitude2,
+       fill_vector_from_scalars, # select
+       Batl, convertTECtoVTU, convertIDLtoVTK, readhead, readtree, getConnectivity, # vtk
+       interp1d, interp2d, slice1d, get_range, get_var_range, squeeze # plot/utility
 
 include("type.jl")
 include("unit/UnitfulBatsrus.jl")
@@ -35,10 +35,8 @@ include("hdf.jl")
 
 include("precompile.jl")
 
-function __init__()
-	@require PyPlot="d330b81b-6aea-500a-939a-2ce795aea3ee" begin
-		include("plot/pyplot.jl")
-	end
+__init__() = @require PyPlot="d330b81b-6aea-500a-939a-2ce795aea3ee" begin
+   include("plot/pyplot.jl")
 end
 
 end

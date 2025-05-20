@@ -4,9 +4,9 @@
 
 using PyPlot
 
-tJulia  = [163.36*1e-6, 180.8*1e-3, 1.32]
+tJulia = [163.36*1e-6, 180.8*1e-3, 1.32]
 tPython = [4390.95*1e-6, 179.5*1e-3, 1.34]
-tIDL    = [1970.29*1e-6, 453.5*1e-3, 6.08]
+tIDL = [1970.29*1e-6, 453.5*1e-3, 6.08]
 tMatlab = [19273.25*1e-6, 698.4*1e-3, 10.60]
 
 tTable = ones(4, 3)
@@ -33,7 +33,6 @@ xlabel("File Size")
 ylabel("Normalized Timing to Julia")
 
 tight_layout()
-
 
 ## Timing for reading files in Julia
 #=
