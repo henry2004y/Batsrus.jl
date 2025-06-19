@@ -340,27 +340,27 @@ function get_timeseries(files::AbstractArray, loc; tstep = 1.0)
    v = zeros(Float32, 20, nfiles)
 
    @showprogress dt=1 desc="Extracting..." for it in eachindex(files)
-      bd=files[it]|>Batsrus.load
-      v[1, it]=bd["rhos0"][x_, y_]
-      v[2, it]=bd["rhos1"][x_, y_]
-      v[3, it]=bd["uxs0"][x_, y_]
-      v[4, it]=bd["uys0"][x_, y_]
-      v[5, it]=bd["uzs0"][x_, y_]
-      v[6, it]=bd["uxs1"][x_, y_]
-      v[7, it]=bd["uys1"][x_, y_]
-      v[8, it]=bd["uzs1"][x_, y_]
-      v[9, it]=bd["pxxs0"][x_, y_]
-      v[10, it]=bd["pyys0"][x_, y_]
-      v[11, it]=bd["pzzs0"][x_, y_]
-      v[12, it]=bd["pxxs1"][x_, y_]
-      v[13, it]=bd["pyys1"][x_, y_]
-      v[14, it]=bd["pzzs1"][x_, y_]
-      v[15, it]=bd["Bx"][x_, y_]
-      v[16, it]=bd["By"][x_, y_]
-      v[17, it]=bd["Bz"][x_, y_]
-      v[18, it]=bd["Ex"][x_, y_]
-      v[19, it]=bd["Ey"][x_, y_]
-      v[20, it]=bd["Ez"][x_, y_]
+      bd = files[it] |> Batsrus.load
+      v[1, it] = bd["rhos0"][x_, y_]
+      v[2, it] = bd["rhos1"][x_, y_]
+      v[3, it] = bd["uxs0"][x_, y_]
+      v[4, it] = bd["uys0"][x_, y_]
+      v[5, it] = bd["uzs0"][x_, y_]
+      v[6, it] = bd["uxs1"][x_, y_]
+      v[7, it] = bd["uys1"][x_, y_]
+      v[8, it] = bd["uzs1"][x_, y_]
+      v[9, it] = bd["pxxs0"][x_, y_]
+      v[10, it] = bd["pyys0"][x_, y_]
+      v[11, it] = bd["pzzs0"][x_, y_]
+      v[12, it] = bd["pxxs1"][x_, y_]
+      v[13, it] = bd["pyys1"][x_, y_]
+      v[14, it] = bd["pzzs1"][x_, y_]
+      v[15, it] = bd["Bx"][x_, y_]
+      v[16, it] = bd["By"][x_, y_]
+      v[17, it] = bd["Bz"][x_, y_]
+      v[18, it] = bd["Ex"][x_, y_]
+      v[19, it] = bd["Ey"][x_, y_]
+      v[20, it] = bd["Ez"][x_, y_]
    end
 
    trange, v
