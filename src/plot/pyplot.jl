@@ -506,15 +506,16 @@ Wrapper over `imshow` in matplotlib. For large matrices, this is faster than `pc
 """
 function PyPlot.imshow(bd::BATS{2, TV, TX, TW}, var::AbstractString, ax = nothing;
       plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1, innermask = false, rbody = 1.0,
-      add_colorbar = true, kwargs...) where {TV, TX, TW}
+      add_colorbar = true, colorscale=:linear, kwargs...) where {TV, TX, TW}
    xi, yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
 
    if isnothing(ax)
       ax = plt.gca()
    end
 
+   norm = set_colorbar(colorscale, vmin, vmax, Wi)
    c = ax.imshow(Wi; extent = [xi[1], xi[end], yi[1], yi[end]],
-      origin = "lower", aspect = "auto", interpolation = "nearest", kwargs...)
+      origin = "lower", aspect = "auto", interpolation = "nearest", norm, kwargs...)
 
    add_colorbar && colorbar(c; ax, fraction = 0.04, pad = 0.02)
 
