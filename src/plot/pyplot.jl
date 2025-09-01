@@ -500,13 +500,15 @@ end
 
   - `rbody=1.0`: inner body radius.
   - `colorscale::Symbol`: colormap scale from [`:linear`, `:log`].
+  - `vmin`: minimum value of colorbar.
+  - `vmax`: maximum value of colorbar.
   - `add_colorbar=true`: turn on colorbar.
 
 Wrapper over `imshow` in matplotlib. For large matrices, this is faster than `pcolormesh`.
 """
 function PyPlot.imshow(bd::BATS{2, TV, TX, TW}, var::AbstractString, ax = nothing;
       plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1, innermask = false, rbody = 1.0,
-      add_colorbar = true, colorscale=:linear, kwargs...) where {TV, TX, TW}
+      add_colorbar = true, vmin = -Inf, vmax = Inf, colorscale=:linear, kwargs...) where {TV, TX, TW}
    xi, yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
 
    if isnothing(ax)
