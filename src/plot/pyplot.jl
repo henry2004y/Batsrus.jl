@@ -54,16 +54,17 @@ function plotlogdata(data, head::NamedTuple, func::AbstractString; plotmode = "l
 end
 
 """
-     plotgrid(bd::BATS, var, ax=nothing; kwargs...)
+     plotgrid(bd::AbstractBATS, var, ax=nothing; kwargs...)
 
 Plot 2D mesh.
 """
 function plotgrid(
-      bd::BATS{2, TV, TX, TW},
+      bd::AbstractBATS,
       func::AbstractString,
       ax = nothing;
       kwargs...
-) where {TV, TX, TW}
+)
+   bd.head.ndim != 2 && error("plotgrid only works for 2D data!")
    if isnothing(ax)
       ax = plt.gca()
    end
@@ -85,8 +86,9 @@ end
 
 2D plane cut pcolormesh of 3D box data. `sequence` is the index along `dir`.
 """
-function cutplot(bd::BATS{3, TV, TX, TW}, var::AbstractString, ax = nothing;
-      plotrange = [-Inf, Inf, -Inf, Inf], dir = "x", sequence = 1) where {TV, TX, TW}
+function cutplot(bd::AbstractBATS, var::AbstractString, ax = nothing;
+      plotrange = [-Inf, Inf, -Inf, Inf], dir = "x", sequence = 1)
+   bd.head.ndim != 3 && error("cutplot only works for 3D data!")
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
 
@@ -135,15 +137,16 @@ function cutplot(bd::BATS{3, TV, TX, TW}, var::AbstractString, ax = nothing;
 end
 
 """
-     streamslice(data::BATS, var, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf], dir="x",
+     streamslice(data::AbstractBATS, var, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf], dir="x",
     	 sequence=1; kwargs...)
 
 Plot streamlines on 2D slices of 3D box data. Variable names in `var` string must be
 separated with `;`.
 """
-function streamslice(bd::BATS{3, TV, TX, TW}, var::AbstractString, ax = nothing;
+function streamslice(bd::AbstractBATS, var::AbstractString, ax = nothing;
       plotrange = [-Inf, Inf, -Inf, Inf], dir = "x", sequence = 1, kwargs...
-) where {TV, TX, TW}
+)
+   bd.head.ndim != 3 && error("streamslice only works for 3D data!")
    x, w = bd.x, bd.w
    varstream = split(var, ";")
    var1_ = findindex(bd, varstream[1])
@@ -200,16 +203,17 @@ function streamslice(bd::BATS{3, TV, TX, TW}, var::AbstractString, ax = nothing;
 end
 
 """
-     plot(bd::BATS{1, TV, T}, var, ax=nothing; kwargs...)
+     plot(bd::AbstractBATS, var, ax=nothing; kwargs...)
 
 Wrapper over `plot` in matplotlib. Plot 1D outputs.
 """
 function PyPlot.plot(
-      bd::BATS{1, TV, TX, TW},
+      bd::AbstractBATS,
       var::AbstractString,
       ax = nothing;
       kwargs...
-) where {TV, TX, TW}
+)
+   bd.head.ndim != 1 && error("plot only works for 1D data!")
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
    if isnothing(ax)
@@ -231,11 +235,12 @@ end
 Wrapper over `scatter` in matplotlib.
 """
 function PyPlot.scatter(
-      bd::BATS{1, TV, TX, TW},
+      bd::AbstractBATS,
       var::AbstractString,
       ax = nothing;
       kwargs...
-) where {TV, TX, TW}
+)
+   bd.head.ndim != 1 && error("scatter only works for 1D data!")
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
    if isnothing(ax)
@@ -251,10 +256,11 @@ end
 
 Wrapper over `contour` in matplotlib.
 """
-function PyPlot.contour(bd::BATS{2, TV, TX, TW}, var::AbstractString, ax = nothing;
+function PyPlot.contour(bd::AbstractBATS, var::AbstractString, ax = nothing;
       levels = 0,
       plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1, innermask = false, rbody = 1.0,
-      kwargs...) where {TV, TX, TW}
+      kwargs...)
+   bd.head.ndim != 2 && error("contour only works for 2D data!")
    Xi, Yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
    if isnothing(ax)
       ax = plt.gca()
@@ -277,11 +283,12 @@ end
 
 Wrapper over `contourf` in matplotlib. See [`interp2d`](@ref) for some related keywords.
 """
-function PyPlot.contourf(bd::BATS{2, TV, TX, TW}, var::AbstractString, ax = nothing;
+function PyPlot.contourf(bd::AbstractBATS, var::AbstractString, ax = nothing;
       levels::Int = 0,
       plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1, innermask = false, rbody = 1.0,
       add_colorbar = true, vmin = -Inf, vmax = Inf, colorscale = :linear, kwargs...
-) where {TV, TX, TW}
+)
+   bd.head.ndim != 2 && error("contourf only works for 2D data!")
    Xi, Yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
    if isnothing(ax)
       ax = plt.gca()
@@ -304,8 +311,9 @@ end
 
 Wrapper over `tricontourf` in matplotlib.
 """
-function PyPlot.tricontourf(bd::BATS{2, TV, TX, TW}, var::AbstractString, ax = nothing;
-      plotrange = [-Inf, Inf, -Inf, Inf], kwargs...) where {TV, TX, TW}
+function PyPlot.tricontourf(bd::AbstractBATS, var::AbstractString, ax = nothing;
+      plotrange = [-Inf, Inf, -Inf, Inf], kwargs...)
+   bd.head.ndim != 2 && error("tricontourf only works for 2D data!")
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
 
@@ -332,9 +340,10 @@ function PyPlot.tricontourf(bd::BATS{2, TV, TX, TW}, var::AbstractString, ax = n
    c
 end
 
-function PyPlot.triplot(bd::BATS{2, TV, TX, TW}, ax = nothing;
+function PyPlot.triplot(bd::AbstractBATS, ax = nothing;
       plotrange = [-Inf, Inf, -Inf, Inf],
-      kwargs...) where {TV, TX, TW}
+      kwargs...)
+   bd.head.ndim != 2 && error("triplot only works for 2D data!")
    X = vec(bd.x[:, :, 1])
    Y = vec(bd.x[:, :, 2])
    triang = matplotlib.tri.Triangulation(X, Y)
@@ -353,13 +362,14 @@ function PyPlot.triplot(bd::BATS{2, TV, TX, TW}, ax = nothing;
 end
 
 """
-     plot_trisurf(data::BATS, var::String, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf],
+     plot_trisurf(data::AbstractBATS, var::String, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf],
     	 kwargs...)
 
 Wrapper over `plot_trisurf` in matplotlib.
 """
-function PyPlot.plot_trisurf(bd::BATS{2, TV, TX, TW}, var::AbstractString;
-      plotrange = [-Inf, Inf, -Inf, Inf], kwargs...) where {TV, TX, TW}
+function PyPlot.plot_trisurf(bd::AbstractBATS, var::AbstractString;
+      plotrange = [-Inf, Inf, -Inf, Inf], kwargs...)
+   bd.head.ndim != 2 && error("plot_trisurf only works for 2D data!")
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
 
@@ -393,9 +403,10 @@ end
 
 Wrapper over `plot_surface` in matplotlib.
 """
-function PyPlot.plot_surface(bd::BATS{2, TV, TX, TW}, var::AbstractString, ax = nothing;
+function PyPlot.plot_surface(bd::AbstractBATS, var::AbstractString, ax = nothing;
       plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1, innermask = false, rbody = 1.0,
-      kwargs...) where {TV, TX, TW}
+      kwargs...)
+   bd.head.ndim != 2 && error("plot_surface only works for 2D data!")
    if isnothing(ax)
       ax = plt.gca()
    end
@@ -422,10 +433,11 @@ end
 
 Wrapper over `pcolormesh` in matplotlib.
 """
-function PyPlot.pcolormesh(bd::BATS{2, TV, TX, TW}, var::AbstractString, ax = nothing;
+function PyPlot.pcolormesh(bd::AbstractBATS, var::AbstractString, ax = nothing;
       plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1, innermask = false, rbody = 1.0,
       vmin = -Inf, vmax = Inf, colorscale = :linear, add_colorbar = true, kwargs...
-) where {TV, TX, TW}
+)
+   bd.head.ndim != 2 && error("pcolormesh only works for 2D data!")
    xi, yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
 
    if isnothing(ax)
@@ -448,8 +460,9 @@ end
 
 Wrapper over `tripcolor` in matplotlib.
 """
-function PyPlot.tripcolor(bd::BATS{2, TV, TX, TW}, var::AbstractString, ax = nothing;
-      plotrange = [-Inf, Inf, -Inf, Inf], innermask = false, kwargs...) where {TV, TX, TW}
+function PyPlot.tripcolor(bd::AbstractBATS, var::AbstractString, ax = nothing;
+      plotrange = [-Inf, Inf, -Inf, Inf], innermask = false, kwargs...)
+   bd.head.ndim != 2 && error("tripcolor only works for 2D data!")
    x, w = bd.x, bd.w
 
    varIndex_ = findindex(bd, var)
@@ -506,9 +519,10 @@ end
 
 Wrapper over `imshow` in matplotlib. For large matrices, this is faster than `pcolormesh`.
 """
-function PyPlot.imshow(bd::BATS{2, TV, TX, TW}, var::AbstractString, ax = nothing;
+function PyPlot.imshow(bd::AbstractBATS, var::AbstractString, ax = nothing;
       plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1, innermask = false, rbody = 1.0,
-      add_colorbar = true, vmin = -Inf, vmax = Inf, colorscale=:linear, kwargs...) where {TV, TX, TW}
+      add_colorbar = true, vmin = -Inf, vmax = Inf, colorscale=:linear, kwargs...)
+   bd.head.ndim != 2 && error("imshow only works for 2D data!")
    xi, yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
 
    if isnothing(ax)
@@ -532,8 +546,9 @@ end
 
 Wrapper over `streamplot` in matplotlib.
 """
-function PyPlot.streamplot(bd::BATS{2, TV, TX, TW}, var::AbstractString, ax = nothing;
-      plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = Inf, kwargs...) where {TV, TX, TW}
+function PyPlot.streamplot(bd::AbstractBATS, var::AbstractString, ax = nothing;
+      plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = Inf, kwargs...)
+   bd.head.ndim != 2 && error("streamplot only works for 2D data!")
    xi, yi, v1, v2 = _getvector(bd, var; plotrange, plotinterval)
 
    if isnothing(ax)
@@ -543,8 +558,9 @@ function PyPlot.streamplot(bd::BATS{2, TV, TX, TW}, var::AbstractString, ax = no
    ax.streamplot(xi, yi, v1, v2; kwargs...)
 end
 
-function _getvector(bd::BATS{2, TV, TX, TW}, var::AbstractString;
-      plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = Inf) where {TV, TX, TW}
+function _getvector(bd::AbstractBATS, var::AbstractString;
+      plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = Inf)
+   bd.head.ndim != 2 && error("_getvector only works for 2D data!")
    x, w = bd.x, bd.w
    varstream = split(var, ";")
    var1_ = findfirst(x->lowercase(x)==lowercase(varstream[1]), bd.head.wname)
@@ -600,8 +616,9 @@ end
 
 Wrapper over `quiver` in matplotlib. Only supports Cartesian grid for now.
 """
-function PyPlot.quiver(bd::BATS{2, TV, TX, TW}, var::AbstractString, ax = nothing;
-      stride::Integer = 10, kwargs...) where {TV, TX, TW}
+function PyPlot.quiver(bd::AbstractBATS, var::AbstractString, ax = nothing;
+      stride::Integer = 10, kwargs...)
+   bd.head.ndim != 2 && error("quiver only works for 2D data!")
    x, w = bd.x, bd.w
    VarQuiver = split(var, ";")
    var1_ = findindex(bd, VarQuiver[1])
@@ -642,7 +659,7 @@ function set_colorbar(colorscale, vmin, vmax, data = [1.0])
    cnorm
 end
 
-function add_titles!(bd::BATS, var, ax)
+function add_titles!(bd::AbstractBATS, var, ax)
    varIndex_ = findindex(bd, var)
    title(bd.head.wname[varIndex_])
 
@@ -651,7 +668,7 @@ function add_titles!(bd::BATS, var, ax)
    add_time_iteration!(bd, ax)
 end
 
-function add_time_iteration!(bd::BATS, ax)
+function add_time_iteration!(bd::AbstractBATS, ax)
    str = @sprintf "it=%d, time=%4.2f" bd.head.it bd.head.time
    at = matplotlib.offsetbox.AnchoredText(str,
       loc = "lower left", prop = Dict("size"=>8), frameon = true,

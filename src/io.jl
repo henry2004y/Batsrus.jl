@@ -38,7 +38,11 @@ function load(file::AbstractString; npict::Int = 1, verbose::Bool = false)
 
    #setunits(head,"")
 
-   BATS(head, filelist, x, w)
+   if head.gencoord
+      BATSUnstructured(head, filelist, x, w)
+   else
+      BATSCartesian(head, filelist, x, w)
+   end
 end
 
 """
@@ -695,7 +699,7 @@ function setunits(head::BatsHead, type; distance = 1.0, mp = 1.0, me = 1.0)
    return true
 end
 
-function Base.show(io::IO, data::BATS)
+function Base.show(io::IO, data::AbstractBATS)
    showhead(io, data)
    if data.list.bytes ≥ 1e9
       str = @sprintf "filesize: %.1f GB" data.list.bytes/1e9
@@ -758,5 +762,5 @@ end
 
 Display file information of `data`.
 """
-showhead(data::BATS) = showhead(data.list, data.head)
-showhead(io::IO, data::BATS) = showhead(data.list, data.head, io)
+showhead(data::AbstractBATS) = showhead(data.list, data.head)
+showhead(io::IO, data::AbstractBATS) = showhead(data.list, data.head, io)

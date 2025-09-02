@@ -1,7 +1,7 @@
 # Utility functions for plotting and analyzing.
 
 """
-     interp2d(bd::BATS, var::AbstractString, plotrange=[-Inf, Inf, -Inf, Inf],
+     interp2d(bd::AbstractBATS, var::AbstractString, plotrange=[-Inf, Inf, -Inf, Inf],
     	 plotinterval=Inf; kwargs...)
 
 Return 2D interpolated slices of data `var` from `bd`. If `plotrange` is not set, output
@@ -14,10 +14,11 @@ data resolution is the same as the original.
   - `useMatplotlib=true`: Whether to Matplotlib (faster) or NaturalNeighbours for scattered
     interpolation. If true, a linear interpolation is performed on a constructed triangle mesh.
 """
-function interp2d(bd::BATS{2, TV, TX, TW}, var::AbstractString,
+function interp2d(bd::AbstractBATS, var::AbstractString,
       plotrangeIn::Vector = [-Inf32, Inf32, -Inf32, Inf32], plotinterval::Real = Inf32;
       innermask::Bool = false, rbody::Real = 1.0, useMatplotlib::Bool = true
-) where {TV, TX, TW}
+)
+   bd.head.ndim != 2 && error("interp2d only works for 2D data!")
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
    plotrange = TV.(plotrangeIn)
@@ -91,7 +92,7 @@ end
 """
 Return the axis range for 2D outputs. See [`interp2d`](@ref).
 """
-function meshgrid(bd::BATS,
+function meshgrid(bd::AbstractBATS,
       plotrange::Vector = [-Inf32, Inf32, -Inf32, Inf32], plotinterval::Real = Inf32)
    x = bd.x
 
@@ -129,7 +130,7 @@ end
 """
 Find variable index in the BATSRUS data.
 """
-function findindex(bd::BATS, var::AbstractString)
+function findindex(bd::AbstractBATS, var::AbstractString)
    varIndex_ = findfirst(x->lowercase(x)==lowercase(var), bd.head.wname)
    isnothing(varIndex_) && error("$(var) not found in file header variables!")
 
@@ -146,7 +147,7 @@ function meshgrid(x, y)
    X, Y
 end
 
-@inline hasunit(bd::BATS) = startswith(bd.head.headline, "normalized") ? false : true
+@inline hasunit(bd::AbstractBATS) = startswith(bd.head.headline, "normalized") ? false : true
 
 """
 Adjust 2D plot ranges.
@@ -175,15 +176,16 @@ function interpolate2d_generalized_coords(X::T, Y::T, W::T,
 end
 
 """
-     interp1d(bd::BATS, var::AbstractString, loc::AbstractVector{<:AbstractFloat})
+     interp1d(bd::AbstractBATS, var::AbstractString, loc::AbstractVector{<:AbstractFloat})
 
 Interpolate `var` at spatial point `loc` in `bd`.
 """
 function interp1d(
-      bd::BATS{2, TV, TX, TW},
+      bd::AbstractBATS,
       var::AbstractString,
       loc::AbstractVector{<:AbstractFloat}
-) where {TV, TX, TW}
+)
+   bd.head.ndim != 2 && error("interp1d only works for 2D data!")
    @assert !bd.head.gencoord "Only accept structured grids!"
 
    v = getview(bd, var)
@@ -194,16 +196,17 @@ function interp1d(
 end
 
 """
-     interp1d(bd::BATS, var::AbstractString, point1::Vector, point2::Vector)
+     interp1d(bd::AbstractBATS, var::AbstractString, point1::Vector, point2::Vector)
 
 Interpolate `var` along a line from `point1` to `point2` in `bd`.
 """
 function interp1d(
-      bd::BATS{2, TV, TX, TW},
+      bd::AbstractBATS,
       var::AbstractString,
       point1::Vector,
       point2::Vector
-) where {TV, TX, TW}
+)
+   bd.head.ndim != 2 && error("interp1d only works for 2D data!")
    @assert !bd.head.gencoord "Only accept structured grids!"
 
    v = getview(bd, var)
@@ -232,22 +235,22 @@ slice1d(bd, var, icut::Int = 1, dir::Int = 2) = selectdim(bd[var], dir, icut)
 """
 Return view of variable `var` in `bd`.
 """
-function getview(bd::BATS{1, TV, TX, TW}, var) where {TV, TX, TW}
+function getview(bd::AbstractBATS, var)
    varIndex_ = findindex(bd, var)
 
-   v = @view bd.w[:, varIndex_]
-end
-
-function getview(bd::BATS{2, TV, TX, TW}, var) where {TV, TX, TW}
-   varIndex_ = findindex(bd, var)
-
-   v = @view bd.w[:, :, varIndex_]
+   if bd.head.ndim == 1
+      v = @view bd.w[:, varIndex_]
+   elseif bd.head.ndim == 2
+      v = @view bd.w[:, :, varIndex_]
+   else
+      error("not implemented!")
+   end
 end
 
 """
 Return value range of `var` in `bd`.
 """
-get_var_range(bd::BATS, var) = getview(bd, var) |> extrema
+get_var_range(bd::AbstractBATS, var) = getview(bd, var) |> extrema
 
 """
 Return mesh range of `bd`.
@@ -276,21 +279,21 @@ function get_range(x::Array{T, 2}) where T
    (xrange,)
 end
 
-function get_range(bd::BATS{2, TV, TX, TW}) where {TV, TX, TW}
-   x = bd.x
-   xrange = range(x[1, 1, 1], x[end, 1, 1], length = size(x, 1))
-   yrange = range(x[1, 1, 2], x[1, end, 2], length = size(x, 2))
-
-   xrange, yrange
-end
-
-function get_range(bd::BATS{3, TV, TX, TW}) where {TV, TX, TW}
-   x = bd.x
-   xrange = range(x[1, 1, 1, 1], x[end, 1, 1, 1], length = size(x, 1))
-   yrange = range(x[1, 1, 1, 2], x[1, end, 1, 2], length = size(x, 2))
-   zrange = range(x[1, 1, 1, 3], x[1, 1, end, 3], length = size(x, 3))
-
-   xrange, yrange, zrange
+function get_range(bd::AbstractBATS)
+   if bd.head.ndim == 2
+      x = bd.x
+      xrange = range(x[1, 1, 1], x[end, 1, 1], length = size(x, 1))
+      yrange = range(x[1, 1, 2], x[1, end, 2], length = size(x, 2))
+      return xrange, yrange
+   elseif bd.head.ndim == 3
+      x = bd.x
+      xrange = range(x[1, 1, 1, 1], x[end, 1, 1, 1], length = size(x, 1))
+      yrange = range(x[1, 1, 1, 2], x[1, end, 1, 2], length = size(x, 2))
+      zrange = range(x[1, 1, 1, 3], x[1, 1, end, 3], length = size(x, 3))
+      return xrange, yrange, zrange
+   else
+      error("not implemented!")
+   end
 end
 
 """

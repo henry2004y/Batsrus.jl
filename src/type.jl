@@ -38,10 +38,8 @@ struct BatsHead
    param::Vector{SubString{String}}
 end
 
-"""
-Batsrus data container, with `Dim` being the dimension of output.
-"""
-struct BATS{Dim, TV <: AbstractFloat, TX, TW} <: AbstractBATS{Dim, TV}
+"Cartesian grid data."
+struct BATSCartesian{Dim, TV <: AbstractFloat, TX, TW} <: AbstractBATS{Dim, TV}
    head::BatsHead
    list::FileList
    "Grid"
@@ -49,7 +47,7 @@ struct BATS{Dim, TV <: AbstractFloat, TX, TW} <: AbstractBATS{Dim, TV}
    "Variables"
    w::TW
 
-   function BATS(head, list, x::Array{TV, Dimp1}, w::Array{TV, Dimp1}) where {TV, Dimp1}
+   function BATSCartesian(head, list, x::Array{TV, Dimp1}, w::Array{TV, Dimp1}) where {TV, Dimp1}
       @assert head.ndim + 1 == Dimp1 "Dimension mismatch!"
       if head.ndim == 2
          xrange, yrange = get_range(x)
@@ -63,6 +61,32 @@ struct BATS{Dim, TV <: AbstractFloat, TX, TW} <: AbstractBATS{Dim, TV}
          (xrange,) = get_range(x)
          x = DimArray(x, (X(xrange), :dim))
          w = DimArray(w, (X(xrange), Dim{:var}(head.wname)))
+      end
+
+      new{head.ndim, TV, typeof(x), typeof(w)}(head, list, x, w)
+   end
+end
+
+"Unstructured grid data."
+struct BATSUnstructured{Dim, TV <: AbstractFloat, TX, TW} <: AbstractBATS{Dim, TV}
+   head::BatsHead
+   list::FileList
+   "Grid"
+   x::TX
+   "Variables"
+   w::TW
+
+   function BATSUnstructured(head, list, x::Array{TV, Dimp1}, w::Array{TV, Dimp1}) where {TV, Dimp1}
+      @assert head.ndim + 1 == Dimp1 "Dimension mismatch!"
+      if head.ndim == 2
+         x = DimArray(x, (X, Y, :dim))
+         w = DimArray(w, (X, Y, Dim{:var}(head.wname)))
+      elseif head.ndim == 3
+         x = DimArray(x, (X, Y, Z, :dim))
+         w = DimArray(w, (X, Y, Z, Dim{:var}(head.wname)))
+      elseif head.ndim == 1
+         x = DimArray(x, (X, :dim))
+         w = DimArray(w, (X, Dim{:var}(head.wname)))
       end
 
       new{head.ndim, TV, typeof(x), typeof(w)}(head, list, x, w)

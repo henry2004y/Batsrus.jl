@@ -3,7 +3,7 @@
 """
 Conversion for 1D plots
 """
-function Makie.convert_arguments(P::Makie.PointBased, bd::BATS, var::String)
+function Makie.convert_arguments(P::Makie.PointBased, bd::AbstractBATS, var::String)
    var_ = findindex(bd, var)
    if hasunit(bd)
       unitx = getunit(bd, bd.head.wname[1])
@@ -21,7 +21,7 @@ end
 """
 Conversion for 2D plots.
 """
-function Makie.convert_arguments(P::Makie.GridBased, bd::BATS, var::String;
+function Makie.convert_arguments(P::Makie.GridBased, bd::AbstractBATS, var::String;
       plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1)
    x, y, w = interp2d(bd, var, plotrange, plotinterval)
 

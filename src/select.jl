@@ -6,8 +6,9 @@
 Get 2D plane cut in orientation `dir` for `var` out of 3D box `data` within `plotrange`.
 The returned 2D data lies in the `sequence` plane from - to + in `dir`.
 """
-function cutdata(bd::BATS, var::AbstractString;
+function cutdata(bd::AbstractBATS, var::AbstractString;
       plotrange = [-Inf, Inf, -Inf, Inf], dir::String = "x", sequence::Int = 1)
+   bd.head.ndim != 3 && error("cutdata only works for 3D data!")
    var_ = findfirst(x->lowercase(x)==lowercase(var), bd.head.wname)
    isempty(var_) && error("$(var) not found in header variables!")
 
@@ -165,7 +166,7 @@ function subvolume(x, y, z, u, v, w, limits)
 end
 
 """
-     getvar(bd::BATS, var::AbstractString) -> Array
+     getvar(bd::AbstractBATS, var::AbstractString) -> Array
 
 Return variable data from string `var`. This is also supported via direct indexing,
 
@@ -175,31 +176,31 @@ Return variable data from string `var`. This is also supported via direct indexi
 bd["rho"]
 ```
 """
-function getvar(bd::BATS{ndim, TV, TX, TW}, var::AbstractString) where {ndim, TV, TX, TW}
+function getvar(bd::AbstractBATS, var::AbstractString)
    w = @view bd.w[var = At(lowercase(var))]
 end
 
 @inline Base.@propagate_inbounds Base.getindex(
-   bd::BATS, var::AbstractString) = getvar(bd, var)
+   bd::AbstractBATS, var::AbstractString) = getvar(bd, var)
 
 """
-     fill_vector_from_scalars(bd::BATS, var)
+     fill_vector_from_scalars(bd::AbstractBATS, var)
 
 Construct vector of `var` from its scalar components. Alternatively, check
 [`get_vectors`](@ref) for returning vector components as saparate arrays.
 """
-function fill_vector_from_scalars(bd::BATS, var)
+function fill_vector_from_scalars(bd::AbstractBATS, var)
    vt = get_vectors(bd, var)
    Rpost = CartesianIndices(size(bd.x)[1:(end - 1)])
    v = [vt[iv][i] for iv in 1:3, i in Rpost]
 end
 
 """
-     get_magnitude2(bd::BATS, var)
+     get_magnitude2(bd::AbstractBATS, var)
 
 Calculate the magnitude square of vector `var`. See [`get_vectors`](@ref) for the options.
 """
-function get_magnitude2(bd::BATS, var = :B)
+function get_magnitude2(bd::AbstractBATS, var = :B)
    vx, vy, vz = get_vectors(bd, var)
    v = similar(vx.data)
 
@@ -211,11 +212,11 @@ function get_magnitude2(bd::BATS, var = :B)
 end
 
 """
-     get_magnitude(bd::BATS, var)
+     get_magnitude(bd::AbstractBATS, var)
 
 Calculate the magnitude of vector `var`. See [`get_vectors`](@ref) for the options.
 """
-function get_magnitude(bd::BATS, var = :B)
+function get_magnitude(bd::AbstractBATS, var = :B)
    vx, vy, vz = get_vectors(bd, var)
    v = similar(vx.data)
 
@@ -227,11 +228,11 @@ function get_magnitude(bd::BATS, var = :B)
 end
 
 """
-     get_vectors(bd::BATS, var)
+     get_vectors(bd::AbstractBATS, var)
 
 Return a tuple of vectors of `var`. `var` can be `:B`, `:E`, `:U`, `:U0`, or `:U1`.
 """
-function get_vectors(bd::BATS, var)
+function get_vectors(bd::AbstractBATS, var)
    if var == :B
       vx, vy, vz = bd["Bx"], bd["By"], bd["Bz"]
    elseif var == :E
@@ -248,11 +249,12 @@ function get_vectors(bd::BATS, var)
 end
 
 """
-     get_anisotropy(bd::BATS, species=0)
+     get_anisotropy(bd::AbstractBATS, species=0)
 
 Calculate the pressure anisotropy for `species`, indexing from 0.
 """
-function get_anisotropy(bd::BATS{2, TV, TX, TW}, species = 0) where {TV, TX, TW}
+function get_anisotropy(bd::AbstractBATS, species = 0)
+   bd.head.ndim != 2 && error("get_anisotropy only works for 2D data!")
    Bx, By, Bz = bd["Bx"], bd["By"], bd["Bz"]
    # Rotate the pressure tensor to align the 3rd direction with B
    pop = string(species)
@@ -282,7 +284,7 @@ end
 """
 Return the convection electric field from PIC outputs.
 """
-function get_convection_E(bd::BATS)
+function get_convection_E(bd::AbstractBATS)
    Bx, By, Bz = get_vectors(bd, :B)
    # Let us use H+ velocities as the ion bulk velocity and ignore heavy ions
    uix, uiy, uiz = get_vectors(bd, :U1)
@@ -303,7 +305,7 @@ end
 """
 Return the Hall electric field from PIC outputs.
 """
-function get_hall_E(bd::BATS)
+function get_hall_E(bd::AbstractBATS)
    Bx, By, Bz = get_vectors(bd, :B)
    uex, uey, uez = get_vectors(bd, :U0)
    # Let us use H+ velocities as the ion bulk velocity and ignore heavy ions
