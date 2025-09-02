@@ -252,6 +252,30 @@ get_var_range(bd::BATS, var) = getview(bd, var) |> extrema
 """
 Return mesh range of `bd`.
 """
+function get_range(x::Array{T, 3}) where T
+   x_coords = @view x[:,:,1]
+   y_coords = @view x[:,:,2]
+   xrange = range(extrema(x_coords)..., length = size(x, 1))
+   yrange = range(extrema(y_coords)..., length = size(x, 2))
+   xrange, yrange
+end
+
+function get_range(x::Array{T, 4}) where T
+   x_coords = @view x[:,:,:,1]
+   y_coords = @view x[:,:,:,2]
+   z_coords = @view x[:,:,:,3]
+   xrange = range(extrema(x_coords)..., length = size(x, 1))
+   yrange = range(extrema(y_coords)..., length = size(x, 2))
+   zrange = range(extrema(z_coords)..., length = size(x, 3))
+   xrange, yrange, zrange
+end
+
+function get_range(x::Array{T, 2}) where T
+   x_coords = @view x[:,1]
+   xrange = range(extrema(x_coords)..., length = size(x, 1))
+   (xrange,)
+end
+
 function get_range(bd::BATS{2, TV, TX, TW}) where {TV, TX, TW}
    x = bd.x
    xrange = range(x[1, 1, 1], x[end, 1, 1], length = size(x, 1))
