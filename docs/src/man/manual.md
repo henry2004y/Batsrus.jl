@@ -55,6 +55,20 @@ point2 = Float32[10.0, 1.0]
 w = interp1d(bd, "rho", point1, point2)
 ```
 
+```julia
+bd["rho"][X=-10 .. 10, Y=Near(0.0)]
+```
+
+- Extracting data using DimensionalData
+
+We can also use [Selectors](https://rafaqz.github.io/DimensionalData.jl/stable/selectors) from DimensionalData for extracting data. Note that the Selectors need to be imported from Batsrus.jl; alternatively you can simply `using DimensionalData`.
+
+```julia
+bd["rho"][X=At(0.0), Y=At(0.0)]
+bd["rho"][X=-10 .. 10, Y=Near(0.5)]
+bd["rho"][X=-10 .. 10, Y=-0.5 .. 0.5]
+```
+
 - Derived variables
 
 We provide utility methods `get_magnitude`, `get_magnitude2`, and `fill_vector_from_scalars` for vector processing:
