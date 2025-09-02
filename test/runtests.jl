@@ -2,6 +2,7 @@
 
 using Batsrus, Test, SHA, LazyArtifacts
 using Batsrus.UnitfulBatsrus, Unitful
+using Batsrus: At, Near # DimensionalData
 using RecipesBase
 using Suppressor: @capture_out, @capture_err, @suppress_out, @suppress_err
 using CairoMakie
@@ -67,6 +68,8 @@ end
       w = slice1d(bd, "rho", 1, 1)
       @test sum(w) == 4.0f0
       @test get_var_range(bd, "rho") == (0.11626893f0, 1.0f0)
+      @test length(bd["rho"][X=-10 .. 10, Y=Near(0.9)]) == 20
+      @test bd["rho"][X=At(0.5), Y=At(0.5)] == 0.6940014f0
 
       file = "z=0_fluid_region0_0_t00001640_n00010142.out"
       bd = load(joinpath(datapath, file))

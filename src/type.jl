@@ -51,15 +51,34 @@ struct BATS{Dim, TV <: AbstractFloat, TX, TW} <: AbstractBATS{Dim, TV}
 
    function BATS(head, list, x::Array{TV, Dimp1}, w::Array{TV, Dimp1}) where {TV, Dimp1}
       @assert head.ndim + 1 == Dimp1 "Dimension mismatch!"
-      if head.ndim == 2
-         x = DimArray(x, (X, Y, :dim))
-         w = DimArray(w, (X, Y, Dim{:var}(head.wname)))
-      elseif head.ndim == 3
-         x = DimArray(x, (X, Y, Z, :dim))
-         w = DimArray(w, (X, Y, Z, Dim{:var}(head.wname)))
-      elseif head.ndim == 1
-         x = DimArray(x, (X, :dim))
-         w = DimArray(w, (X, Dim{:var}(head.wname)))
+      if head.gencoord
+         if head.ndim == 2
+            x = DimArray(x, (X, Y, :dim))
+            w = DimArray(w, (X, Y, Dim{:var}(head.wname)))
+         elseif head.ndim == 3
+            x = DimArray(x, (X, Y, Z, :dim))
+            w = DimArray(w, (X, Y, Z, Dim{:var}(head.wname)))
+         elseif head.ndim == 1
+            x = DimArray(x, (X, :dim))
+            w = DimArray(w, (X, Dim{:var}(head.wname)))
+         end
+      else
+         if head.ndim == 2
+            xrange = range(x[1, 1, 1], x[end, 1, 1], length = size(x, 1))
+            yrange = range(x[1, 1, 2], x[1, end, 2], length = size(x, 2))
+            x = DimArray(x, (X(xrange), Y(yrange), :dim))
+            w = DimArray(w, (X(xrange), Y(yrange), Dim{:var}(head.wname)))
+         elseif head.ndim == 3
+            xrange = range(x[1, 1, 1, 1], x[end, 1, 1, 1], length = size(x, 1))
+            yrange = range(x[1, 1, 1, 2], x[1, end, 1, 2], length = size(x, 2))
+            zrange = range(x[1, 1, 1, 3], x[1, 1, end, 3], length = size(x, 3))
+            x = DimArray(x, (X(xrange), Y(yrange), Z(zrange), :dim))
+            w = DimArray(w, (X(xrange), Y(yrange), Z(zrange), Dim{:var}(head.wname)))
+         elseif head.ndim == 1
+            xrange = range(x[1, 1], x[end, 1], length = size(x, 1))
+            x = DimArray(x, (X(xrange), :dim))
+            w = DimArray(w, (X(xrange), Dim{:var}(head.wname)))
+         end
       end
 
       new{head.ndim, TV, typeof(x), typeof(w)}(head, list, x, w)
