@@ -201,7 +201,7 @@ Calculate the magnitude square of vector `var`. See [`get_vectors`](@ref) for th
 """
 function get_magnitude2(bd::BATS, var = :B)
    vx, vy, vz = get_vectors(bd, var)
-   v = similar(vx.data)
+   v = similar(vx)
 
    @inbounds @simd for i in eachindex(v)
       v[i] = vx[i]^2 + vy[i]^2 + vz[i]^2
@@ -217,7 +217,7 @@ Calculate the magnitude of vector `var`. See [`get_vectors`](@ref) for the optio
 """
 function get_magnitude(bd::BATS, var = :B)
    vx, vy, vz = get_vectors(bd, var)
-   v = similar(vx.data)
+   v = similar(vx)
 
    @inbounds @simd for i in eachindex(v)
       v[i] = √(vx[i]^2 + vy[i]^2 + vz[i]^2)
