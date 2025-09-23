@@ -201,7 +201,7 @@ Calculate the magnitude square of vector `var`. See [`get_vectors`](@ref) for th
 """
 function get_magnitude2(bd::BATS, var = :B)
    vx, vy, vz = get_vectors(bd, var)
-   v = similar(vx.data)
+   v = similar(vx)
 
    @inbounds @simd for i in eachindex(v)
       v[i] = vx[i]^2 + vy[i]^2 + vz[i]^2
@@ -217,7 +217,7 @@ Calculate the magnitude of vector `var`. See [`get_vectors`](@ref) for the optio
 """
 function get_magnitude(bd::BATS, var = :B)
    vx, vy, vz = get_vectors(bd, var)
-   v = similar(vx.data)
+   v = similar(vx)
 
    @inbounds @simd for i in eachindex(v)
       v[i] = √(vx[i]^2 + vy[i]^2 + vz[i]^2)
@@ -263,7 +263,7 @@ function get_anisotropy(bd::BATS{2, TV, TX, TW}, species = 0) where {TV, TX, TW}
    Pxz = bd["pXZS" * pop]
    Pyz = bd["pYZS" * pop]
    #TODO: Generalize to n-dimension with CartesianIndices
-   Paniso = similar(Pxx.data)
+   Paniso = similar(Pxx)
 
    @inbounds for j in axes(Pxx, 2), i in axes(Pxx, 1)
 
