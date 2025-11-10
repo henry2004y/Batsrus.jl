@@ -12,14 +12,14 @@ Read BATSRUS output files. Stores the `npict` snapshot from an ascii or binary d
 function load(file::AbstractString; npict::Int = 1, verbose::Bool = false)
    filelist, fileID, pictsize = getfiletype(file)
 
-   verbose && @info "filename=$(filelist.name)\n"*"npict=$(filelist.npictinfiles)"
+   verbose && @info "filename=$(filelist.name)\n" * "npict=$(filelist.npictinfiles)"
 
    if filelist.npictinfiles - npict < 0
       throw(ArgumentError("Select snapshot $npict out of range $(filelist.npictinfiles)!"))
    end
    seekstart(fileID) # Rewind to start
    # Jump to the npict-th snapshot
-   skip(fileID, pictsize*(npict-1))
+   skip(fileID, pictsize * (npict - 1))
 
    head = getfilehead(fileID, filelist)
    # Read data
@@ -45,30 +45,29 @@ end
 Read information from log file.
 """
 function readlogdata(file::AbstractString)
-   f = open(file)
-   nLine = countlines(f) - 2
-   seekstart(f)
-   headline = readline(f)
-   variable = split(readline(f))
-   ndim = 1
-   it = 0
-   t = 0.0
-   gencoord = false
-   nx = 1
-   nw = length(variable)
+   open(file) do f
+      nLine = countlines(f) - 2
+      seekstart(f)
+      headline = readline(f)
+      variable = split(readline(f))
+      ndim = 1
+      it = 0
+      t = 0.0
+      gencoord = false
+      nx = 1
+      nw = length(variable)
 
-   data = zeros(nw, nLine)
-   @inbounds for i in 1:nLine
-      line = split(readline(f))
-      data[:, i] = Parsers.parse.(Float64, line)
+      data = zeros(nw, nLine)
+      @inbounds for i in 1:nLine
+         line = split(readline(f))
+         data[:, i] = Parsers.parse.(Float64, line)
+      end
+
+      head = (ndim = ndim, headline = headline, it = it, time = t, gencoord = gencoord,
+         nw = nw, nx = nx, variable = variable)
+
+      return head, data
    end
-
-   close(f)
-
-   head = (ndim = ndim, headline = headline, it = it, time = t, gencoord = gencoord,
-      nw = nw, nx = nx, variable = variable)
-
-   head, data
 end
 
 """
@@ -84,12 +83,45 @@ head, data, connectivity = readtecdata(file)
 ```
 """
 function readtecdata(file::AbstractString; verbose::Bool = false)
-   f = open(file)
+   open(file) do f
+      head, pt0 = read_tecplot_header(f)
 
+      data = Array{Float32, 2}(undef, length(head.variable), head.nNode)
+
+      if head.nDim == 3
+         connectivity = Array{Int32, 2}(undef, 8, head.nCell)
+      elseif head.nDim == 2
+         connectivity = Array{Int32, 2}(undef, 4, head.nCell)
+      end
+
+      # Check file type
+      isBinary = false
+      try
+         Parsers.parse.(Float32, split(readline(f)))
+      catch
+         isBinary = true
+         verbose && @info "reading binary file"
+      end
+
+      seek(f, pt0)
+
+      if isBinary
+         read_tecplot_data_binary!(f, data, connectivity)
+      else
+         read_tecplot_data_ascii!(f, data, connectivity)
+      end
+
+      return head, data, connectivity
+   end
+end
+
+function read_tecplot_header(f)
    nDim = 3
    nNode = Int32(0)
    nCell = Int32(0)
    ET = ""
+   title = ""
+   VARS = []
 
    # Read Tecplot header
    ln = readline(f) |> strip
@@ -119,7 +151,7 @@ function readtecdata(file::AbstractString; verbose::Bool = false)
          zoneline = split(ln, ", ", keepempty = false)
       else # if the ZONE line has nothing, this won't work!
          zoneline = split(ln[6:end], ", ", keepempty = false)
-         replace(zoneline[1], '"'=>"") # Remove the quotes in T
+         replace(zoneline[1], '"' => "") # Remove the quotes in T
       end
       for zline in zoneline
          name, value = split(zline, '=', keepempty = false)
@@ -169,48 +201,36 @@ function readtecdata(file::AbstractString; verbose::Bool = false)
 
    seek(f, pt0)
 
-   data = Array{Float32, 2}(undef, length(VARS), nNode)
-
-   if nDim == 3
-      connectivity = Array{Int32, 2}(undef, 8, nCell)
-   elseif nDim == 2
-      connectivity = Array{Int32, 2}(undef, 4, nCell)
-   end
-
-   isBinary = false
-   try
-      Parsers.parse.(Float32, split(readline(f)))
-   catch
-      isBinary = true
-      verbose && @info "reading binary file"
-   end
-
-   seek(f, pt0)
-
-   if isBinary
-      @inbounds for i in 1:nNode
-         read!(f, @view data[:, i])
-      end
-      @inbounds for i in 1:nCell
-         read!(f, @view connectivity[:, i])
-      end
-   else
-      @inbounds for i in 1:nNode
-         x = readline(f)
-         data[:, i] .= Parsers.parse.(Float32, split(x))
-      end
-      @inbounds for i in 1:nCell
-         x = readline(f)
-         connectivity[:, i] .= Parsers.parse.(Int32, split(x))
-      end
-   end
-
-   close(f)
-
    head = (variable = VARS, nNode = nNode, nCell = nCell, nDim = nDim, ET = ET,
       title = title, auxdataname = auxdataname, auxdata = auxdata)
 
-   head, data, connectivity
+   return head, pt0
+end
+
+function read_tecplot_data_binary!(f, data, connectivity)
+   nNode = size(data, 2)
+   nCell = size(connectivity, 2)
+
+   @inbounds for i in 1:nNode
+      read!(f, @view data[:, i])
+   end
+   @inbounds for i in 1:nCell
+      read!(f, @view connectivity[:, i])
+   end
+end
+
+function read_tecplot_data_ascii!(f, data, connectivity)
+   nNode = size(data, 2)
+   nCell = size(connectivity, 2)
+
+   @inbounds for i in 1:nNode
+      x = readline(f)
+      data[:, i] .= Parsers.parse.(Float32, split(x))
+   end
+   @inbounds for i in 1:nCell
+      x = readline(f)
+      connectivity[:, i] .= Parsers.parse.(Int32, split(x))
+   end
 end
 
 """
@@ -288,7 +308,7 @@ function getfilehead(fileID::IOStream, filelist::FileList)
    elseif type ∈ (Real4Bat, Real8Bat)
       skip(fileID, TAG)
       headline = rstrip(String(read(fileID, lenstr)))
-      skip(fileID, 2*TAG)
+      skip(fileID, 2 * TAG)
       it = read(fileID, Int32)
       t = read(fileID, Float32)
       ndim = read(fileID, Int32)
@@ -296,14 +316,14 @@ function getfilehead(fileID::IOStream, filelist::FileList)
       ndim = abs(ndim)
       neqpar = read(fileID, Int32)
       nw = read(fileID, Int32)
-      skip(fileID, 2*TAG)
+      skip(fileID, 2 * TAG)
       nx = zeros(Int32, ndim)
       read!(fileID, nx)
-      skip(fileID, 2*TAG)
+      skip(fileID, 2 * TAG)
       if neqpar > 0
          eqpar = zeros(Float32, neqpar)
          read!(fileID, eqpar)
-         skip(fileID, 2*TAG)
+         skip(fileID, 2 * TAG)
       end
       varname = String(read(fileID, lenstr))
       skip(fileID, TAG)
@@ -336,18 +356,18 @@ Return the size in bytes for one snapshot.
 function getfilesize(fileID::IOStream, lenstr::Int32, ::Val{Real4Bat})
    pointer0 = position(fileID) # Record header start location
 
-   skip(fileID, TAG + lenstr + 2*TAG + sizeof(Int32) + sizeof(Float32))
+   skip(fileID, TAG + lenstr + 2 * TAG + sizeof(Int32) + sizeof(Float32))
    ndim = abs(read(fileID, Int32))
    nt = read(fileID, Int32)
    nw = read(fileID, Int32)
-   skip(fileID, 2*TAG)
+   skip(fileID, 2 * TAG)
    nx = Vector{Int32}(undef, ndim)
    read!(fileID, nx)
-   skip(fileID, 2*TAG)
+   skip(fileID, 2 * TAG)
    if nt > 0
       tmp = zeros(Float32, nt)
       read!(fileID, tmp)
-      skip(fileID, 2*TAG)
+      skip(fileID, 2 * TAG)
    end
    read(fileID, lenstr)
    skip(fileID, TAG)
@@ -355,24 +375,24 @@ function getfilesize(fileID::IOStream, lenstr::Int32, ::Val{Real4Bat})
    pointer1 = position(fileID)
    headlen = pointer1 - pointer0 # header length
    # Calculate the snapshot size = header + data + recordmarks
-   pictsize = headlen + 8*(1 + nw) + 4*(ndim + nw)*prod(nx)
+   pictsize = headlen + 8 * (1 + nw) + 4 * (ndim + nw) * prod(nx)
 end
 
 function getfilesize(fileID::IOStream, lenstr::Int32, ::Val{Real8Bat})
    pointer0 = position(fileID) # Record header start location
 
-   skip(fileID, TAG + lenstr + 2*TAG + sizeof(Int32) + sizeof(Float32))
+   skip(fileID, TAG + lenstr + 2 * TAG + sizeof(Int32) + sizeof(Float32))
    ndim = abs(read(fileID, Int32))
    nt = read(fileID, Int32)
    nw = read(fileID, Int32)
-   skip(fileID, 2*TAG)
+   skip(fileID, 2 * TAG)
    nx = Vector{Int32}(undef, ndim)
    read!(fileID, nx)
-   skip(fileID, 2*TAG)
+   skip(fileID, 2 * TAG)
    if nt > 0
       tmp = zeros(Float32, nt)
       read!(fileID, tmp)
-      skip(fileID, 2*TAG)
+      skip(fileID, 2 * TAG)
    end
    read(fileID, lenstr)
    skip(fileID, TAG)
@@ -380,7 +400,7 @@ function getfilesize(fileID::IOStream, lenstr::Int32, ::Val{Real8Bat})
    pointer1 = position(fileID)
    headlen = pointer1 - pointer0 # header length
    # Calculate the snapshot size = header + data + recordmarks
-   pictsize = headlen + 8*(1 + nw) + 8*(ndim + nw)*prod(nx)
+   pictsize = headlen + 8 * (1 + nw) + 8 * (ndim + nw) * prod(nx)
 end
 
 function getfilesize(fileID::IOStream, lenstr::Int32, ::Val{AsciiBat})
@@ -400,7 +420,7 @@ function getfilesize(fileID::IOStream, lenstr::Int32, ::Val{AsciiBat})
    pointer1 = position(fileID)
    headlen = pointer1 - pointer0 # header length
    # Calculate the snapshot size = header + data + recordmarks
-   pictsize = headlen + (18*(ndim + nw) + 1)*prod(nx)
+   pictsize = headlen + (18 * (ndim + nw) + 1) * prod(nx)
 end
 
 getfilesize(fileID::IOStream, lenstr::Int32, ::Val{LogBat}) = 1
@@ -458,31 +478,31 @@ Read binary format coordinates and data values.
 """
 function getbinary!(x::Array{T, 2}, w, fileID::IOStream) where T
    read!(fileID, x)
-   skip(fileID, 2*TAG)
+   skip(fileID, 2 * TAG)
    dimlast = 2
    @inbounds for iw in axes(w, dimlast)
       read!(fileID, selectdim(w, dimlast, iw))
-      skip(fileID, 2*TAG)
+      skip(fileID, 2 * TAG)
    end
 end
 
 function getbinary!(x::Array{T, 3}, w, fileID::IOStream) where T
    read!(fileID, x)
-   skip(fileID, 2*TAG)
+   skip(fileID, 2 * TAG)
    dimlast = 3
    @inbounds for iw in axes(w, dimlast)
       read!(fileID, selectdim(w, dimlast, iw))
-      skip(fileID, 2*TAG)
+      skip(fileID, 2 * TAG)
    end
 end
 
 function getbinary!(x::Array{T, 4}, w, fileID::IOStream) where T
    read!(fileID, x)
-   skip(fileID, 2*TAG)
+   skip(fileID, 2 * TAG)
    dimlast = 4
    @inbounds for iw in axes(w, dimlast)
       read!(fileID, selectdim(w, dimlast, iw))
-      skip(fileID, 2*TAG)
+      skip(fileID, 2 * TAG)
    end
 end
 
@@ -507,16 +527,16 @@ function setunits(head::BatsHead, type; distance = 1.0, mp = 1.0, me = 1.0)
    eqpar = head.eqpar
    param = head.param
 
-   mu0SI = 4π*1e-7      # H/m
+   mu0SI = 4π * 1e-7      # H/m
    cSI = 2.9978e8       # speed of light, [m/s]
    mpSI = 1.6726e-27     # kg
    eSI = 1.602e-19      # elementary charge, [C]
    AuSI = 149597870700   # m
    RsSI = 6.957e8        # m
    Mi = 1.0            # Ion mass, [amu]
-   Me = 1.0/1836.15    # Electron mass, [amu]
-   gamma = 5/3            # Adiabatic index for first fluid
-   gammae = 5/3            # Adiabatic index for electrons
+   Me = 1.0 / 1836.15    # Electron mass, [amu]
+   gamma = 5 / 3            # Adiabatic index for first fluid
+   gammae = 5 / 3            # Adiabatic index for electrons
    kbSI = 1.38064852e-23 # Boltzmann constant, [m2 kg s-2 K-1]
    e0SI = 8.8542e-12     # [F/m]
 
@@ -554,7 +574,7 @@ function setunits(head::BatsHead, type; distance = 1.0, mp = 1.0, me = 1.0)
       uSI = 0.01            # cm/s
       pSI = 0.1             # dyne/cm^2
       bSI = 1.0e-4          # G
-      jSI = 10*cSI          # Fr/s/cm^2
+      jSI = 10 * cSI          # Fr/s/cm^2
    elseif typeunit == "PIC"
       # Normalized PIC units
       xSI = 1.0             # cm
@@ -572,26 +592,26 @@ function setunits(head::BatsHead, type; distance = 1.0, mp = 1.0, me = 1.0)
       uSI = 1.0             # velocity unit in SI
       pSI = 1.0             # pressure unit in SI
       bSI = √mu0SI     # magnetic unit in SI
-      jSI = 1/√(mu0SI)   # current unit in SI
+      jSI = 1 / √(mu0SI)   # current unit in SI
       c0 = 1.0             # speed of light (for Boris correction)
    elseif typeunit == "PLANETARY"
       xSI = 6378000         # Earth radius [default planet]
       tSI = 1.0             # s
-      rhoSI = mpSI*1e6        # mp/cm^3
+      rhoSI = mpSI * 1e6        # mp/cm^3
       uSI = 1e3             # km/s
       pSI = 1e-9            # nPa
       bSI = 1e-9            # nT
       jSI = 1e-6            # muA/m^2
-      c0 = cSI/uSI         # speed of light in velocity units
+      c0 = cSI / uSI         # speed of light in velocity units
    elseif typeunit == "OUTERHELIO"
       xSI = AuSI            # AU
       tSI = 1.0             # s
-      rhoSI = mpSI*1e6        # mp/cm^3
+      rhoSI = mpSI * 1e6        # mp/cm^3
       uSI = 1e3             # km/s
       pSI = 1e-1            # dyne/cm^2
       bSI = 1e-9            # nT
       jSI = 1e-6            # muA/m^2
-      c0 = cSI/uSI         # speed of light in velocity units
+      c0 = cSI / uSI         # speed of light in velocity units
    elseif typeunit == "SOLAR"
       xSI = RsSI            # radius of the Sun
       tSI = 1.0             # s
@@ -600,7 +620,7 @@ function setunits(head::BatsHead, type; distance = 1.0, mp = 1.0, me = 1.0)
       pSI = 1e-1            # dyne/cm^2
       bSI = 1e-4            # G
       jSI = 1e-6            # muA/m^2
-      c0 = cSI/uSI         # speed of light in velocity units
+      c0 = cSI / uSI         # speed of light in velocity units
    else
       throw(ArgumentError("invalid typeunit=$(typeunit)"))
    end
@@ -660,40 +680,40 @@ function setunits(head::BatsHead, type; distance = 1.0, mp = 1.0, me = 1.0)
 
    # Calculate convenient conversion factors
    if typeunit == "NORMALIZED"
-      ti0 = 1.0/Mi            # T      = p/rho*Mi           = ti0*p/rho
+      ti0 = 1.0 / Mi            # T      = p/rho*Mi           = ti0*p/rho
       cs0 = 1.0               # cs     = sqrt(gamma*p/rho)  = sqrt(gs*p/rho)
       mu0A = 1.0               # vA     = sqrt(b/rho)        = sqrt(bb/mu0A/rho)
       mu0 = 1.0               # beta   = p/(bb/2)           = p/(bb/(2*mu0))
       uH0 = Mi                # uH     = j/rho*Mi           = uH0*j/rho
-      op0 = 1.0/Mi            # omegap = sqrt(rho)/Mi       = op0*sqrt(rho)
-      oc0 = 1.0/Mi            # omegac = b/Mi               = oc0*b
+      op0 = 1.0 / Mi            # omegap = sqrt(rho)/Mi       = op0*sqrt(rho)
+      oc0 = 1.0 / Mi            # omegac = b/Mi               = oc0*b
       rg0 = √Mi               # rg = sqrt(p/rho)/b*sqrt(Mi) = rg0*sqrt(p/rho)/b
-      di0 = c0*Mi             # di = c0/sqrt(rho)*Mi        = di0/sqrt(rho)
+      di0 = c0 * Mi             # di = c0/sqrt(rho)*Mi        = di0/sqrt(rho)
       ld0 = Mi                # ld = sqrt(p)/(rho*c0)*Mi    = ld0*sqrt(p)/rho
    elseif typeunit == "PIC"
-      ti0 = 1.0/Mi            # T      = p/rho*Mi           = ti0*p/rho
+      ti0 = 1.0 / Mi            # T      = p/rho*Mi           = ti0*p/rho
       cs0 = 1.0               # cs     = sqrt(gamma*p/rho)  = sqrt(gs*p/rho)
-      mu0A = 4*pi              # vA     = sqrt(b/(4*!pi*rho))= sqrt(bb/mu0A/rho)
-      mu0 = 4*pi              # beta   = p/(bb/(8*!pi))     = p/(bb/(2*mu0))
+      mu0A = 4 * pi              # vA     = sqrt(b/(4*!pi*rho))= sqrt(bb/mu0A/rho)
+      mu0 = 4 * pi              # beta   = p/(bb/(8*!pi))     = p/(bb/(2*mu0))
       uH0 = Mi                # uH     = j/rho*Mi           = uH0*j/rho
-      op0 = √(4π)/Mi          # omegap = sqrt(4*!pi*rho)/Mi = op0*sqrt(rho)
-      oc0 = 1.0/Mi            # omegac = b/Mi               = oc0*b
+      op0 = √(4π) / Mi          # omegap = sqrt(4*!pi*rho)/Mi = op0*sqrt(rho)
+      oc0 = 1.0 / Mi            # omegac = b/Mi               = oc0*b
       rg0 = √Mi               # rg = sqrt(p/rho)/b*sqrt(Mi) = rg0*sqrt(p/rho)/b
-      di0 = 1.0/√(4π)         # di = 1/sqrt(4*!pi*rho)*Mi   = di0/sqrt(rho)
-      ld0 = 1.0/√(4π)         # ld = sqrt(p/(4*!pi))/rho*Mi = ld0*sqrt(p)/rho
+      di0 = 1.0 / √(4π)         # di = 1/sqrt(4*!pi*rho)*Mi   = di0/sqrt(rho)
+      ld0 = 1.0 / √(4π)         # ld = sqrt(p/(4*!pi))/rho*Mi = ld0*sqrt(p)/rho
    else
-      qom = eSI/(Mi*mpSI);
-      moq = 1/qom
-      ti0 = mpSI/kbSI*pSI/rhoSI*Mi       # T[K]=p/(nk) = ti0*p/rho
-      cs0 = pSI/rhoSI/uSI^2              # cs          = sqrt(gs*p/rho)
-      mu0A = uSI^2*mu0SI*rhoSI*bSI^(-2)   # vA          = sqrt(bb/(mu0A*rho))
-      mu0 = mu0SI*pSI*bSI^(-2)           # beta        = p/(bb/(2*mu0))
-      uH0 = moq*jSI/rhoSI/uSI            # uH=j/(ne)   = uH0*j/rho
-      op0 = qom*√(rhoSI/e0SI)*tSI        # omegap      = op0*sqrt(rho)
-      oc0 = qom*bSI*tSI                  # omegac      = oc0*b
-      rg0 = moq*√(pSI/rhoSI)/bSI/xSI/√(Mi)    # rg     = rg0*sqrt(p/rho)/b
-      di0 = cSI/(op0/tSI)/xSI                 # di=c/omegap = di0/sqrt(rho)
-      ld0 = moq*√(pSI)/rhoSI/xSI              # ld          = ld0*sqrt(p)/rho
+      qom = eSI / (Mi * mpSI)
+      moq = 1 / qom
+      ti0 = mpSI / kbSI * pSI / rhoSI * Mi       # T[K]=p/(nk) = ti0*p/rho
+      cs0 = pSI / rhoSI / uSI^2              # cs          = sqrt(gs*p/rho)
+      mu0A = uSI^2 * mu0SI * rhoSI * bSI^(-2)   # vA          = sqrt(bb/(mu0A*rho))
+      mu0 = mu0SI * pSI * bSI^(-2)           # beta        = p/(bb/(2*mu0))
+      uH0 = moq * jSI / rhoSI / uSI            # uH=j/(ne)   = uH0*j/rho
+      op0 = qom * √(rhoSI / e0SI) * tSI        # omegap      = op0*sqrt(rho)
+      oc0 = qom * bSI * tSI                  # omegac      = oc0*b
+      rg0 = moq * √(pSI / rhoSI) / bSI / xSI / √(Mi)    # rg     = rg0*sqrt(p/rho)/b
+      di0 = cSI / (op0 / tSI) / xSI                 # di=c/omegap = di0/sqrt(rho)
+      ld0 = moq * √(pSI) / rhoSI / xSI              # ld          = ld0*sqrt(p)/rho
    end
 
    return true
