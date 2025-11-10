@@ -146,7 +146,7 @@ function readtecdata(file::AbstractString; verbose::Bool = false)
    auxdata = Union{Int32, String}[]
    pt0 = position(f)
 
-   while startswith(ln, "AUXDATA") || startswith(ln, "DT")
+   while startswith(ln, "AUXDATA")
       name, value = split(ln, '"', keepempty = false)
       name = string(name[9:(end - 1)])
       str = string(strip(value))
@@ -161,6 +161,10 @@ function readtecdata(file::AbstractString; verbose::Bool = false)
 
       pt0 = position(f)
       ln = readline(f) |> strip
+   end
+
+   if startswith(ln, "DT")
+      pt0 = position(f)
    end
 
    seek(f, pt0)
