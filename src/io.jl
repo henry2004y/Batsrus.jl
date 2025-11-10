@@ -45,30 +45,29 @@ end
 Read information from log file.
 """
 function readlogdata(file::AbstractString)
-   f = open(file)
-   nLine = countlines(f) - 2
-   seekstart(f)
-   headline = readline(f)
-   variable = split(readline(f))
-   ndim = 1
-   it = 0
-   t = 0.0
-   gencoord = false
-   nx = 1
-   nw = length(variable)
+   open(file) do f
+      nLine = countlines(f) - 2
+      seekstart(f)
+      headline = readline(f)
+      variable = split(readline(f))
+      ndim = 1
+      it = 0
+      t = 0.0
+      gencoord = false
+      nx = 1
+      nw = length(variable)
 
-   data = zeros(nw, nLine)
-   @inbounds for i in 1:nLine
-      line = split(readline(f))
-      data[:, i] = Parsers.parse.(Float64, line)
+      data = zeros(nw, nLine)
+      @inbounds for i in 1:nLine
+         line = split(readline(f))
+         data[:, i] = Parsers.parse.(Float64, line)
+      end
+
+      head = (ndim = ndim, headline = headline, it = it, time = t, gencoord = gencoord,
+         nw = nw, nx = nx, variable = variable)
+
+      return head, data
    end
-
-   close(f)
-
-   head = (ndim = ndim, headline = headline, it = it, time = t, gencoord = gencoord,
-      nw = nw, nx = nx, variable = variable)
-
-   head, data
 end
 
 """
@@ -84,37 +83,35 @@ head, data, connectivity = readtecdata(file)
 ```
 """
 function readtecdata(file::AbstractString; verbose::Bool=false)
-   f = open(file)
+   open(file) do f
+      head, pt0 = read_tecplot_header(f)
 
-   head, pt0 = read_tecplot_header(f)
+      data = Array{Float32,2}(undef, length(head.variable), head.nNode)
 
-   data = Array{Float32,2}(undef, length(head.variable), head.nNode)
+      if head.nDim == 3
+         connectivity = Array{Int32,2}(undef, 8, head.nCell)
+      elseif head.nDim == 2
+         connectivity = Array{Int32,2}(undef, 4, head.nCell)
+      end
 
-   if head.nDim == 3
-      connectivity = Array{Int32,2}(undef, 8, head.nCell)
-   elseif head.nDim == 2
-      connectivity = Array{Int32,2}(undef, 4, head.nCell)
+      # Check file type
+      isBinary = false
+      magic = read(f, 8)
+      if String(magic) == "#!TDV112"
+         isBinary = true
+         verbose && @info "reading binary file"
+      end
+
+      seek(f, pt0)
+
+      if isBinary
+         read_tecplot_data_binary!(f, data, connectivity)
+      else
+         read_tecplot_data_ascii!(f, data, connectivity)
+      end
+
+      return head, data, connectivity
    end
-
-   # Check file type
-   isBinary = false
-   magic = read(f, 8)
-   if String(magic) == "#!TDV112"
-      isBinary = true
-      verbose && @info "reading binary file"
-   end
-
-   seek(f, pt0)
-
-   if isBinary
-      read_tecplot_data_binary!(f, data, connectivity)
-   else
-      read_tecplot_data_ascii!(f, data, connectivity)
-   end
-
-   close(f)
-
-   return head, data, connectivity
 end
 
 function read_tecplot_header(f)
