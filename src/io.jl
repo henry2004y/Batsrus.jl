@@ -83,18 +83,52 @@ file = "3d_ascii.dat"
 head, data, connectivity = readtecdata(file)
 ```
 """
-function readtecdata(file::AbstractString; verbose::Bool = false)
+function readtecdata(file::AbstractString; verbose::Bool=false)
    f = open(file)
 
+   head, pt0 = read_tecplot_header(f)
+
+   data = Array{Float32,2}(undef, length(head.variable), head.nNode)
+
+   if head.nDim == 3
+      connectivity = Array{Int32,2}(undef, 8, head.nCell)
+   elseif head.nDim == 2
+      connectivity = Array{Int32,2}(undef, 4, head.nCell)
+   end
+
+   # Check file type
+   isBinary = false
+   magic = read(f, 8)
+   if String(magic) == "#!TDV112"
+      isBinary = true
+      verbose && @info "reading binary file"
+   end
+
+   seek(f, pt0)
+
+   if isBinary
+      read_tecplot_data_binary!(f, data, connectivity)
+   else
+      read_tecplot_data_ascii!(f, data, connectivity)
+   end
+
+   close(f)
+
+   return head, data, connectivity
+end
+
+function read_tecplot_header(f)
    nDim = 3
    nNode = Int32(0)
    nCell = Int32(0)
    ET = ""
+   title = ""
+   VARS = []
 
    # Read Tecplot header
    ln = readline(f) |> strip
    if startswith(ln, "TITLE")
-      title = match(r"\"(.*?)\"", split(ln, '=', keepempty = false)[2])[1]
+      title = match(r"\"(.*?)\"", split(ln, '=', keepempty=false)[2])[1]
    else
       @warn "No title provided."
    end
@@ -116,13 +150,13 @@ function readtecdata(file::AbstractString; verbose::Bool = false)
 
    while !startswith(ln, "AUXDATA")
       if !startswith(ln, "ZONE") # ZONE allows multiple \n
-         zoneline = split(ln, ", ", keepempty = false)
+         zoneline = split(ln, ", ", keepempty=false)
       else # if the ZONE line has nothing, this won't work!
-         zoneline = split(ln[6:end], ", ", keepempty = false)
-         replace(zoneline[1], '"'=>"") # Remove the quotes in T
+         zoneline = split(ln[6:end], ", ", keepempty=false)
+         replace(zoneline[1], '"' => "") # Remove the quotes in T
       end
       for zline in zoneline
-         name, value = split(zline, '=', keepempty = false)
+         name, value = split(zline, '=', keepempty=false)
          name = uppercase(name)
          if name == "T" # ZONE title
             T = value
@@ -147,7 +181,7 @@ function readtecdata(file::AbstractString; verbose::Bool = false)
    pt0 = position(f)
 
    while startswith(ln, "AUXDATA")
-      name, value = split(ln, '"', keepempty = false)
+      name, value = split(ln, '"', keepempty=false)
       name = string(name[9:(end - 1)])
       str = string(strip(value))
       if name in ("ITER", "NPROC")
@@ -169,48 +203,36 @@ function readtecdata(file::AbstractString; verbose::Bool = false)
 
    seek(f, pt0)
 
-   data = Array{Float32, 2}(undef, length(VARS), nNode)
+   head = (variable=VARS, nNode=nNode, nCell=nCell, nDim=nDim, ET=ET,
+      title=title, auxdataname=auxdataname, auxdata=auxdata)
 
-   if nDim == 3
-      connectivity = Array{Int32, 2}(undef, 8, nCell)
-   elseif nDim == 2
-      connectivity = Array{Int32, 2}(undef, 4, nCell)
+   return head, pt0
+end
+
+function read_tecplot_data_binary!(f, data, connectivity)
+   nNode = size(data, 2)
+   nCell = size(connectivity, 2)
+
+   @inbounds for i in 1:nNode
+      read!(f, @view data[:, i])
    end
-
-   isBinary = false
-   try
-      Parsers.parse.(Float32, split(readline(f)))
-   catch
-      isBinary = true
-      verbose && @info "reading binary file"
+   @inbounds for i in 1:nCell
+      read!(f, @view connectivity[:, i])
    end
+end
 
-   seek(f, pt0)
+function read_tecplot_data_ascii!(f, data, connectivity)
+   nNode = size(data, 2)
+   nCell = size(connectivity, 2)
 
-   if isBinary
-      @inbounds for i in 1:nNode
-         read!(f, @view data[:, i])
-      end
-      @inbounds for i in 1:nCell
-         read!(f, @view connectivity[:, i])
-      end
-   else
-      @inbounds for i in 1:nNode
-         x = readline(f)
-         data[:, i] .= Parsers.parse.(Float32, split(x))
-      end
-      @inbounds for i in 1:nCell
-         x = readline(f)
-         connectivity[:, i] .= Parsers.parse.(Int32, split(x))
-      end
+   @inbounds for i in 1:nNode
+      x = readline(f)
+      data[:, i] .= Parsers.parse.(Float32, split(x))
    end
-
-   close(f)
-
-   head = (variable = VARS, nNode = nNode, nCell = nCell, nDim = nDim, ET = ET,
-      title = title, auxdataname = auxdataname, auxdata = auxdata)
-
-   head, data, connectivity
+   @inbounds for i in 1:nCell
+      x = readline(f)
+      connectivity[:, i] .= Parsers.parse.(Int32, split(x))
+   end
 end
 
 """
