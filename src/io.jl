@@ -121,7 +121,7 @@ function read_tecplot_header(f)
    nCell = Int32(0)
    ET = ""
    title = ""
-   VARS = []
+   VARS = SubString{String}[]
 
    # Read Tecplot header
    ln = readline(f) |> strip
