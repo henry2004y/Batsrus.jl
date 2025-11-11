@@ -101,11 +101,11 @@ file = "x=0_mhd_1_n00000050.dat"
 convertTECtoVTU(file)
 ```
 
-- 3D structured IDL file (`gridType=1` returns rectilinear `vtr` file, `gridType=2` returns structured `vts` file):
+- 3D structured IDL file (`gridType=:vti` returns image `vti` file, `gridType=:vtr` returns rectilinear `vtr` file, `gridType=:vts` returns structured `vts` file):
 
 ```julia
 file = "3d_structured.out"
-convertIDLtoVTK(file, gridType=1)
+convertIDLtoVTK(file, gridType=:vti)
 ```
 
 - 3D unstructured IDL file together with header and tree file:
