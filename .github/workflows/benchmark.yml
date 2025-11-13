@@ -1,34 +1,22 @@
 name: Run benchmarks
 
 on:
-  pull_request:
+  pull_request_target:
     branches:
-      - master
-      - '!compathelper/**'
+    - master
+    - '!compathelper/**'
     paths-ignore:
       - 'README.md'
       - 'test/**'
       - 'docs/**'
       - 'examples/**'
+permissions:
+  pull-requests: write
 
 jobs:
-  Benchmark:
+  bench:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: julia-actions/setup-julia@v2
+      - uses: MilesCranmer/AirspeedVelocity.jl@action-v1
         with:
-          version: 1
-      - uses: julia-actions/julia-buildpkg@latest
-      - name: Install dependencies
-        run: |
-          julia -e 'using Pkg; pkg"add PkgBenchmark BenchmarkCI@0.1"'
-          cd benchmark; ln -s ../test/Artifacts.toml Artifacts.toml
-      - name: Run benchmarks
-        run: julia -e 'using BenchmarkCI; BenchmarkCI.judge(; retune=true)'
-      - name: Post results
-        run: julia -e 'using BenchmarkCI; BenchmarkCI.postjudge()'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Print judgement
-        run: julia -e 'using BenchmarkCI; BenchmarkCI.displayjudgement()'
+          julia-version: '1'
