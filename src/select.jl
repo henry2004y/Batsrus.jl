@@ -250,9 +250,12 @@ end
 """
      get_anisotropy(bd::BATS, species=0)
 
-Calculate the pressure anisotropy for `species`, indexing from 0.
+Calculate the pressure anisotropy for `species`, indexing from 0. The default `method` is
+based on the fact that the trace of the pressure tensor is a constant. The `rotation`
+method is based on rotating the tensor.
 """
-function get_anisotropy(bd::BATS{2, TV, TX, TW}, species = 0) where {TV, TX, TW}
+function get_anisotropy(bd::BATS{2, TV, TX, TW}, species=0;
+   method::Symbol=:simple) where {TV, TX, TW}
    Bx, By, Bz = bd["Bx"], bd["By"], bd["Bz"]
    # Rotate the pressure tensor to align the 3rd direction with B
    pop = string(species)
@@ -262,18 +265,30 @@ function get_anisotropy(bd::BATS{2, TV, TX, TW}, species = 0) where {TV, TX, TW}
    Pxy = bd["pXYS" * pop]
    Pxz = bd["pXZS" * pop]
    Pyz = bd["pYZS" * pop]
-   #TODO: Generalize to n-dimension with CartesianIndices
    Paniso = similar(Pxx)
 
-   @inbounds for j in axes(Pxx, 2), i in axes(Pxx, 1)
+   if method == :simple
+      @inbounds for j in axes(Pxx, 2), i in axes(Pxx, 1)
+         b = SA[Bx[i, j], By[i, j], Bz[i, j]]
+         b̂ = normalize(b)
+         P = @SMatrix [Pxx[i, j] Pxy[i, j] Pxz[i, j];
+                       Pxy[i, j] Pyy[i, j] Pyz[i, j];
+                       Pxz[i, j] Pyz[i, j] Pzz[i, j]]
 
-      b̂ = normalize(SA[Bx[i, j], By[i, j], Bz[i, j]])
-      P = @SMatrix [Pxx[i, j] Pxy[i, j] Pxz[i, j];
-                    Pxy[i, j] Pyy[i, j] Pyz[i, j];
-                    Pxz[i, j] Pyz[i, j] Pzz[i, j]]
-
-      Prot = rotateTensorToVectorZ(P, b̂)
-      Paniso[i, j] = (Prot[1, 1] + Prot[2, 2]) / (2*Prot[3, 3])
+         p_parallel = b̂' * P * b̂
+         p_total = Pxx[i, j] + Pyy[i, j] + Pzz[i, j]
+         p_perp = (p_total - p_parallel) / 2
+         Paniso[i, j] = p_perp / p_parallel
+      end
+   elseif method == :rotation
+      @inbounds for j in axes(Pxx, 2), i in axes(Pxx, 1)
+         b̂ = normalize(SA[Bx[i, j], By[i, j], Bz[i, j]])
+         P = @SMatrix [Pxx[i, j] Pxy[i, j] Pxz[i, j];
+                       Pxy[i, j] Pyy[i, j] Pyz[i, j];
+                       Pxz[i, j] Pyz[i, j] Pzz[i, j]]
+         Prot = rotateTensorToVectorZ(P, b̂)
+         Paniso[i, j] = (Prot[1, 1] + Prot[2, 2]) / (2*Prot[3, 3])
+      end
    end
 
    Paniso

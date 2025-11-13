@@ -83,7 +83,9 @@ end
             Float32[-241.05942, -2644.2058, -40.53219]
       @test get_magnitude2(bd, :U0)[2, 1] == 33784.973f0
       @test get_anisotropy(bd, 0)[1:2, 1] ≈ Float32[1.2630985, 2.4700143]
+      @test get_anisotropy(bd, 0, method=:rotation)[1:2, 1] ≈ get_anisotropy(bd, 0)[1:2, 1]
       @test get_anisotropy(bd, 1)[1:2, 1] ≈ Float32[1.2906302, 2.6070855]
+      @test get_anisotropy(bd, 1, method=:rotation)[1:2, 1] ≈ get_anisotropy(bd, 1)[1:2, 1]
       w = get_convection_E(bd)
       @test w[2][2, 1] ≈ -2454.3933f0
       w = get_hall_E(bd)
