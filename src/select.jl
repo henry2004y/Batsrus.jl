@@ -1,3 +1,5 @@
+using LinearAlgebra: tr
+
 # Data manipulation.
 
 """
@@ -267,27 +269,21 @@ function get_anisotropy(bd::BATS{2, TV, TX, TW}, species=0;
    Pyz = bd["pYZS" * pop]
    Paniso = similar(Pxx)
 
-   if method == :simple
-      @inbounds for j in axes(Pxx, 2), i in axes(Pxx, 1)
-         b = SA[Bx[i, j], By[i, j], Bz[i, j]]
-         b̂ = normalize(b)
-         P = @SMatrix [Pxx[i, j] Pxy[i, j] Pxz[i, j];
-                       Pxy[i, j] Pyy[i, j] Pyz[i, j];
-                       Pxz[i, j] Pyz[i, j] Pzz[i, j]]
+   @inbounds for j in axes(Pxx, 2), i in axes(Pxx, 1)
+      b̂ = normalize(SA[Bx[i, j], By[i, j], Bz[i, j]])
+      P = @SMatrix [Pxx[i, j] Pxy[i, j] Pxz[i, j];
+                    Pxy[i, j] Pyy[i, j] Pyz[i, j];
+                    Pxz[i, j] Pyz[i, j] Pzz[i, j]]
 
+      if method == :simple
          p_parallel = b̂' * P * b̂
-         p_total = Pxx[i, j] + Pyy[i, j] + Pzz[i, j]
-         p_perp = (p_total - p_parallel) / 2
+         p_perp = (tr(P) - p_parallel) / 2
          Paniso[i, j] = p_perp / p_parallel
-      end
-   elseif method == :rotation
-      @inbounds for j in axes(Pxx, 2), i in axes(Pxx, 1)
-         b̂ = normalize(SA[Bx[i, j], By[i, j], Bz[i, j]])
-         P = @SMatrix [Pxx[i, j] Pxy[i, j] Pxz[i, j];
-                       Pxy[i, j] Pyy[i, j] Pyz[i, j];
-                       Pxz[i, j] Pyz[i, j] Pzz[i, j]]
+      elseif method == :rotation
          Prot = rotateTensorToVectorZ(P, b̂)
          Paniso[i, j] = (Prot[1, 1] + Prot[2, 2]) / (2*Prot[3, 3])
+      else
+         error("Unknown method for get_anisotropy: $method. Use :simple or :rotation.")
       end
    end
 
