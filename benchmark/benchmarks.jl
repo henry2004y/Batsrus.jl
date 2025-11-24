@@ -1,4 +1,4 @@
-using BenchmarkTools, LazyArtifacts
+using BenchmarkTools, Downloads, Tar, CodecZlib
 
 t = @elapsed using Batsrus
 println("Julia version is $VERSION")
@@ -7,9 +7,25 @@ println()
 println("Benchmarking Batsrus.jl...")
 println()
 
-directory = artifact"testdata"
+testdata_url = "https://github.com/henry2004y/batsrus_data/raw/master/batsrus_data.tar.gz"
+directory = "data"
 files = ("1d__raw_2_t25.60000_n00000258.out", "z=0_raw_1_t25.60000_n00000258.out",
    "z=0_fluid_region0_0_t00001640_n00010142.out")
+
+# Check if all files already exist
+if joinpath(directory, files[1]) |> isfile
+   println("✅ All data files already exist.")
+else
+   println("⬇️ Downloading and extracting data...")
+
+   # Download and extract the data
+   testdata = Downloads.download(testdata_url)
+   open(GzipDecompressorStream, testdata) do io
+      Tar.extract(io, directory)
+   end
+
+   println("📦 Extraction complete.")
+end
 
 const SUITE = BenchmarkGroup()
 
