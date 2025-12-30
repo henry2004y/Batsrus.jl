@@ -36,7 +36,7 @@ function plotlogdata(data, head::NamedTuple, func::AbstractString; plotmode = "l
    plotmode = split(plotmode)
 
    for (ivar, var) in enumerate(vars)
-      varIndex_ = findfirst(x->lowercase(x)==lowercase(var), head.variable)
+      varIndex_ = findfirst(x -> lowercase(x) == lowercase(var), head.variable)
       isnothing(varIndex_) && error("$(var) not found in file header variables!")
 
       figure()
@@ -73,7 +73,7 @@ function plotgrid(
    scatter(X, Y, marker = ".", alpha = 0.6)
    title("Grid illustration")
 
-   xlabel(bd.head.wname[1]);
+   xlabel(bd.head.wname[1])
    ylabel(bd.head.wname[2])
    add_time_iteration!(bd, ax)
 
@@ -119,13 +119,13 @@ function cutplot(bd::BATS{3, TV, TX, TW}, var::AbstractString, ax = nothing;
    title(bd.head.wname[varIndex_])
 
    if dir == "x"
-      xlabel("y");
+      xlabel("y")
       ylabel("z")
    elseif dir == "y"
-      xlabel("x");
+      xlabel("x")
       ylabel("z")
    elseif dir == "z"
-      xlabel("x");
+      xlabel("x")
       ylabel("y")
    end
 
@@ -186,13 +186,13 @@ function streamslice(bd::BATS{3, TV, TX, TW}, var::AbstractString, ax = nothing;
    s = ax.streamplot(xi, yi, v1', v2'; kwargs...)
 
    if dir == "x"
-      xlabel("y");
+      xlabel("y")
       ylabel("z")
    elseif dir == "y"
-      xlabel("x");
+      xlabel("x")
       ylabel("z")
    elseif dir == "z"
-      xlabel("x");
+      xlabel("x")
       ylabel("y")
    end
 
@@ -218,7 +218,7 @@ function PyPlot.plot(
 
    c = ax.plot(x, w[:, varIndex_]; kwargs...)
 
-   xlabel("x");
+   xlabel("x")
    ylabel("$(var)")
    add_time_iteration!(bd, ax)
 
@@ -463,7 +463,7 @@ function PyPlot.tripcolor(bd::BATS{2, TV, TX, TW}, var::AbstractString, ax = not
 
    # Mask off unwanted triangles at the inner boundary.
    if innermask
-      varIndex_ = findlast(x->x=="rbody", bd.head.param)
+      varIndex_ = findlast(x -> x == "rbody", bd.head.param)
       isnothing(varIndex_) && error("rbody not found in file header parameters!")
       ParamIndex_ = varIndex_ - 2 - bd.head.nw
       r2 = bd.head.eqpar[ParamIndex_]^2
@@ -508,7 +508,8 @@ Wrapper over `imshow` in matplotlib. For large matrices, this is faster than `pc
 """
 function PyPlot.imshow(bd::BATS{2, TV, TX, TW}, var::AbstractString, ax = nothing;
       plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1, innermask = false, rbody = 1.0,
-      add_colorbar = true, vmin = -Inf, vmax = Inf, colorscale=:linear, kwargs...) where {TV, TX, TW}
+      add_colorbar = true, vmin = -Inf, vmax = Inf, colorscale = :linear, kwargs...) where {
+      TV, TX, TW}
    xi, yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
 
    if isnothing(ax)
@@ -547,8 +548,8 @@ function _getvector(bd::BATS{2, TV, TX, TW}, var::AbstractString;
       plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = Inf) where {TV, TX, TW}
    x, w = bd.x, bd.w
    varstream = split(var, ";")
-   var1_ = findfirst(x->lowercase(x)==lowercase(varstream[1]), bd.head.wname)
-   var2_ = findfirst(x->lowercase(x)==lowercase(varstream[2]), bd.head.wname)
+   var1_ = findfirst(x -> lowercase(x) == lowercase(varstream[1]), bd.head.wname)
+   var2_ = findfirst(x -> lowercase(x) == lowercase(varstream[2]), bd.head.wname)
    if isinf(plotinterval)
       plotinterval = (x[end, 1, 1] - x[1, 1, 1]) / size(x, 1)
    end
@@ -627,15 +628,15 @@ Set colorbar norm and ticks.
 function set_colorbar(colorscale, vmin, vmax, data = [1.0])
    if colorscale == :linear || any(<(0), data)
       colorscale == :log && @warn "Nonpositive data detected: use linear scale instead!"
-      vmin = isinf(vmin) ? minimum(x->isnan(x) ? +Inf : x, data) : vmin
-      vmax = isinf(vmax) ? maximum(x->isnan(x) ? -Inf : x, data) : vmax
+      vmin = isinf(vmin) ? minimum(x -> isnan(x) ? +Inf : x, data) : vmin
+      vmax = isinf(vmax) ? maximum(x -> isnan(x) ? -Inf : x, data) : vmax
       cnorm = matplotlib.colors.Normalize(vmin, vmax)
    elseif colorscale == :symlog
       cnorm = matplotlib.colors.SymLogNorm(linthresh = 0.03, linscale = 0.75; vmin, vmax)
    else # logarithmic
       datapositive = data[data .> 0.0]
       vmin = isinf(vmin) ? minimum(datapositive) : vmin
-      vmax = isinf(vmax) ? maximum(x->isnan(x) ? -Inf : x, data) : vmax
+      vmax = isinf(vmax) ? maximum(x -> isnan(x) ? -Inf : x, data) : vmax
       cnorm = matplotlib.colors.LogNorm(vmin, vmax)
    end
 
@@ -646,7 +647,7 @@ function add_titles!(bd::BATS, var, ax)
    varIndex_ = findindex(bd, var)
    title(bd.head.wname[varIndex_])
 
-   xlabel(bd.head.coord[1]);
+   xlabel(bd.head.coord[1])
    ylabel(bd.head.coord[2])
    add_time_iteration!(bd, ax)
 end
@@ -654,8 +655,10 @@ end
 function add_time_iteration!(bd::BATS, ax)
    str = @sprintf "it=%d, time=%4.2f" bd.head.it bd.head.time
    at = matplotlib.offsetbox.AnchoredText(str,
-      loc = "lower left", prop = Dict("size"=>8), frameon = true,
+      loc = "lower left", prop = Dict("size" => 8), frameon = true,
       bbox_to_anchor = (0.0, 1.0), bbox_transform = ax.transAxes)
    at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
    ax.add_artist(at)
 end
+
+include("pyplot_amrex.jl")
