@@ -18,7 +18,9 @@ export BATS,
        get_anisotropy, get_vectors, get_magnitude, get_magnitude2,
        fill_vector_from_scalars, # select
        Batl, convertTECtoVTU, convertIDLtoVTK, readhead, readtree, getConnectivity, # vtk
-       interp1d, interp2d, slice1d, get_range, get_var_range, squeeze # plot/utility
+       interp1d, interp2d, slice1d, get_range, get_var_range, squeeze, # plot/utility,
+       AMReXParticleData, AMReXParticleHeader, read_amrex_binary_particle_file,
+       select_particles_in_region # amrex
 
 include("type.jl")
 include("unit/UnitfulBatsrus.jl")
@@ -28,6 +30,7 @@ include("io.jl")
 include("select.jl")
 include("vtk.jl")
 include("utility.jl")
+include("amrex.jl")
 include("plot/plots.jl")
 
 include("hdf.jl")
