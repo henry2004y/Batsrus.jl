@@ -21,10 +21,9 @@ _resolve_alias(variable_name::String) = get(_ALIAS_MAP, variable_name, variable_
 _get_axis_label(variable_name::String) = get(_AXIS_LABEL_MAP, variable_name, variable_name)
 
 """
-    get_phase_space_density(data, x_var, y_var; bins=100, x_range=nothing, y_range=nothing, z_range=nothing)
+    get_phase_space_density(data, x_var, y_var; bins=100, x_range=nothing, y_range=nothing, z_range=nothing)::(H, xedges, yedges)
 
 Calculates the 2D phase space density for selected variables.
-Returns (H, xedges, yedges, label).
 """
 function get_phase_space_density(
       data::AMReXParticleData,
