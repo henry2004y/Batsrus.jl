@@ -1,3 +1,4 @@
 [deps]
+Batsrus = "e74ebddf-6ac1-4047-a0e5-c32c99e57753"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 CodecZlib = "944b1d66-785c-5afd-91f1-9de20f533193"

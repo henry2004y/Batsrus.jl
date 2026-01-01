@@ -257,78 +257,11 @@ end
       @test varunit == u"mV/m"
    end
 
-   function generate_mock_amrex_data(output_dir::String)
-      ptype = "particles"
-      base_dir = joinpath(output_dir, ptype)
-      mkpath(base_dir)
 
-      # Create Header
-      header_path = joinpath(base_dir, "Header")
-      open(header_path, "w") do f
-         println(f, "Version_double")
-         println(f, "3") # dim
-         println(f, "2") # num_real_extra (total real = 3 + 2 = 5)
-         println(f, "u")
-         println(f, "v")
-         println(f, "2") # num_int_extra (total int = 2 + 2 = 4)
-         println(f, "id_1")
-         println(f, "id_2")
-         println(f, "0") # is_checkpoint (False)
-         println(f, "10") # num_particles
-         println(f, "11") # max_next_id
-         println(f, "0") # finest_level
-         println(f, "1") # grids_per_level[0]
-         println(f, "1 10 0") # grid info: which, count, where
-      end
-
-      # Create Level directory
-      level_dir = joinpath(base_dir, "Level_0")
-      mkpath(level_dir)
-
-      # Create Particle_H
-      particle_h_path = joinpath(level_dir, "Particle_H")
-      open(particle_h_path, "w") do f
-         println(f, "(1 0") # num_boxes level
-         println(f, "((0,0,0) (10,10,10) (0,0,0))")
-      end
-
-      # Create Data file
-      data_fn = joinpath(level_dir, "DATA_00001")
-      open(data_fn, "w") do f
-         # Write 10 particles
-         # structure: 10 * (3+2) reals = 50 doubles
-         # x, y, z, u, v
-         data = zeros(Float64, 50)
-         for i in 1:10
-            # x, y, z
-            data[(i - 1) * 5 + 1] = Float64(i)
-            data[(i - 1) * 5 + 2] = Float64(i)
-            data[(i - 1) * 5 + 3] = Float64(i)
-            # u, v
-            data[(i - 1) * 5 + 4] = Float64(i * 10)
-            data[(i - 1) * 5 + 5] = Float64(i * 100)
-         end
-         write(f, data)
-      end
-
-      # Create Main Header (for domain info)
-      main_header_path = joinpath(output_dir, "Header")
-      open(main_header_path, "w") do f
-         println(f, "HyperCLaw-V1.1")
-         println(f, "0") # num_fields
-         println(f, "3") # dim
-         println(f, "0.0") # time
-         println(f, "0") # refine_ratio
-         println(f, "0.0 0.0 0.0") # left_edge
-         println(f, "10.0 10.0 10.0") # right_edge
-         println(f, "0")
-         println(f, "((0,0,0) (10,10,10) (0,0,0))") # domain size
-      end
-   end
 
    @testset "AMReX Loader" begin
       mktempdir() do tmpdir
-         generate_mock_amrex_data(tmpdir)
+         Batsrus.generate_mock_amrex_data(tmpdir)
 
          # Test Loading
          data = AMReXParticleData(tmpdir)
