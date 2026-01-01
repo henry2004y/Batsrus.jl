@@ -497,21 +497,29 @@ function get_phase_space_density(
    y_index = component_map[y_variable]
 
    x_data = rdata[:, x_index]
-   y_data = rdata[:, y_index]
-
-   # Using FHist.jl
-   # FHist uses nbins keyword
+   y_data = rdata[:, y_index] # FHist uses nbins keyword
    arg_bins = bins isa Int ? (bins, bins) : bins
    nx, ny = arg_bins
-   h = Hist2D((x_data, y_data); nbins=arg_bins, overflow=false)
-   # FHist might return extra bins, or OffsetArrays. We slice to expected range.
-   H = h.bincounts
-   if size(H) != (nx, ny)
-      H = H[1:nx, 1:ny]
+
+   # Calculate edges explicitly
+   if !isnothing(x_range)
+      xmin, xmax = x_range
+   else
+      xmin, xmax = extrema(x_data)
    end
-   xedges = collect(h.binedges[1])
-   yedges = collect(h.binedges[2])
 
-   return H, xedges, yedges
+   if !isnothing(y_range)
+      ymin, ymax = y_range
+   else
+      ymin, ymax = extrema(y_data)
+   end
+
+   x_edges = range(xmin, xmax, length = nx + 1)
+   y_edges = range(ymin, ymax, length = ny + 1)
+
+   h = Hist2D((x_data, y_data); binedges=(x_edges, y_edges))
+   H = h.bincounts
+
+   # Return edges as vectors for consistency
+   return H, collect(x_edges), collect(y_edges)
 end
-

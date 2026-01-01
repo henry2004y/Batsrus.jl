@@ -47,7 +47,6 @@ SUITE["read"]["Anisotropy"] = @benchmarkable get_anisotropy($bd, 1)
 println("Generating mock AMReX data for benchmark...")
 amrex_dir = joinpath(directory, "amrex_mock")
 mkpath(amrex_dir)
-mkpath(amrex_dir)
 Batsrus.generate_mock_amrex_data(
     amrex_dir, 
     num_particles=1000, 
