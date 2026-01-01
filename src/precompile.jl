@@ -21,7 +21,7 @@ using PrecompileTools: @setup_workload, @compile_workload
 
       mktempdir() do tmpdir
          Batsrus.generate_mock_amrex_data(tmpdir)
-         data = AMReXParticleData(tmpdir)
+         data = AMReXParticle(tmpdir)
          get_phase_space_density(data, "x", "u"; bins = 2)
       end
    end

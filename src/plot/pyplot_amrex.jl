@@ -22,7 +22,7 @@ _get_axis_label(variable_name::String) = get(_AXIS_LABEL_MAP, variable_name, var
 Plots the 2D phase space density for selected variables.
 """
 function plot_phase(
-      data::AMReXParticleData,
+      data::AMReXParticle,
       x_variable::String,
       y_variable::String;
       bins::Union{Int, Tuple{Int, Int}} = 100,

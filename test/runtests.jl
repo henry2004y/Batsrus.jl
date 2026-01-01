@@ -264,7 +264,7 @@ end
          Batsrus.generate_mock_amrex_data(tmpdir)
 
          # Test Loading
-         data = AMReXParticleData(tmpdir)
+         data = AMReXParticle(tmpdir)
          @test data.dim == 3
          @test data.header.num_levels == 1
          @test data.header.num_particles == 10

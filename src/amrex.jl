@@ -136,11 +136,11 @@ function Base.show(io::IO, header::AMReXParticleHeader)
    end
 end
 
-mutable struct AMReXParticleData
+mutable struct AMReXParticle{T<:Real}
    const output_dir::String
    const ptype::String
    _idata::Union{Matrix{Int32}, Nothing}
-   _rdata::Union{Matrix{Float64}, Matrix{Float32}, Nothing}
+   _rdata::Union{Matrix{T}, Nothing}
    const level_boxes::Vector{Vector{Tuple{Tuple{Int, Vararg{Int}}, Tuple{Int, Vararg{Int}}}}}
    const header::AMReXParticleHeader
    const dim::Int
@@ -149,7 +149,7 @@ mutable struct AMReXParticleData
    const right_edge::Vector{Float64}
    const domain_dimensions::Vector{Int}
 
-   function AMReXParticleData(output_dir::AbstractString)
+   function AMReXParticle(output_dir::AbstractString)
       ptype = "particles"
       idata = nothing
       rdata = nothing
@@ -188,8 +188,10 @@ mutable struct AMReXParticleData
 
       header = AMReXParticleHeader(joinpath(output_dir, ptype, "Header"))
       level_boxes = _read_level_boxes(output_dir, ptype, header)
+      
+      T = header.real_type
 
-      new(output_dir, ptype, idata, rdata, level_boxes, header,
+      new{T}(output_dir, ptype, idata, rdata, level_boxes, header,
          dim, time, left_edge, right_edge, domain_dimensions)
    end
 end
@@ -276,25 +278,25 @@ function read_amrex_binary_particle_file(fn::AbstractString, header::AMReXPartic
    return idata, rdata
 end
 
-function load_data!(data::AMReXParticleData)
+function load_data!(data::AMReXParticle{T}) where T
    if isnothing(data._idata) || isnothing(data._rdata)
       idata, rdata = read_amrex_binary_particle_file(data.output_dir, data.header)
       data._idata = idata
-      data._rdata = rdata
+      data._rdata = rdata 
    end
 end
 
-function get_idata(data::AMReXParticleData)
+function get_idata(data::AMReXParticle{T}) where T
    load_data!(data)
    return data._idata
 end
 
-function get_rdata(data::AMReXParticleData)
+function get_rdata(data::AMReXParticle{T}) where T
    load_data!(data)
    return data._rdata
 end
 
-Base.getproperty(obj::AMReXParticleData, sym::Symbol) =
+Base.getproperty(obj::AMReXParticle{T}, sym::Symbol) where T =
    if sym === :idata
       return get_idata(obj)
    elseif sym === :rdata
@@ -303,8 +305,8 @@ Base.getproperty(obj::AMReXParticleData, sym::Symbol) =
       return getfield(obj, sym)
    end
 
-function Base.show(io::IO, data::AMReXParticleData)
-   println(io, "AMReXParticleData from ", data.output_dir)
+function Base.show(io::IO, data::AMReXParticle{T}) where T
+   println(io, "AMReXParticle{$T} from ", data.output_dir)
    println(io, "Time: ", data.time)
    println(io, "Dimensions: ", data.dim)
    println(io, "Domain Dimensions: ", data.domain_dimensions)
@@ -319,11 +321,11 @@ function Base.show(io::IO, data::AMReXParticleData)
 end
 
 function select_particles_in_region(
-      data::AMReXParticleData;
+      data::AMReXParticle{T};
       x_range = nothing,
       y_range = nothing,
       z_range = nothing
-)
+) where T
    ranges = (x_range, y_range, z_range)
 
    # Ensure data is loaded into memory. This will be a no-op if already loaded.
@@ -334,27 +336,11 @@ function select_particles_in_region(
          return similar(rdata, 0, size(rdata, 2))
       end
       
-      # Dispatch on element type for stability
-      if eltype(rdata) === Float64
-         return _select_particles_in_memory(rdata, ranges, data.dim)
-      elseif eltype(rdata) === Float32
-         return _select_particles_in_memory(rdata, ranges, data.dim)
-      else
-         # Fallback
-         return _select_particles_in_memory(rdata, ranges, data.dim)
-      end
+      return _select_particles_in_memory(rdata, ranges, data.dim)
    end
 
    # If not loaded, optimize by reading specific grids
-   # Dispatch on file real type
-   real_type = data.header.real_type
-   if real_type === Float64
-      return _select_particles_from_files(data, ranges, Float64)
-   elseif real_type === Float32
-      return _select_particles_from_files(data, ranges, Float32)
-   else
-      error("Unsupported real type: $real_type")
-   end
+   return _select_particles_from_files(data, ranges)
 end
 
 function _select_particles_in_memory(rdata::Matrix{T}, ranges, dim) where T
@@ -385,9 +371,13 @@ function _select_particles_in_memory(rdata::Matrix{T}, ranges, dim) where T
    return rdata[valid_indices, :]
 end
 
-function _select_particles_from_files(data::AMReXParticleData, ranges, ::Type{T}) where T
+function _select_particles_from_files(data::AMReXParticle{T}, ranges) where T
    # Convert physical range to index range
-   dx = [(data.right_edge[i] - data.left_edge[i]) / data.domain_dimensions[i] for i in 1:data.dim]
+   dx = SVector{3, Float64}(
+      (data.right_edge[1] - data.left_edge[1]) / data.domain_dimensions[1],
+      (data.right_edge[2] - data.left_edge[2]) / data.domain_dimensions[2],
+      data.dim == 3 ? (data.right_edge[3] - data.left_edge[3]) / data.domain_dimensions[3] : 1.0
+   )
 
    target_idx_ranges = Vector{Union{Tuple{Int, Int}, Nothing}}(undef, data.dim)
    for i in 1:data.dim
@@ -508,14 +498,14 @@ _resolve_alias(variable_name::String) = get(_ALIAS_MAP, variable_name, variable_
 Calculates the 2D phase space density for selected variables.
 """
 function get_phase_space_density(
-      data::AMReXParticleData,
+      data::AMReXParticle{T},
       x_variable::String,
       y_variable::String;
       bins::Union{Int, Tuple{Int, Int}} = 100,
       x_range = nothing,
       y_range = nothing,
       z_range = nothing
-)
+) where T
    # Select data
    if !isnothing(x_range) || !isnothing(y_range) || !isnothing(z_range)
       rdata = select_particles_in_region(data; x_range, y_range, z_range)

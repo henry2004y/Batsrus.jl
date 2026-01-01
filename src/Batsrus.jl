@@ -19,7 +19,7 @@ export BATS,
        fill_vector_from_scalars, # select
        Batl, convertTECtoVTU, convertIDLtoVTK, readhead, readtree, getConnectivity, # vtk
        interp1d, interp2d, slice1d, get_range, get_var_range, squeeze, generate_mock_amrex_data, # plot/utility,
-       AMReXParticleData, AMReXParticleHeader, read_amrex_binary_particle_file,
+       AMReXParticle, AMReXParticleHeader, read_amrex_binary_particle_file,
        select_particles_in_region, get_phase_space_density # amrex
 
 include("type.jl")

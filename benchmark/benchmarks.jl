@@ -54,10 +54,10 @@ Batsrus.generate_mock_amrex_data(
 )
 
 SUITE["amrex"] = BenchmarkGroup()
-SUITE["amrex"]["load"] = @benchmarkable AMReXParticleData($amrex_dir)
+SUITE["amrex"]["load"] = @benchmarkable AMReXParticle($amrex_dir)
 
 # Helper for selection benchmark (pre-load data)
-amrex_data = AMReXParticleData(amrex_dir)
+amrex_data = AMReXParticle(amrex_dir)
 Batsrus.load_data!(amrex_data) # Force load for selection benchmark
 
 SUITE["amrex"]["select_region"] = @benchmarkable select_particles_in_region($amrex_data, x_range=(2.5, 4.5))
