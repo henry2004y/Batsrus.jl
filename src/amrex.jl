@@ -155,33 +155,34 @@ mutable struct AMReXParticleData
       # Parse main header
       header_path = joinpath(output_dir, "Header")
 
-      local dim, time, left_edge, right_edge, domain_dimensions
-
-      open(header_path, "r") do f
+      dim, time, left_edge, right_edge, domain_dimensions = open(header_path, "r") do f
          readline(f) # version string
          num_fields = parse(Int, readline(f))
          for _ in 1:num_fields
             readline(f)
          end
 
-         dim = parse(Int, readline(f))
-         time = parse(Float64, readline(f))
+         dim_val = parse(Int, readline(f))
+         time_val = parse(Float64, readline(f))
          readline(f) # prob_refine_ratio
 
-         left_edge = [parse(Float64, v) for v in split(readline(f))]
-         right_edge = [parse(Float64, v) for v in split(readline(f))]
+         left_edge_val = [parse(Float64, v) for v in split(readline(f))]
+         right_edge_val = [parse(Float64, v) for v in split(readline(f))]
          readline(f)
 
          dim_line = readline(f) |> strip
-         matches = [parse(Int, m.match) for m in eachmatch(r"\d+", dim_line)]
+         matches = [parse(Int, m.match) for m in eachmatch(r"-?\d+", dim_line)]
 
          # Let's adapt to dynamic dimensions
-         if length(matches) >= 2 * dim
-            coords = matches[1:(2*dim)]
-            domain_dimensions = [coords[i+dim] - coords[i] + 1 for i in 1:dim]
+         local domain_dimensions_val
+         if length(matches) >= 2 * dim_val
+            coords = matches[1:(2*dim_val)]
+            domain_dimensions_val = [coords[i+dim_val] - coords[i] + 1 for i in 1:dim_val]
          else
             error("Dimension mismatch when parsing domain dimensions from Header.")
          end
+
+         (dim_val, time_val, left_edge_val, right_edge_val, domain_dimensions_val)
       end
 
       header = AMReXParticleHeader(joinpath(output_dir, ptype, "Header"))
@@ -323,28 +324,114 @@ function select_particles_in_region(
       z_range::Union{Tuple{Float64, Float64}, Nothing} = nothing
 )
    # Ensure data is loaded into memory. This will be a no-op if already loaded.
-   load_data!(data)
-   rdata = data._rdata
+   # If real data is already loaded, filter in memory
+   if !isnothing(data._rdata)
+      rdata = data._rdata
+      if isempty(rdata)
+         return similar(rdata, 0, size(rdata, 2))
+      end
 
-   if isnothing(rdata)
-      return Matrix{data.header.real_type}(undef, 0, data.header.num_real)
+      mask = trues(size(rdata, 1))
+      ranges = [x_range, y_range, z_range]
+
+      for i in 1:min(data.dim, length(ranges))
+         if !isnothing(ranges[i])
+            # AMReX real components are x, y, z, ...
+            # so column i corresponds to the i-th dimension.
+            col_data = @view rdata[:, i]
+            mask .&= (col_data .>= ranges[i][1]) .& (col_data .<= ranges[i][2])
+         end
+      end
+
+      return rdata[mask, :]
    end
 
-   if isempty(rdata)
-      return similar(rdata, 0, size(rdata, 2))
-   end
-
-   mask = trues(size(rdata, 1))
+   # If not loaded, optimize by reading specific grids
+   # Convert physical range to index range
    ranges = [x_range, y_range, z_range]
+   dx = [(data.right_edge[i] - data.left_edge[i]) / data.domain_dimensions[i] for i in 1:data.dim]
 
-   for i in 1:min(data.dim, length(ranges))
+   target_idx_ranges = Vector{Union{Tuple{Int, Int}, Nothing}}(undef, data.dim)
+   for i in 1:data.dim
       if !isnothing(ranges[i])
-         # AMReX real components are x, y, z, ...
-         # so column i corresponds to the i-th dimension.
-         col_data = @view rdata[:, i]
-         mask .&= (col_data .>= ranges[i][1]) .& (col_data .<= ranges[i][2])
+         idx_min = floor(Int, (ranges[i][1] - data.left_edge[i]) / dx[i])
+         idx_max = floor(Int, (ranges[i][2] - data.left_edge[i]) / dx[i])
+         target_idx_ranges[i] = (idx_min, idx_max)
+      else
+         target_idx_ranges[i] = nothing
       end
    end
 
-   return rdata[mask, :]
+   overlapping_grids = Tuple{Int, Int}[] # (level_num_0_indexed, grid_index_1_indexed)
+
+   for (lvl_idx, boxes) in enumerate(data.level_boxes)
+      level_num = lvl_idx - 1
+      for (grid_idx, (lo, hi)) in enumerate(boxes)
+         box_overlap = true
+         for i in 1:data.dim
+            if !isnothing(target_idx_ranges[i])
+               target_min, target_max = target_idx_ranges[i]
+               # lo and hi are tuples of Int indices
+               if hi[i] < target_min || lo[i] > target_max
+                  box_overlap = false
+                  break
+               end
+            end
+         end
+         if box_overlap
+            push!(overlapping_grids, (level_num, grid_idx))
+         end
+      end
+   end
+
+   selected_rdata = Vector{Matrix{data.header.real_type}}()
+
+   base_fn = joinpath(data.output_dir, data.ptype)
+
+   for (level_num, grid_idx) in overlapping_grids
+      # header.grids stores (which, count, where)
+      # It is vector of vector. data.header.grids[level+1]
+      grid_data = data.header.grids[level_num + 1][grid_idx]
+      which, count, where = grid_data
+
+      if count == 0
+         continue
+      end
+
+      data_fn = joinpath(base_fn, "Level_$(level_num)", @sprintf("DATA_%05d", which))
+
+      open(data_fn, "r") do f
+         seek(f, where)
+         if data.header.is_checkpoint
+            # Skip integers
+            skip(f, count * data.header.num_int * sizeof(data.header.int_type))
+         end
+
+         # Read floats
+         floats_vec = Vector{data.header.real_type}(undef, count * data.header.num_real)
+         read!(f, floats_vec)
+         # Reshape to (num_real, count) and transpose to (count, num_real)
+         float_mat = reshape(floats_vec, data.header.num_real, count)'
+
+         # Filter particles locally
+         mask = trues(count)
+         for i in 1:data.dim
+            if !isnothing(ranges[i])
+               # use column i
+               col = @view float_mat[:, i]
+               mask .&= (col .>= ranges[i][1]) .& (col .<= ranges[i][2])
+            end
+         end
+
+         if any(mask)
+            push!(selected_rdata, float_mat[mask, :])
+         end
+      end
+   end
+
+   if isempty(selected_rdata)
+      return Matrix{data.header.real_type}(undef, 0, data.header.num_real)
+   end
+
+   return vcat(selected_rdata...)
 end
