@@ -36,10 +36,15 @@ function interp2d(bd::BATS{2, TV, TX, TW}, var::AbstractString,
       yi = range(plotrange[3], stop = plotrange[4], step = plotinterval)
 
       if useMatplotlib
-         triang = matplotlib.tri.Triangulation(X, Y)
-         interpolator = matplotlib.tri.LinearTriInterpolator(triang, W)
-         Xi, Yi = meshgrid(xi, yi)
-         Wi = interpolator(Xi, Yi) # Always returns Float64!
+         try
+            Wi = _triangulate_matplotlib(X, Y, W, xi, yi)
+         catch e
+            if e isa MethodError
+               error("Matplotlib interpolation requires PyPlot to be loaded.")
+            else
+               rethrow(e)
+            end
+         end
       else
          xi, yi, Wi = interpolate2d_generalized_coords(X, Y, W, plotrange, plotinterval)
       end
@@ -66,7 +71,7 @@ function interp2d(bd::BATS{2, TV, TX, TW}, var::AbstractString,
 
    # Mask a circle at the inner boundary
    if innermask
-      varIndex_ = findlast(x->x=="rbody", bd.head.param)
+      varIndex_ = findlast(x -> x == "rbody", bd.head.param)
       if isnothing(varIndex_)
          @info "rbody not found in file header parameters; use keyword rbody"
          @inbounds @simd for i in CartesianIndices(Wi)
@@ -130,7 +135,7 @@ end
 Find variable index in the BATSRUS data.
 """
 function findindex(bd::BATS, var::AbstractString)
-   varIndex_ = findfirst(x->lowercase(x)==lowercase(var), bd.head.wname)
+   varIndex_ = findfirst(x -> lowercase(x) == lowercase(var), bd.head.wname)
    isnothing(varIndex_) && error("$(var) not found in file header variables!")
 
    varIndex_
@@ -216,7 +221,7 @@ function interp1d(
    ns = floor(Int, √(nx^2 + ny^2))
    dx = lx / ns
    dy = ly / ns
-   points = [(point1[1] + i*dx, point1[2] + i*dy) for i in 0:ns]
+   points = [(point1[1] + i * dx, point1[2] + i * dy) for i in 0:ns]
 
    Wi = [itp(loc...) for loc in points]
 end
@@ -315,9 +320,9 @@ R = getRotationMatrix(v̂, θ)
 function getRotationMatrix(v::AbstractVector{<:AbstractFloat}, θ::Real)
    sinθ, cosθ = sincos(eltype(v)(θ))
    tmp = 1 - cosθ
-   m = @SMatrix [cosθ+v[1]^2*tmp v[1]*v[2]*tmp-v[3]*sinθ v[1]*v[3]*tmp+v[2]*sinθ;
-                 v[1]*v[2]*tmp+v[3]*sinθ cosθ+v[2]^2*tmp v[2]*v[3]*tmp-v[1]*sinθ;
-                 v[1]*v[3]*tmp-v[2]*sinθ v[3]*v[2]*tmp+v[1]*sinθ cosθ+v[3]^2*tmp]
+   m = @SMatrix [cosθ+v[1]^2 * tmp v[1] * v[2] * tmp-v[3] * sinθ v[1] * v[3] * tmp+v[2] * sinθ;
+                 v[1] * v[2] * tmp+v[3] * sinθ cosθ+v[2]^2 * tmp v[2] * v[3] * tmp-v[1] * sinθ;
+                 v[1] * v[3] * tmp-v[2] * sinθ v[3] * v[2] * tmp+v[1] * sinθ cosθ+v[3]^2 * tmp]
 end
 
 """
@@ -327,13 +332,15 @@ end
 Generate mock AMReX particle data for testing and benchmarking.
 
 # Arguments
-- `output_dir::String`: Directory to save the mock data.
-- `num_particles::Int`: Number of particles to generate.
-- `particle_gen::Function`: A function that takes an index `i` (1-based) and returns a tuple of 5 Float64 values: `(x, y, z, u, v)`.
+
+  - `output_dir::String`: Directory to save the mock data.
+  - `num_particles::Int`: Number of particles to generate.
+  - `particle_gen::Function`: A function that takes an index `i` (1-based) and returns a tuple of 5 Float64 values: `(x, y, z, u, v)`.
 """
-function generate_mock_amrex_data(output_dir::String; 
+function generate_mock_amrex_data(output_dir::String;
       num_particles::Int = 10,
-      particle_gen::Function = i -> (Float64(i), Float64(i), Float64(i), Float64(i * 10), Float64(i * 100))
+      particle_gen::Function = i -> (
+         Float64(i), Float64(i), Float64(i), Float64(i * 10), Float64(i * 100))
 )
    ptype = "particles"
    base_dir = joinpath(output_dir, ptype)
@@ -399,3 +406,5 @@ function generate_mock_amrex_data(output_dir::String;
       println(f, "((0,0,0) (10,10,10) (0,0,0))") # domain size
    end
 end
+
+function _triangulate_matplotlib end
