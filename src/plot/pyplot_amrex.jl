@@ -26,9 +26,9 @@ function plot_phase(
       x_variable::String,
       y_variable::String;
       bins::Union{Int, Tuple{Int, Int}} = 100,
-      x_range::Union{Tuple{Float64, Float64}, Nothing} = nothing,
-      y_range::Union{Tuple{Float64, Float64}, Nothing} = nothing,
-      z_range::Union{Tuple{Float64, Float64}, Nothing} = nothing,
+      x_range = nothing,
+      y_range = nothing,
+      z_range = nothing,
       log_scale::Bool = true,
       ax = nothing,
       add_colorbar::Bool = true,

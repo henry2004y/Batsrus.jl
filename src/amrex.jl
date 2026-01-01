@@ -320,9 +320,9 @@ end
 
 function select_particles_in_region(
       data::AMReXParticleData;
-      x_range::Union{Tuple{Float64, Float64}, Nothing} = nothing,
-      y_range::Union{Tuple{Float64, Float64}, Nothing} = nothing,
-      z_range::Union{Tuple{Float64, Float64}, Nothing} = nothing
+      x_range = nothing,
+      y_range = nothing,
+      z_range = nothing
 )
    # Ensure data is loaded into memory. This will be a no-op if already loaded.
    # If real data is already loaded, filter in memory
@@ -332,24 +332,26 @@ function select_particles_in_region(
          return similar(rdata, 0, size(rdata, 2))
       end
 
-      mask = trues(size(rdata, 1))
-      ranges = [x_range, y_range, z_range]
-
-      for i in 1:min(data.dim, length(ranges))
-         if !isnothing(ranges[i])
-            # AMReX real components are x, y, z, ...
-            # so column i corresponds to the i-th dimension.
-            col_data = @view rdata[:, i]
-            mask .&= (col_data .>= ranges[i][1]) .& (col_data .<= ranges[i][2])
+      ranges = (x_range, y_range, z_range)
+      
+      valid_indices = filter(1:size(rdata, 1)) do i
+         for dim in 1:min(data.dim, 3)
+            if !isnothing(ranges[dim])
+               val = rdata[i, dim]
+               if val < ranges[dim][1] || val > ranges[dim][2]
+                  return false
+               end
+            end
          end
+         return true
       end
 
-      return rdata[mask, :]
+      return rdata[valid_indices, :]
    end
 
    # If not loaded, optimize by reading specific grids
    # Convert physical range to index range
-   ranges = [x_range, y_range, z_range]
+   ranges = (x_range, y_range, z_range)
    dx = [(data.right_edge[i] - data.left_edge[i]) / data.domain_dimensions[i] for i in 1:data.dim]
 
    target_idx_ranges = Vector{Union{Tuple{Int, Int}, Nothing}}(undef, data.dim)
@@ -393,7 +395,7 @@ function select_particles_in_region(
       # header.grids stores (which, count, where)
       # It is vector of vector. data.header.grids[level+1]
       grid_data = data.header.grids[level_num + 1][grid_idx]
-      which, count, where = grid_data
+      which, count, offset = grid_data
 
       if count == 0
          continue
@@ -402,7 +404,7 @@ function select_particles_in_region(
       data_fn = joinpath(base_fn, "Level_$(level_num)", @sprintf("DATA_%05d", which))
 
       open(data_fn, "r") do f
-         seek(f, where)
+         seek(f, offset)
          if data.header.is_checkpoint
             # Skip integers
             skip(f, count * data.header.num_int * sizeof(data.header.int_type))
@@ -411,21 +413,31 @@ function select_particles_in_region(
          # Read floats
          floats_vec = Vector{data.header.real_type}(undef, count * data.header.num_real)
          read!(f, floats_vec)
-         # Reshape to (num_real, count) and transpose to (count, num_real)
-         float_mat = reshape(floats_vec, data.header.num_real, count)'
-
-         # Filter particles locally
-         mask = trues(count)
-         for i in 1:data.dim
-            if !isnothing(ranges[i])
-               # use column i
-               col = @view float_mat[:, i]
-               mask .&= (col .>= ranges[i][1]) .& (col .<= ranges[i][2])
-            end
+         
+         n_real = data.header.num_real
+         
+         valid_rows = filter(0:count-1) do k
+             for d in 1:data.dim
+                if !isnothing(ranges[d])
+                   val = floats_vec[k * n_real + d]
+                   if val < ranges[d][1] || val > ranges[d][2]
+                      return false
+                   end
+                end
+             end
+             return true
          end
 
-         if any(mask)
-            push!(selected_rdata, float_mat[mask, :])
+         if !isempty(valid_rows)
+            # Create result matrix for this block
+            res = Matrix{data.header.real_type}(undef, length(valid_rows), n_real)
+            for (i, row_idx) in enumerate(valid_rows)
+               base = row_idx * n_real
+               for j in 1:n_real
+                  res[i, j] = floats_vec[base + j]
+               end
+            end
+            push!(selected_rdata, res)
          end
       end
    end
@@ -455,9 +467,9 @@ function get_phase_space_density(
       x_variable::String,
       y_variable::String;
       bins::Union{Int, Tuple{Int, Int}} = 100,
-      x_range::Union{Tuple{Float64, Float64}, Nothing} = nothing,
-      y_range::Union{Tuple{Float64, Float64}, Nothing} = nothing,
-      z_range::Union{Tuple{Float64, Float64}, Nothing} = nothing
+      x_range = nothing,
+      y_range = nothing,
+      z_range = nothing
 )
    # Select data
    if !isnothing(x_range) || !isnothing(y_range) || !isnothing(z_range)
