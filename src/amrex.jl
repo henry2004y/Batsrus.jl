@@ -324,6 +324,8 @@ function select_particles_in_region(
       y_range = nothing,
       z_range = nothing
 )
+   ranges = (x_range, y_range, z_range)
+
    # Ensure data is loaded into memory. This will be a no-op if already loaded.
    # If real data is already loaded, filter in memory
    if !isnothing(data._rdata)
@@ -331,27 +333,60 @@ function select_particles_in_region(
       if isempty(rdata)
          return similar(rdata, 0, size(rdata, 2))
       end
-
-      ranges = (x_range, y_range, z_range)
       
-      valid_indices = filter(1:size(rdata, 1)) do i
-         for dim in 1:min(data.dim, 3)
-            if !isnothing(ranges[dim])
-               val = rdata[i, dim]
-               if val < ranges[dim][1] || val > ranges[dim][2]
-                  return false
-               end
-            end
-         end
-         return true
+      # Dispatch on element type for stability
+      if eltype(rdata) === Float64
+         return _select_particles_in_memory(rdata, ranges, data.dim)
+      elseif eltype(rdata) === Float32
+         return _select_particles_in_memory(rdata, ranges, data.dim)
+      else
+         # Fallback
+         return _select_particles_in_memory(rdata, ranges, data.dim)
       end
-
-      return rdata[valid_indices, :]
    end
 
    # If not loaded, optimize by reading specific grids
+   # Dispatch on file real type
+   real_type = data.header.real_type
+   if real_type === Float64
+      return _select_particles_from_files(data, ranges, Float64)
+   elseif real_type === Float32
+      return _select_particles_from_files(data, ranges, Float32)
+   else
+      error("Unsupported real type: $real_type")
+   end
+end
+
+function _select_particles_in_memory(rdata::Matrix{T}, ranges, dim) where T
+   # Unroll filter check
+   valid_indices = filter(1:size(rdata, 1)) do i
+      # Unrolled check for up to 3 dimensions
+      if dim >= 1 && !isnothing(ranges[1])
+         val = rdata[i, 1]
+         if val < ranges[1][1] || val > ranges[1][2]
+            return false
+         end
+      end
+      if dim >= 2 && !isnothing(ranges[2])
+         val = rdata[i, 2]
+         if val < ranges[2][1] || val > ranges[2][2]
+            return false
+         end
+      end
+      if dim >= 3 && !isnothing(ranges[3])
+         val = rdata[i, 3]
+         if val < ranges[3][1] || val > ranges[3][2]
+            return false
+         end
+      end
+      return true
+   end
+
+   return rdata[valid_indices, :]
+end
+
+function _select_particles_from_files(data::AMReXParticleData, ranges, ::Type{T}) where T
    # Convert physical range to index range
-   ranges = (x_range, y_range, z_range)
    dx = [(data.right_edge[i] - data.left_edge[i]) / data.domain_dimensions[i] for i in 1:data.dim]
 
    target_idx_ranges = Vector{Union{Tuple{Int, Int}, Nothing}}(undef, data.dim)
@@ -387,13 +422,14 @@ function select_particles_in_region(
       end
    end
 
-   selected_rdata = Vector{Matrix{data.header.real_type}}()
+   selected_rdata = Vector{Matrix{T}}()
 
    base_fn = joinpath(data.output_dir, data.ptype)
+   n_real = data.header.num_real
+   dim = data.dim
 
    for (level_num, grid_idx) in overlapping_grids
       # header.grids stores (which, count, where)
-      # It is vector of vector. data.header.grids[level+1]
       grid_data = data.header.grids[level_num + 1][grid_idx]
       which, count, offset = grid_data
 
@@ -411,18 +447,27 @@ function select_particles_in_region(
          end
 
          # Read floats
-         floats_vec = Vector{data.header.real_type}(undef, count * data.header.num_real)
+         floats_vec = Vector{T}(undef, count * n_real)
          read!(f, floats_vec)
          
-         n_real = data.header.num_real
-         
          valid_rows = filter(0:count-1) do k
-             for d in 1:data.dim
-                if !isnothing(ranges[d])
-                   val = floats_vec[k * n_real + d]
-                   if val < ranges[d][1] || val > ranges[d][2]
-                      return false
-                   end
+             # Unrolled check
+             if dim >= 1 && !isnothing(ranges[1])
+                val = floats_vec[k * n_real + 1]
+                if val < ranges[1][1] || val > ranges[1][2]
+                   return false
+                end
+             end
+             if dim >= 2 && !isnothing(ranges[2])
+                val = floats_vec[k * n_real + 2]
+                if val < ranges[2][1] || val > ranges[2][2]
+                   return false
+                end
+             end
+             if dim >= 3 && !isnothing(ranges[3])
+                val = floats_vec[k * n_real + 3]
+                if val < ranges[3][1] || val > ranges[3][2]
+                   return false
                 end
              end
              return true
@@ -430,7 +475,7 @@ function select_particles_in_region(
 
          if !isempty(valid_rows)
             # Create result matrix for this block
-            res = Matrix{data.header.real_type}(undef, length(valid_rows), n_real)
+            res = Matrix{T}(undef, length(valid_rows), n_real)
             for (i, row_idx) in enumerate(valid_rows)
                base = row_idx * n_real
                for j in 1:n_real
@@ -443,7 +488,7 @@ function select_particles_in_region(
    end
 
    if isempty(selected_rdata)
-      return Matrix{data.header.real_type}(undef, 0, data.header.num_real)
+      return Matrix{T}(undef, 0, n_real)
    end
 
    return vcat(selected_rdata...)
