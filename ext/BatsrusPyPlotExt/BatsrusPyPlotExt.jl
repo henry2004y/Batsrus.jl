@@ -9,11 +9,11 @@ import Batsrus: meshgrid, findindex, adjust_plotrange!, _resolve_alias
 import Batsrus: plotlogdata, cutplot, streamslice, plot_phase
 
 function __init__()
-   if PyPlot.matplotlib.__version__ >= "3.3"
+   if VersionNumber(PyPlot.matplotlib.__version__) >= v"3.3"
       PyPlot.matplotlib.rc("image", cmap = "turbo") # set default colormap
    end
 
-   if PyPlot.matplotlib.__version__ < "3.5"
+   if VersionNumber(PyPlot.matplotlib.__version__) < v"3.5"
       PyPlot.matplotlib.rc("pcolor", shading = "nearest") # newer version default "auto"
    end
 

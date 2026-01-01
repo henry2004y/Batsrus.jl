@@ -13,7 +13,10 @@
 *.vts
 *.tec
 *.gz
+*.batl
 test*.jl
+test/data/
+amrex_mock/
 *~
 docs/build/
 Manifest.toml
