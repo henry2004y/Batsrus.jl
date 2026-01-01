@@ -237,37 +237,96 @@ function read_amrex_binary_particle_file(fn::AbstractString, header::AMReXPartic
    idata = Matrix{header.int_type}(undef, header.num_particles, header.num_int)
    rdata = Matrix{header.real_type}(undef, header.num_particles, header.num_real)
 
+   # Buffers for reading. We use 1D vectors and reshape them.
+   # We keep them large enough to hold the largest grid encounter so far.
+   int_buffer_vec = Vector{header.int_type}(undef, 0)
+   float_buffer_vec = Vector{header.real_type}(undef, 0)
+
    ip = 1
    for lvl in 0:(header.num_levels - 1)
       level_grids = header.grids[lvl + 1]
-      for (which, count, where) in level_grids
-         if count == 0
-            continue
-         end
 
-         data_fn = joinpath(base_fn, "Level_$(lvl)", @sprintf("DATA_%05d", which))
+      # Pre-calculate offsets and sort
+      grids_with_offset = Vector{Tuple{Int, Int, Int, Int}}(undef, length(level_grids))
+      current_ip = ip
+      for (i, (which, count, where)) in enumerate(level_grids)
+         grids_with_offset[i] = (which, count, where, current_ip)
+         current_ip += count
+      end
+      ip = current_ip # Update for next level
 
-         open(data_fn, "r") do f
+      sort!(grids_with_offset, by = x -> (x[1], x[3]))
+
+      local current_file_index = -1
+      local f = nothing
+
+      try
+         for (which, count, where, dest_offset) in grids_with_offset
+            if count == 0
+               continue
+            end
+
+            if which != current_file_index
+               if !isnothing(f)
+                  close(f)
+               end
+               current_file_index = which
+               data_fn = joinpath(base_fn, "Level_$(lvl)", @sprintf("DATA_%05d", which))
+               f = open(data_fn, "r")
+            end
+
             seek(f, where)
+
             if header.is_checkpoint
-               # Read integers
-               ints_vec = Vector{header.int_type}(undef, count * header.num_int)
-               read!(f, ints_vec)
-               # Reshape and assign. Note: Julia matrices are column-major, but file is likely row-major (C-style).
-               # AMReX stores particles contiguously, structure of array (N, num_int).
-               # (num_int, count) -> (count, num_int)
-               ints_mat = reshape(ints_vec, header.num_int, count)'
-               idata[ip:(ip + count - 1), :] = ints_mat
+               num_int = header.num_int
+               required_len = count * num_int
+               if length(int_buffer_vec) < required_len
+                  resize!(int_buffer_vec, required_len)
+               end
+
+               # View into the buffer
+               # We only read what we need
+               target_view = view(int_buffer_vec, 1:required_len)
+               read!(f, target_view)
+
+               # Data in file (AoS): p1_c1, p1_c2, ...
+               # Julia read! fills column-major.
+               # We want to interpret this linear data as a matrix M where M[:, i] is particle i.
+               # M should be (num_int, count).
+               # Since 'reshape' is column-major, reshape(vec, num_int, count) does exactly this:
+               # Column 1 takes the first num_int elements (p1 data).
+               # Column 2 takes the next num_int elements (p2 data).
+
+               M = reshape(target_view, num_int, count)
+
+               # idata is (num_particles, num_int). Row i is particle i.
+               # So we need to assign M' to idata[dest_range, :].
+               # idata[dest_offset:dest_offset+count-1, :] = M'
+
+               # Using transpose copy
+               # To avoid allocation of M', we can iterate or use permutedims! if supported?
+               # Transpose is lazy. The assignment A[:] = B' should be optimized.
+
+               idata[dest_offset:(dest_offset + count - 1), :] = M'
             end
 
             # Read floats
-            floats_vec = Vector{header.real_type}(undef, count * header.num_real)
-            read!(f, floats_vec)
-            # Reshape assuming C-order row-major storage for particles
-            floats_mat = reshape(floats_vec, header.num_real, count)'
-            rdata[ip:(ip + count - 1), :] = floats_mat
+            num_real = header.num_real
+            required_len = count * num_real
+            if length(float_buffer_vec) < required_len
+               resize!(float_buffer_vec, required_len)
+            end
+
+            target_view = view(float_buffer_vec, 1:required_len)
+            read!(f, target_view)
+
+            M = reshape(target_view, num_real, count)
+            rdata[dest_offset:(dest_offset + count - 1), :] = M'
          end
-         ip += count
+      finally
+         if !isnothing(f)
+            close(f)
+         end
       end
    end
 

@@ -1,7 +1,8 @@
 [deps]
+Batsrus = "e74ebddf-6ac1-4047-a0e5-c32c99e57753"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
-LazyArtifacts = "4af54fe1-eca0-43a8-85a7-787d91b784e3"
 FHist = "68837c9b-b678-4cd5-9925-8a54edc8f695"
+LazyArtifacts = "4af54fe1-eca0-43a8-85a7-787d91b784e3"
 PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
 RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
 SHA = "ea8e919c-243c-51af-8825-aaa63cd721ce"
