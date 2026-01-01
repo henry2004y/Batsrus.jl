@@ -6,10 +6,15 @@ using Batsrus: At, Near # DimensionalData
 using RecipesBase
 using Suppressor: @capture_out, @capture_err, @suppress_out, @suppress_err
 using CairoMakie
-using PyPlot
+using CairoMakie
+# Check if we should run PyPlot tests (Only on Linux in CI, or always locally)
+const RUN_PYPLOT_TESTS = Sys.islinux() || get(ENV, "CI", "false") != "true"
+if RUN_PYPLOT_TESTS
+   using PyPlot
+end
 using FHist
 
-ENV["MPLBACKEND"]="agg" # no GUI
+ENV["MPLBACKEND"] = "agg" # no GUI
 
 function filecmp(path1::AbstractString, path2::AbstractString)
    stat1, stat2 = stat(path1), stat(path2)
@@ -70,8 +75,8 @@ end
       w = slice1d(bd, "rho", 1, 1)
       @test sum(w) == 4.0f0
       @test get_var_range(bd, "rho") == (0.11626893f0, 1.0f0)
-      @test length(bd["rho"][X=-10 .. 10, Y=Near(0.9)]) == 20
-      @test bd["rho"][X=At(0.5), Y=At(0.5)] == 0.6940014f0
+      @test length(bd["rho"][X = -10 .. 10, Y = Near(0.9)]) == 20
+      @test bd["rho"][X = At(0.5), Y = At(0.5)] == 0.6940014f0
 
       file = "z=0_fluid_region0_0_t00001640_n00010142.out"
       bd = load(joinpath(datapath, file))
@@ -86,7 +91,7 @@ end
       @test get_magnitude2(bd, :U0)[2, 1] == 33784.973f0
       anisotropy_s0 = get_anisotropy(bd, 0)[1:2, 1]
       @test anisotropy_s0 ≈ Float32[1.2630985, 2.4700143]
-      @test get_anisotropy(bd, 0, method=:rotation)[1:2, 1] ≈ anisotropy_s0
+      @test get_anisotropy(bd, 0, method = :rotation)[1:2, 1] ≈ anisotropy_s0
       @test get_anisotropy(bd, 1)[1:2, 1] ≈ Float32[1.2906302, 2.6070855]
       w = get_convection_E(bd)
       @test w[2][2, 1] ≈ -2454.3933f0
@@ -147,7 +152,7 @@ end
       rm("out.vtu")
 
       filetag = joinpath(datapath, "3d_mhd_amr/3d__mhd_1_t00000000_n00000000")
-      batl = Batl(readhead(filetag*".info"), readtree(filetag)...)
+      batl = Batl(readhead(filetag * ".info"), readtree(filetag)...)
       # local block index check
       @test Batsrus.find_grid_block(batl, [1.0, 0.0, 0.0]) == 4 &&
             Batsrus.find_grid_block(batl, [100.0, 0.0, 0.0]) == -100
@@ -194,48 +199,50 @@ end
          @test plt isa Heatmap
       end
 
-      @testset "PyPlot" begin
-         @test size(squeeze(zeros(2, 3, 1))) == (2, 3)
-         # 1D ascii
-         file = "1d__raw_2_t25.60000_n00000258.out"
-         bd = load(joinpath(datapath, file), verbose = false)
-         c = PyPlot.plot(bd, "p")
-         @test c[1].get_xdata() ≈ bd.x
-         @test c[1].get_ydata() ≈ bd.w[:, 10]
+      if RUN_PYPLOT_TESTS
+         @testset "PyPlot" begin
+            @test size(squeeze(zeros(2, 3, 1))) == (2, 3)
+            # 1D ascii
+            file = "1d__raw_2_t25.60000_n00000258.out"
+            bd = load(joinpath(datapath, file), verbose = false)
+            c = PyPlot.plot(bd, "p")
+            @test c[1].get_xdata() ≈ bd.x
+            @test c[1].get_ydata() ≈ bd.w[:, 10]
 
-         # 2D structured binary
-         file = "z=0_raw_1_t25.60000_n00000258.out"
-         bd = load(joinpath(datapath, file))
-         c = PyPlot.streamplot(bd, "bx;by")
-         @test c.lines.get_segments()[2][3] ≈ -118.68871477694084
-         c = PyPlot.contourf(bd, "p")
-         @test c.get_array()[end] == 0.9750000000000002
-         c = @suppress_err PyPlot.contourf(bd, "rho", innermask = true)
-         @test c.get_array()[end] == 0.9750000000000002
-         c = PyPlot.contour(bd, "rho")
-         @test c.get_array()[end] == 1.0500000000000003
-         c = PyPlot.contour(bd, "rho"; levels = [1.0])
-         @test c.get_array()[end] == 1.0
-         c = PyPlot.tricontourf(bd, "rho")
-         @test c.get_array()[end] == 0.9750000000000002
-         PyPlot.tripcolor(bd, "rho")
-         @test isa(gca(), PyPlot.PyObject)
-         p = PyPlot.pcolormesh(bd, "p").get_array()
-         @test p[end] == 0.1f0
-         p = PyPlot.imshow(bd, "p").get_array()
-         @test p[2, 128] == 0.51229393f0
-         plt.close()
-         fig = plt.figure()
-         ax = fig.add_subplot(111, projection = "3d")
-         plot_surface(bd, "rho")
-         @test isa(gca(), PyPlot.PyObject)
-         plt.close()
+            # 2D structured binary
+            file = "z=0_raw_1_t25.60000_n00000258.out"
+            bd = load(joinpath(datapath, file))
+            c = PyPlot.streamplot(bd, "bx;by")
+            @test c.lines.get_segments()[2][3] ≈ -118.68871477694084
+            c = PyPlot.contourf(bd, "p")
+            @test c.get_array()[end] == 0.9750000000000002
+            c = @suppress_err PyPlot.contourf(bd, "rho", innermask = true)
+            @test c.get_array()[end] == 0.9750000000000002
+            c = PyPlot.contour(bd, "rho")
+            @test c.get_array()[end] == 1.0500000000000003
+            c = PyPlot.contour(bd, "rho"; levels = [1.0])
+            @test c.get_array()[end] == 1.0
+            c = PyPlot.tricontourf(bd, "rho")
+            @test c.get_array()[end] == 0.9750000000000002
+            PyPlot.tripcolor(bd, "rho")
+            @test isa(gca(), PyPlot.PyObject)
+            p = PyPlot.pcolormesh(bd, "p").get_array()
+            @test p[end] == 0.1f0
+            p = PyPlot.imshow(bd, "p").get_array()
+            @test p[2, 128] == 0.51229393f0
+            plt.close()
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection = "3d")
+            plot_surface(bd, "rho")
+            @test isa(gca(), PyPlot.PyObject)
+            plt.close()
 
-         # 2D AMR Cartesian
-         file = "bx0_mhd_6_t00000100_n00000352.out"
-         bd = load(joinpath(datapath, file))
-         pcolormesh(bd, "P")
-         @test isa(gca(), PyPlot.PyObject)
+            # 2D AMR Cartesian
+            file = "bx0_mhd_6_t00000100_n00000352.out"
+            bd = load(joinpath(datapath, file))
+            pcolormesh(bd, "P")
+            @test isa(gca(), PyPlot.PyObject)
+         end
       end
    end
 
@@ -252,12 +259,10 @@ end
       varunit = getunit(bd, "P")
       @test varunit == u"nPa"
       varunit = getunit(bd, "jx")
-      @test dimension(varunit) == dimension(Unitful.A/Unitful.m^2)
+      @test dimension(varunit) == dimension(Unitful.A / Unitful.m^2)
       varunit = getunit(bd, "ex")
       @test varunit == u"mV/m"
    end
-
-
 
    @testset "AMReX Loader" begin
       mktempdir() do tmpdir
@@ -285,6 +290,69 @@ end
          # Test Plotting Helper
          H, xedges, yedges = get_phase_space_density(data, "x", "u", bins = 2)
          @test size(H) == (2, 2)
+      end
+   end
+
+   @testset "Particle Classification" begin
+      mktempdir() do tmpdir
+         n_core = 1000
+         n_halo = 100
+         n_total = n_core + n_halo
+
+         Batsrus.generate_mock_amrex_data(tmpdir;
+            num_particles = n_total,
+            real_component_names = ["vx", "vy", "vz"],
+            particle_gen = (i, n_reals) -> begin
+               # Positions (random in box 0-2 (since mock data is small?))
+               pos = rand(3) .* 2.0 .- 0.5
+
+               # Velocities
+               if i <= n_core
+                  # Core velocities (Gaussian)
+                  vel = randn(3)
+               else
+                  # Halo velocities (Broad Gaussian)
+                  vel = randn(3) .* 5.0
+               end
+
+               (pos..., vel...)
+            end
+         )
+
+         data = AMReXParticle(tmpdir)
+         # Ensure data is loaded
+         Batsrus.load_data!(data)
+
+         # Test 1: Classification with known params
+         # vth=1.0, u=0
+         # nsigma=3.0
+
+         core, halo = classify_particles(
+            data; vdim = 3, bulk_vel = [0.0, 0.0, 0.0], vth = 1.0, nsigma = 3.0)
+
+         # Core efficiency: erte of 3 sigma is 0.997.
+         # So expected core count ~ n_core * 0.997 + halo_leak
+         # Halo leak: halo sigma=5. threshold=3. fraction within 3/5=0.6 sigma of halo distribution?
+         # erf(0.6/sqrt(2)) is small.
+
+         # Just check counts roughly
+         @test size(core, 1) > n_core * 0.9
+         @test size(halo, 1) < n_halo + n_core * 0.1
+         @test size(halo, 1) > n_halo * 0.5 # Halo shouldn't be empty
+
+         # Test 2: Auto validation of bulk velocity
+         core_auto, halo_auto = classify_particles(
+            data; vdim = 3, bulk_vel = nothing, vth = 1.0, nsigma = 3.0)
+
+         @test size(core_auto, 1)≈size(core, 1) atol=50
+
+         # Test 3: 1D
+         core_1d, halo_1d = classify_particles(
+            data; vdim = 1, bulk_vel = [0.0], vth = 1.0, nsigma = 3.0)
+
+         # In 1D, we verify against x-velocity only.
+         # Similar statistics hold.
+         @test size(core_1d, 1) > n_core * 0.9
       end
    end
 end

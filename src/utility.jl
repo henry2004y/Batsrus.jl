@@ -327,7 +327,8 @@ end
 
 """
      generate_mock_amrex_data(output_dir::String; num_particles::Int=10, 
-        particle_gen::Function = i -> (Float64(i), Float64(i), Float64(i), Float64(i*10), Float64(i*100)))
+        real_component_names::Vector{String}=["u", "v"],
+        particle_gen::Function)
 
 Generate mock AMReX particle data for testing and benchmarking.
 
@@ -335,25 +336,30 @@ Generate mock AMReX particle data for testing and benchmarking.
 
   - `output_dir::String`: Directory to save the mock data.
   - `num_particles::Int`: Number of particles to generate.
-  - `particle_gen::Function`: A function that takes an index `i` (1-based) and returns a tuple of 5 Float64 values: `(x, y, z, u, v)`.
+  - `real_component_names::Vector{String}`: Names of the extra real components (beyond x, y, z).
+  - `particle_gen::Function`: A function `(i, n_reals) -> tuple` that takes an index `i` (1-based) and the total number of real components `n_reals`. It should return a tuple of `n_reals` Float64 values: `(x, y, z, comp1, comp2, ...)`.
 """
 function generate_mock_amrex_data(output_dir::String;
       num_particles::Int = 10,
-      particle_gen::Function = i -> (
+      real_component_names::Vector{String} = ["u", "v"],
+      particle_gen::Function = (i, n_reals) -> (
          Float64(i), Float64(i), Float64(i), Float64(i * 10), Float64(i * 100))
 )
    ptype = "particles"
    base_dir = joinpath(output_dir, ptype)
    mkpath(base_dir)
 
+   n_extra = length(real_component_names)
+
    # Create Header
    header_path = joinpath(base_dir, "Header")
    open(header_path, "w") do f
       println(f, "Version_double")
       println(f, "3") # dim
-      println(f, "2") # num_real_extra (total real = 3 + 2 = 5)
-      println(f, "u")
-      println(f, "v")
+      println(f, "$n_extra") # num_real_extra
+      for name in real_component_names
+         println(f, name)
+      end
       println(f, "2") # num_int_extra (total int = 2 + 2 = 4)
       println(f, "id_1")
       println(f, "id_2")
@@ -380,13 +386,14 @@ function generate_mock_amrex_data(output_dir::String;
    data_fn = joinpath(level_dir, "DATA_00001")
    open(data_fn, "w") do f
       # Write particles
-      # structure: num_particles * (3+2) reals
-      # x, y, z, u, v
-      data = zeros(Float64, num_particles * 5)
+      # structure: num_particles * (3+n_extra) reals
+      # x, y, z, ...
+      n_reals = 3 + n_extra
+      data = zeros(Float64, num_particles * n_reals)
       for i in 1:num_particles
-         vals = particle_gen(i)
-         for j in 1:5
-            data[(i - 1) * 5 + j] = vals[j]
+         vals = particle_gen(i, n_reals)
+         for j in 1:n_reals
+            data[(i - 1) * n_reals + j] = vals[j]
          end
       end
       write(f, data)
