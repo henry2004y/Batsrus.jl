@@ -344,26 +344,27 @@ function select_particles_in_region(
 end
 
 function _select_particles_in_memory(rdata::Matrix{T}, ranges, dim) where T
-   # Unroll filter check
+   check_x = dim >= 1 && !isnothing(ranges[1])
+   xlo, xhi = check_x ? ranges[1] : (T(0), T(0))
+
+   check_y = dim >= 2 && !isnothing(ranges[2])
+   ylo, yhi = check_y ? ranges[2] : (T(0), T(0))
+
+   check_z = dim >= 3 && !isnothing(ranges[3])
+   zlo, zhi = check_z ? ranges[3] : (T(0), T(0))
+
    valid_indices = filter(1:size(rdata, 1)) do i
-      # Unrolled check for up to 3 dimensions
-      if dim >= 1 && !isnothing(ranges[1])
+      if check_x
          val = rdata[i, 1]
-         if val < ranges[1][1] || val > ranges[1][2]
-            return false
-         end
+         (val < xlo || val > xhi) && return false
       end
-      if dim >= 2 && !isnothing(ranges[2])
+      if check_y
          val = rdata[i, 2]
-         if val < ranges[2][1] || val > ranges[2][2]
-            return false
-         end
+         (val < ylo || val > yhi) && return false
       end
-      if dim >= 3 && !isnothing(ranges[3])
+      if check_z
          val = rdata[i, 3]
-         if val < ranges[3][1] || val > ranges[3][2]
-            return false
-         end
+         (val < zlo || val > zhi) && return false
       end
       return true
    end
@@ -418,6 +419,15 @@ function _select_particles_from_files(data::AMReXParticle{T}, ranges) where T
    n_real = data.header.num_real
    dim = data.dim
 
+   check_x = dim >= 1 && !isnothing(ranges[1])
+   xlo, xhi = check_x ? ranges[1] : (T(0), T(0))
+
+   check_y = dim >= 2 && !isnothing(ranges[2])
+   ylo, yhi = check_y ? ranges[2] : (T(0), T(0))
+
+   check_z = dim >= 3 && !isnothing(ranges[3])
+   zlo, zhi = check_z ? ranges[3] : (T(0), T(0))
+
    for (level_num, grid_idx) in overlapping_grids
       # header.grids stores (which, count, where)
       grid_data = data.header.grids[level_num + 1][grid_idx]
@@ -441,24 +451,17 @@ function _select_particles_from_files(data::AMReXParticle{T}, ranges) where T
          read!(f, floats_vec)
          
          valid_rows = filter(0:count-1) do k
-             # Unrolled check
-             if dim >= 1 && !isnothing(ranges[1])
+             if check_x
                 val = floats_vec[k * n_real + 1]
-                if val < ranges[1][1] || val > ranges[1][2]
-                   return false
-                end
+                (val < xlo || val > xhi) && return false
              end
-             if dim >= 2 && !isnothing(ranges[2])
+             if check_y
                 val = floats_vec[k * n_real + 2]
-                if val < ranges[2][1] || val > ranges[2][2]
-                   return false
-                end
+                (val < ylo || val > yhi) && return false
              end
-             if dim >= 3 && !isnothing(ranges[3])
+             if check_z
                 val = floats_vec[k * n_real + 3]
-                if val < ranges[3][1] || val > ranges[3][2]
-                   return false
-                end
+                (val < zlo || val > zhi) && return false
              end
              return true
          end
