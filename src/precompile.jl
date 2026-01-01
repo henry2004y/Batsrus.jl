@@ -18,5 +18,11 @@ using PrecompileTools: @setup_workload, @compile_workload
       w = interp1d(bd, "rho", point1, point2)
       w = slice1d(bd, "rho", 1, 1)
       get_var_range(bd, "rho")
+
+      mktempdir() do tmpdir
+         Batsrus.generate_mock_amrex_data(tmpdir)
+         data = AMReXParticle(tmpdir)
+         get_phase_space_density(data, "x", "u"; bins = 2)
+      end
    end
 end

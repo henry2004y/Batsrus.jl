@@ -13,7 +13,7 @@ end
    matplotlib.rc("pcolor", shading = "nearest") # newer version default "auto"
 end
 
-matplotlib.rc("font", size = 15)
+matplotlib.rc("font", size = 16)
 matplotlib.rc("xtick", labelsize = 10)
 matplotlib.rc("ytick", labelsize = 10)
 matplotlib.rc("xtick.minor", visible = true)

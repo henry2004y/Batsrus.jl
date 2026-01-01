@@ -330,3 +330,37 @@ axis("equal")
 ```
 
 Currently the `select_seeds` function uses pseudo random number generator that produces the same seeds every time.
+
+## AMReX Particle Data
+
+We provide support for reading and analyzing AMReX particle data.
+
+### Loading Data
+
+To load AMReX particle data:
+
+```julia
+data = AMReXParticle("path/to/data_directory")
+```
+
+This will parse the header and prepare for lazy loading of particle data.
+
+### Particle Classification
+
+You can classify particles into Core Maxwellian and Suprathermal populations using `classify_particles`. This function allows for specifying a spatial region and handling velocity distributions in 1D, 2D, or 3D.
+
+```julia
+# range can be specified by keywords x_range, y_range, z_range locally
+core, halo = classify_particles(data; 
+    x_range=(-1.0, 1.0), 
+    y_range=(-1.0, 1.0), 
+    z_range=(-1.0, 1.0),
+    vdim=3,          # Velocity dimension (1, 2, or 3)
+    vth=1.0,         # Core thermal velocity (required)
+    nsigma=3.0,      # Separation threshold
+    bulk_vel=nothing # Auto-detect if nothing
+)
+```
+
+The function returns two matrices containing the classified particles. If `bulk_vel` is not provided, it is automatically estimated from the peak of the velocity distribution.
+

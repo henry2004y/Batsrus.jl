@@ -1,5 +1,7 @@
 # AMReX particle data reader and analyzer.
 
+using FHist
+
 struct AMReXParticleHeader
    version_string::String
    real_type::DataType
@@ -134,12 +136,13 @@ function Base.show(io::IO, header::AMReXParticleHeader)
    end
 end
 
-mutable struct AMReXParticleData
+mutable struct AMReXParticle{T <: Real}
    const output_dir::String
    const ptype::String
    _idata::Union{Matrix{Int32}, Nothing}
-   _rdata::Union{Matrix{Float64}, Matrix{Float32}, Nothing}
-   const level_boxes::Vector{Vector{Tuple{Tuple{Int, Vararg{Int}}, Tuple{Int, Vararg{Int}}}}}
+   _rdata::Union{Matrix{T}, Nothing}
+   const level_boxes::Vector{Vector{Tuple{
+      Tuple{Int, Vararg{Int}}, Tuple{Int, Vararg{Int}}}}}
    const header::AMReXParticleHeader
    const dim::Int
    const time::Float64
@@ -147,54 +150,56 @@ mutable struct AMReXParticleData
    const right_edge::Vector{Float64}
    const domain_dimensions::Vector{Int}
 
-   function AMReXParticleData(output_dir::AbstractString)
+   function AMReXParticle(output_dir::AbstractString)
       ptype = "particles"
       idata = nothing
       rdata = nothing
-      
+
       # Parse main header
       header_path = joinpath(output_dir, "Header")
 
-      local dim, time, left_edge, right_edge, domain_dimensions
-
-      open(header_path, "r") do f
+      dim, time, left_edge, right_edge, domain_dimensions = open(header_path, "r") do f
          readline(f) # version string
          num_fields = parse(Int, readline(f))
          for _ in 1:num_fields
             readline(f)
          end
 
-         dim = parse(Int, readline(f))
-         time = parse(Float64, readline(f))
+         dim_val = parse(Int, readline(f))
+         time_val = parse(Float64, readline(f))
          readline(f) # prob_refine_ratio
 
-         left_edge = [parse(Float64, v) for v in split(readline(f))]
-         right_edge = [parse(Float64, v) for v in split(readline(f))]
+         left_edge_val = [parse(Float64, v) for v in split(readline(f))]
+         right_edge_val = [parse(Float64, v) for v in split(readline(f))]
          readline(f)
 
          dim_line = readline(f) |> strip
-         matches = [parse(Int, m.match) for m in eachmatch(r"\d+", dim_line)]
+         matches = [parse(Int, m.match) for m in eachmatch(r"-?\d+", dim_line)]
 
-         # Let's adapt to dynamic dimensions
-         if length(matches) >= 2 * dim
-            coords = matches[1:(2*dim)]
-            domain_dimensions = [coords[i+dim] - coords[i] + 1 for i in 1:dim]
+         local domain_dimensions_val
+         if length(matches) >= 2 * dim_val
+            coords = matches[1:(2 * dim_val)]
+            domain_dimensions_val = [coords[i + dim_val] - coords[i] + 1 for i in 1:dim_val]
          else
             error("Dimension mismatch when parsing domain dimensions from Header.")
          end
+
+         (dim_val, time_val, left_edge_val, right_edge_val, domain_dimensions_val)
       end
 
       header = AMReXParticleHeader(joinpath(output_dir, ptype, "Header"))
       level_boxes = _read_level_boxes(output_dir, ptype, header)
 
-      new(output_dir, ptype, idata, rdata, level_boxes, header,
+      T = header.real_type
+
+      new{T}(output_dir, ptype, idata, rdata, level_boxes, header,
          dim, time, left_edge, right_edge, domain_dimensions)
    end
 end
 
 function _read_level_boxes(output_dir::String, ptype::String, header::AMReXParticleHeader)
    level_boxes = [Vector{Tuple{Tuple{Int, Vararg{Int}}, Tuple{Int, Vararg{Int}}}}()
-                       for _ in 1:(header.num_levels)]
+                  for _ in 1:(header.num_levels)]
 
    for level_num in 0:(header.num_levels - 1)
       particle_h_path = joinpath(
@@ -208,7 +213,7 @@ function _read_level_boxes(output_dir::String, ptype::String, header::AMReXParti
 
       boxes = Vector{Tuple{Tuple{Int, Vararg{Int}}, Tuple{Int, Vararg{Int}}}}()
 
-      for line in lines[2:end] # Skip first line
+      @views for line in lines[2:end] # Skip first line
          line = strip(line)
          if startswith(line, "((") && endswith(line, "))")
             parts = [parse(Int, m.match) for m in eachmatch(r"-?\d+", line)]
@@ -240,7 +245,7 @@ function read_amrex_binary_particle_file(fn::AbstractString, header::AMReXPartic
    ip = 1
    for lvl in 0:(header.num_levels - 1)
       level_grids = header.grids[lvl + 1]
-      for (which, count, where) in level_grids
+      for (which, count, offset) in level_grids
          if count == 0
             continue
          end
@@ -248,12 +253,13 @@ function read_amrex_binary_particle_file(fn::AbstractString, header::AMReXPartic
          data_fn = joinpath(base_fn, "Level_$(lvl)", @sprintf("DATA_%05d", which))
 
          open(data_fn, "r") do f
-            seek(f, where)
+            seek(f, offset)
             if header.is_checkpoint
                # Read integers
                ints_vec = Vector{header.int_type}(undef, count * header.num_int)
                read!(f, ints_vec)
-               # Reshape and assign. Note: Julia matrices are column-major, but file is likely row-major (C-style).
+               # Reshape and assign.
+               # Julia is column-major, but file is row-major (C-style).
                # AMReX stores particles contiguously, structure of array (N, num_int).
                # (num_int, count) -> (count, num_int)
                ints_mat = reshape(ints_vec, header.num_int, count)'
@@ -274,7 +280,7 @@ function read_amrex_binary_particle_file(fn::AbstractString, header::AMReXPartic
    return idata, rdata
 end
 
-function load_data!(data::AMReXParticleData)
+function load_data!(data::AMReXParticle{T}) where T
    if isnothing(data._idata) || isnothing(data._rdata)
       idata, rdata = read_amrex_binary_particle_file(data.output_dir, data.header)
       data._idata = idata
@@ -282,17 +288,17 @@ function load_data!(data::AMReXParticleData)
    end
 end
 
-function get_idata(data::AMReXParticleData)
+function get_idata(data::AMReXParticle{T}) where T
    load_data!(data)
    return data._idata
 end
 
-function get_rdata(data::AMReXParticleData)
+function get_rdata(data::AMReXParticle{T}) where T
    load_data!(data)
    return data._rdata
 end
 
-Base.getproperty(obj::AMReXParticleData, sym::Symbol) =
+Base.getproperty(obj::AMReXParticle{T}, sym::Symbol) where T =
    if sym === :idata
       return get_idata(obj)
    elseif sym === :rdata
@@ -301,8 +307,8 @@ Base.getproperty(obj::AMReXParticleData, sym::Symbol) =
       return getfield(obj, sym)
    end
 
-function Base.show(io::IO, data::AMReXParticleData)
-   println(io, "AMReXParticleData from ", data.output_dir)
+function Base.show(io::IO, data::AMReXParticle{T}) where T
+   println(io, "AMReXParticle{$T} from ", data.output_dir)
    println(io, "Time: ", data.time)
    println(io, "Dimensions: ", data.dim)
    println(io, "Domain Dimensions: ", data.domain_dimensions)
@@ -317,34 +323,360 @@ function Base.show(io::IO, data::AMReXParticleData)
 end
 
 function select_particles_in_region(
-      data::AMReXParticleData;
-      x_range::Union{Tuple{Float64, Float64}, Nothing} = nothing,
-      y_range::Union{Tuple{Float64, Float64}, Nothing} = nothing,
-      z_range::Union{Tuple{Float64, Float64}, Nothing} = nothing
-)
+      data::AMReXParticle{T};
+      x_range = nothing,
+      y_range = nothing,
+      z_range = nothing
+) where T
+   ranges = (x_range, y_range, z_range)
+
    # Ensure data is loaded into memory. This will be a no-op if already loaded.
-   load_data!(data)
-   rdata = data._rdata
+   # If real data is already loaded, filter in memory
+   if !isnothing(data._rdata)
+      rdata = data._rdata
+      if isempty(rdata)
+         return similar(rdata, 0, size(rdata, 2))
+      end
 
-   if isnothing(rdata)
-      return Matrix{data.header.real_type}(undef, 0, data.header.num_real)
+      return _select_particles_in_memory(rdata, ranges, data.dim)
    end
 
-   if isempty(rdata)
-      return similar(rdata, 0, size(rdata, 2))
+   # If not loaded, optimize by reading specific grids
+   return _select_particles_from_files(data, ranges)
+end
+
+function _select_particles_in_memory(rdata::Matrix{T}, ranges, dim) where T
+   check_x = dim >= 1 && !isnothing(ranges[1])
+   xlo, xhi = check_x ? ranges[1] : (T(0), T(0))
+
+   check_y = dim >= 2 && !isnothing(ranges[2])
+   ylo, yhi = check_y ? ranges[2] : (T(0), T(0))
+
+   check_z = dim >= 3 && !isnothing(ranges[3])
+   zlo, zhi = check_z ? ranges[3] : (T(0), T(0))
+
+   valid_indices = filter(1:size(rdata, 1)) do i
+      if check_x
+         val = rdata[i, 1]
+         (val < xlo || val > xhi) && return false
+      end
+      if check_y
+         val = rdata[i, 2]
+         (val < ylo || val > yhi) && return false
+      end
+      if check_z
+         val = rdata[i, 3]
+         (val < zlo || val > zhi) && return false
+      end
+      return true
    end
 
-   mask = trues(size(rdata, 1))
-   ranges = [x_range, y_range, z_range]
+   return rdata[valid_indices, :]
+end
 
-   for i in 1:min(data.dim, length(ranges))
+function _select_particles_from_files(data::AMReXParticle{T}, ranges) where T
+   # Convert physical range to index range
+   dx = SVector{3, Float64}(
+      (data.right_edge[1] - data.left_edge[1]) / data.domain_dimensions[1],
+      (data.right_edge[2] - data.left_edge[2]) / data.domain_dimensions[2],
+      data.dim == 3 ? (data.right_edge[3] - data.left_edge[3]) / data.domain_dimensions[3] :
+      1.0
+   )
+
+   target_idx_ranges = Vector{Union{Tuple{Int, Int}, Nothing}}(undef, data.dim)
+   for i in 1:(data.dim)
       if !isnothing(ranges[i])
-         # AMReX real components are x, y, z, ...
-         # so column i corresponds to the i-th dimension.
-         col_data = @view rdata[:, i]
-         mask .&= (col_data .>= ranges[i][1]) .& (col_data .<= ranges[i][2])
+         idx_min = floor(Int, (ranges[i][1] - data.left_edge[i]) / dx[i])
+         idx_max = floor(Int, (ranges[i][2] - data.left_edge[i]) / dx[i])
+         target_idx_ranges[i] = (idx_min, idx_max)
+      else
+         target_idx_ranges[i] = nothing
       end
    end
 
-   return rdata[mask, :]
+   overlapping_grids = Tuple{Int, Int}[] # (level_num_0_indexed, grid_index_1_indexed)
+
+   for (lvl_idx, boxes) in enumerate(data.level_boxes)
+      level_num = lvl_idx - 1
+      for (grid_idx, (lo, hi)) in enumerate(boxes)
+         box_overlap = true
+         for i in 1:(data.dim)
+            if !isnothing(target_idx_ranges[i])
+               target_min, target_max = target_idx_ranges[i]
+               # lo and hi are tuples of Int indices
+               if hi[i] < target_min || lo[i] > target_max
+                  box_overlap = false
+                  break
+               end
+            end
+         end
+         if box_overlap
+            push!(overlapping_grids, (level_num, grid_idx))
+         end
+      end
+   end
+
+   selected_rdata = Vector{Matrix{T}}()
+
+   base_fn = joinpath(data.output_dir, data.ptype)
+   n_real = data.header.num_real
+   dim = data.dim
+
+   check_x = dim >= 1 && !isnothing(ranges[1])
+   xlo, xhi = check_x ? ranges[1] : (T(0), T(0))
+
+   check_y = dim >= 2 && !isnothing(ranges[2])
+   ylo, yhi = check_y ? ranges[2] : (T(0), T(0))
+
+   check_z = dim >= 3 && !isnothing(ranges[3])
+   zlo, zhi = check_z ? ranges[3] : (T(0), T(0))
+
+   for (level_num, grid_idx) in overlapping_grids
+      # header.grids stores (which, count, where)
+      grid_data = data.header.grids[level_num + 1][grid_idx]
+      which, count, offset = grid_data
+
+      if count == 0
+         continue
+      end
+
+      data_fn = joinpath(base_fn, "Level_$(level_num)", @sprintf("DATA_%05d", which))
+
+      open(data_fn, "r") do f
+         seek(f, offset)
+         if data.header.is_checkpoint
+            # Skip integers
+            skip(f, count * data.header.num_int * sizeof(data.header.int_type))
+         end
+
+         # Read floats
+         floats_vec = Vector{T}(undef, count * n_real)
+         read!(f, floats_vec)
+
+         valid_rows = filter(0:(count - 1)) do k
+            if check_x
+               val = floats_vec[k * n_real + 1]
+               (val < xlo || val > xhi) && return false
+            end
+            if check_y
+               val = floats_vec[k * n_real + 2]
+               (val < ylo || val > yhi) && return false
+            end
+            if check_z
+               val = floats_vec[k * n_real + 3]
+               (val < zlo || val > zhi) && return false
+            end
+            return true
+         end
+
+         if !isempty(valid_rows)
+            # Create result matrix for this block
+            res = Matrix{T}(undef, length(valid_rows), n_real)
+            for (i, row_idx) in enumerate(valid_rows)
+               base = row_idx * n_real
+               for j in 1:n_real
+                  res[i, j] = floats_vec[base + j]
+               end
+            end
+            push!(selected_rdata, res)
+         end
+      end
+   end
+
+   if isempty(selected_rdata)
+      return Matrix{T}(undef, 0, n_real)
+   end
+
+   return vcat(selected_rdata...)
+end
+
+const _ALIAS_MAP = Dict(
+   "vx" => "velocity_x",
+   "vy" => "velocity_y",
+   "vz" => "velocity_z"
+)
+
+_resolve_alias(variable_name::String) = get(_ALIAS_MAP, variable_name, variable_name)
+
+"""
+    get_phase_space_density(data, x_var, y_var; bins=100, x_range=nothing, y_range=nothing, z_range=nothing)::(H, xedges, yedges)
+
+Calculates the 2D phase space density for selected variables.
+"""
+function get_phase_space_density(
+      data::AMReXParticle{T},
+      x_variable::String,
+      y_variable::String;
+      bins::Union{Int, Tuple{Int, Int}} = 100,
+      x_range = nothing,
+      y_range = nothing,
+      z_range = nothing
+) where T
+   # Select data
+   if !isnothing(x_range) || !isnothing(y_range) || !isnothing(z_range)
+      rdata = select_particles_in_region(data; x_range, y_range, z_range)
+   else
+      rdata = data.rdata
+   end
+
+   if isempty(rdata)
+      error("No particles found for phase space density calculation.")
+   end
+
+   # Map component names to columns
+   component_names = data.header.real_component_names
+   component_map = Dict(name => i for (i, name) in enumerate(component_names))
+
+   x_variable = _resolve_alias(x_variable)
+   y_variable = _resolve_alias(y_variable)
+
+   if !haskey(component_map, x_variable) || !haskey(component_map, y_variable)
+      error("Invalid variable name. Available: $(keys(component_map))")
+   end
+
+   x_index = component_map[x_variable]
+   y_index = component_map[y_variable]
+
+   x_data = rdata[:, x_index]
+   y_data = rdata[:, y_index] # FHist uses nbins keyword
+   arg_bins = bins isa Int ? (bins, bins) : bins
+   nx, ny = arg_bins
+
+   # Calculate edges explicitly
+   if !isnothing(x_range)
+      xmin, xmax = x_range
+   else
+      xmin, xmax = extrema(x_data)
+   end
+
+   if !isnothing(y_range)
+      ymin, ymax = y_range
+   else
+      ymin, ymax = extrema(y_data)
+   end
+
+   x_edges = range(xmin, xmax, length = nx + 1)
+   y_edges = range(ymin, ymax, length = ny + 1)
+
+   h = Hist2D((x_data, y_data); binedges = (x_edges, y_edges))
+   H = h.bincounts
+
+   # Return edges as vectors for consistency
+   return H, collect(x_edges), collect(y_edges)
+end
+
+"""
+    classify_particles(data, region; vdim=3, bulk_vel=nothing, vth=nothing, nsigma=3.0)
+
+Classify particles in a spatial region into core Maxwellian and suprathermal populations.
+
+# Arguments
+
+  - `data::AMReXParticle`: Particle data.
+  - `region`: Passed as kwargs `x_range`, `y_range`, `z_range`.
+  - `vdim`: Velocity dimension (1, 2, or 3).
+  - `bulk_vel`: Core bulk velocity. If `nothing`, estimated from peak density.
+  - `vth`: Core thermal velocity. Must be provided.
+  - `nsigma`: Threshold for classification in units of thermal velocity.
+
+# Returns
+
+  - `(core, suprathermal)`: Two matrices containing the classified particles.
+"""
+function classify_particles(
+      data::AMReXParticle{T};
+      x_range = nothing,
+      y_range = nothing,
+      z_range = nothing,
+      vdim::Int = 3,
+      bulk_vel = nothing,
+      vth = nothing,
+      nsigma = 3.0
+) where T
+   # 1. Select particles
+   particles = select_particles_in_region(data; x_range, y_range, z_range)
+   if isempty(particles)
+      return particles, particles
+   end
+
+   # 2. Identify velocity columns
+   # Try explicit names first, then aliases
+   possible_names = [
+      ["vx", "vy", "vz"], ["ux", "uy", "uz"], ["velocity_x", "velocity_y", "velocity_z"]]
+   vel_indices = Int[]
+
+   component_names = data.header.real_component_names
+   component_map = Dict(name => i for (i, name) in enumerate(component_names))
+
+   # Find valid velocity columns
+   for names in possible_names
+      indices = [get(component_map, n, get(component_map, _resolve_alias(n), 0))
+                 for n in names[1:vdim]]
+      if all(i -> i > 0, indices)
+         vel_indices = indices
+         break
+      end
+   end
+
+   if isempty(vel_indices)
+      error("Could not identify velocity components for vdim=$vdim. Checked standard names (v, u, velocity).")
+   end
+
+   velocities = particles[:, vel_indices]
+
+   # 3. Determine bulk velocity
+   if isnothing(bulk_vel)
+      nbins = 50
+      detected_bulk = zeros(T, vdim)
+
+      if vdim == 1
+         h = Hist1D(velocities[:, 1], nbins = nbins)
+         _, max_idx = findmax(h.bincounts)
+         edges = h.binedges isa Tuple ? h.binedges[1] : h.binedges
+         detected_bulk[1] = (edges[max_idx] + edges[max_idx + 1]) / 2
+      elseif vdim == 2
+         h = Hist2D((velocities[:, 1], velocities[:, 2]), nbins = (nbins, nbins))
+         _, max_idx = findmax(h.bincounts)
+         # max_idx is CartesianIndex
+         x_edges = h.binedges[1]
+         y_edges = h.binedges[2]
+         detected_bulk[1] = (x_edges[max_idx[1]] + x_edges[max_idx[1] + 1]) / 2
+         detected_bulk[2] = (y_edges[max_idx[2]] + y_edges[max_idx[2] + 1]) / 2
+      elseif vdim == 3
+         # Use marginal peaks for 3D as a robust fallback
+         for i in 1:vdim
+            h = Hist1D(velocities[:, i], nbins = nbins)
+            _, max_idx = findmax(h.bincounts)
+            edges = h.binedges isa Tuple ? h.binedges[1] : h.binedges
+            detected_bulk[i] = (edges[max_idx] + edges[max_idx + 1]) / 2
+         end
+      end
+      bulk_vel = detected_bulk
+   end
+
+   # 4. Thermal velocity handling
+   if isnothing(vth)
+      error("Thermal velocity `vth` must be provided.")
+   end
+
+   if vth isa Real
+      vth_vec = fill(T(vth), vdim)
+   else
+      vth_vec = vth
+   end
+
+   # 5. Classify
+   n_part = size(particles, 1)
+   is_core = Vector{Bool}(undef, n_part)
+   threshold_sq = nsigma^2
+
+   for i in 1:n_part
+      d2 = zero(T)
+      for k in 1:vdim
+         d2 += ((velocities[i, k] - bulk_vel[k]) / vth_vec[k])^2
+      end
+      is_core[i] = d2 <= threshold_sq
+   end
+
+   return particles[is_core, :], particles[.!is_core, :]
 end

@@ -319,3 +319,83 @@ function getRotationMatrix(v::AbstractVector{<:AbstractFloat}, θ::Real)
                  v[1]*v[2]*tmp+v[3]*sinθ cosθ+v[2]^2*tmp v[2]*v[3]*tmp-v[1]*sinθ;
                  v[1]*v[3]*tmp-v[2]*sinθ v[3]*v[2]*tmp+v[1]*sinθ cosθ+v[3]^2*tmp]
 end
+
+"""
+     generate_mock_amrex_data(output_dir::String; num_particles::Int=10, 
+        particle_gen::Function = i -> (Float64(i), Float64(i), Float64(i), Float64(i*10), Float64(i*100)))
+
+Generate mock AMReX particle data for testing and benchmarking.
+
+# Arguments
+- `output_dir::String`: Directory to save the mock data.
+- `num_particles::Int`: Number of particles to generate.
+- `particle_gen::Function`: A function that takes an index `i` (1-based) and returns a tuple of 5 Float64 values: `(x, y, z, u, v)`.
+"""
+function generate_mock_amrex_data(output_dir::String; 
+      num_particles::Int = 10,
+      particle_gen::Function = i -> (Float64(i), Float64(i), Float64(i), Float64(i * 10), Float64(i * 100))
+)
+   ptype = "particles"
+   base_dir = joinpath(output_dir, ptype)
+   mkpath(base_dir)
+
+   # Create Header
+   header_path = joinpath(base_dir, "Header")
+   open(header_path, "w") do f
+      println(f, "Version_double")
+      println(f, "3") # dim
+      println(f, "2") # num_real_extra (total real = 3 + 2 = 5)
+      println(f, "u")
+      println(f, "v")
+      println(f, "2") # num_int_extra (total int = 2 + 2 = 4)
+      println(f, "id_1")
+      println(f, "id_2")
+      println(f, "0") # is_checkpoint (False)
+      println(f, "$num_particles") # num_particles
+      println(f, "$(num_particles + 1)") # max_next_id
+      println(f, "0") # finest_level
+      println(f, "1") # grids_per_level[0]
+      println(f, "1 $num_particles 0") # grid info: which, count, where
+   end
+
+   # Create Level directory
+   level_dir = joinpath(base_dir, "Level_0")
+   mkpath(level_dir)
+
+   # Create Particle_H
+   particle_h_path = joinpath(level_dir, "Particle_H")
+   open(particle_h_path, "w") do f
+      println(f, "(1 0") # num_boxes level
+      println(f, "((0,0,0) (10,10,10) (0,0,0))")
+   end
+
+   # Create Data file
+   data_fn = joinpath(level_dir, "DATA_00001")
+   open(data_fn, "w") do f
+      # Write particles
+      # structure: num_particles * (3+2) reals
+      # x, y, z, u, v
+      data = zeros(Float64, num_particles * 5)
+      for i in 1:num_particles
+         vals = particle_gen(i)
+         for j in 1:5
+            data[(i - 1) * 5 + j] = vals[j]
+         end
+      end
+      write(f, data)
+   end
+
+   # Create Main Header (for domain info)
+   main_header_path = joinpath(output_dir, "Header")
+   open(main_header_path, "w") do f
+      println(f, "HyperCLaw-V1.1")
+      println(f, "0") # num_fields
+      println(f, "3") # dim
+      println(f, "0.0") # time
+      println(f, "0") # refine_ratio
+      println(f, "0.0 0.0 0.0") # left_edge
+      println(f, "10.0 10.0 10.0") # right_edge
+      println(f, "0")
+      println(f, "((0,0,0) (10,10,10) (0,0,0))") # domain size
+   end
+end
