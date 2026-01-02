@@ -21,7 +21,7 @@ struct AMReXParticleHeader
    finest_level::Int
    num_levels::Int
    grids_per_level::Vector{Int}
-   # grids[level][grid_index] = (which, count, where)
+   # grids[level][grid_index] = (which, count, offset)
    grids::Vector{Vector{Tuple{Int, Int, Int}}}
 end
 
