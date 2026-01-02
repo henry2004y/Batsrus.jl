@@ -498,7 +498,7 @@ const _ALIAS_MAP = Dict(
 _resolve_alias(variable_name::String) = get(_ALIAS_MAP, variable_name, variable_name)
 
 """
-    get_phase_space_density(data, x_var, y_var; bins=100, x_range=nothing, y_range=nothing, z_range=nothing)::(H, xedges, yedges)
+    get_phase_space_density(data, x_var, y_var; bins=100, x_range=nothing, y_range=nothing, z_range=nothing)::Hist2D
 
 Calculates the 2D phase space density for selected variables.
 """
@@ -577,19 +577,13 @@ function get_phase_space_density(
    y_edges = range(ymin, ymax, length = ny + 1)
 
    h = Hist2D((x_data, y_data); binedges = (x_edges, y_edges))
-   H = h.bincounts
 
    # Normalize to probability density if requested
    if normalize
-      dx = step(x_edges)
-      dy = step(y_edges)
-      # Total count * bin area
-      norm_factor = sum(H) * abs(dx) * abs(dy)
-      H ./= norm_factor
+      h = FHist.normalize(h)
    end
 
-   # Return edges as vectors for consistency
-   return H, collect(x_edges), collect(y_edges)
+   return h
 end
 
 """

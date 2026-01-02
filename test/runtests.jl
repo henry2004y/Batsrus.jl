@@ -288,8 +288,8 @@ end
          @test selected[1, 2] == 4.0
 
          # Test Plotting Helper
-         H, xedges, yedges = get_phase_space_density(data, "x", "u", bins = 2)
-         @test size(H) == (2, 2)
+         h = get_phase_space_density(data, "x", "u", bins = 2)
+         @test size(h.bincounts) == (2, 2)
       end
    end
 
