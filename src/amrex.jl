@@ -511,7 +511,8 @@ function get_phase_space_density(
       x_range = nothing,
       y_range = nothing,
       z_range = nothing,
-      transform::Union{Function, Nothing} = nothing
+      transform::Union{Function, Nothing} = nothing,
+      normalize::Bool = false
 ) where T
    # Select data
    if !isnothing(x_range) || !isnothing(y_range) || !isnothing(z_range)
@@ -581,6 +582,17 @@ function get_phase_space_density(
 
    h = Hist2D((x_data, y_data); binedges = (x_edges, y_edges))
    H = h.bincounts
+
+   # Normalize to probability density if requested
+   if normalize
+      dx = step(x_edges)
+      dy = step(y_edges)
+      # Total count * bin area
+      norm_factor = sum(H) * dx * dy
+      if norm_factor > 0
+         H = H ./ norm_factor
+      end
+   end
 
    # Return edges as vectors for consistency
    return H, collect(x_edges), collect(y_edges)
