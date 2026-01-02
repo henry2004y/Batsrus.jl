@@ -498,6 +498,31 @@ const _ALIAS_MAP = Dict(
 
 _resolve_alias(variable_name::String) = get(_ALIAS_MAP, variable_name, variable_name)
 
+function _identify_velocity_indices(real_component_names::Vector{String}, vdim::Int)
+   # Try explicit names first, then aliases
+   possible_names = [
+      ["vx", "vy", "vz"], ["ux", "uy", "uz"], ["velocity_x", "velocity_y", "velocity_z"]]
+   vel_indices = Int[]
+
+   component_map = Dict(name => i for (i, name) in enumerate(real_component_names))
+
+   # Find valid velocity columns
+   for names in possible_names
+      indices = [get(component_map, n, get(component_map, _resolve_alias(n), 0))
+                 for n in names[1:vdim]]
+      if all(i -> i > 0, indices)
+         vel_indices = indices
+         break
+      end
+   end
+
+   if isempty(vel_indices)
+      error("Could not identify velocity components for vdim=$vdim. Checked standard names (v, u, velocity).")
+   end
+
+   return vel_indices
+end
+
 """
     get_phase_space_density(data, x_var, y_var; bins=100, x_range=nothing, y_range=nothing, z_range=nothing)::(H, xedges, yedges)
 
@@ -628,28 +653,7 @@ function classify_particles(
    end
 
    # 2. Identify velocity columns
-   # Try explicit names first, then aliases
-   possible_names = [
-      ["vx", "vy", "vz"], ["ux", "uy", "uz"], ["velocity_x", "velocity_y", "velocity_z"]]
-   vel_indices = Int[]
-
-   component_names = data.header.real_component_names
-   component_map = Dict(name => i for (i, name) in enumerate(component_names))
-
-   # Find valid velocity columns
-   for names in possible_names
-      indices = [get(component_map, n, get(component_map, _resolve_alias(n), 0))
-                 for n in names[1:vdim]]
-      if all(i -> i > 0, indices)
-         vel_indices = indices
-         break
-      end
-   end
-
-   if isempty(vel_indices)
-      error("Could not identify velocity components for vdim=$vdim. Checked standard names (v, u, velocity).")
-   end
-
+   vel_indices = _identify_velocity_indices(data.header.real_component_names, vdim)
    velocities = particles[vel_indices, :]
 
    # 3. Determine bulk velocity
@@ -721,7 +725,7 @@ Fit a Gaussian Mixture Model to particle velocities in a region.
   - `x_range, y_range, z_range`: Spatial region selection.
   - `vdim::Int`: Velocity dimension to fit (1, 2, or 3).
   - `verbose::Bool`: Print GMM fitting progress.
-  - `kind::Symbol`: Covariance type `k-means`, `:diag`, or `:full` (default `:diag`).
+  - `kind::Symbol`: Covariance matrix structure, either `:diag` or `:full` (default `:diag`).
 
 # Returns
 
@@ -743,27 +747,8 @@ function fit_particle_velocity_gmm(
       error("No particles found in the specified region.")
    end
 
-   # 2. Identify velocity columns (reuse logic from classify_particles)
-   possible_names = [
-      ["vx", "vy", "vz"], ["ux", "uy", "uz"], ["velocity_x", "velocity_y", "velocity_z"]]
-   vel_indices = Int[]
-
-   component_names = data.header.real_component_names
-   component_map = Dict(name => i for (i, name) in enumerate(component_names))
-
-   for names in possible_names
-      indices = [get(component_map, n, get(component_map, _resolve_alias(n), 0))
-                 for n in names[1:vdim]]
-      if all(i -> i > 0, indices)
-         vel_indices = indices
-         break
-      end
-   end
-
-   if isempty(vel_indices)
-      error("Could not identify velocity components for vdim=$vdim.")
-   end
-
+   # 2. Identify velocity columns
+   vel_indices = _identify_velocity_indices(data.header.real_component_names, vdim)
    velocities = particles[vel_indices, :]
 
    # 3. Prepare data for GaussianMixtures (n_samples, n_features)
