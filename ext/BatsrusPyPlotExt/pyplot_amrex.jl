@@ -32,9 +32,13 @@ function plot_phase(
       kwargs...
 )
    # Get phase space density
-   H, xedges, yedges = get_phase_space_density(
+   h = get_phase_space_density(
       data, x_variable, y_variable; bins, x_range, y_range, z_range, transform, normalize
    )
+
+   H = h.bincounts
+   xedges = h.binedges[1]
+   yedges = h.binedges[2]
 
    # Plot
    if isnothing(ax)
