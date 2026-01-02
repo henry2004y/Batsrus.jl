@@ -36,10 +36,15 @@ function interp2d(bd::BATS{2, TV, TX, TW}, var::AbstractString,
       yi = range(plotrange[3], stop = plotrange[4], step = plotinterval)
 
       if useMatplotlib
-         triang = matplotlib.tri.Triangulation(X, Y)
-         interpolator = matplotlib.tri.LinearTriInterpolator(triang, W)
-         Xi, Yi = meshgrid(xi, yi)
-         Wi = interpolator(Xi, Yi) # Always returns Float64!
+         try
+            Wi = _triangulate_matplotlib(X, Y, W, xi, yi)
+         catch e
+            if e isa MethodError
+               error("Matplotlib interpolation requires PyPlot to be loaded.")
+            else
+               rethrow(e)
+            end
+         end
       else
          xi, yi, Wi = interpolate2d_generalized_coords(X, Y, W, plotrange, plotinterval)
       end
@@ -66,7 +71,7 @@ function interp2d(bd::BATS{2, TV, TX, TW}, var::AbstractString,
 
    # Mask a circle at the inner boundary
    if innermask
-      varIndex_ = findlast(x->x=="rbody", bd.head.param)
+      varIndex_ = findlast(x -> x == "rbody", bd.head.param)
       if isnothing(varIndex_)
          @info "rbody not found in file header parameters; use keyword rbody"
          @inbounds @simd for i in CartesianIndices(Wi)
@@ -130,7 +135,7 @@ end
 Find variable index in the BATSRUS data.
 """
 function findindex(bd::BATS, var::AbstractString)
-   varIndex_ = findfirst(x->lowercase(x)==lowercase(var), bd.head.wname)
+   varIndex_ = findfirst(x -> lowercase(x) == lowercase(var), bd.head.wname)
    isnothing(varIndex_) && error("$(var) not found in file header variables!")
 
    varIndex_
@@ -216,7 +221,7 @@ function interp1d(
    ns = floor(Int, √(nx^2 + ny^2))
    dx = lx / ns
    dy = ly / ns
-   points = [(point1[1] + i*dx, point1[2] + i*dy) for i in 0:ns]
+   points = [(point1[1] + i * dx, point1[2] + i * dy) for i in 0:ns]
 
    Wi = [itp(loc...) for loc in points]
 end
@@ -315,38 +320,46 @@ R = getRotationMatrix(v̂, θ)
 function getRotationMatrix(v::AbstractVector{<:AbstractFloat}, θ::Real)
    sinθ, cosθ = sincos(eltype(v)(θ))
    tmp = 1 - cosθ
-   m = @SMatrix [cosθ+v[1]^2*tmp v[1]*v[2]*tmp-v[3]*sinθ v[1]*v[3]*tmp+v[2]*sinθ;
-                 v[1]*v[2]*tmp+v[3]*sinθ cosθ+v[2]^2*tmp v[2]*v[3]*tmp-v[1]*sinθ;
-                 v[1]*v[3]*tmp-v[2]*sinθ v[3]*v[2]*tmp+v[1]*sinθ cosθ+v[3]^2*tmp]
+   m = @SMatrix [cosθ+v[1]^2 * tmp v[1] * v[2] * tmp-v[3] * sinθ v[1] * v[3] * tmp+v[2] * sinθ;
+                 v[1] * v[2] * tmp+v[3] * sinθ cosθ+v[2]^2 * tmp v[2] * v[3] * tmp-v[1] * sinθ;
+                 v[1] * v[3] * tmp-v[2] * sinθ v[3] * v[2] * tmp+v[1] * sinθ cosθ+v[3]^2 * tmp]
 end
 
 """
      generate_mock_amrex_data(output_dir::String; num_particles::Int=10, 
-        particle_gen::Function = i -> (Float64(i), Float64(i), Float64(i), Float64(i*10), Float64(i*100)))
+        real_component_names::Vector{String}=["u", "v"],
+        particle_gen::Function)
 
 Generate mock AMReX particle data for testing and benchmarking.
 
 # Arguments
-- `output_dir::String`: Directory to save the mock data.
-- `num_particles::Int`: Number of particles to generate.
-- `particle_gen::Function`: A function that takes an index `i` (1-based) and returns a tuple of 5 Float64 values: `(x, y, z, u, v)`.
+
+  - `output_dir::String`: Directory to save the mock data.
+  - `num_particles::Int`: Number of particles to generate.
+  - `real_component_names::Vector{String}`: Names of the extra real components (beyond x, y, z).
+  - `particle_gen::Function`: A function `(i, n_reals) -> tuple` that takes an index `i` (1-based) and the total number of real components `n_reals`. It should return a tuple of `n_reals` Float64 values: `(x, y, z, comp1, comp2, ...)`.
 """
-function generate_mock_amrex_data(output_dir::String; 
+function generate_mock_amrex_data(output_dir::String;
       num_particles::Int = 10,
-      particle_gen::Function = i -> (Float64(i), Float64(i), Float64(i), Float64(i * 10), Float64(i * 100))
+      real_component_names::Vector{String} = ["u", "v"],
+      particle_gen::Function = (i, n_reals) -> (
+         Float64(i), Float64(i), Float64(i), Float64(i * 10), Float64(i * 100))
 )
    ptype = "particles"
    base_dir = joinpath(output_dir, ptype)
    mkpath(base_dir)
+
+   n_extra = length(real_component_names)
 
    # Create Header
    header_path = joinpath(base_dir, "Header")
    open(header_path, "w") do f
       println(f, "Version_double")
       println(f, "3") # dim
-      println(f, "2") # num_real_extra (total real = 3 + 2 = 5)
-      println(f, "u")
-      println(f, "v")
+      println(f, "$n_extra") # num_real_extra
+      for name in real_component_names
+         println(f, name)
+      end
       println(f, "2") # num_int_extra (total int = 2 + 2 = 4)
       println(f, "id_1")
       println(f, "id_2")
@@ -373,13 +386,14 @@ function generate_mock_amrex_data(output_dir::String;
    data_fn = joinpath(level_dir, "DATA_00001")
    open(data_fn, "w") do f
       # Write particles
-      # structure: num_particles * (3+2) reals
-      # x, y, z, u, v
-      data = zeros(Float64, num_particles * 5)
+      # structure: num_particles * (3+n_extra) reals
+      # x, y, z, ...
+      n_reals = 3 + n_extra
+      data = zeros(Float64, num_particles * n_reals)
       for i in 1:num_particles
-         vals = particle_gen(i)
-         for j in 1:5
-            data[(i - 1) * 5 + j] = vals[j]
+         vals = particle_gen(i, n_reals)
+         for j in 1:n_reals
+            data[(i - 1) * n_reals + j] = vals[j]
          end
       end
       write(f, data)
@@ -399,3 +413,95 @@ function generate_mock_amrex_data(output_dir::String;
       println(f, "((0,0,0) (10,10,10) (0,0,0))") # domain size
    end
 end
+
+"""
+    get_particle_field_aligned_transform(b_field, e_field=nothing)
+
+Return a transformation function that converts particle data to a field-aligned coordinate system.
+
+If only `b_field` is provided, the velocity components are decomposed into parallel and perpendicular to the magnetic field.
+If `e_field` is also provided, an orthonormal basis (\$\\hat{\\mathbf{b}}\$, \$\\hat{\\mathbf{e}}\$, \$\\hat{\\mathbf{d}}\$) is created,
+where \$\\hat{\\mathbf{d}} \\propto \\mathbf{B} \\times \\mathbf{E}\$ and \$\\hat{\\mathbf{e}} = \\hat{\\mathbf{d}} \\times \\hat{\\mathbf{b}}\$.
+
+The returned function takes `(data, names)` and returns `(new_data, new_names)`.
+"""
+function get_particle_field_aligned_transform(b_field::AbstractVector, e_field = nothing)
+   b_hat = normalize(b_field)
+
+   if isnothing(e_field)
+      return (data, names) -> begin
+         idx_vx = findfirst(x -> x == "vx" || x == "u" || x == "Ux", names)
+         idx_vy = findfirst(x -> x == "vy" || x == "v" || x == "Uy", names)
+         idx_vz = findfirst(x -> x == "vz" || x == "w" || x == "Uz", names)
+
+         if isnothing(idx_vx) || isnothing(idx_vy) || isnothing(idx_vz)
+            error("Velocity components (vx, vy, vz) or (u, v, w) not found in data.")
+         end
+
+         # The input data is typically structured as [particles, components]
+         # We need to compute v_para and v_perp for each particle
+         n_particles = size(data, 1)
+
+         # Allocate new data with 2 columns: v_para, v_perp
+         new_data = zeros(eltype(data), n_particles, 2)
+
+         for i in 1:n_particles
+            vx = data[i, idx_vx]
+            vy = data[i, idx_vy]
+            vz = data[i, idx_vz]
+
+            v_para = vx * b_hat[1] + vy * b_hat[2] + vz * b_hat[3]
+            v_vec = SVector(vx, vy, vz)
+            v_perp_vec = v_vec - v_para * SVector(b_hat...)
+            v_perp = norm(v_perp_vec)
+
+            new_data[i, 1] = v_para
+            new_data[i, 2] = v_perp
+         end
+
+         return new_data, ["v_parallel", "v_perp"]
+      end
+   else
+      # E and B provided
+      # b_hat: unit vector in B direction
+      # d_hat: unit vector in ExB direction
+      # e_hat: unit vector in d x b direction (perp component of E)
+
+      # Use vectors from LinearAlgebra/Batsrus
+      exb = SVector(b_field...) × SVector(e_field...)
+      d_hat = normalize(exb)
+      e_hat = normalize(d_hat × SVector(b_hat...))
+
+      return (data, names) -> begin
+         idx_vx = findfirst(x -> x == "vx" || x == "u" || x == "Ux", names)
+         idx_vy = findfirst(x -> x == "vy" || x == "v" || x == "Uy", names)
+         idx_vz = findfirst(x -> x == "vz" || x == "w" || x == "Uz", names)
+
+         if isnothing(idx_vx) || isnothing(idx_vy) || isnothing(idx_vz)
+            error("Velocity components (vx, vy, vz) or (u, v, w) not found in data.")
+         end
+
+         n_particles = size(data, 1)
+         new_data = zeros(eltype(data), n_particles, 3)
+
+         for i in 1:n_particles
+            vx = data[i, idx_vx]
+            vy = data[i, idx_vy]
+            vz = data[i, idx_vz]
+            v_vec = SVector(vx, vy, vz)
+
+            v_b = v_vec ⋅ SVector(b_hat...)
+            v_e = v_vec ⋅ e_hat
+            v_exb = v_vec ⋅ d_hat
+
+            new_data[i, 1] = v_b
+            new_data[i, 2] = v_e
+            new_data[i, 3] = v_exb
+         end
+
+         return new_data, ["v_B", "v_E", "v_BxE"]
+      end
+   end
+end
+
+function _triangulate_matplotlib end

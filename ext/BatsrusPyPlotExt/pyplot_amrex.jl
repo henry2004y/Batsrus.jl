@@ -1,8 +1,6 @@
 # Plotting functionalities for AMReX particle data.
 
-
 export plot_phase
-
 
 const _AXIS_LABEL_MAP = Dict(
    "velocity_x" => "\$v_x\$",
@@ -10,11 +8,7 @@ const _AXIS_LABEL_MAP = Dict(
    "velocity_z" => "\$v_z\$"
 )
 
-
-
 _get_axis_label(variable_name::String) = get(_AXIS_LABEL_MAP, variable_name, variable_name)
-
-
 
 """
     plot_phase(data, x_var, y_var; bins=100, x_range=nothing, y_range=nothing, z_range=nothing, log_scale=true, ax=nothing, add_colorbar=true, kwargs...)
@@ -32,12 +26,15 @@ function plot_phase(
       log_scale::Bool = true,
       ax = nothing,
       add_colorbar::Bool = true,
+      transform::Union{Function, Nothing} = nothing,
       kwargs...
 )
    # Get phase space density
    H, xedges, yedges = get_phase_space_density(
-      data, x_variable, y_variable; bins, x_range, y_range, z_range
+      data, x_variable, y_variable; bins, x_range, y_range, z_range, transform
    )
+
+   H = H_counts # Rename for below
 
    # Plot
    if isnothing(ax)
@@ -50,10 +47,10 @@ function plot_phase(
       if maximum(H) > 0
          vmin = minimum(H[H .> 0])
          vmax = maximum(H)
-         norm = matplotlib.colors.LogNorm(vmin=vmin, vmax=vmax)
+         norm = PyPlot.matplotlib.colors.LogNorm(vmin = vmin, vmax = vmax)
       end
    else
-      norm = matplotlib.colors.Normalize()
+      norm = PyPlot.matplotlib.colors.Normalize()
    end
 
    # Prepare extent
@@ -61,15 +58,15 @@ function plot_phase(
 
    im = ax.imshow(
       H',
-      origin="lower",
-      extent=extent,
-      aspect="auto",
-      norm=norm;
+      origin = "lower",
+      extent = extent,
+      aspect = "auto",
+      norm = norm;
       kwargs...
    )
 
    if add_colorbar
-      plt.colorbar(im, ax=ax, label="Count", pad=0.02)
+      plt.colorbar(im, ax = ax, label = "Count", pad = 0.02)
    end
 
    xlabel(_get_axis_label(_resolve_alias(x_variable)))

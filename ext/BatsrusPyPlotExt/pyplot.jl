@@ -5,20 +5,6 @@ using PyPlot
 export plotlogdata, plot, scatter, contour, contourf, plot_surface, tripcolor,
        tricontourf, plot_trisurf, streamplot, streamslice, quiver, cutplot, pcolormesh
 
-@static if matplotlib.__version__ >= "3.3"
-   matplotlib.rc("image", cmap = "turbo") # set default colormap
-end
-
-@static if matplotlib.__version__ < "3.5"
-   matplotlib.rc("pcolor", shading = "nearest") # newer version default "auto"
-end
-
-matplotlib.rc("font", size = 16)
-matplotlib.rc("xtick", labelsize = 10)
-matplotlib.rc("ytick", labelsize = 10)
-matplotlib.rc("xtick.minor", visible = true)
-matplotlib.rc("ytick.minor", visible = true)
-
 """
      plotlogdata(data, head, func; plotmode="line")
 
@@ -337,7 +323,7 @@ function PyPlot.triplot(bd::BATS{2, TV, TX, TW}, ax = nothing;
       kwargs...) where {TV, TX, TW}
    X = vec(bd.x[:, :, 1])
    Y = vec(bd.x[:, :, 2])
-   triang = matplotlib.tri.Triangulation(X, Y)
+   triang = PyPlot.matplotlib.tri.Triangulation(X, Y)
    #TODO This needs improvement.
    if !all(isinf.(plotrange))
       xyIndex = X .> plotrange[1] .& X .< plotrange[2] .&
@@ -459,7 +445,7 @@ function PyPlot.tripcolor(bd::BATS{2, TV, TX, TW}, var::AbstractString, ax = not
    W = vec(w[:, :, varIndex_])
 
    adjust_plotrange!(plotrange, extrema(X), extrema(Y))
-   triang = matplotlib.tri.Triangulation(vec(X), vec(Y))
+   triang = PyPlot.matplotlib.tri.Triangulation(vec(X), vec(Y))
 
    # Mask off unwanted triangles at the inner boundary.
    if innermask
@@ -562,13 +548,13 @@ function _getvector(bd::BATS{2, TV, TX, TW}, var::AbstractString;
       yi = range(Float64(plotrange[3]), stop = Float64(plotrange[4]), step = plotinterval)
 
       # Is there a triangulation method in Julia?
-      tr = matplotlib.tri.Triangulation(X, Y)
+      tr = PyPlot.matplotlib.tri.Triangulation(X, Y)
       Xi, Yi = meshgrid(xi, yi)
 
-      interpolator = matplotlib.tri.LinearTriInterpolator(tr, w[:, 1, var1_])
+      interpolator = PyPlot.matplotlib.tri.LinearTriInterpolator(tr, w[:, 1, var1_])
       v1 = interpolator(Xi, Yi)
 
-      interpolator = matplotlib.tri.LinearTriInterpolator(tr, w[:, 1, var2_])
+      interpolator = PyPlot.matplotlib.tri.LinearTriInterpolator(tr, w[:, 1, var2_])
       v2 = interpolator(Xi, Yi)
    else # Cartesian coordinates
       # Convert to Float64 to satisfy the equal space checking in streamplot.py
@@ -630,14 +616,15 @@ function set_colorbar(colorscale, vmin, vmax, data = [1.0])
       colorscale == :log && @warn "Nonpositive data detected: use linear scale instead!"
       vmin = isinf(vmin) ? minimum(x -> isnan(x) ? +Inf : x, data) : vmin
       vmax = isinf(vmax) ? maximum(x -> isnan(x) ? -Inf : x, data) : vmax
-      cnorm = matplotlib.colors.Normalize(vmin, vmax)
+      cnorm = PyPlot.matplotlib.colors.Normalize(vmin, vmax)
    elseif colorscale == :symlog
-      cnorm = matplotlib.colors.SymLogNorm(linthresh = 0.03, linscale = 0.75; vmin, vmax)
+      cnorm = PyPlot.matplotlib.colors.SymLogNorm(
+         linthresh = 0.03, linscale = 0.75; vmin, vmax)
    else # logarithmic
       datapositive = data[data .> 0.0]
       vmin = isinf(vmin) ? minimum(datapositive) : vmin
       vmax = isinf(vmax) ? maximum(x -> isnan(x) ? -Inf : x, data) : vmax
-      cnorm = matplotlib.colors.LogNorm(vmin, vmax)
+      cnorm = PyPlot.matplotlib.colors.LogNorm(vmin, vmax)
    end
 
    cnorm
@@ -654,7 +641,7 @@ end
 
 function add_time_iteration!(bd::BATS, ax)
    str = @sprintf "it=%d, time=%4.2f" bd.head.it bd.head.time
-   at = matplotlib.offsetbox.AnchoredText(str,
+   at = PyPlot.matplotlib.offsetbox.AnchoredText(str,
       loc = "lower left", prop = Dict("size" => 8), frameon = true,
       bbox_to_anchor = (0.0, 1.0), bbox_transform = ax.transAxes)
    at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")

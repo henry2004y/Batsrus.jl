@@ -17,19 +17,30 @@ Parsers = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
 PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
-PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
 RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
-Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 WriteVTK = "64499a7a-5c06-52f2-abe2-ccb03c286192"
 
+[extras]
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
+SHA = "ea8e919c-243c-51af-8825-aaa63cd721ce"
+Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+LazyArtifacts = "4af54fe1-eca0-43a8-85a7-787d91b784e3"
+
+[targets]
+test = ["CairoMakie", "PyPlot", "SHA", "Suppressor", "Test", "LazyArtifacts"]
+
 [weakdeps]
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
+PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
 
 [extensions]
 BatsrusMakieExt = "Makie"
+BatsrusPyPlotExt = "PyPlot"
 
 [compat]
 DimensionalData = "0.29"
@@ -49,7 +60,6 @@ ProgressMeter = "1.10"
 PyPlot = "2.9"
 RecipesBase = "1.1"
 Reexport = "1.2"
-Requires = "1.1"
 StaticArrays = "1.2"
 Unitful = "1.7"
 WriteVTK = "1.9"

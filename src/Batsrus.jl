@@ -3,8 +3,8 @@ module Batsrus
 #
 # Hongyang Zhou, hyzhou@umich.edu
 
-using LinearAlgebra: normalize, ×, ⋅, Adjoint
-using Printf, Reexport, Requires
+using LinearAlgebra: normalize, ×, ⋅, Adjoint, norm
+using Printf, Reexport
 using Parsers
 using Interpolations: cubic_spline_interpolation, BSpline, Linear, scale, interpolate
 import NaturalNeighbours as NN
@@ -39,8 +39,6 @@ include("hdf.jl")
 
 include("precompile.jl")
 
-__init__() = @require PyPlot="d330b81b-6aea-500a-939a-2ce795aea3ee" begin
-   include("plot/pyplot.jl")
-end
+include("plot/stubs.jl")
 
 end

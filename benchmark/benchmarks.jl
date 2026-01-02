@@ -48,9 +48,10 @@ println("Generating mock AMReX data for benchmark...")
 amrex_dir = joinpath(directory, "amrex_mock")
 mkpath(amrex_dir)
 Batsrus.generate_mock_amrex_data(
-    amrex_dir, 
-    num_particles=1000, 
-    particle_gen = i -> (Float64(i % 10), Float64(i % 10), Float64(i % 10), Float64(rand()), Float64(rand()))
+   amrex_dir,
+   num_particles = 1000,
+   particle_gen = (i, n_reals) -> (
+      Float64(i % 10), Float64(i % 10), Float64(i % 10), Float64(rand()), Float64(rand()))
 )
 
 SUITE["amrex"] = BenchmarkGroup()
@@ -60,4 +61,5 @@ SUITE["amrex"]["load"] = @benchmarkable AMReXParticle($amrex_dir)
 amrex_data = AMReXParticle(amrex_dir)
 Batsrus.load_data!(amrex_data) # Force load for selection benchmark
 
-SUITE["amrex"]["select_region"] = @benchmarkable select_particles_in_region($amrex_data, x_range=(2.5, 4.5))
+SUITE["amrex"]["select_region"] = @benchmarkable select_particles_in_region(
+   $amrex_data, x_range = (2.5, 4.5))
