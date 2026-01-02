@@ -48,7 +48,7 @@ jobs:
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v2
       - name: Build PyCall with Conda default Python
-        run: julia -e 'using Pkg; Pkg.build("PyCall")'
+        run: julia -e 'using Pkg; Pkg.add("PyPlot"); Pkg.build("PyCall")'
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
       - uses: julia-actions/julia-processcoverage@v1
