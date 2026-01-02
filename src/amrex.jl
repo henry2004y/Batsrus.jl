@@ -584,10 +584,8 @@ function get_phase_space_density(
       dx = step(x_edges)
       dy = step(y_edges)
       # Total count * bin area
-      norm_factor = sum(H) * dx * dy
-      if norm_factor > 0
-         H = H ./ norm_factor
-      end
+      norm_factor = sum(H) * abs(dx) * abs(dy)
+      H ./= norm_factor
    end
 
    # Return edges as vectors for consistency
