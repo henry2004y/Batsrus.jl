@@ -26,12 +26,15 @@ function plot_phase(
       log_scale::Bool = true,
       ax = nothing,
       add_colorbar::Bool = true,
+      transform::Union{Function, Nothing} = nothing,
       kwargs...
 )
    # Get phase space density
    H, xedges, yedges = get_phase_space_density(
-      data, x_variable, y_variable; bins, x_range, y_range, z_range
+      data, x_variable, y_variable; bins, x_range, y_range, z_range, transform
    )
+
+   H = H_counts # Rename for below
 
    # Plot
    if isnothing(ax)

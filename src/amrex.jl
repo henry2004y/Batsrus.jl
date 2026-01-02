@@ -510,7 +510,8 @@ function get_phase_space_density(
       bins::Union{Int, Tuple{Int, Int}} = 100,
       x_range = nothing,
       y_range = nothing,
-      z_range = nothing
+      z_range = nothing,
+      transform::Union{Function, Nothing} = nothing
 ) where T
    # Select data
    if !isnothing(x_range) || !isnothing(y_range) || !isnothing(z_range)
@@ -523,9 +524,29 @@ function get_phase_space_density(
       error("No particles found for phase space density calculation.")
    end
 
-   # Map component names to columns
-   component_names = data.header.real_component_names
-   component_map = Dict(name => i for (i, name) in enumerate(component_names))
+   if !isnothing(transform)
+      # Apply transform
+      # Need full names including x, y, z
+      names = data.header.real_component_names
+      full_names = ["x", "y", "z", names...]
+
+      # rdata might be a view or matrix. 
+      # We need to make sure we construct a compatible input for transform if `rdata` doesn't have all components?
+      # `rdata` from `select_particles_in_region` has ALL real components.
+
+      new_data, new_names = transform(rdata, full_names)
+
+      # Use transformed data
+      rdata = new_data
+
+      # Update component mapping for variable lookup below
+      component_names = new_names
+      component_map = Dict(name => i for (i, name) in enumerate(component_names))
+   else
+      # Map component names to columns (original)
+      component_names = data.header.real_component_names
+      component_map = Dict(name => i for (i, name) in enumerate(component_names))
+   end
 
    x_variable = _resolve_alias(x_variable)
    y_variable = _resolve_alias(y_variable)

@@ -414,4 +414,94 @@ function generate_mock_amrex_data(output_dir::String;
    end
 end
 
+"""
+    get_particle_field_aligned_transform(b_field, e_field=nothing)
+
+Return a transformation function that converts particle data to a field-aligned coordinate system.
+
+If only `b_field` is provided, the velocity components are decomposed into parallel and perpendicular to the magnetic field.
+If `e_field` is also provided, an orthonormal basis (\$\\hat{\\mathbf{b}}\$, \$\\hat{\\mathbf{e}}\$, \$\\hat{\\mathbf{d}}\$) is created,
+where \$\\hat{\\mathbf{d}} \\propto \\mathbf{B} \\times \\mathbf{E}\$ and \$\\hat{\\mathbf{e}} = \\hat{\\mathbf{d}} \\times \\hat{\\mathbf{b}}\$.
+
+The returned function takes `(data, names)` and returns `(new_data, new_names)`.
+"""
+function get_particle_field_aligned_transform(b_field::AbstractVector, e_field = nothing)
+   b_hat = normalize(b_field)
+
+   if isnothing(e_field)
+      return (data, names) -> begin
+         idx_vx = findfirst(x -> x == "vx" || x == "u" || x == "Ux", names)
+         idx_vy = findfirst(x -> x == "vy" || x == "v" || x == "Uy", names)
+         idx_vz = findfirst(x -> x == "vz" || x == "w" || x == "Uz", names)
+
+         if isnothing(idx_vx) || isnothing(idx_vy) || isnothing(idx_vz)
+            error("Velocity components (vx, vy, vz) or (u, v, w) not found in data.")
+         end
+
+         # The input data is typically structured as [particles, components]
+         # We need to compute v_para and v_perp for each particle
+         n_particles = size(data, 1)
+
+         # Allocate new data with 2 columns: v_para, v_perp
+         new_data = zeros(eltype(data), n_particles, 2)
+
+         for i in 1:n_particles
+            vx = data[i, idx_vx]
+            vy = data[i, idx_vy]
+            vz = data[i, idx_vz]
+
+            v_para = vx * b_hat[1] + vy * b_hat[2] + vz * b_hat[3]
+            v_vec = SVector(vx, vy, vz)
+            v_perp_vec = v_vec - v_para * SVector(b_hat...)
+            v_perp = norm(v_perp_vec)
+
+            new_data[i, 1] = v_para
+            new_data[i, 2] = v_perp
+         end
+
+         return new_data, ["v_parallel", "v_perp"]
+      end
+   else
+      # E and B provided
+      # b_hat: unit vector in B direction
+      # d_hat: unit vector in ExB direction
+      # e_hat: unit vector in d x b direction (perp component of E)
+
+      # Use vectors from LinearAlgebra/Batsrus
+      exb = SVector(b_field...) × SVector(e_field...)
+      d_hat = normalize(exb)
+      e_hat = normalize(d_hat × SVector(b_hat...))
+
+      return (data, names) -> begin
+         idx_vx = findfirst(x -> x == "vx" || x == "u" || x == "Ux", names)
+         idx_vy = findfirst(x -> x == "vy" || x == "v" || x == "Uy", names)
+         idx_vz = findfirst(x -> x == "vz" || x == "w" || x == "Uz", names)
+
+         if isnothing(idx_vx) || isnothing(idx_vy) || isnothing(idx_vz)
+            error("Velocity components (vx, vy, vz) or (u, v, w) not found in data.")
+         end
+
+         n_particles = size(data, 1)
+         new_data = zeros(eltype(data), n_particles, 3)
+
+         for i in 1:n_particles
+            vx = data[i, idx_vx]
+            vy = data[i, idx_vy]
+            vz = data[i, idx_vz]
+            v_vec = SVector(vx, vy, vz)
+
+            v_b = v_vec ⋅ SVector(b_hat...)
+            v_e = v_vec ⋅ e_hat
+            v_exb = v_vec ⋅ d_hat
+
+            new_data[i, 1] = v_b
+            new_data[i, 2] = v_e
+            new_data[i, 3] = v_exb
+         end
+
+         return new_data, ["v_B", "v_E", "v_BxE"]
+      end
+   end
+end
+
 function _triangulate_matplotlib end

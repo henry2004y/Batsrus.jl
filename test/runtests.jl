@@ -355,4 +355,51 @@ end
          @test size(core_1d, 1) > n_core * 0.9
       end
    end
+
+   @testset "Field Aligned Transform" begin
+      # Test with simple magnetic field along X
+      # v_para should be vx, v_perp should be sqrt(vy^2 + vz^2)
+      b_field = [1.0, 0.0, 0.0]
+      transform = Batsrus.get_particle_field_aligned_transform(b_field)
+
+      # Mock data: 2 particles, 6 components (x, y, z, vx, vy, vz)
+      # Particle 1: vx=1, vy=0, vz=0 => v_para=1, v_perp=0
+      # Particle 2: vx=0, vy=3, vz=4 => v_para=0, v_perp=5
+      names = ["x", "y", "z", "vx", "vy", "vz"]
+      data = [0.0 0.0 0.0 1.0 0.0 0.0;
+              0.0 0.0 0.0 0.0 3.0 4.0]
+
+      new_data, new_names = transform(data, names)
+
+      @test new_names == ["v_parallel", "v_perp"]
+      @test new_data[1, 1] ≈ 1.0
+      @test new_data[1, 2] ≈ 0.0
+      @test new_data[2, 1] ≈ 0.0
+      @test new_data[2, 2] ≈ 5.0
+
+      # Test with E and B
+      # B = x, E = y
+      # ExB = z
+      # b_hat = (1,0,0)
+      # d_hat = (0,0,1)
+      # e_hat = d x b = (0,0,1) x (1,0,0) = (0,1,0) (which is E direction)
+      # So basis is (x, y, z) corresponding to (v_B, v_E, v_BxE)
+
+      b_field = [10.0, 0.0, 0.0]
+      e_field = [0.0, 5.0, 0.0]
+      transform_eb = Batsrus.get_particle_field_aligned_transform(b_field, e_field)
+
+      # Particle: vx=1, vy=2, vz=3
+      # v_B = 1
+      # v_E = 2
+      # v_BxE = 3
+      data_eb = [0.0 0.0 0.0 1.0 2.0 3.0]
+
+      new_data_eb, new_names_eb = transform_eb(data_eb, names)
+
+      @test new_names_eb == ["v_B", "v_E", "v_BxE"]
+      @test new_data_eb[1, 1] ≈ 1.0
+      @test new_data_eb[1, 2] ≈ 2.0
+      @test new_data_eb[1, 3] ≈ 3.0
+   end
 end
