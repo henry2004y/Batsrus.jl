@@ -276,16 +276,16 @@ end
 
          # Test Data Access
          rdata = data.rdata
-         @test size(rdata) == (10, 5)
+         @test size(rdata) == (5, 10)
          @test rdata[1, 1] == 1.0 # x of first particle
-         @test rdata[1, 4] == 10.0 # u of first particle
-         @test rdata[10, 5] == 1000.0 # v of last particle
+         @test rdata[4, 1] == 10.0 # u of first particle
+         @test rdata[5, 10] == 1000.0 # v of last particle
 
          # Test Region Selection
          selected = select_particles_in_region(data, x_range = (2.5, 4.5))
-         @test size(selected, 1) == 2
+         @test size(selected, 2) == 2
          @test selected[1, 1] == 3.0
-         @test selected[2, 1] == 4.0
+         @test selected[1, 2] == 4.0
 
          # Test Plotting Helper
          H, xedges, yedges = get_phase_space_density(data, "x", "u", bins = 2)
@@ -336,15 +336,15 @@ end
          # erf(0.6/sqrt(2)) is small.
 
          # Just check counts roughly
-         @test size(core, 1) > n_core * 0.9
-         @test size(halo, 1) < n_halo + n_core * 0.1
-         @test size(halo, 1) > n_halo * 0.5 # Halo shouldn't be empty
+         @test size(core, 2) > n_core * 0.9
+         @test size(halo, 2) < n_halo + n_core * 0.1
+         @test size(halo, 2) > n_halo * 0.5 # Halo shouldn't be empty
 
          # Test 2: Auto validation of bulk velocity
          core_auto, halo_auto = classify_particles(
             data; vdim = 3, bulk_vel = nothing, vth = 1.0, nsigma = 3.0)
 
-         @test size(core_auto, 1)≈size(core, 1) atol=50
+         @test size(core_auto, 2)≈size(core, 2) atol=50
 
          # Test 3: 1D
          core_1d, halo_1d = classify_particles(
@@ -352,7 +352,7 @@ end
 
          # In 1D, we verify against x-velocity only.
          # Similar statistics hold.
-         @test size(core_1d, 1) > n_core * 0.9
+         @test size(core_1d, 2) > n_core * 0.9
       end
    end
 
@@ -367,7 +367,7 @@ end
       # Particle 2: vx=0, vy=3, vz=4 => v_para=0, v_perp=5
       names = ["x", "y", "z", "vx", "vy", "vz"]
       data = [0.0 0.0 0.0 1.0 0.0 0.0;
-              0.0 0.0 0.0 0.0 3.0 4.0]
+              0.0 0.0 0.0 0.0 3.0 4.0]'
 
       new_data, new_names = transform(data, names)
 
@@ -393,13 +393,13 @@ end
       # v_B = 1
       # v_E = 2
       # v_BxE = 3
-      data_eb = [0.0 0.0 0.0 1.0 2.0 3.0]
+      data_eb = [0.0 0.0 0.0 1.0 2.0 3.0]'
 
       new_data_eb, new_names_eb = transform_eb(data_eb, names)
 
       @test new_names_eb == ["v_B", "v_E", "v_BxE"]
       @test new_data_eb[1, 1] ≈ 1.0
-      @test new_data_eb[1, 2] ≈ 2.0
-      @test new_data_eb[1, 3] ≈ 3.0
+      @test new_data_eb[2, 1] ≈ 2.0
+      @test new_data_eb[3, 1] ≈ 3.0
    end
 end

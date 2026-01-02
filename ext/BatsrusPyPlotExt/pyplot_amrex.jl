@@ -27,14 +27,14 @@ function plot_phase(
       ax = nothing,
       add_colorbar::Bool = true,
       transform::Union{Function, Nothing} = nothing,
+      plot_zero_lines::Bool = false,
+      normalize::Bool = false,
       kwargs...
 )
    # Get phase space density
    H, xedges, yedges = get_phase_space_density(
-      data, x_variable, y_variable; bins, x_range, y_range, z_range, transform
+      data, x_variable, y_variable; bins, x_range, y_range, z_range, transform, normalize
    )
-
-   H = H_counts # Rename for below
 
    # Plot
    if isnothing(ax)
@@ -65,8 +65,14 @@ function plot_phase(
       kwargs...
    )
 
+   if plot_zero_lines
+      ax.axhline(0, color = "gray", linestyle = "--", linewidth = 1, alpha = 0.5)
+      ax.axvline(0, color = "gray", linestyle = "--", linewidth = 1, alpha = 0.5)
+   end
+
    if add_colorbar
-      plt.colorbar(im, ax = ax, label = "Count", pad = 0.02)
+      plt.colorbar(
+         im, ax = ax, label = normalize ? "Probability Density" : "Count", pad = 0.02)
    end
 
    xlabel(_get_axis_label(_resolve_alias(x_variable)))
