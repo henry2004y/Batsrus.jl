@@ -1,6 +1,7 @@
 # AMReX particle data reader and analyzer.
 
 using FHist
+using GaussianMixtures
 
 struct AMReXParticleHeader
    version_string::String
@@ -706,4 +707,82 @@ function classify_particles(
    end
 
    return particles[:, is_core], particles[:, .!is_core]
+end
+
+"""
+    fit_particle_velocity_gmm(data; n_components=2, x_range=nothing, y_range=nothing, z_range=nothing, vdim=3, verbose=false, kind=:diag)
+
+Fit a Gaussian Mixture Model to particle velocities in a region.
+
+# Arguments
+
+  - `data::AMReXParticle`: Particle data.
+  - `n_components::Int`: Number of mixture components.
+  - `x_range, y_range, z_range`: Spatial region selection.
+  - `vdim::Int`: Velocity dimension to fit (1, 2, or 3).
+  - `verbose::Bool`: Print GMM fitting progress.
+  - `kind::Symbol`: Covariance type `k-means`, `:diag`, or `:full` (default `:diag`).
+
+# Returns
+
+  - `gmm`: The fitted GMM object from `GaussianMixtures.jl`.
+"""
+function fit_particle_velocity_gmm(
+      data::AMReXParticle{T};
+      n_components::Int = 2,
+      x_range = nothing,
+      y_range = nothing,
+      z_range = nothing,
+      vdim::Int = 3,
+      verbose::Bool = false,
+      kind::Symbol = :diag
+) where T
+   # 1. Select particles
+   particles = select_particles_in_region(data; x_range, y_range, z_range)
+   if isempty(particles)
+      error("No particles found in the specified region.")
+   end
+
+   # 2. Identify velocity columns (reuse logic from classify_particles)
+   possible_names = [
+      ["vx", "vy", "vz"], ["ux", "uy", "uz"], ["velocity_x", "velocity_y", "velocity_z"]]
+   vel_indices = Int[]
+
+   component_names = data.header.real_component_names
+   component_map = Dict(name => i for (i, name) in enumerate(component_names))
+
+   for names in possible_names
+      indices = [get(component_map, n, get(component_map, _resolve_alias(n), 0))
+                 for n in names[1:vdim]]
+      if all(i -> i > 0, indices)
+         vel_indices = indices
+         break
+      end
+   end
+
+   if isempty(vel_indices)
+      error("Could not identify velocity components for vdim=$vdim.")
+   end
+
+   velocities = particles[vel_indices, :]
+
+   # 3. Prepare data for GaussianMixtures (n_samples, n_features)
+   # velocities is (n_features, n_samples), so we transpose
+   # Use copy to ensure contiguous memory if needed, though transpose usually returns Adjoint
+   # GMM expects Matrix{Float64} usually.
+   vel_data = Matrix{Float64}(velocities')
+
+   # 4. Fit GMM
+   # Note: GMM from GaussianMixtures
+   # GMM(k::Int, x::Matrix; method::Symbol=:kmeans, kind::Symbol=:diag, ...)
+   if !verbose
+      # Suppress output if not verbose
+      gmm = redirect_stdout(devnull) do
+         GMM(n_components, vel_data; kind = kind)
+      end
+   else
+      gmm = GMM(n_components, vel_data; kind = kind)
+   end
+
+   return gmm
 end

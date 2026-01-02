@@ -402,4 +402,56 @@ end
       @test new_data_eb[2, 1] ≈ 2.0
       @test new_data_eb[3, 1] ≈ 3.0
    end
+
+   @testset "GMM Fit" begin
+      mktempdir() do tmpdir
+         n_core = 2000
+         n_beam = 1000
+         n_total = n_core + n_beam
+
+         # Generate mock data with two populations
+         # Core: stationary, thermal
+         # Beam: drifted, thermal
+         Batsrus.generate_mock_amrex_data(tmpdir;
+            num_particles = n_total,
+            real_component_names = ["vx", "vy", "vz"],
+            particle_gen = (i, n_reals) -> begin
+               pos = rand(3) .* 2.0 .- 0.5
+               if i <= n_core
+                  vel = randn(3) # Mean 0, Sigma 1
+               else
+                  vel = randn(3) .+ [5.0, 0.0, 0.0] # Mean [5,0,0], Sigma 1
+               end
+               (pos..., vel...)
+            end
+         )
+
+         data = AMReXParticle(tmpdir)
+
+         # Fit GMM
+         gmm = Batsrus.fit_particle_velocity_gmm(data; n_components = 2, vdim = 3, verbose = true)
+
+         means = gmm.μ
+         weights = gmm.w
+
+         # Check weights
+         sorted_w = sort(weights)
+         @test isapprox(sorted_w[1], 1 / 3, atol = 0.05)
+         @test isapprox(sorted_w[2], 2 / 3, atol = 0.05)
+
+         # Check means
+         m1 = means[1, :]
+         m2 = means[2, :]
+
+         if abs(m1[1]) < abs(m2[1])
+            # m1 is core, m2 is beam
+            @test isapprox(m1[1], 0.0, atol = 0.2)
+            @test isapprox(m2[1], 5.0, atol = 0.2)
+         else
+            # m2 is core, m1 is beam
+            @test isapprox(m2[1], 0.0, atol = 0.2)
+            @test isapprox(m1[1], 5.0, atol = 0.2)
+         end
+      end
+   end
 end
