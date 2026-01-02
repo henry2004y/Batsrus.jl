@@ -239,8 +239,8 @@ function read_amrex_binary_particle_file(fn::AbstractString, header::AMReXPartic
    ptype = "particles"
    base_fn = joinpath(fn, ptype)
 
-   idata = Matrix{header.int_type}(undef, header.num_particles, header.num_int)
-   rdata = Matrix{header.real_type}(undef, header.num_particles, header.num_real)
+   idata = Matrix{header.int_type}(undef, header.num_int, header.num_particles)
+   rdata = Matrix{header.real_type}(undef, header.num_real, header.num_particles)
 
    ip = 1
    for lvl in 0:(header.num_levels - 1)
@@ -259,19 +259,18 @@ function read_amrex_binary_particle_file(fn::AbstractString, header::AMReXPartic
                ints_vec = Vector{header.int_type}(undef, count * header.num_int)
                read!(f, ints_vec)
                # Reshape and assign.
-               # Julia is column-major, but file is row-major (C-style).
-               # AMReX stores particles contiguously, structure of array (N, num_int).
-               # (num_int, count) -> (count, num_int)
-               ints_mat = reshape(ints_vec, header.num_int, count)'
-               idata[ip:(ip + count - 1), :] = ints_mat
+               # AMReX stores particles contiguously (AoS). Reading linearly and reshaping
+               # to (num_int, count) preserves the particle-major order in memory (SoA in Julia).
+               ints_mat = reshape(ints_vec, header.num_int, count)
+               idata[:, ip:(ip + count - 1)] = ints_mat
             end
 
             # Read floats
             floats_vec = Vector{header.real_type}(undef, count * header.num_real)
             read!(f, floats_vec)
-            # Reshape assuming C-order row-major storage for particles
-            floats_mat = reshape(floats_vec, header.num_real, count)'
-            rdata[ip:(ip + count - 1), :] = floats_mat
+            # Reshape to (num_real, count) where columns are particles.
+            floats_mat = reshape(floats_vec, header.num_real, count)
+            rdata[:, ip:(ip + count - 1)] = floats_mat
          end
          ip += count
       end
@@ -335,7 +334,7 @@ function select_particles_in_region(
    if !isnothing(data._rdata)
       rdata = data._rdata
       if isempty(rdata)
-         return similar(rdata, 0, size(rdata, 2))
+         return similar(rdata, size(rdata, 1), 0)
       end
 
       return _select_particles_in_memory(rdata, ranges, data.dim)
@@ -355,23 +354,23 @@ function _select_particles_in_memory(rdata::Matrix{T}, ranges, dim) where T
    check_z = dim >= 3 && !isnothing(ranges[3])
    zlo, zhi = check_z ? ranges[3] : (T(0), T(0))
 
-   valid_indices = filter(1:size(rdata, 1)) do i
+   valid_indices = filter(1:size(rdata, 2)) do i
       if check_x
-         val = rdata[i, 1]
+         val = rdata[1, i]
          (val < xlo || val > xhi) && return false
       end
       if check_y
-         val = rdata[i, 2]
+         val = rdata[2, i]
          (val < ylo || val > yhi) && return false
       end
       if check_z
-         val = rdata[i, 3]
+         val = rdata[3, i]
          (val < zlo || val > zhi) && return false
       end
       return true
    end
 
-   return rdata[valid_indices, :]
+   return rdata[:, valid_indices]
 end
 
 function _select_particles_from_files(data::AMReXParticle{T}, ranges) where T
@@ -471,11 +470,11 @@ function _select_particles_from_files(data::AMReXParticle{T}, ranges) where T
 
          if !isempty(valid_rows)
             # Create result matrix for this block
-            res = Matrix{T}(undef, length(valid_rows), n_real)
+            res = Matrix{T}(undef, n_real, length(valid_rows))
             for (i, row_idx) in enumerate(valid_rows)
                base = row_idx * n_real
                for j in 1:n_real
-                  res[i, j] = floats_vec[base + j]
+                  res[j, i] = floats_vec[base + j]
                end
             end
             push!(selected_rdata, res)
@@ -484,10 +483,10 @@ function _select_particles_from_files(data::AMReXParticle{T}, ranges) where T
    end
 
    if isempty(selected_rdata)
-      return Matrix{T}(undef, 0, n_real)
+      return Matrix{T}(undef, n_real, 0)
    end
 
-   return vcat(selected_rdata...)
+   return hcat(selected_rdata...)
 end
 
 const _ALIAS_MAP = Dict(
@@ -531,10 +530,7 @@ function get_phase_space_density(
       names = data.header.real_component_names
       full_names = ["x", "y", "z", names...]
 
-      # rdata might be a view or matrix. 
-      # We need to make sure we construct a compatible input for transform if `rdata` doesn't have all components?
-      # `rdata` from `select_particles_in_region` has ALL real components.
-
+      # rdata from select_particles_in_region has ALL real components.
       new_data, new_names = transform(rdata, full_names)
 
       # Use transformed data
@@ -559,8 +555,8 @@ function get_phase_space_density(
    x_index = component_map[x_variable]
    y_index = component_map[y_variable]
 
-   x_data = rdata[:, x_index]
-   y_data = rdata[:, y_index] # FHist uses nbins keyword
+   x_data = rdata[x_index, :]
+   y_data = rdata[y_index, :] # FHist uses nbins keyword
    arg_bins = bins isa Int ? (bins, bins) : bins
    nx, ny = arg_bins
 
@@ -655,7 +651,7 @@ function classify_particles(
       error("Could not identify velocity components for vdim=$vdim. Checked standard names (v, u, velocity).")
    end
 
-   velocities = particles[:, vel_indices]
+   velocities = particles[vel_indices, :]
 
    # 3. Determine bulk velocity
    if isnothing(bulk_vel)
@@ -663,12 +659,12 @@ function classify_particles(
       detected_bulk = zeros(T, vdim)
 
       if vdim == 1
-         h = Hist1D(velocities[:, 1], nbins = nbins)
+         h = Hist1D(velocities[1, :], nbins = nbins)
          _, max_idx = findmax(h.bincounts)
          edges = h.binedges isa Tuple ? h.binedges[1] : h.binedges
          detected_bulk[1] = (edges[max_idx] + edges[max_idx + 1]) / 2
       elseif vdim == 2
-         h = Hist2D((velocities[:, 1], velocities[:, 2]), nbins = (nbins, nbins))
+         h = Hist2D((velocities[1, :], velocities[2, :]), nbins = (nbins, nbins))
          _, max_idx = findmax(h.bincounts)
          # max_idx is CartesianIndex
          x_edges = h.binedges[1]
@@ -678,7 +674,7 @@ function classify_particles(
       elseif vdim == 3
          # Use marginal peaks for 3D as a robust fallback
          for i in 1:vdim
-            h = Hist1D(velocities[:, i], nbins = nbins)
+            h = Hist1D(velocities[i, :], nbins = nbins)
             _, max_idx = findmax(h.bincounts)
             edges = h.binedges isa Tuple ? h.binedges[1] : h.binedges
             detected_bulk[i] = (edges[max_idx] + edges[max_idx + 1]) / 2
@@ -699,17 +695,17 @@ function classify_particles(
    end
 
    # 5. Classify
-   n_part = size(particles, 1)
+   n_part = size(particles, 2)
    is_core = Vector{Bool}(undef, n_part)
    threshold_sq = nsigma^2
 
    for i in 1:n_part
       d2 = zero(T)
       for k in 1:vdim
-         d2 += ((velocities[i, k] - bulk_vel[k]) / vth_vec[k])^2
+         d2 += ((velocities[k, i] - bulk_vel[k]) / vth_vec[k])^2
       end
       is_core[i] = d2 <= threshold_sq
    end
 
-   return particles[is_core, :], particles[.!is_core, :]
+   return particles[:, is_core], particles[:, .!is_core]
 end

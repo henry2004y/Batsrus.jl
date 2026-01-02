@@ -438,25 +438,29 @@ function get_particle_field_aligned_transform(b_field::AbstractVector, e_field =
             error("Velocity components (vx, vy, vz) or (u, v, w) not found in data.")
          end
 
-         # The input data is typically structured as [particles, components]
-         # We need to compute v_para and v_perp for each particle
-         n_particles = size(data, 1)
+         n_dims = size(data)
+         n_names = length(names)
 
-         # Allocate new data with 2 columns: v_para, v_perp
-         new_data = zeros(eltype(data), n_particles, 2)
+         if n_dims[1] != n_names
+            error("Data dimensions $(n_dims) do not match component names length $(n_names) (expected (n_comp, n_part)).")
+         end
+
+         n_particles = n_dims[2]
+
+         new_data = zeros(eltype(data), 2, n_particles)
 
          for i in 1:n_particles
-            vx = data[i, idx_vx]
-            vy = data[i, idx_vy]
-            vz = data[i, idx_vz]
+            vx = data[idx_vx, i]
+            vy = data[idx_vy, i]
+            vz = data[idx_vz, i]
 
             v_para = vx * b_hat[1] + vy * b_hat[2] + vz * b_hat[3]
             v_vec = SVector(vx, vy, vz)
             v_perp_vec = v_vec - v_para * SVector(b_hat...)
             v_perp = norm(v_perp_vec)
 
-            new_data[i, 1] = v_para
-            new_data[i, 2] = v_perp
+            new_data[1, i] = v_para
+            new_data[2, i] = v_perp
          end
 
          return new_data, ["v_parallel", "v_perp"]
@@ -481,22 +485,31 @@ function get_particle_field_aligned_transform(b_field::AbstractVector, e_field =
             error("Velocity components (vx, vy, vz) or (u, v, w) not found in data.")
          end
 
-         n_particles = size(data, 1)
-         new_data = zeros(eltype(data), n_particles, 3)
+         n_dims = size(data)
+         n_names = length(names)
+
+         if n_dims[1] != n_names
+            error("Data dimensions $(n_dims) do not match component names length $(n_names) (expected (n_comp, n_part)).")
+         end
+
+         n_particles = n_dims[2]
+
+         new_data = zeros(eltype(data), 3, n_particles)
 
          for i in 1:n_particles
-            vx = data[i, idx_vx]
-            vy = data[i, idx_vy]
-            vz = data[i, idx_vz]
+            vx = data[idx_vx, i]
+            vy = data[idx_vy, i]
+            vz = data[idx_vz, i]
+
             v_vec = SVector(vx, vy, vz)
 
             v_b = v_vec ⋅ SVector(b_hat...)
             v_e = v_vec ⋅ e_hat
             v_exb = v_vec ⋅ d_hat
 
-            new_data[i, 1] = v_b
-            new_data[i, 2] = v_e
-            new_data[i, 3] = v_exb
+            new_data[1, i] = v_b
+            new_data[2, i] = v_e
+            new_data[3, i] = v_exb
          end
 
          return new_data, ["v_B", "v_E", "v_BxE"]
