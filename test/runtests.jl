@@ -290,6 +290,24 @@ end
          # Test Plotting Helper
          h = get_phase_space_density(data, "x", "u", bins = 2)
          @test size(h.bincounts) == (2, 2)
+
+         # Test Weighted Plotting
+         Batsrus.generate_mock_amrex_data(tmpdir;
+            num_particles = 10,
+            real_component_names = ["u", "v", "weight"],
+            particle_gen = (i, n_reals) -> (
+               Float64(i), 10.0, 10.0, # x, y, z
+               Float64(i), 0.0, # u, v
+               Float64(2.0) # weight
+            )
+         )
+         data_w = AMReXParticle(tmpdir)
+         h_w = get_phase_space_density(data_w, "x", "u", bins = 1,
+            x_range = (0.0, 11.0), y_range = (0.0, 11.0))
+
+         # 10 particles, each weight 2.0. Total sum should be 20.0.
+         # They all fall into the same bin since we only have 1 bin covering the range.
+         @test sum(h_w.bincounts) ≈ 20.0
       end
    end
 

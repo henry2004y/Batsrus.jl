@@ -552,6 +552,10 @@ function get_phase_space_density(
       error("Invalid variable name. Available: $(keys(component_map))")
    end
 
+   # Check for weights
+   weight_index = get(component_map, "weight", 0)
+   weights = weight_index > 0 ? rdata[weight_index, :] : nothing
+
    x_index = component_map[x_variable]
    y_index = component_map[y_variable]
 
@@ -576,7 +580,7 @@ function get_phase_space_density(
    x_edges = range(xmin, xmax, length = nx + 1)
    y_edges = range(ymin, ymax, length = ny + 1)
 
-   h = Hist2D((x_data, y_data); binedges = (x_edges, y_edges))
+   h = Hist2D((x_data, y_data); binedges = (x_edges, y_edges), weights)
 
    # Normalize to probability density if requested
    if normalize
