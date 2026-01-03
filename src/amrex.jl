@@ -612,6 +612,35 @@ _finalize_hist(h, ::Val{true}) = FHist.normalize(h)
 
 _finalize_hist(h, ::Val{false}) = h
 
+function _get_velocity_indices(data::AMReXParticle{T}, vdim::Int) where T
+   possible_names = (
+      ("vx", "vy", "vz"), ("ux", "uy", "uz"), ("velocity_x", "velocity_y", "velocity_z"))
+
+   component_names = data.header.real_component_names
+   component_map = Dict{String, Int}(name => i for (i, name) in enumerate(component_names))
+
+   vel_indices = Vector{Int}(undef, vdim)
+
+   for names in possible_names
+      found_all = true
+      for k in 1:vdim
+         nm = names[k]
+         idx = get(component_map, nm, get(component_map, _resolve_alias(nm), 0))
+         if idx == 0
+            found_all = false
+            break
+         end
+         vel_indices[k] = idx
+      end
+
+      if found_all
+         return vel_indices
+      end
+   end
+
+   error("Could not identify velocity components for vdim=$vdim. Checked standard names (v, u, velocity).")
+end
+
 """
     classify_particles(data, region; vdim=3, bulk_vel=nothing, vth=nothing, nsigma=3.0)
 
@@ -647,27 +676,7 @@ function classify_particles(
    end
 
    # 2. Identify velocity columns
-   # Try explicit names first, then aliases
-   possible_names = [
-      ["vx", "vy", "vz"], ["ux", "uy", "uz"], ["velocity_x", "velocity_y", "velocity_z"]]
-   vel_indices = Int[]
-
-   component_names = data.header.real_component_names
-   component_map = Dict(name => i for (i, name) in enumerate(component_names))
-
-   # Find valid velocity columns
-   for names in possible_names
-      indices = [get(component_map, n, get(component_map, _resolve_alias(n), 0))
-                 for n in names[1:vdim]]
-      if all(i -> i > 0, indices)
-         vel_indices = indices
-         break
-      end
-   end
-
-   if isempty(vel_indices)
-      error("Could not identify velocity components for vdim=$vdim. Checked standard names (v, u, velocity).")
-   end
+   vel_indices = _get_velocity_indices(data, vdim)
 
    velocities = particles[vel_indices, :]
 
@@ -761,26 +770,8 @@ function fit_particle_velocity_gmm(
       error("No particles found in the specified region.")
    end
 
-   # 2. Extract velocities (reuse logic)
-   possible_names = [
-      ["vx", "vy", "vz"], ["ux", "uy", "uz"], ["velocity_x", "velocity_y", "velocity_z"]]
-   vel_indices = Int[]
-
-   component_names = data.header.real_component_names
-   component_map = Dict(name => i for (i, name) in enumerate(component_names))
-
-   for names in possible_names
-      indices = [get(component_map, n, get(component_map, _resolve_alias(n), 0))
-                 for n in names[1:vdim]]
-      if all(i -> i > 0, indices)
-         vel_indices = indices
-         break
-      end
-   end
-
-   if isempty(vel_indices)
-      error("Could not identify velocity components for vdim=$vdim.")
-   end
+   # 2. Extract velocities
+   vel_indices = _get_velocity_indices(data, vdim)
 
    velocities = particles[vel_indices, :] # (vdim, n_particles)
 
@@ -792,24 +783,11 @@ function fit_particle_velocity_gmm(
    gmm = GMM(n_clusters, X, kind = :diag)
 
    # 4. Interpret results
-   ResultType = NamedTuple{(:weight, :mean, :vth), Tuple{T, Vector{T}, Vector{T}}}
-   results = Vector{ResultType}(undef, n_clusters)
-
-   weights = gmm.w
-   means = gmm.μ
-   vars = gmm.Σ
-
-   for i in 1:n_clusters
-      w = T(weights[i])
-      μ_vec = T.(means[i, :])
-
-      # For kind=:diag, vars is a Matrix{Float64} (k x d)
-      σ2_vec = vars[i, :]
-
-      vth_vec = T.(sqrt.(2 .* σ2_vec))
-
-      results[i] = (weight = w, mean = μ_vec, vth = vth_vec)
-   end
+   results = [(
+                 weight = T(gmm.w[i]),
+                 mean = T.(gmm.μ[i, :]),
+                 vth = T.(sqrt.(2 .* gmm.Σ[i, :]))
+              ) for i in 1:n_clusters]
 
    # Sort by weight descending
    sort!(results, by = x -> x.weight, rev = true)
