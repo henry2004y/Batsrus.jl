@@ -308,6 +308,17 @@ end
          # 10 particles, each weight 2.0. Total sum should be 20.0.
          # They all fall into the same bin since we only have 1 bin covering the range.
          @test sum(h_w.bincounts) ≈ 20.0
+
+         # Test 1D Plotting
+         h1 = get_phase_space_density(data_w, "x"; bins = 1, x_range = (0.0, 11.0))
+         @test sum(h1.bincounts) ≈ 20.0
+         @test ndims(h1.bincounts) == 1
+
+         # Test 3D Plotting
+         h3 = get_phase_space_density(data_w, "x", "y", "u"; bins = 1,
+            x_range = (0.0, 11.0), y_range = (0.0, 20.0), z_range = (0.0, 11.0))
+         @test sum(h3.bincounts) ≈ 20.0
+         @test ndims(h3.bincounts) == 3
       end
    end
 

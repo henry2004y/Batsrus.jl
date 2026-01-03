@@ -498,22 +498,23 @@ const _ALIAS_MAP = Dict(
 _resolve_alias(variable_name::String) = get(_ALIAS_MAP, variable_name, variable_name)
 
 """
-    get_phase_space_density(data, x_var, y_var; bins=100, x_range=nothing, y_range=nothing, z_range=nothing)::Hist2D
+    get_phase_space_density(data, variables...; bins=100, x_range=nothing, y_range=nothing, z_range=nothing)::Hist
 
-Calculates the 2D phase space density for selected variables.
+Calculates the phase space density for selected variables.
+Supports 1D, 2D, and 3D histograms.
 """
 function get_phase_space_density(
       data::AMReXParticle{T},
-      x_variable::String,
-      y_variable::String;
-      bins::Union{Int, Tuple{Int, Int}} = 100,
+      variables::Vararg{String, N};
+      bins::Union{Int, Tuple} = 100,
       x_range = nothing,
       y_range = nothing,
       z_range = nothing,
       transform::Union{Function, Nothing} = nothing,
       normalize::Bool = false
-) where T
+) where {T, N}
    # Select data
+   local rdata::Matrix{T}
    if !isnothing(x_range) || !isnothing(y_range) || !isnothing(z_range)
       rdata = select_particles_in_region(data; x_range, y_range, z_range)
    else
@@ -545,50 +546,80 @@ function get_phase_space_density(
       component_map = Dict(name => i for (i, name) in enumerate(component_names))
    end
 
-   x_variable = _resolve_alias(x_variable)
-   y_variable = _resolve_alias(y_variable)
-
-   if !haskey(component_map, x_variable) || !haskey(component_map, y_variable)
-      error("Invalid variable name. Available: $(keys(component_map))")
+   for var in variables
+      var = _resolve_alias(var)
+      if !haskey(component_map, var)
+         error("Invalid variable name: $var. Available: $(keys(component_map))")
+      end
    end
 
    # Check for weights
    weight_index = get(component_map, "weight", 0)
    weights = weight_index > 0 ? rdata[weight_index, :] : nothing
 
-   x_index = component_map[x_variable]
-   y_index = component_map[y_variable]
+   indices = ntuple(i -> component_map[_resolve_alias(variables[i])], N)
+   selected_data = ntuple(i -> rdata[indices[i], :], N)
 
-   x_data = rdata[x_index, :]
-   y_data = rdata[y_index, :] # FHist uses nbins keyword
-   arg_bins = bins isa Int ? (bins, bins) : bins
-   nx, ny = arg_bins
-
-   # Calculate edges explicitly
-   if !isnothing(x_range)
-      xmin, xmax = x_range
+   # Handle bins
+   if bins isa Int
+      arg_bins = ntuple(_ -> bins, N)
    else
-      xmin, xmax = extrema(x_data)
+      arg_bins = bins
+      if length(arg_bins) != N
+         error("Length of bins must match number of variables")
+      end
    end
 
-   if !isnothing(y_range)
-      ymin, ymax = y_range
-   else
-      ymin, ymax = extrema(y_data)
-   end
+   # Handle ranges
+   ranges = (x_range, y_range, z_range)
 
-   x_edges = range(xmin, xmax, length = nx + 1)
-   y_edges = range(ymin, ymax, length = ny + 1)
+   edges = ntuple(i -> begin
+         data_i = selected_data[i]
+         nbins = arg_bins[i]
 
-   h = Hist2D((x_data, y_data); binedges = (x_edges, y_edges), weights)
+         if i <= length(ranges) && !isnothing(ranges[i])
+            vmin, vmax = ranges[i]
+         else
+            vmin, vmax = extrema(data_i)
+         end
 
-   # Normalize to probability density if requested
-   if normalize
-      h = FHist.normalize(h)
-   end
+         range(vmin, vmax, length = nbins + 1)
+      end, N)
 
-   return h
+   h = _create_hist(selected_data, edges, weights)
+
+   return _finalize_hist(h, Val(normalize))
 end
+
+function _create_hist(selected_data, edges, weights::Nothing)
+   N = length(selected_data)
+   if N == 1
+      Hist1D(selected_data[1]; binedges = edges[1])
+   elseif N == 2
+      Hist2D(Tuple(selected_data); binedges = edges)
+   elseif N == 3
+      Hist3D(Tuple(selected_data); binedges = edges)
+   else
+      error("Only 1D, 2D, and 3D phase space densities are supported.")
+   end
+end
+
+function _create_hist(selected_data, edges, weights::AbstractVector)
+   N = length(selected_data)
+   if N == 1
+      Hist1D(selected_data[1]; binedges = edges[1], weights)
+   elseif N == 2
+      Hist2D(Tuple(selected_data); binedges = edges, weights)
+   elseif N == 3
+      Hist3D(Tuple(selected_data); binedges = edges, weights)
+   else
+      error("Only 1D, 2D, and 3D phase space densities are supported.")
+   end
+end
+
+_finalize_hist(h, ::Val{true}) = FHist.normalize(h)
+
+_finalize_hist(h, ::Val{false}) = h
 
 """
     classify_particles(data, region; vdim=3, bulk_vel=nothing, vth=nothing, nsigma=3.0)
