@@ -342,6 +342,8 @@ Generate mock AMReX particle data for testing and benchmarking.
 function generate_mock_amrex_data(output_dir::String;
       num_particles::Int = 10,
       real_component_names::Vector{String} = ["u", "v"],
+      domain_min::Vector{Float64} = [0.0, 0.0, 0.0],
+      domain_max::Vector{Float64} = [10.0, 10.0, 10.0],
       particle_gen::Function = (i, n_reals) -> (
          Float64(i), Float64(i), Float64(i), Float64(i * 10), Float64(i * 100))
 )
@@ -378,8 +380,22 @@ function generate_mock_amrex_data(output_dir::String;
    # Create Particle_H
    particle_h_path = joinpath(level_dir, "Particle_H")
    open(particle_h_path, "w") do f
+      # Use a single large box for simplicity
+      # Convert physical range to index range (assuming dx=1 for simplicity if not specified)
+      # Or just use arbitrary large indices since we only care about coverage
+      # But wait, AMReXParticle uses domain_dimensions from Main Header to compute dx.
+      # And Main Header uses domain indices.
+      # Let's keep dx=1 effectively.
+      dims = round.(Int, domain_max .- domain_min)
+      # Ensure at least 1
+      dims = max.(dims, 1)
+
       println(f, "(1 0") # num_boxes level
-      println(f, "((0,0,0) (10,10,10) (0,0,0))")
+      # Box indices: lo hi (inclusive)
+      # We just say the box covers the whole domain 0 to dims-1
+      lo_str = "0,0,0"
+      hi_str = join([d - 1 for d in dims], ",")
+      println(f, "(($lo_str) ($hi_str) (0,0,0))")
    end
 
    # Create Data file
@@ -405,12 +421,17 @@ function generate_mock_amrex_data(output_dir::String;
       println(f, "HyperCLaw-V1.1")
       println(f, "0") # num_fields
       println(f, "3") # dim
+      dims = round.(Int, domain_max .- domain_min)
+      dims = max.(dims, 1)
       println(f, "0.0") # time
       println(f, "0") # refine_ratio
-      println(f, "0.0 0.0 0.0") # left_edge
-      println(f, "10.0 10.0 10.0") # right_edge
+      println(f, join(domain_min, " ")) # left_edge
+      println(f, join(domain_max, " ")) # right_edge
       println(f, "0")
-      println(f, "((0,0,0) (10,10,10) (0,0,0))") # domain size
+
+      lo_str = "0,0,0"
+      hi_str = join([d - 1 for d in dims], ",")
+      println(f, "(($lo_str) ($hi_str) (0,0,0))") # domain size
    end
 end
 
