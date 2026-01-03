@@ -16,6 +16,7 @@
 *.batl
 test*.jl
 test/data/
+benchmark/data/
 amrex_mock/
 *~
 docs/build/

@@ -464,29 +464,63 @@ function _select_particles_from_files(
       end
    end
 
-   selected_rdata = Vector{Matrix{T}}()
+   # Preallocate result container (max possible size = number of grids)
+   # We use a counter to track actual filled grids
+   selected_rdata = Vector{Matrix{T}}(undef, length(overlapping_grids))
+   filled_count = 0
 
-   base_fn = joinpath(data.output_dir, data.ptype)
    n_real = data.header.num_real
+   base_fn = joinpath(data.output_dir, data.ptype)
+
+   # Function barrier to dispatch on n_real for SVector optimization
+   filled_count = _process_grids!(
+      selected_rdata,
+      Val(n_real),
+      overlapping_grids,
+      data,
+      base_fn,
+      x_range,
+      y_range,
+      z_range
+   )
+
+   if filled_count == 0
+      return Matrix{T}(undef, n_real, 0)
+   end
+
+   resize!(selected_rdata, filled_count)
+   return reduce(hcat, selected_rdata)
+end
+
+function _process_grids!(
+      selected_rdata::Vector{Matrix{T}},
+      ::Val{N},
+      overlapping_grids,
+      data,
+      base_fn,
+      x_range,
+      y_range,
+      z_range
+) where {T, N}
+   filled_idx = 0
+
    dim = data.dim
 
-   check_x = dim >= 1 && !isnothing(ranges[1])
-   xlo, xhi = check_x ? ranges[1] : (T(0), T(0))
+   check_x = dim >= 1 && !isnothing(x_range)
+   xlo, xhi = check_x ? x_range : (T(0), T(0))
 
-   check_y = dim >= 2 && !isnothing(ranges[2])
-   ylo, yhi = check_y ? ranges[2] : (T(0), T(0))
+   check_y = dim >= 2 && !isnothing(y_range)
+   ylo, yhi = check_y ? y_range : (T(0), T(0))
 
-   check_z = dim >= 3 && !isnothing(ranges[3])
-   zlo, zhi = check_z ? ranges[3] : (T(0), T(0))
+   check_z = dim >= 3 && !isnothing(z_range)
+   zlo, zhi = check_z ? z_range : (T(0), T(0))
 
    @inbounds for (level_num, grid_idx) in overlapping_grids
       # header.grids stores (which, count, where)
       grid_data = data.header.grids[level_num + 1][grid_idx]
       which, count, offset = grid_data
 
-      if count == 0
-         continue
-      end
+      count == 0 && continue
 
       data_fn = joinpath(base_fn, "Level_$(level_num)", @sprintf("DATA_%05d", which))
 
@@ -498,44 +532,81 @@ function _select_particles_from_files(
          end
 
          # Read floats
-         floats_vec = Vector{T}(undef, count * n_real)
+         floats_vec = Vector{T}(undef, count * N)
          read!(f, floats_vec)
 
-         valid_rows = filter(0:(count - 1)) do k
-            if check_x
-               val = floats_vec[k * n_real + 1]
-               (val < xlo || val > xhi) && return false
-            end
-            if check_y
-               val = floats_vec[k * n_real + 2]
-               (val < ylo || val > yhi) && return false
-            end
-            if check_z
-               val = floats_vec[k * n_real + 3]
-               (val < zlo || val > zhi) && return false
-            end
-            return true
-         end
+         # Reinterpret as SVector for fast access
+         vectors = reinterpret(SVector{N, T}, floats_vec)
 
-         if !isempty(valid_rows)
-            # Create result matrix for this block
-            res = Matrix{T}(undef, n_real, length(valid_rows))
-            for (i, row_idx) in enumerate(valid_rows)
-               base = row_idx * n_real
-               for j in 1:n_real
-                  res[j, i] = floats_vec[base + j]
+         # Pass 1: Count valid
+         valid_count = 0
+         @inbounds for k in 1:count
+            val = vectors[k]
+            keep = true
+            if check_x
+               v = val[1]
+               if v < xlo || v > xhi
+                  keep = false
                end
             end
-            push!(selected_rdata, res)
+            if keep && check_y
+               v = val[2]
+               if v < ylo || v > yhi
+                  keep = false
+               end
+            end
+            if keep && check_z
+               v = val[3]
+               if v < zlo || v > zhi
+                  keep = false
+               end
+            end
+            if keep
+               valid_count += 1
+            end
+         end
+
+         if valid_count > 0
+            # Pass 2: Fill
+            # Allocate result matrix for this grid
+            res = Matrix{T}(undef, N, valid_count)
+
+            curr = 0
+            @inbounds for k in 1:count
+               val = vectors[k]
+               keep = true
+               if check_x
+                  v = val[1]
+                  if v < xlo || v > xhi
+                     keep = false
+                  end
+               end
+               if keep && check_y
+                  v = val[2]
+                  if v < ylo || v > yhi
+                     keep = false
+                  end
+               end
+               if keep && check_z
+                  v = val[3]
+                  if v < zlo || v > zhi
+                     keep = false
+                  end
+               end
+
+               if keep
+                  curr += 1
+                  res[:, curr] = val
+               end
+            end
+
+            filled_idx += 1
+            selected_rdata[filled_idx] = res
          end
       end
    end
 
-   if isempty(selected_rdata)
-      return Matrix{T}(undef, n_real, 0)
-   end
-
-   return reduce(hcat, selected_rdata)
+   return filled_idx
 end
 
 const _ALIAS_MAP = Dict(
