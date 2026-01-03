@@ -447,17 +447,25 @@ where \$\\hat{\\mathbf{d}} \\propto \\mathbf{B} \\times \\mathbf{E}\$ and \$\\ha
 The returned function takes `(data, names)` and returns `(new_data, new_names)`.
 """
 function get_particle_field_aligned_transform(b_field::AbstractVector, e_field = nothing)
-   b_hat = normalize(b_field)
+   bhat = SVector{3}(normalize(b_field))
 
    if isnothing(e_field)
       return (data, names) -> begin
-         idx_vx = findfirst(x -> x == "vx" || x == "u" || x == "ux", names)
-         idx_vy = findfirst(x -> x == "vy" || x == "v" || x == "uy", names)
-         idx_vz = findfirst(x -> x == "vz" || x == "w" || x == "uz", names)
+         idx_vx = findfirst(
+            x -> x == "vx" || x == "u" || x == "ux" || x == "velocity_x", names)
+         idx_vy = findfirst(
+            x -> x == "vy" || x == "v" || x == "uy" || x == "velocity_y", names)
+         idx_vz = findfirst(
+            x -> x == "vz" || x == "w" || x == "uz" || x == "velocity_z", names)
 
          if isnothing(idx_vx) || isnothing(idx_vy) || isnothing(idx_vz)
-            error("Velocity components (vx, vy, vz) or (u, v, w) not found in data.")
+            error("Velocity components not found in data.")
          end
+
+         # Ensure the compiler knows these are Ints
+         idx_vx = idx_vx::Int
+         idx_vy = idx_vy::Int
+         idx_vz = idx_vz::Int
 
          n_dims = size(data)
          n_names = length(names)
@@ -470,15 +478,18 @@ function get_particle_field_aligned_transform(b_field::AbstractVector, e_field =
 
          new_data = zeros(eltype(data), 2, n_particles)
 
-         for i in 1:n_particles
+         bx, by, bz = bhat
+         @inbounds @simd for i in 1:n_particles
             vx = data[idx_vx, i]
             vy = data[idx_vy, i]
             vz = data[idx_vz, i]
 
-            v_para = vx * b_hat[1] + vy * b_hat[2] + vz * b_hat[3]
-            v_vec = SVector(vx, vy, vz)
-            v_perp_vec = v_vec - v_para * SVector(b_hat...)
-            v_perp = norm(v_perp_vec)
+            v_para = vx * bx + vy * by + vz * bz
+
+            vpx = vx - v_para * bx
+            vpy = vy - v_para * by
+            vpz = vz - v_para * bz
+            v_perp = sqrt(vpx^2 + vpy^2 + vpz^2)
 
             new_data[1, i] = v_para
             new_data[2, i] = v_perp
@@ -486,25 +497,38 @@ function get_particle_field_aligned_transform(b_field::AbstractVector, e_field =
 
          return new_data, ["v_parallel", "v_perp"]
       end
-   else
-      # E and B provided
-      # b_hat: unit vector in B direction
-      # d_hat: unit vector in ExB direction
-      # e_hat: unit vector in d x b direction (perp component of E)
+   else # E and B provided
+      # We want an orthonormal basis:
+      # 1. b_hat
+      # 2. e_perp_hat (along E perpendicular to B)
+      # 3. exb_hat (along B x E)
+      ehat_raw = SVector{3}(normalize(e_field))
 
-      # Use vectors from LinearAlgebra/Batsrus
-      exb = SVector(b_field...) × SVector(e_field...)
-      d_hat = normalize(exb)
-      e_hat = normalize(d_hat × SVector(b_hat...))
+      # Direction of B x E
+      bxe = bhat × ehat_raw
+      if norm(bxe) < 1e-9
+         error("B and E are parallel, cannot define perpendicular directions uniquely.")
+      end
+      exb_hat = normalize(bxe)
+
+      # Direction of E_perp (which is (B x E) x B)
+      eperp_hat = normalize(exb_hat × bhat)
 
       return (data, names) -> begin
-         idx_vx = findfirst(x -> x == "vx" || x == "u" || x == "ux", names)
-         idx_vy = findfirst(x -> x == "vy" || x == "v" || x == "uy", names)
-         idx_vz = findfirst(x -> x == "vz" || x == "w" || x == "uz", names)
+         idx_vx = findfirst(
+            x -> x == "vx" || x == "u" || x == "ux" || x == "velocity_x", names)
+         idx_vy = findfirst(
+            x -> x == "vy" || x == "v" || x == "uy" || x == "velocity_y", names)
+         idx_vz = findfirst(
+            x -> x == "vz" || x == "w" || x == "uz" || x == "velocity_z", names)
 
          if isnothing(idx_vx) || isnothing(idx_vy) || isnothing(idx_vz)
-            error("Velocity components (vx, vy, vz) or (u, v, w) not found in data.")
+            error("Velocity components not found in data.")
          end
+
+         idx_vx = idx_vx::Int
+         idx_vy = idx_vy::Int
+         idx_vz = idx_vz::Int
 
          n_dims = size(data)
          n_names = length(names)
@@ -517,16 +541,19 @@ function get_particle_field_aligned_transform(b_field::AbstractVector, e_field =
 
          new_data = zeros(eltype(data), 3, n_particles)
 
-         for i in 1:n_particles
+         bx, by, bz = bhat
+         ex, ey, ez = eperp_hat
+         dx, dy, dz = exb_hat
+
+         @inbounds @simd for i in 1:n_particles
             vx = data[idx_vx, i]
             vy = data[idx_vy, i]
             vz = data[idx_vz, i]
 
-            v_vec = SVector(vx, vy, vz)
-
-            v_b = v_vec ⋅ SVector(b_hat...)
-            v_e = v_vec ⋅ e_hat
-            v_exb = v_vec ⋅ d_hat
+            # Project onto basis vectors
+            v_b = vx * bx + vy * by + vz * bz
+            v_e = vx * ex + vy * ey + vz * ez  # User defined v_E as along E_perp
+            v_exb = vx * dx + vy * dy + vz * dz  # User defined v_BxE
 
             new_data[1, i] = v_b
             new_data[2, i] = v_e

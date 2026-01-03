@@ -128,7 +128,6 @@ idx_vz = findfirst(n -> n in ["uz", "vz", "velocity_z"], names)
 
 vx = particles[idx_vx, :]
 vy = particles[idx_vy, :]
-vz = (idx_vz !== nothing) ? particles[idx_vz, :] : zeros(length(vx))
 
 # ---------------------
 # Section 2: Coordinate Transformation
