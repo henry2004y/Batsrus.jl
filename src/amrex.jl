@@ -328,53 +328,101 @@ function select_particles_in_region(
       y_range = nothing,
       z_range = nothing
 ) where T
-   ranges = (x_range, y_range, z_range)
-
-   # Ensure data is loaded into memory. This will be a no-op if already loaded.
+   # Ensure data is loaded into memory.
    # If real data is already loaded, filter in memory
-   if !isnothing(data._rdata)
-      rdata = data._rdata
+   rdata = data._rdata
+   if !isnothing(rdata)
       if isempty(rdata)
          return similar(rdata, size(rdata, 1), 0)
       end
 
-      return _select_particles_in_memory(rdata, ranges, data.dim)
+      return _select_particles_in_memory(rdata, x_range, y_range, z_range, data.dim)
    end
 
    # If not loaded, optimize by reading specific grids
-   return _select_particles_from_files(data, ranges)
+   return _select_particles_from_files(data, x_range, y_range, z_range)
 end
 
-function _select_particles_in_memory(rdata::Matrix{T}, ranges, dim) where T
-   check_x = dim >= 1 && !isnothing(ranges[1])
-   xlo, xhi = check_x ? ranges[1] : (T(0), T(0))
+function _select_particles_in_memory(
+      rdata::Matrix{T}, x_range, y_range, z_range, dim) where T
+   check_x = dim >= 1 && !isnothing(x_range)
+   xlo, xhi = check_x ? x_range : (T(0), T(0))
 
-   check_y = dim >= 2 && !isnothing(ranges[2])
-   ylo, yhi = check_y ? ranges[2] : (T(0), T(0))
+   check_y = dim >= 2 && !isnothing(y_range)
+   ylo, yhi = check_y ? y_range : (T(0), T(0))
 
-   check_z = dim >= 3 && !isnothing(ranges[3])
-   zlo, zhi = check_z ? ranges[3] : (T(0), T(0))
+   check_z = dim >= 3 && !isnothing(z_range)
+   zlo, zhi = check_z ? z_range : (T(0), T(0))
 
-   valid_indices = filter(1:size(rdata, 2)) do i
+   n_vars, n_particles = size(rdata)
+
+   # Pass 1: Count valid particles to avoid vector allocation
+   count = 0
+   @inbounds for i in 1:n_particles
+      keep = true
       if check_x
          val = rdata[1, i]
-         (val < xlo || val > xhi) && return false
+         if val < xlo || val > xhi
+            keep = false
+         end
       end
-      if check_y
+      if keep && check_y
          val = rdata[2, i]
-         (val < ylo || val > yhi) && return false
+         if val < ylo || val > yhi
+            keep = false
+         end
       end
-      if check_z
+      if keep && check_z
          val = rdata[3, i]
-         (val < zlo || val > zhi) && return false
+         if val < zlo || val > zhi
+            keep = false
+         end
       end
-      return true
+      if keep
+         count += 1
+      end
    end
 
-   return rdata[:, valid_indices]
+   # Allocate result matrix exactly
+   new_data = Matrix{T}(undef, n_vars, count)
+
+   # Pass 2: Fill data
+   current_idx = 0
+   @inbounds for i in 1:n_particles
+      keep = true
+      if check_x
+         val = rdata[1, i]
+         if val < xlo || val > xhi
+            keep = false
+         end
+      end
+      if keep && check_y
+         val = rdata[2, i]
+         if val < ylo || val > yhi
+            keep = false
+         end
+      end
+      if keep && check_z
+         val = rdata[3, i]
+         if val < zlo || val > zhi
+            keep = false
+         end
+      end
+
+      if keep
+         current_idx += 1
+         for k in 1:n_vars
+            new_data[k, current_idx] = rdata[k, i]
+         end
+      end
+   end
+
+   return new_data
 end
 
-function _select_particles_from_files(data::AMReXParticle{T}, ranges) where T
+function _select_particles_from_files(
+      data::AMReXParticle{T}, x_range, y_range, z_range) where T
+   ranges = (x_range, y_range, z_range)
    # Convert physical range to index range
    dx = SVector{3, Float64}(
       (data.right_edge[1] - data.left_edge[1]) / data.domain_dimensions[1],
@@ -487,7 +535,7 @@ function _select_particles_from_files(data::AMReXParticle{T}, ranges) where T
       return Matrix{T}(undef, n_real, 0)
    end
 
-   return hcat(selected_rdata...)
+   return reduce(hcat, selected_rdata)
 end
 
 const _ALIAS_MAP = Dict(
