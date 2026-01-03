@@ -70,3 +70,8 @@ SUITE["amrex"]["select_region"] = @benchmarkable select_particles_in_region(
 
 SUITE["amrex"]["phase_space_3d"] = @benchmarkable get_phase_space_density(
    $amrex_data, "u", "v", "w")
+
+# Helper for file-based selection benchmark (lazy load)
+amrex_data_unloaded = AMReXParticle(amrex_dir)
+SUITE["amrex"]["select_region_from_files"] = @benchmarkable select_particles_in_region(
+   $amrex_data_unloaded, x_range = (2.5, 4.5))
