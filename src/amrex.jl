@@ -1,6 +1,7 @@
 # AMReX particle data reader and analyzer.
 
 using FHist
+using GaussianMixtures
 
 struct AMReXParticleHeader
    version_string::String
@@ -725,4 +726,93 @@ function classify_particles(
    end
 
    return particles[:, is_core], particles[:, .!is_core]
+end
+
+"""
+    fit_particle_velocity_gmm(data, n_clusters; x_range=nothing, y_range=nothing, z_range=nothing, vdim=3)
+
+Fit a Gaussian Mixture Model to particle velocities in a region.
+
+# Arguments
+
+  - `data`: AMReXParticle data.
+  - `n_clusters`: Number of GMM components.
+  - `vdim`: Velocity dimension (1, 2, or 3).
+
+# Returns
+
+  - A vector of named tuples sorted by weight, each containing:
+
+      + `weight`: Component weight.
+      + `mean`: Component mean velocity (vector of length vdim).
+      + `vth`: Component thermal velocity (vector of length vdim).
+"""
+function fit_particle_velocity_gmm(
+      data::AMReXParticle{T},
+      n_clusters::Int;
+      x_range = nothing,
+      y_range = nothing,
+      z_range = nothing,
+      vdim::Int = 3
+) where T
+   # 1. Select particles
+   particles = select_particles_in_region(data; x_range, y_range, z_range)
+   if isempty(particles)
+      error("No particles found in the specified region.")
+   end
+
+   # 2. Extract velocities (reuse logic)
+   possible_names = [
+      ["vx", "vy", "vz"], ["ux", "uy", "uz"], ["velocity_x", "velocity_y", "velocity_z"]]
+   vel_indices = Int[]
+
+   component_names = data.header.real_component_names
+   component_map = Dict(name => i for (i, name) in enumerate(component_names))
+
+   for names in possible_names
+      indices = [get(component_map, n, get(component_map, _resolve_alias(n), 0))
+                 for n in names[1:vdim]]
+      if all(i -> i > 0, indices)
+         vel_indices = indices
+         break
+      end
+   end
+
+   if isempty(vel_indices)
+      error("Could not identify velocity components for vdim=$vdim.")
+   end
+
+   velocities = particles[vel_indices, :] # (vdim, n_particles)
+
+   # 3. Fit GMM
+   # GaussianMixtures expects (n_samples, n_features). It supports Float32/Float64.
+   X = Matrix{T}(velocities')
+
+   # kind=:diag for diagonal covariance (independent velocity components)
+   gmm = GMM(n_clusters, X, kind = :diag)
+
+   # 4. Interpret results
+   ResultType = NamedTuple{(:weight, :mean, :vth), Tuple{T, Vector{T}, Vector{T}}}
+   results = Vector{ResultType}(undef, n_clusters)
+
+   weights = gmm.w
+   means = gmm.μ
+   vars = gmm.Σ
+
+   for i in 1:n_clusters
+      w = T(weights[i])
+      μ_vec = T.(means[i, :])
+
+      # For kind=:diag, vars is a Matrix{Float64} (k x d)
+      σ2_vec = vars[i, :]
+
+      vth_vec = T.(sqrt.(2 .* σ2_vec))
+
+      results[i] = (weight = w, mean = μ_vec, vth = vth_vec)
+   end
+
+   # Sort by weight descending
+   sort!(results, by = x -> x.weight, rev = true)
+
+   return results
 end
