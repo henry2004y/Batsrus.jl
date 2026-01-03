@@ -594,20 +594,7 @@ function get_phase_space_density(
    return _finalize_hist(h, Val(normalize))
 end
 
-function _create_hist(selected_data, edges, weights::Nothing)
-   N = length(selected_data)
-   if N == 1
-      Hist1D(selected_data[1]; binedges = edges[1])
-   elseif N == 2
-      Hist2D(Tuple(selected_data); binedges = edges)
-   elseif N == 3
-      Hist3D(Tuple(selected_data); binedges = edges)
-   else
-      error("Only 1D, 2D, and 3D phase space densities are supported.")
-   end
-end
-
-function _create_hist(selected_data, edges, weights::AbstractVector)
+function _create_hist(selected_data, edges, weights)
    N = length(selected_data)
    if N == 1
       Hist1D(selected_data[1]; binedges = edges[1], weights)
