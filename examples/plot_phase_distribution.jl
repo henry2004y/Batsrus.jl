@@ -183,9 +183,39 @@ n_clusters = 2
 # Note: transformed_data is (2, N)
 gmm_results = fit_particle_velocity_gmm(transformed_data, n_clusters)
 
-println("GMM Results (Transformed Frame):")
+# --- GMM Fitting on Transformed Data ---
+println("Fitting GMM on transformed data...")
+n_clusters = 2
+
+# Expand to pseudo-3D to handle v_perp > 0 nicely
+# v_perp represents a magnitude. To fit it with Gaussians, we "unroll" it 
+# into 2 Cartesian components assuming Gyrotropy (symmetry).
+n_samples = size(transformed_data, 2)
+phis = 2π .* rand(n_samples)
+v_perp_1 = transformed_data[2, :] .* cos.(phis)
+v_perp_2 = transformed_data[2, :] .* sin.(phis)
+
+# New fitting matrix: (v_para, v_perp_1, v_perp_2)
+fitting_data = zeros(3, n_samples)
+fitting_data[1, :] = transformed_data[1, :] # v_para
+fitting_data[2, :] = v_perp_1
+fitting_data[3, :] = v_perp_2
+
+gmm_results = fit_particle_velocity_gmm(fitting_data, n_clusters)
+
+println("GMM Results (Transformed Pseudo-3D Frame):")
 for (i, res) in enumerate(gmm_results)
-   println("  Component $i: Weight=$(res.weight), Mean=$(res.mean), Vth=$(res.vth)")
+   # Combine perp components for display
+   # vth = sqrt(2) * sigma
+   # vth_para = res.vth[1]
+   # vth_perp = sqrt((res.vth[2]^2 + res.vth[3]^2)/2)
+   vth_perp_avg = sqrt((res.vth[2]^2 + res.vth[3]^2) / 2)
+
+   println("  Component $i:")
+   println("    Weight: ", res.weight)
+   println("    Mean (Para): ", res.mean[1])
+   println("    Vth (Para):  ", res.vth[1])
+   println("    Vth (Perp):  ", vth_perp_avg)
 end
 
 # --- Plot 3: GMM Reconstruction (Transformed) ---
@@ -203,16 +233,31 @@ yi = range(y_min, y_max, length = 100)
 Z = zeros(100, 100)
 
 for i in 1:100, j in 1:100
-   v_loc = [xi[i], yi[j]] # (v_para, v_perp)
-   prob = 0.0
-   for k in 1:n_clusters
-      # Diagonal covariance assumption in fit_particle_velocity_gmm (kind=:diag)
-      # P(v) = w * PDF(v_para) * PDF(v_perp)
-      mu = gmm_results[k].mean
-      sigma = gmm_results[k].vth ./ sqrt(2)
+   v_p = xi[i]
+   v_t = yi[j] # v_perp value
 
-      p_para = exp(-0.5 * ((v_loc[1] - mu[1]) / sigma[1])^2) / (sigma[1] * sqrt(2π))
-      p_perp = exp(-0.5 * ((v_loc[2] - mu[2]) / sigma[2])^2) / (sigma[2] * sqrt(2π))
+   prob = 0.0
+   for k in eachindex(gmm_results)
+      # For cylindrical coordinates with gyrotropy:
+      # f(v_para, v_perp) = w * (1 / (sqrt(2pi) sigma_para)) * exp(...) * (v_perp / sigma_perp^2) * exp(...)
+      # Note: We are plotting particle density in (v_para, v_perp) plane.
+      # The Jacobian v_perp comes from dv_x dv_y -> v_perp dv_perp dphi
+      # Integrating out phi gives 2pi.
+      # But fit_particle_velocity_gmm returns parameters for standard Cartesians.
+
+      mu_para = gmm_results[k].mean[1]
+      sigma_para = gmm_results[k].vth[1] / sqrt(2)
+
+      # Average perp sigmas for reconstruction
+      sigma_perp = sqrt((gmm_results[k].vth[2]^2 + gmm_results[k].vth[3]^2) / 4) # vth^2 = 2*sigma^2
+
+      # Parallel part (Gaussian)
+      p_para = exp(-0.5 * ((v_p - mu_para) / sigma_para)^2) / (sigma_para * sqrt(2π))
+
+      # Perpendicular part (Rayleigh-like density for magnitude)
+      # P(v_perp) = (v_perp / sigma_perp^2) * exp(-v_perp^2 / (2*sigma_perp^2))
+      # Note: This P(v_perp) integrates to 1 over [0, inf)
+      p_perp = (v_t / sigma_perp^2) * exp(-0.5 * (v_t / sigma_perp)^2)
 
       prob += gmm_results[k].weight * p_para * p_perp
    end
@@ -232,14 +277,20 @@ labels = Vector{Int}(undef, length(v_para))
 for i in eachindex(v_para)
    best_k = 0
    max_p = -1.0
-   v_vec = [v_para[i], v_perp[i]]
 
-   for k in 1:n_clusters
-      mu = gmm_results[k].mean
-      sigma = gmm_results[k].vth ./ sqrt(2)
-      p = gmm_results[k].weight *
-          (exp(-0.5 * ((v_vec[1] - mu[1]) / sigma[1])^2) / sigma[1]) *
-          (exp(-0.5 * ((v_vec[2] - mu[2]) / sigma[2])^2) / sigma[2])
+   v_p = v_para[i]
+   v_t = v_perp[i]
+
+   for k in eachindex(gmm_results)
+      mu_para = gmm_results[k].mean[1]
+      sigma_para = gmm_results[k].vth[1] / sqrt(2)
+      sigma_perp = sqrt((gmm_results[k].vth[2]^2 + gmm_results[k].vth[3]^2) / 4)
+
+      p_para = exp(-0.5 * ((v_p - mu_para) / sigma_para)^2) / (sigma_para * sqrt(2π))
+      p_perp = (v_t / sigma_perp^2) * exp(-0.5 * (v_t / sigma_perp)^2)
+
+      p = gmm_results[k].weight * p_para * p_perp
+
       if p > max_p
          max_p = p
          best_k = k
@@ -250,7 +301,7 @@ end
 
 # Color by label
 colors = ["red", "blue"]
-for k in 1:n_clusters
+for k in eachindex(gmm_results)
    mask = labels .== k
    if any(mask)
       ax4.scatter(v_para[mask], v_perp[mask], s = 1, c = colors[k],
