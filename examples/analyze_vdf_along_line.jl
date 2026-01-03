@@ -7,6 +7,7 @@ using Printf
 using Statistics
 using LinearAlgebra
 using StaticArrays
+using FHist
 
 # --- Configuration ---
 # Note: Update this path to your specific environment
@@ -19,6 +20,8 @@ end_point = [19.0, -5.0, 0.0]
 num_samples = 4
 box_size = 0.5 # Total width of the sampling box
 B_field = [1.0, -1.0, 0.0]
+v_para_range = (-10.0, 10.0)
+v_perp_range = (0.0, 10.0)
 
 # ---------------------
 # Section 1: Data Preparation
@@ -107,12 +110,7 @@ fig, axs = plt.subplots(
    1, num_samples, figsize = (4 * num_samples, 4), constrained_layout = true)
 
 # Transformation function
-# Transformation function
 transform_func = get_particle_field_aligned_transform(B_field)
-
-# Use PyCall/Numpy for density calculation
-using PyCall
-np = pyimport("numpy")
 
 plot_data = []
 global_max_density = 1.0
@@ -147,12 +145,14 @@ for (i, pt) in enumerate(sample_points)
    v_perp = t_data[2, :]
 
    # Pre-calculate histogram to find max density
-   H, _, _ = np.histogram2d(v_para, v_perp, bins = 50, range = [[-10, 10], [0, 10]])
-   local_max = maximum(H)
+   h = Hist2D((v_para, v_perp),
+      binedges = (range(v_para_range..., length = 51), range(v_perp_range..., length = 51)))
+   counts = bincounts(h)
+   local_max = maximum(counts)
 
    global global_max_density = max(global_max_density, local_max)
 
-   push!(plot_data, (v_para, v_perp))
+   push!(plot_data, counts)
 end
 
 println("Global Max Density: $global_max_density")
@@ -168,13 +168,18 @@ for (i, pt) in enumerate(sample_points)
       continue
    end
 
-   v_para, v_perp = data_pair
+   counts = data_pair
 
    # Plot with fixed global normalization
-   h = ax.hist2d(v_para, v_perp, bins = 50,
-      range = [[-10, 10], [0, 10]],
+   # Transpose counts because imshow expects (row, col) -> (y, x)
+   # but bincounts returns (x, y)
+   im = ax.imshow(counts',
+      extent = [v_para_range[1], v_para_range[2], v_perp_range[1], v_perp_range[2]],
+      origin = "lower",
       norm = PyPlot.matplotlib.colors.LogNorm(vmin = 1, vmax = global_max_density),
-      cmap = "turbo")
+      cmap = "turbo",
+      aspect = "auto",
+      interpolation = "nearest")
 
    ax.set_title(@sprintf("Pt %d: x=%.1f", i, pt[1]))
    ax.set_xlabel(L"v_{\parallel}")
@@ -183,7 +188,7 @@ for (i, pt) in enumerate(sample_points)
    end
 
    # Save last handle for colorbar
-   global h_plot = h
+   global h_plot = im
 end
 
 if @isdefined(h_plot)
@@ -191,7 +196,7 @@ if @isdefined(h_plot)
    norm = PyPlot.matplotlib.colors.LogNorm(vmin = 1, vmax = global_max_density)
    sm = PyPlot.matplotlib.cm.ScalarMappable(norm = norm, cmap = "turbo")
    sm.set_array([])
-   fig.colorbar(sm, ax = axs, label = "Counts")
+   fig.colorbar(sm, ax = axs, label = "Counts", pad = 0.02)
 end
 
 # Add a global title
