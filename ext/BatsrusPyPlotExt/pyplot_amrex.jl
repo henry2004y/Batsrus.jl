@@ -29,7 +29,7 @@ Plots the 2D phase space density for selected variables.
   - `transform`: Optional function to transform the data before binning.
   - `plot_zero_lines`: Whether to draw dashed lines at x=0 and y=0 (default: `false`).
   - `normalize`: Whether to normalize the histogram to a probability density (default: `false`).
-  - `kwargs`: Additional keyword arguments passed to `imshow` (e.g., `cmap`, `title`).
+  - `kwargs`: Additional keyword arguments passed to `imshow` (e.g., `cmap`).
 """
 function plot_phase(
       data::AMReXParticle,
@@ -77,7 +77,7 @@ function plot_phase(
    extent = [xedges[1], xedges[end], yedges[1], yedges[end]]
 
    im = ax.imshow(
-      H';
+      Matrix(H');
       origin = "lower",
       extent,
       aspect = "auto",

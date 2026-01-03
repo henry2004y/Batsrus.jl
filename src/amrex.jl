@@ -717,6 +717,9 @@ function get_phase_space_density(
          if vmin == vmax
             vmin -= 0.5
             vmax += 0.5
+         else
+            # Ensure the max value is included in the last bin
+            vmax = nextfloat(vmax)
          end
 
          range(vmin, vmax, length = nbins + 1)

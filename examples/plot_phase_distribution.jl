@@ -132,56 +132,116 @@ vy = particles[idx_vy, :]
 vz = idx_vz > 0 ? particles[idx_vz, :] : zeros(length(vx))
 
 # ---------------------
-# Section 2: Phase Space Plotting
+# Unified Plotting & Analysis
 # ---------------------
-println("\n--- Section 2: Phase Space Plotting ---")
+println("\n--- Unified Plotting & Analysis ---")
 
-fig = figure(figsize = (10, 8))
-h = plt.hist2d(
-   vx, vy, bins = 100, norm = PyPlot.matplotlib.colors.LogNorm(vmin = 1), cmap = "viridis")
-plt.colorbar(label = "Count")
+# Create a unified figure with 4 subplots
+fig, axs = plt.subplots(2, 2, figsize = (14, 12), constrained_layout = true)
 
-plt.axhline(0, color = "gray", linestyle = "--", linewidth = 1, alpha = 0.5)
-plt.axvline(0, color = "gray", linestyle = "--", linewidth = 1, alpha = 0.5)
-
-xlabel("Vx")
-ylabel("Vy")
-title("Region: x=$(x_range), z=$(z_range)")
-
-output_filename = "phase_space_vx_vy.png"
-savefig(output_filename)
-println("Plot saved to $output_filename")
-
-println("Generating plot using plot_phase...")
-fig = figure(figsize = (10, 8))
+# ---------------------
+# Subplot 1: Phase Space Distribution (Whole)
+# ---------------------
+println("Plotting Phase Space Distribution...")
+ax1 = axs[1] # Top-Left
 # Use plot_phase from Batsrus
-# Note: plot_phase uses the data object directly and handles selection internally if ranges are passed
 plot_phase(
    data, names[idx_vx], names[idx_vy];
    x_range = x_range,
    y_range = selection_y_range, # Handle 2D mapping
    plot_zero_lines = true,
-   edges = (range(-10, 10, length = 100), range(-10, 10, length = 100))
+   edges = (range(-10, 10, length = 100), range(-10, 10, length = 100)),
+   ax = ax1
 )
-title("Region: x=$(x_range), z=$(z_range) (via plot_phase)")
-output_filename_pkg = "phase_space_vx_vy_pkg.png"
-savefig(output_filename_pkg)
-println("Package plot saved to $output_filename_pkg")
+ax1.set_title("Overall Distribution")
 
 # ---------------------
-# Section 3: Simple Classification
+# Subplot 2: GMM Fitting & Reconstruction
 # ---------------------
-println("\n--- Section 3: Simple Classification ---")
+println("Fitting and Plotting GMM...")
+ax2 = axs[2] # Top-Right
+
+println("Fitting Gaussian Mixture Model (k=2) via fit_particle_velocity_gmm...")
+
+# Fit GMM using the new API
+# Note: we use ranges to select data again (or could pass prepared data if API allowed)
+results = fit_particle_velocity_gmm(
+   data, 2;
+   x_range = x_range,
+   y_range = selection_y_range,
+   vdim = 3
+)
+
+println("GMM Fit Results:")
+for (i, comp) in enumerate(results)
+   println("  Component $i:")
+   println("    Weight: ", comp.weight)
+   println("    Mean:   ", comp.mean)
+   println("    Vth:    ", comp.vth)
+end
+
+# --- Plotting Reconstruction ---
+# Plot original data histogram (Greys)
+ax2.hist2d(
+   vx, vy, bins = 100, norm = PyPlot.matplotlib.colors.LogNorm(vmin = 1), cmap = "Greys"
+)
+
+# Create grid for contour plot
+xmin, xmax = minimum(vx), maximum(vx)
+ymin, ymax = minimum(vy), maximum(vy)
+
+# Grid resolution
+ngrid = 100
+xi = range(xmin, xmax, length = ngrid)
+yi = range(ymin, ymax, length = ngrid)
+
+Z = zeros(ngrid, ngrid)
+
+# Collect params for convenience
+weights = [r.weight for r in results]
+means = [r.mean for r in results]
+vths = [r.vth for r in results] # vth = sqrt(2*sigma^2) => sigma = vth / sqrt(2)
+sigmas = [v ./ sqrt(2) for v in vths]
+
+gaussian_pdf(x, mu, sigma) = exp(-0.5 * ((x - mu) / sigma)^2) / (sigma * sqrt(2 * pi))
+
+for i in 1:ngrid
+   for j in 1:ngrid
+      val = 0.0
+      x_val = xi[i] # vx
+      y_val = yi[j] # vy
+
+      for k in 1:length(weights)
+         # Marginal PDF(vx, vy)
+         pdf_x = gaussian_pdf(x_val, means[k][1], sigmas[k][1])
+         pdf_y = gaussian_pdf(y_val, means[k][2], sigmas[k][2])
+         val += weights[k] * pdf_x * pdf_y
+      end
+      Z[j, i] = val # Note: PyPlot expects Z[row, col] -> y, x
+   end
+end
+
+# Overlay contours
+levels = exp.(range(log(maximum(Z) * 1e-4), log(maximum(Z)), length = 10))
+c = ax2.contour(xi, yi, Z, levels = levels, cmap = "viridis", linewidths = 2)
+ax2.clabel(c, inline = 1, fontsize = 8)
+
+ax2.set_xlabel("\$v_x\$")
+ax2.set_ylabel("\$v_y\$")
+ax2.set_title("GMM Reconstruction")
+
+# ---------------------
+# Subplots 3 & 4: Classification
+# ---------------------
+println("Classifying Particles...")
 
 # Estimate thermal velocity
 vth_x = std(vx)
 vth_y = std(vy)
 vth_z = std(vz)
 vth_est = sqrt((vth_x^2 + vth_y^2 + vth_z^2) / 3)
-
 println("Estimated thermal velocity (vth): ", vth_est)
 
-println("Classifying particles...")
 core, supra = classify_particles(
    data;
    x_range = x_range,
@@ -194,143 +254,41 @@ core, supra = classify_particles(
 println("Core particles: ", size(core, 2))
 println("Suprathermal particles: ", size(supra, 2))
 
-# Plot Classification Results
-fig, axs = plt.subplots(
-   1, 2; figsize = (12, 5), constrained_layout = true, sharex = true, sharey = true)
-
 v_range = [[minimum(vx), maximum(vx)], [minimum(vy), maximum(vy)]]
 
-# Core
-ax1 = axs[1]
+# Subplot 3: Core
+ax3 = axs[3] # Bottom-Left
 if !isempty(core)
    vx_core = core[idx_vx, :]
    vy_core = core[idx_vy, :]
-   h1 = ax1.hist2d(vx_core, vy_core, bins = 100, range = v_range,
+   h3 = ax3.hist2d(vx_core, vy_core, bins = 100, range = v_range,
       norm = PyPlot.matplotlib.colors.LogNorm(vmin = 1), cmap = "viridis")
-   plt.colorbar(h1[4], ax = ax1, label = "Count")
+   plt.colorbar(h3[4], ax = ax3, label = "Count")
 else
-   ax1.text(0.5, 0.5, "No Core Particles", ha = "center", transform = ax1.transAxes)
+   ax3.text(0.5, 0.5, "No Core Particles", ha = "center", transform = ax3.transAxes)
 end
-ax1.set_title("Core Population")
-ax1.set_xlabel("\$v_x\$")
-ax1.set_ylabel("\$v_y\$")
-ax1.axhline(0, color = "gray", linestyle = "--")
+ax3.set_title("Core Population")
+ax3.set_xlabel("\$v_x\$")
+ax3.set_ylabel("\$v_y\$")
+ax3.axhline(0, color = "gray", linestyle = "--")
 
-# Suprathermal
-ax2 = axs[2]
+# Subplot 4: Suprathermal
+ax4 = axs[4] # Bottom-Right
 if !isempty(supra)
    vx_supra = supra[idx_vx, :]
    vy_supra = supra[idx_vy, :]
-   h2 = ax2.hist2d(vx_supra, vy_supra, bins = 100, range = v_range,
+   h4 = ax4.hist2d(vx_supra, vy_supra, bins = 100, range = v_range,
       norm = PyPlot.matplotlib.colors.LogNorm(vmin = 1), cmap = "magma")
-   plt.colorbar(h2[4], ax = ax2, label = "Count")
+   plt.colorbar(h4[4], ax = ax4, label = "Count")
 else
-   ax2.text(0.5, 0.5, "No Suprathermal Particles", ha = "center", transform = ax2.transAxes)
+   ax4.text(0.5, 0.5, "No Suprathermal Particles", ha = "center", transform = ax4.transAxes)
 end
-ax2.set_title("Suprathermal Population")
-ax2.set_xlabel("\$v_x\$")
-ax2.set_ylabel("\$v_y\$")
-ax2.axhline(0, color = "gray", linestyle = "--")
+ax4.set_title("Suprathermal Population")
+ax4.set_xlabel("\$v_x\$")
+ax4.set_ylabel("\$v_y\$")
+ax4.axhline(0, color = "gray", linestyle = "--")
 
-output_filename_class = "phase_space_classified.png"
-savefig(output_filename_class)
-println("Classification plot saved to $output_filename_class")
-
-# ---------------------
-# Section 4: GMM Fitting
-# ---------------------
-println("\n--- Section 4: GMM Fitting ---")
-
-println("Fitting Gaussian Mixture Model (k=2) via fit_particle_velocity_gmm...")
-
-try
-   # Fit GMM using the new API
-   # Note: we use ranges to select data again (or could pass prepared data if API allowed, 
-   # but current API takes data + ranges)
-   results = fit_particle_velocity_gmm(
-      data, 2;
-      x_range = x_range,
-      y_range = selection_y_range, # Handle 2D mapping
-      vdim = 3
-   )
-
-   println("GMM Fit Results:")
-   for (i, comp) in enumerate(results)
-      println("  Component $i:")
-      println("    Weight: ", comp.weight)
-      println("    Mean:   ", comp.mean)
-      println("    Vth:    ", comp.vth)
-   end
-
-   # --- Plotting Reconstruction ---
-   println("Plotting GMM Reconstruction...")
-
-   # Create a new figure with histogram and contours
-   fig = figure(figsize = (10, 8))
-
-   # Plot original data histogram
-   h = plt.hist2d(
-      vx, vy, bins = 100, norm = PyPlot.matplotlib.colors.LogNorm(vmin = 1), cmap = "Greys"
-   )
-   plt.colorbar(label = "Count (Data)")
-
-   # Create grid for contour plot
-   xmin, xmax = minimum(vx), maximum(vx)
-   ymin, ymax = minimum(vy), maximum(vy)
-
-   # Grid resolution
-   ngrid = 100
-   xi = range(xmin, xmax, length = ngrid)
-   yi = range(ymin, ymax, length = ngrid)
-
-   # Meshgrid equivalent
-   # Evaluate GMM PDF (marginalized over vz)
-   # For independent diagonal GMM, P(vx, vy) = Sum_k w_k * N(vx | mu_kx, sig_kx) * N(vy | mu_ky, sig_ky)
-
-   Z = zeros(ngrid, ngrid)
-
-   # Collect params for convenience
-   weights = [r.weight for r in results]
-   means = [r.mean for r in results]
-   vths = [r.vth for r in results] # vth = sqrt(2*sigma^2) => sigma = vth / sqrt(2)
-   sigmas = [v ./ sqrt(2) for v in vths]
-
-   gaussian_pdf(x, mu, sigma) = exp(-0.5 * ((x - mu) / sigma)^2) / (sigma * sqrt(2 * pi))
-
-   for i in 1:ngrid
-      for j in 1:ngrid
-         val = 0.0
-         x_val = xi[i] # vx
-         y_val = yi[j] # vy
-
-         for k in 1:length(weights)
-            # Marginal PDF(vx, vy)
-            pdf_x = gaussian_pdf(x_val, means[k][1], sigmas[k][1])
-            pdf_y = gaussian_pdf(y_val, means[k][2], sigmas[k][2])
-            val += weights[k] * pdf_x * pdf_y
-         end
-         Z[j, i] = val # Note: PyPlot expects Z[row, col] -> y, x
-      end
-   end
-
-   # Overlay contours
-   levels = exp.(range(log(maximum(Z) * 1e-4), log(maximum(Z)), length = 10))
-   c = plt.contour(xi, yi, Z, levels = levels, cmap = "viridis", linewidths = 2)
-   plt.clabel(c, inline = 1, fontsize = 8)
-
-   plt.xlabel("v_x")
-   plt.ylabel("v_y")
-   plt.title("GMM Reconstruction (Contours) vs Data (Greys)")
-
-   output_filename_gmm = "phase_space_gmm.png"
-   savefig(output_filename_gmm)
-   println("GMM plot saved to $output_filename_gmm")
-
-catch e
-   println("GMM fitting or plotting failed: ", e)
-   if e isa ErrorException
-      showerror(stdout, e)
-      println()
-   end
-   # stacktrace(e) 
-end
+# Save Unified Figure
+output_filename = "phase_space_analysis.png"
+savefig(output_filename)
+println("Unified analysis plot saved to $output_filename")
