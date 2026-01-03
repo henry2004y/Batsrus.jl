@@ -364,6 +364,23 @@ plot_phase(data, "x", "vx";
 )
 ```
 
+We can also calculate the phase space density histogram directly without plotting:
+
+```julia
+# 1D density
+hist1d = get_phase_space_density(data, "vx")
+
+# 2D density
+hist2d = get_phase_space_density(data, "x", "vx"; bins=(100, 50))
+
+# 3D density
+hist3d = get_phase_space_density(data, "vx", "vy", "vz"; bins=50)
+
+# Weighted 2D density (automatically detects "weight" component if present)
+# or passes weights explicitly if not in data
+hist2d_w = get_phase_space_density(data, "v_parallel", "v_perp")
+```
+
 We can also apply coordinate transformations to the particle data.
 
 1. Transformation with only B field. This decomposes velocity into parallel and perpendicular components relative to B.

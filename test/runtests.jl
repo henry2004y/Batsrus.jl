@@ -290,6 +290,52 @@ end
          # Test Plotting Helper
          h = get_phase_space_density(data, "x", "u", bins = 2)
          @test size(h.bincounts) == (2, 2)
+
+         # Test Weighted Plotting
+         Batsrus.generate_mock_amrex_data(tmpdir;
+            num_particles = 10,
+            real_component_names = ["u", "v", "weight"],
+            particle_gen = (i, n_reals) -> (
+               Float64(i), 10.0, 10.0, # x, y, z
+               Float64(i), 0.0, # u, v
+               Float64(2.0) # weight
+            )
+         )
+         data_w = AMReXParticle(tmpdir)
+         h_w = get_phase_space_density(data_w, "x", "u", bins = 1,
+            x_range = (0.0, 11.0), y_range = (0.0, 11.0))
+
+         # 10 particles, each weight 2.0. Total sum should be 20.0.
+         # They all fall into the same bin since we only have 1 bin covering the range.
+         @test sum(h_w.bincounts) ≈ 20.0
+
+         # Test 1D Plotting
+         h1 = get_phase_space_density(data_w, "x"; bins = 1, x_range = (0.0, 11.0))
+         @test sum(h1.bincounts) ≈ 20.0
+         @test ndims(h1.bincounts) == 1
+
+         # Test 1D density
+         hist1d = get_phase_space_density(data, "x")
+         @test ndims(hist1d.bincounts) == 1
+
+         # Test 1D density with z_range filter (Regression test)
+         # Filter z to a range that includes particles (z=2.0 and z=3.0)
+         # Using a wider range to avoid boundary floating point issues
+         hist1d_z = get_phase_space_density(data, "x";
+            z_range = (1.5, 3.5), x_range = (1.5, 3.5))
+         @test sum(hist1d_z.bincounts) == 2 # Particles at z=2.0 and z=3.0
+
+         # Filter z to a range that EXCLUDES particles
+         # This might error if empty, check behavior.
+         # Current implementation errors on empty: "No particles found..."
+         @test_throws ErrorException get_phase_space_density(
+            data, "x"; z_range = (11.0, 20.0))
+
+         # Test 3D Plotting
+         h3 = get_phase_space_density(data_w, "x", "y", "u"; bins = 1,
+            x_range = (0.0, 11.0), y_range = (0.0, 20.0), z_range = (0.0, 11.0))
+         @test sum(h3.bincounts) ≈ 20.0
+         @test ndims(h3.bincounts) == 3
       end
    end
 

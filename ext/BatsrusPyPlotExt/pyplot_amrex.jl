@@ -57,15 +57,14 @@ function plot_phase(
       norm = PyPlot.matplotlib.colors.Normalize()
    end
 
-   # Prepare extent
    extent = [xedges[1], xedges[end], yedges[1], yedges[end]]
 
    im = ax.imshow(
-      H',
+      H';
       origin = "lower",
-      extent = extent,
+      extent,
       aspect = "auto",
-      norm = norm;
+      norm,
       kwargs...
    )
 
@@ -75,8 +74,8 @@ function plot_phase(
    end
 
    if add_colorbar
-      plt.colorbar(
-         im, ax = ax, label = normalize ? "Probability Density" : "Count", pad = 0.02)
+      cbar_label = normalize ? "Probability Density" : "Count"
+      plt.colorbar(im; ax, label = cbar_label, pad = 0.02)
    end
 
    xlabel(_get_axis_label(_resolve_alias(x_variable)))
