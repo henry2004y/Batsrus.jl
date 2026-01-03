@@ -11,15 +11,32 @@ const _AXIS_LABEL_MAP = Dict(
 _get_axis_label(variable_name::String) = get(_AXIS_LABEL_MAP, variable_name, variable_name)
 
 """
-    plot_phase(data, x_var, y_var; bins=100, x_range=nothing, y_range=nothing, z_range=nothing, log_scale=true, ax=nothing, add_colorbar=true, kwargs...)
+    plot_phase(data, x_variable, y_variable; bins=100, edges=nothing, x_range=nothing, y_range=nothing, z_range=nothing, log_scale=true, ax=nothing, add_colorbar=true, transform=nothing, plot_zero_lines=false, normalize=false, kwargs...)
 
 Plots the 2D phase space density for selected variables.
+
+# Arguments
+
+  - `data`: `AMReXParticle` data object.
+  - `x_variable`: Name of the variable for the x-axis (e.g., "vx").
+  - `y_variable`: Name of the variable for the y-axis (e.g., "vy").
+  - `bins`: Number of bins for the histogram (default: 100).
+  - `edges`: **Histogram binning edges**. Explicitly defines the bin edges for `x_variable` and `y_variable`. Overrides `bins`.
+  - `x_range`, `y_range`, `z_range`: **Spatial selection ranges**. Only particles within these ranges in configuration space are included.
+  - `log_scale`: Whether to use a logarithmic color scale (default: `true`).
+  - `ax`: PyPlot axis to plot on. If `nothing`, uses the current axis.
+  - `add_colorbar`: Whether to add a colorbar to the plot (default: `true`).
+  - `transform`: Optional function to transform the data before binning.
+  - `plot_zero_lines`: Whether to draw dashed lines at x=0 and y=0 (default: `false`).
+  - `normalize`: Whether to normalize the histogram to a probability density (default: `false`).
+  - `kwargs`: Additional keyword arguments passed to `imshow` (e.g., `cmap`, `title`).
 """
 function plot_phase(
       data::AMReXParticle,
       x_variable::String,
       y_variable::String;
       bins::Union{Int, Tuple{Int, Int}} = 100,
+      edges = nothing,
       x_range = nothing,
       y_range = nothing,
       z_range = nothing,
@@ -33,7 +50,7 @@ function plot_phase(
 )
    # Get phase space density
    h = get_phase_space_density(
-      data, x_variable, y_variable; bins, x_range, y_range, z_range, transform, normalize
+      data, x_variable, y_variable; bins, edges, x_range, y_range, z_range, transform, normalize
    )
 
    H = h.bincounts

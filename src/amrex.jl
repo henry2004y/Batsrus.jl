@@ -618,24 +618,32 @@ const _ALIAS_MAP = Dict(
 _resolve_alias(variable_name::String) = get(_ALIAS_MAP, variable_name, variable_name)
 
 """
-    get_phase_space_density(data, variables...; bins=100, x_range=nothing, y_range=nothing, z_range=nothing)::Hist
+    get_phase_space_density(data, variables...; bins=100, x_range=nothing, y_range=nothing, z_range=nothing, edges=nothing)::Hist
 
 Calculates the phase space density for selected variables.
 Supports 1D, 2D, and 3D histograms.
+
+# Arguments
+
+  - `data`: AMReXParticle data object.
+  - `variables`: Variable names to compute the histogram for (e.g., "vx", "vy").
+  - `bins`: Number of bins for the histogram.
+  - `x_range`, `y_range`, `z_range`: **Spatial selection ranges**. Only particles within these ranges in configuration space are selected.
+  - `edges`: **Histogram binning edges**. If provided, these define the exact bins for the `variables`. If not provided, bins are determined automatically from the data extrema.
+  - `transform`: Optional function to transform the data before binning.
+  - `normalize`: Whether to normalize the histogram to a probability density (default: `false`).
 """
 function get_phase_space_density(
       data::AMReXParticle{T},
       variables::Vararg{String, N};
-      bins::Union{Int, Tuple} = 100,
+      bins::Union{Int, Tuple{Vararg{Int, N}}} = 100,
+      edges = nothing,
       x_range = nothing,
       y_range = nothing,
       z_range = nothing,
       transform::Union{Function, Nothing} = nothing,
       normalize::Bool = false
 ) where {T, N}
-   # Handle ranges
-   ranges = (x_range, y_range, z_range)
-
    # Select data
    local rdata::Matrix{T}
    if !isnothing(x_range) || !isnothing(y_range) || !isnothing(z_range)
@@ -693,17 +701,22 @@ function get_phase_space_density(
       end
    end
 
-   # Handle ranges
-   ranges = (x_range, y_range, z_range)
+   edges = ntuple(
+      i -> begin
+         if !isnothing(edges) && i <= length(edges) && !isnothing(edges[i])
+            return edges[i]
+         end
 
-   edges = ntuple(i -> begin
          data_i = selected_data[i]
          nbins = arg_bins[i]
 
-         if i <= length(ranges) && !isnothing(ranges[i])
-            vmin, vmax = ranges[i]
-         else
-            vmin, vmax = extrema(data_i)
+         # Use explicit limits if provided, otherwise data extrema
+         vmin, vmax = extrema(data_i)
+
+         # Handle case of single value or empty
+         if vmin == vmax
+            vmin -= 0.5
+            vmax += 0.5
          end
 
          range(vmin, vmax, length = nbins + 1)
