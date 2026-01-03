@@ -314,6 +314,23 @@ end
          @test sum(h1.bincounts) ≈ 20.0
          @test ndims(h1.bincounts) == 1
 
+         # Test 1D density
+         hist1d = get_phase_space_density(data, "x")
+         @test ndims(hist1d.bincounts) == 1
+
+         # Test 1D density with z_range filter (Regression test)
+         # Filter z to a range that includes particles (z=2.0 and z=3.0)
+         # Using a wider range to avoid boundary floating point issues
+         hist1d_z = get_phase_space_density(data, "x";
+            z_range = (1.5, 3.5), x_range = (1.5, 3.5))
+         @test sum(hist1d_z.bincounts) == 2 # Particles at z=2.0 and z=3.0
+
+         # Filter z to a range that EXCLUDES particles
+         # This might error if empty, check behavior.
+         # Current implementation errors on empty: "No particles found..."
+         @test_throws ErrorException get_phase_space_density(
+            data, "x"; z_range = (11.0, 20.0))
+
          # Test 3D Plotting
          h3 = get_phase_space_density(data_w, "x", "y", "u"; bins = 1,
             x_range = (0.0, 11.0), y_range = (0.0, 20.0), z_range = (0.0, 11.0))

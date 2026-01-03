@@ -518,28 +518,8 @@ function get_phase_space_density(
 
    # Select data
    local rdata::Matrix{T}
-   if N == 1
-      # Only filter x_range (first dim) if ranges[1] is provided
-      if !isnothing(ranges[1])
-         rdata = select_particles_in_region(data; x_range = ranges[1])
-      else
-         rdata = data.rdata
-      end
-   elseif N == 2
-      # Filter x and y
-      if !isnothing(ranges[1]) || !isnothing(ranges[2])
-         rdata = select_particles_in_region(data; x_range = ranges[1], y_range = ranges[2])
-      else
-         rdata = data.rdata
-      end
-   elseif N == 3
-      # Filter x, y, z
-      if !isnothing(ranges[1]) || !isnothing(ranges[2]) || !isnothing(ranges[3])
-         rdata = select_particles_in_region(
-            data; x_range = ranges[1], y_range = ranges[2], z_range = ranges[3])
-      else
-         rdata = data.rdata
-      end
+   if !isnothing(x_range) || !isnothing(y_range) || !isnothing(z_range)
+      rdata = select_particles_in_region(data; x_range, y_range, z_range)
    else
       rdata = data.rdata
    end
