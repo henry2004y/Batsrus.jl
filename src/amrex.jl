@@ -332,10 +332,6 @@ function select_particles_in_region(
    # If real data is already loaded, filter in memory
    rdata = data._rdata
    if !isnothing(rdata)
-      if isempty(rdata)
-         return similar(rdata, size(rdata, 1), 0)
-      end
-
       return _select_particles_in_memory(rdata, x_range, y_range, z_range, data.dim)
    end
 
@@ -806,9 +802,6 @@ function classify_particles(
 ) where T
    # 1. Select particles
    particles = select_particles_in_region(data; x_range, y_range, z_range)
-   if isempty(particles)
-      return particles, particles
-   end
 
    # 2. Identify velocity columns
    vel_indices = _get_velocity_indices(data, vdim)
