@@ -432,7 +432,7 @@ function _select_particles_from_files(
    )
 
    target_idx_ranges = Vector{Union{Tuple{Int, Int}, Nothing}}(undef, data.dim)
-   for i in 1:(data.dim)
+   @inbounds for i in 1:(data.dim)
       if !isnothing(ranges[i])
          idx_min = floor(Int, (ranges[i][1] - data.left_edge[i]) / dx[i])
          idx_max = floor(Int, (ranges[i][2] - data.left_edge[i]) / dx[i])
@@ -444,7 +444,7 @@ function _select_particles_from_files(
 
    overlapping_grids = Tuple{Int, Int}[] # (level_num_0_indexed, grid_index_1_indexed)
 
-   for (lvl_idx, boxes) in enumerate(data.level_boxes)
+   @inbounds for (lvl_idx, boxes) in enumerate(data.level_boxes)
       level_num = lvl_idx - 1
       for (grid_idx, (lo, hi)) in enumerate(boxes)
          box_overlap = true
@@ -479,7 +479,7 @@ function _select_particles_from_files(
    check_z = dim >= 3 && !isnothing(ranges[3])
    zlo, zhi = check_z ? ranges[3] : (T(0), T(0))
 
-   for (level_num, grid_idx) in overlapping_grids
+   @inbounds for (level_num, grid_idx) in overlapping_grids
       # header.grids stores (which, count, where)
       grid_data = data.header.grids[level_num + 1][grid_idx]
       which, count, offset = grid_data
