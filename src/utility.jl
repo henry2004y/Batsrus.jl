@@ -451,21 +451,16 @@ function get_particle_field_aligned_transform(b_field::AbstractVector, e_field =
 
    if isnothing(e_field)
       return (data, names) -> begin
-         idx_vx = findfirst(
-            x -> x == "vx" || x == "u" || x == "ux" || x == "velocity_x", names)
-         idx_vy = findfirst(
-            x -> x == "vy" || x == "v" || x == "uy" || x == "velocity_y", names)
-         idx_vz = findfirst(
-            x -> x == "vz" || x == "w" || x == "uz" || x == "velocity_z", names)
+         local idx_vx::Union{Nothing, Int}
+         local idx_vy::Union{Nothing, Int}
+         local idx_vz::Union{Nothing, Int}
+         idx_vx = findfirst(x -> x in ("vx", "u", "ux", "velocity_x"), names)
+         idx_vy = findfirst(x -> x in ("vy", "v", "uy", "velocity_y"), names)
+         idx_vz = findfirst(x -> x in ("vz", "w", "uz", "velocity_z"), names)
 
          if isnothing(idx_vx) || isnothing(idx_vy) || isnothing(idx_vz)
             error("Velocity components not found in data.")
          end
-
-         # Ensure the compiler knows these are Ints
-         idx_vx = idx_vx::Int
-         idx_vy = idx_vy::Int
-         idx_vz = idx_vz::Int
 
          n_dims = size(data)
          n_names = length(names)
@@ -515,20 +510,16 @@ function get_particle_field_aligned_transform(b_field::AbstractVector, e_field =
       eperp_hat = normalize(exb_hat × bhat)
 
       return (data, names) -> begin
-         idx_vx = findfirst(
-            x -> x == "vx" || x == "u" || x == "ux" || x == "velocity_x", names)
-         idx_vy = findfirst(
-            x -> x == "vy" || x == "v" || x == "uy" || x == "velocity_y", names)
-         idx_vz = findfirst(
-            x -> x == "vz" || x == "w" || x == "uz" || x == "velocity_z", names)
+         local idx_vx::Union{Nothing, Int}
+         local idx_vy::Union{Nothing, Int}
+         local idx_vz::Union{Nothing, Int}
+         idx_vx = findfirst(x -> x in ("vx", "u", "ux", "velocity_x"), names)
+         idx_vy = findfirst(x -> x in ("vy", "v", "uy", "velocity_y"), names)
+         idx_vz = findfirst(x -> x in ("vz", "w", "uz", "velocity_z"), names)
 
          if isnothing(idx_vx) || isnothing(idx_vy) || isnothing(idx_vz)
             error("Velocity components not found in data.")
          end
-
-         idx_vx = idx_vx::Int
-         idx_vy = idx_vy::Int
-         idx_vz = idx_vz::Int
 
          n_dims = size(data)
          n_names = length(names)
