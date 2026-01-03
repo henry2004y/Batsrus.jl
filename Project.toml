@@ -1,6 +1,6 @@
 name = "Batsrus"
 uuid = "e74ebddf-6ac1-4047-a0e5-c32c99e57753"
-version = "0.9.0"
+version = "0.9.1"
 authors = ["Hongyang Zhou <hyzhou@umich.edu>"]
 
 [deps]
