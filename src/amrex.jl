@@ -911,13 +911,26 @@ function fit_particle_velocity_gmm(
    velocities = particles[vel_indices, :] # (vdim, n_particles)
 
    # 3. Fit GMM
+   return fit_particle_velocity_gmm(velocities, n_clusters)
+end
+
+"""
+    fit_particle_velocity_gmm(velocities::AbstractMatrix, n_clusters::Int)
+
+Fit a Gaussian Mixture Model to particle velocities provided as a matrix (vdim x n_particles).
+"""
+function fit_particle_velocity_gmm(
+      velocities::AbstractMatrix{T},
+      n_clusters::Int
+) where T
    # GaussianMixtures expects (n_samples, n_features). It supports Float32/Float64.
+   # Note: GMM does not accept Adjoint types, so we must materialize the transpose.
    X = Matrix{T}(velocities')
 
    # kind=:diag for diagonal covariance (independent velocity components)
    gmm = GMM(n_clusters, X, kind = :diag)
 
-   # 4. Interpret results
+   # Interpret results
    results = [(
                  weight = T(gmm.w[i]),
                  mean = T.(gmm.μ[i, :]),

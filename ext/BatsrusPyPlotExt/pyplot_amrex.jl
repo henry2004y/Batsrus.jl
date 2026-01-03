@@ -77,7 +77,7 @@ function plot_phase(
    extent = [xedges[1], xedges[end], yedges[1], yedges[end]]
 
    im = ax.imshow(
-      Matrix(H');
+      H';
       origin = "lower",
       extent,
       aspect = "auto",
