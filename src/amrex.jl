@@ -1,6 +1,7 @@
 # AMReX particle data reader and analyzer.
 
 using FHist
+using GaussianMixtures
 
 struct AMReXParticleHeader
    version_string::String
@@ -327,53 +328,97 @@ function select_particles_in_region(
       y_range = nothing,
       z_range = nothing
 ) where T
-   ranges = (x_range, y_range, z_range)
-
-   # Ensure data is loaded into memory. This will be a no-op if already loaded.
+   # Ensure data is loaded into memory.
    # If real data is already loaded, filter in memory
-   if !isnothing(data._rdata)
-      rdata = data._rdata
-      if isempty(rdata)
-         return similar(rdata, size(rdata, 1), 0)
-      end
-
-      return _select_particles_in_memory(rdata, ranges, data.dim)
+   rdata = data._rdata
+   if !isnothing(rdata)
+      return _select_particles_in_memory(rdata, x_range, y_range, z_range, data.dim)
    end
 
    # If not loaded, optimize by reading specific grids
-   return _select_particles_from_files(data, ranges)
+   return _select_particles_from_files(data, x_range, y_range, z_range)
 end
 
-function _select_particles_in_memory(rdata::Matrix{T}, ranges, dim) where T
-   check_x = dim >= 1 && !isnothing(ranges[1])
-   xlo, xhi = check_x ? ranges[1] : (T(0), T(0))
+function _select_particles_in_memory(
+      rdata::Matrix{T}, x_range, y_range, z_range, dim) where T
+   check_x = dim >= 1 && !isnothing(x_range)
+   xlo, xhi = check_x ? x_range : (T(0), T(0))
 
-   check_y = dim >= 2 && !isnothing(ranges[2])
-   ylo, yhi = check_y ? ranges[2] : (T(0), T(0))
+   check_y = dim >= 2 && !isnothing(y_range)
+   ylo, yhi = check_y ? y_range : (T(0), T(0))
 
-   check_z = dim >= 3 && !isnothing(ranges[3])
-   zlo, zhi = check_z ? ranges[3] : (T(0), T(0))
+   check_z = dim >= 3 && !isnothing(z_range)
+   zlo, zhi = check_z ? z_range : (T(0), T(0))
 
-   valid_indices = filter(1:size(rdata, 2)) do i
+   n_vars, n_particles = size(rdata)
+
+   # Pass 1: Count valid particles to avoid vector allocation
+   count = 0
+   @inbounds for i in 1:n_particles
+      keep = true
       if check_x
          val = rdata[1, i]
-         (val < xlo || val > xhi) && return false
+         if val < xlo || val > xhi
+            keep = false
+         end
       end
-      if check_y
+      if keep && check_y
          val = rdata[2, i]
-         (val < ylo || val > yhi) && return false
+         if val < ylo || val > yhi
+            keep = false
+         end
       end
-      if check_z
+      if keep && check_z
          val = rdata[3, i]
-         (val < zlo || val > zhi) && return false
+         if val < zlo || val > zhi
+            keep = false
+         end
       end
-      return true
+      if keep
+         count += 1
+      end
    end
 
-   return rdata[:, valid_indices]
+   # Allocate result matrix exactly
+   new_data = Matrix{T}(undef, n_vars, count)
+
+   # Pass 2: Fill data
+   current_idx = 0
+   @inbounds for i in 1:n_particles
+      keep = true
+      if check_x
+         val = rdata[1, i]
+         if val < xlo || val > xhi
+            keep = false
+         end
+      end
+      if keep && check_y
+         val = rdata[2, i]
+         if val < ylo || val > yhi
+            keep = false
+         end
+      end
+      if keep && check_z
+         val = rdata[3, i]
+         if val < zlo || val > zhi
+            keep = false
+         end
+      end
+
+      if keep
+         current_idx += 1
+         for k in 1:n_vars
+            new_data[k, current_idx] = rdata[k, i]
+         end
+      end
+   end
+
+   return new_data
 end
 
-function _select_particles_from_files(data::AMReXParticle{T}, ranges) where T
+function _select_particles_from_files(
+      data::AMReXParticle{T}, x_range, y_range, z_range) where T
+   ranges = (x_range, y_range, z_range)
    # Convert physical range to index range
    dx = SVector{3, Float64}(
       (data.right_edge[1] - data.left_edge[1]) / data.domain_dimensions[1],
@@ -383,7 +428,7 @@ function _select_particles_from_files(data::AMReXParticle{T}, ranges) where T
    )
 
    target_idx_ranges = Vector{Union{Tuple{Int, Int}, Nothing}}(undef, data.dim)
-   for i in 1:(data.dim)
+   @inbounds for i in 1:(data.dim)
       if !isnothing(ranges[i])
          idx_min = floor(Int, (ranges[i][1] - data.left_edge[i]) / dx[i])
          idx_max = floor(Int, (ranges[i][2] - data.left_edge[i]) / dx[i])
@@ -395,7 +440,7 @@ function _select_particles_from_files(data::AMReXParticle{T}, ranges) where T
 
    overlapping_grids = Tuple{Int, Int}[] # (level_num_0_indexed, grid_index_1_indexed)
 
-   for (lvl_idx, boxes) in enumerate(data.level_boxes)
+   @inbounds for (lvl_idx, boxes) in enumerate(data.level_boxes)
       level_num = lvl_idx - 1
       for (grid_idx, (lo, hi)) in enumerate(boxes)
          box_overlap = true
@@ -415,29 +460,63 @@ function _select_particles_from_files(data::AMReXParticle{T}, ranges) where T
       end
    end
 
-   selected_rdata = Vector{Matrix{T}}()
+   # Preallocate result container (max possible size = number of grids)
+   # We use a counter to track actual filled grids
+   selected_rdata = Vector{Matrix{T}}(undef, length(overlapping_grids))
+   filled_count = 0
 
-   base_fn = joinpath(data.output_dir, data.ptype)
    n_real = data.header.num_real
+   base_fn = joinpath(data.output_dir, data.ptype)
+
+   # Function barrier to dispatch on n_real for SVector optimization
+   filled_count = _process_grids!(
+      selected_rdata,
+      Val(n_real),
+      overlapping_grids,
+      data,
+      base_fn,
+      x_range,
+      y_range,
+      z_range
+   )
+
+   if filled_count == 0
+      return Matrix{T}(undef, n_real, 0)
+   end
+
+   resize!(selected_rdata, filled_count)
+   return reduce(hcat, selected_rdata)
+end
+
+function _process_grids!(
+      selected_rdata::Vector{Matrix{T}},
+      ::Val{N},
+      overlapping_grids,
+      data,
+      base_fn,
+      x_range,
+      y_range,
+      z_range
+) where {T, N}
+   filled_idx = 0
+
    dim = data.dim
 
-   check_x = dim >= 1 && !isnothing(ranges[1])
-   xlo, xhi = check_x ? ranges[1] : (T(0), T(0))
+   check_x = dim >= 1 && !isnothing(x_range)
+   xlo, xhi = check_x ? x_range : (T(0), T(0))
 
-   check_y = dim >= 2 && !isnothing(ranges[2])
-   ylo, yhi = check_y ? ranges[2] : (T(0), T(0))
+   check_y = dim >= 2 && !isnothing(y_range)
+   ylo, yhi = check_y ? y_range : (T(0), T(0))
 
-   check_z = dim >= 3 && !isnothing(ranges[3])
-   zlo, zhi = check_z ? ranges[3] : (T(0), T(0))
+   check_z = dim >= 3 && !isnothing(z_range)
+   zlo, zhi = check_z ? z_range : (T(0), T(0))
 
-   for (level_num, grid_idx) in overlapping_grids
+   @inbounds for (level_num, grid_idx) in overlapping_grids
       # header.grids stores (which, count, where)
       grid_data = data.header.grids[level_num + 1][grid_idx]
       which, count, offset = grid_data
 
-      if count == 0
-         continue
-      end
+      count == 0 && continue
 
       data_fn = joinpath(base_fn, "Level_$(level_num)", @sprintf("DATA_%05d", which))
 
@@ -449,44 +528,81 @@ function _select_particles_from_files(data::AMReXParticle{T}, ranges) where T
          end
 
          # Read floats
-         floats_vec = Vector{T}(undef, count * n_real)
+         floats_vec = Vector{T}(undef, count * N)
          read!(f, floats_vec)
 
-         valid_rows = filter(0:(count - 1)) do k
-            if check_x
-               val = floats_vec[k * n_real + 1]
-               (val < xlo || val > xhi) && return false
-            end
-            if check_y
-               val = floats_vec[k * n_real + 2]
-               (val < ylo || val > yhi) && return false
-            end
-            if check_z
-               val = floats_vec[k * n_real + 3]
-               (val < zlo || val > zhi) && return false
-            end
-            return true
-         end
+         # Reinterpret as SVector for fast access
+         vectors = reinterpret(SVector{N, T}, floats_vec)
 
-         if !isempty(valid_rows)
-            # Create result matrix for this block
-            res = Matrix{T}(undef, n_real, length(valid_rows))
-            for (i, row_idx) in enumerate(valid_rows)
-               base = row_idx * n_real
-               for j in 1:n_real
-                  res[j, i] = floats_vec[base + j]
+         # Pass 1: Count valid
+         valid_count = 0
+         @inbounds for k in 1:count
+            val = vectors[k]
+            keep = true
+            if check_x
+               v = val[1]
+               if v < xlo || v > xhi
+                  keep = false
                end
             end
-            push!(selected_rdata, res)
+            if keep && check_y
+               v = val[2]
+               if v < ylo || v > yhi
+                  keep = false
+               end
+            end
+            if keep && check_z
+               v = val[3]
+               if v < zlo || v > zhi
+                  keep = false
+               end
+            end
+            if keep
+               valid_count += 1
+            end
+         end
+
+         if valid_count > 0
+            # Pass 2: Fill
+            # Allocate result matrix for this grid
+            res = Matrix{T}(undef, N, valid_count)
+
+            curr = 0
+            @inbounds for k in 1:count
+               val = vectors[k]
+               keep = true
+               if check_x
+                  v = val[1]
+                  if v < xlo || v > xhi
+                     keep = false
+                  end
+               end
+               if keep && check_y
+                  v = val[2]
+                  if v < ylo || v > yhi
+                     keep = false
+                  end
+               end
+               if keep && check_z
+                  v = val[3]
+                  if v < zlo || v > zhi
+                     keep = false
+                  end
+               end
+
+               if keep
+                  curr += 1
+                  res[:, curr] = val
+               end
+            end
+
+            filled_idx += 1
+            selected_rdata[filled_idx] = res
          end
       end
    end
 
-   if isempty(selected_rdata)
-      return Matrix{T}(undef, n_real, 0)
-   end
-
-   return hcat(selected_rdata...)
+   return filled_idx
 end
 
 const _ALIAS_MAP = Dict(
@@ -498,24 +614,32 @@ const _ALIAS_MAP = Dict(
 _resolve_alias(variable_name::String) = get(_ALIAS_MAP, variable_name, variable_name)
 
 """
-    get_phase_space_density(data, variables...; bins=100, x_range=nothing, y_range=nothing, z_range=nothing)::Hist
+    get_phase_space_density(data, variables...; bins=100, x_range=nothing, y_range=nothing, z_range=nothing, edges=nothing)::Hist
 
 Calculates the phase space density for selected variables.
 Supports 1D, 2D, and 3D histograms.
+
+# Arguments
+
+  - `data`: AMReXParticle data object.
+  - `variables`: Variable names to compute the histogram for (e.g., "vx", "vy").
+  - `bins`: Number of bins for the histogram.
+  - `x_range`, `y_range`, `z_range`: **Spatial selection ranges**. Only particles within these ranges in configuration space are selected.
+  - `edges`: **Histogram binning edges**. If provided, these define the exact bins for the `variables`. If not provided, bins are determined automatically from the data extrema.
+  - `transform`: Optional function to transform the data before binning.
+  - `normalize`: Whether to normalize the histogram to a probability density (default: `false`).
 """
 function get_phase_space_density(
       data::AMReXParticle{T},
       variables::Vararg{String, N};
-      bins::Union{Int, Tuple} = 100,
+      bins::Union{Int, Tuple{Vararg{Int, N}}} = 100,
+      edges = nothing,
       x_range = nothing,
       y_range = nothing,
       z_range = nothing,
       transform::Union{Function, Nothing} = nothing,
       normalize::Bool = false
 ) where {T, N}
-   # Handle ranges
-   ranges = (x_range, y_range, z_range)
-
    # Select data
    local rdata::Matrix{T}
    if !isnothing(x_range) || !isnothing(y_range) || !isnothing(z_range)
@@ -573,17 +697,25 @@ function get_phase_space_density(
       end
    end
 
-   # Handle ranges
-   ranges = (x_range, y_range, z_range)
+   edges = ntuple(
+      i -> begin
+         if !isnothing(edges) && i <= length(edges) && !isnothing(edges[i])
+            return edges[i]
+         end
 
-   edges = ntuple(i -> begin
          data_i = selected_data[i]
          nbins = arg_bins[i]
 
-         if i <= length(ranges) && !isnothing(ranges[i])
-            vmin, vmax = ranges[i]
+         # Use explicit limits if provided, otherwise data extrema
+         vmin, vmax = extrema(data_i)
+
+         # Handle case of single value or empty
+         if vmin == vmax
+            vmin -= 0.5
+            vmax += 0.5
          else
-            vmin, vmax = extrema(data_i)
+            # Ensure the max value is included in the last bin
+            vmax = nextfloat(vmax)
          end
 
          range(vmin, vmax, length = nbins + 1)
@@ -610,6 +742,35 @@ end
 _finalize_hist(h, ::Val{true}) = FHist.normalize(h)
 
 _finalize_hist(h, ::Val{false}) = h
+
+function _get_velocity_indices(data::AMReXParticle{T}, vdim::Int) where T
+   possible_names = (
+      ("vx", "vy", "vz"), ("ux", "uy", "uz"), ("velocity_x", "velocity_y", "velocity_z"))
+
+   component_names = data.header.real_component_names
+   component_map = Dict{String, Int}(name => i for (i, name) in enumerate(component_names))
+
+   vel_indices = Vector{Int}(undef, vdim)
+
+   for names in possible_names
+      found_all = true
+      for k in 1:vdim
+         nm = names[k]
+         idx = get(component_map, nm, get(component_map, _resolve_alias(nm), 0))
+         if idx == 0
+            found_all = false
+            break
+         end
+         vel_indices[k] = idx
+      end
+
+      if found_all
+         return vel_indices
+      end
+   end
+
+   error("Could not identify velocity components for vdim=$vdim. Checked standard names (v, u, velocity).")
+end
 
 """
     classify_particles(data, region; vdim=3, bulk_vel=nothing, vth=nothing, nsigma=3.0)
@@ -641,32 +802,9 @@ function classify_particles(
 ) where T
    # 1. Select particles
    particles = select_particles_in_region(data; x_range, y_range, z_range)
-   if isempty(particles)
-      return particles, particles
-   end
 
    # 2. Identify velocity columns
-   # Try explicit names first, then aliases
-   possible_names = [
-      ["vx", "vy", "vz"], ["ux", "uy", "uz"], ["velocity_x", "velocity_y", "velocity_z"]]
-   vel_indices = Int[]
-
-   component_names = data.header.real_component_names
-   component_map = Dict(name => i for (i, name) in enumerate(component_names))
-
-   # Find valid velocity columns
-   for names in possible_names
-      indices = [get(component_map, n, get(component_map, _resolve_alias(n), 0))
-                 for n in names[1:vdim]]
-      if all(i -> i > 0, indices)
-         vel_indices = indices
-         break
-      end
-   end
-
-   if isempty(vel_indices)
-      error("Could not identify velocity components for vdim=$vdim. Checked standard names (v, u, velocity).")
-   end
+   vel_indices = _get_velocity_indices(data, vdim)
 
    velocities = particles[vel_indices, :]
 
@@ -725,4 +863,75 @@ function classify_particles(
    end
 
    return particles[:, is_core], particles[:, .!is_core]
+end
+
+"""
+    fit_particle_velocity_gmm(data, n_clusters; x_range=nothing, y_range=nothing, z_range=nothing, vdim=3)
+
+Fit a Gaussian Mixture Model to particle velocities in a region.
+
+# Arguments
+
+  - `data`: AMReXParticle data.
+  - `n_clusters`: Number of GMM components.
+  - `vdim`: Velocity dimension (1, 2, or 3).
+
+# Returns
+
+  - A vector of named tuples sorted by weight, each containing:
+
+      + `weight`: Component weight.
+      + `mean`: Component mean velocity (vector of length vdim).
+      + `vth`: Component thermal velocity (vector of length vdim).
+"""
+function fit_particle_velocity_gmm(
+      data::AMReXParticle{T},
+      n_clusters::Int;
+      x_range = nothing,
+      y_range = nothing,
+      z_range = nothing,
+      vdim::Int = 3
+) where T
+   # 1. Select particles
+   particles = select_particles_in_region(data; x_range, y_range, z_range)
+   if isempty(particles)
+      error("No particles found in the specified region.")
+   end
+
+   # 2. Extract velocities
+   vel_indices = _get_velocity_indices(data, vdim)
+
+   velocities = particles[vel_indices, :] # (vdim, n_particles)
+
+   # 3. Fit GMM
+   return fit_particle_velocity_gmm(velocities, n_clusters)
+end
+
+"""
+    fit_particle_velocity_gmm(velocities::AbstractMatrix, n_clusters::Int)
+
+Fit a Gaussian Mixture Model to particle velocities provided as a matrix (vdim x n_particles).
+"""
+function fit_particle_velocity_gmm(
+      velocities::AbstractMatrix{T},
+      n_clusters::Int
+) where T
+   # GaussianMixtures expects (n_samples, n_features). It supports Float32/Float64.
+   # Note: GMM does not accept Adjoint types, so we must materialize the transpose.
+   X = Matrix{T}(velocities')
+
+   # kind=:diag for diagonal covariance (independent velocity components)
+   gmm = GMM(n_clusters, X, kind = :diag)
+
+   # Interpret results
+   results = [(
+                 weight = T(gmm.w[i]),
+                 mean = T.(gmm.μ[i, :]),
+                 vth = T.(sqrt.(2 .* gmm.Σ[i, :]))
+              ) for i in 1:n_clusters]
+
+   # Sort by weight descending
+   sort!(results, by = x -> x.weight, rev = true)
+
+   return results
 end

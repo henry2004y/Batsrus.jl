@@ -430,9 +430,9 @@ function get_particle_field_aligned_transform(b_field::AbstractVector, e_field =
 
    if isnothing(e_field)
       return (data, names) -> begin
-         idx_vx = findfirst(x -> x == "vx" || x == "u" || x == "Ux", names)
-         idx_vy = findfirst(x -> x == "vy" || x == "v" || x == "Uy", names)
-         idx_vz = findfirst(x -> x == "vz" || x == "w" || x == "Uz", names)
+         idx_vx = findfirst(x -> x == "vx" || x == "u" || x == "ux", names)
+         idx_vy = findfirst(x -> x == "vy" || x == "v" || x == "uy", names)
+         idx_vz = findfirst(x -> x == "vz" || x == "w" || x == "uz", names)
 
          if isnothing(idx_vx) || isnothing(idx_vy) || isnothing(idx_vz)
             error("Velocity components (vx, vy, vz) or (u, v, w) not found in data.")
@@ -477,9 +477,9 @@ function get_particle_field_aligned_transform(b_field::AbstractVector, e_field =
       e_hat = normalize(d_hat × SVector(b_hat...))
 
       return (data, names) -> begin
-         idx_vx = findfirst(x -> x == "vx" || x == "u" || x == "Ux", names)
-         idx_vy = findfirst(x -> x == "vy" || x == "v" || x == "Uy", names)
-         idx_vz = findfirst(x -> x == "vz" || x == "w" || x == "Uz", names)
+         idx_vx = findfirst(x -> x == "vx" || x == "u" || x == "ux", names)
+         idx_vy = findfirst(x -> x == "vy" || x == "v" || x == "uy", names)
+         idx_vz = findfirst(x -> x == "vz" || x == "w" || x == "uz", names)
 
          if isnothing(idx_vx) || isnothing(idx_vy) || isnothing(idx_vz)
             error("Velocity components (vx, vy, vz) or (u, v, w) not found in data.")
