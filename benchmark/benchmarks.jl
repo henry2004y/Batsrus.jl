@@ -50,8 +50,12 @@ mkpath(amrex_dir)
 Batsrus.generate_mock_amrex_data(
    amrex_dir,
    num_particles = 1000,
+   real_component_names = ["u", "v", "w", "weight"],
    particle_gen = (i, n_reals) -> (
-      Float64(i % 10), Float64(i % 10), Float64(i % 10), Float64(rand()), Float64(rand()))
+      Float64(i % 10), Float64(i % 10), Float64(i % 10), # x, y, z
+      randn(), randn(), randn(), # u, v, w
+      rand() # weight
+   )
 )
 
 SUITE["amrex"] = BenchmarkGroup()
@@ -63,3 +67,6 @@ Batsrus.load_data!(amrex_data) # Force load for selection benchmark
 
 SUITE["amrex"]["select_region"] = @benchmarkable select_particles_in_region(
    $amrex_data, x_range = (2.5, 4.5))
+
+SUITE["amrex"]["phase_space_3d"] = @benchmarkable get_phase_space_density(
+   $amrex_data, "u", "v", "w")
