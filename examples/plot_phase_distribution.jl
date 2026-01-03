@@ -4,6 +4,8 @@ using Printf
 using Statistics
 using GaussianMixtures
 using Random
+using LinearAlgebra
+using StaticArrays
 
 # Script to load AMReX particle data and plot phase space distribution
 # Usage: julia examples/plot_phase_distribution.jl
@@ -14,7 +16,6 @@ dir_prefix = "/global/homes/h/hyzhou/scratch/swmf/pleiades/2dmagnetosphere/run_2
 data_path = dir_prefix * "cut_particle_region0_5_t00001550_n00169931_amrex"
 
 # Region of interest
-# Box centered at x=18, z=-5 with widths 1
 x_center = 18.0
 z_center = -5.0
 width = 1.0
@@ -30,35 +31,65 @@ if !isdir(data_path)
    println("Generating mock AMReX data for demonstration...")
 
    data_path = "data_mock_demo"
-   # Clean up previous mock data if exists to ensure fresh start or just reuse
    mkpath(data_path)
 
-   # Generate mock data around 0.5 (assuming default domain is [0,1] or similar, 
-   # or just ensure we match the selection range).
-   # Let's generate in [0, 1] essentially.
+   # Define Field
+   B_field = [1.0, -1.0, 0.0]
+   B_hat = normalize(B_field)
+
+   # Rotation matrix to align Z with B for generating anisotropic beam
+   # We want local_parallel -> B_hat
+   # We can use Batsrus.getRotationMatrix if available or construct manually
+   # Let's use a simple construction:
+   # Z' = B_hat
+   # Y' = Z x B_hat / |...| (if B not along Z)
+   # X' = Y' x Z'
+
+   # Or simpler: generate in local (para, perp1, perp2) and rotate
+   function random_perp_vector(n)
+      v = randn(3)
+      v -= dot(v, n) * n
+      return normalize(v)
+   end
+
    Batsrus.generate_mock_amrex_data(
       data_path,
       num_particles = 10000,
+      # Names according to typical AMReX output
       real_component_names = ["ux", "uy", "uz", "weight"],
       particle_gen = (i, n_reals) -> begin
-         # Create a mix of core and suprathermal particles with shifted centers
-         is_core = rand() > 0.3 # 70% Core, 30% Beam/Halo
+         # 50% Core, 50% Beam
+         is_core = rand() > 0.5
+
          if is_core
-            # Core: Centered at 0, thermal velocity ~1
-            vx = randn()
-            vy = randn()
-            vz = randn()
+            # Core: Centered at (-1, 1, 0), Isotropic vth=1
+            center = [-1.0, 1.0, 0.0]
+            v_vec = center .+ randn(3)
          else
-            # Suprathermal/Beam: Centered at 5 in vx, thermal velocity ~3, anisotropic
-            vx = 5.0 + randn() * 3.0
-            vy = 3.0 * randn()
-            vz = 3.0 * randn()
+            # Beam: Centered at (2, -2, 0)
+            # Anisotropic: vth_para = 0.5, vth_perp = 2.0
+            center = [2.0, -2.0, 0.0]
+
+            # Generate in local frame where z is parallel to B
+            v_local_para = randn() * 0.5
+            v_local_perp1 = randn() * 2.0
+            v_local_perp2 = randn() * 2.0
+
+            # Construct global velocity from local components
+            # v_global = v_para * b_hat + v_perp1 * e1 + v_perp2 * e2
+            # Since we don't care about specific perp direction orientation, 
+            # we just need a vector perpendicular to B
+            perp_vec = random_perp_vector(B_hat)
+            perp_vec2 = cross(B_hat, perp_vec)
+
+            v_vec = center .+ (v_local_para .* B_hat) .+ (v_local_perp1 .* perp_vec) .+
+                    (v_local_perp2 .* perp_vec2)
          end
 
          return (
             0.5 + (rand() - 0.5) * 0.4, 0.5 + (rand() - 0.5) * 0.4, 0.5 +
-                                                                    (rand() - 0.5) * 0.4, # x, y, z near 0.5
-            vx, vy, vz, # ux, uy, uz
+                                                                    (rand() - 0.5) * 0.4, # x, y, z
+            v_vec[1], v_vec[2], v_vec[3], # ux, uy, uz
             1.0 # weight
          )
       end
@@ -68,7 +99,7 @@ if !isdir(data_path)
    # Update selection center for mock data
    global x_center = 0.5
    global z_center = 0.5
-   global width = 0.6 # Cover the generated range
+   global width = 0.6
 end
 
 # Load the data
@@ -78,217 +109,158 @@ data = AMReXParticle(data_path)
 half_width = width / 2
 x_range = (x_center - half_width, x_center + half_width)
 z_range = (z_center - half_width, z_center + half_width)
-
-println("Selecting particles in region:")
-println("  x: $x_range")
-println("  z: $z_range")
-
-# Handle dimension mapping for 2D X-Z simulations
-if data.dim == 2
-   println("Detected 2D data. Assuming X-Z simulation, mapping z_range to y_range.")
-   selection_y_range = z_range
-else
-   selection_y_range = nothing
-end
+selection_y_range = (data.dim == 2) ? z_range : nothing
 
 # Select particles
+println("Selecting particles...")
 if data.dim == 2
-   particles = select_particles_in_region(
-      data; x_range = x_range, y_range = selection_y_range)
+   particles = select_particles_in_region(data; x_range, y_range = selection_y_range)
 else
-   particles = select_particles_in_region(data; x_range = x_range, z_range = z_range)
+   particles = select_particles_in_region(data; x_range, z_range)
 end
+println("Number of particles: ", size(particles, 2))
 
-println("Number of particles selected: ", size(particles, 2))
-
-# Identify velocity components
+# Extract original velocities
 names = data.header.real_component_names
-function find_component_index(names, target_aliases)
-   for (i, name) in enumerate(names)
-      if name in target_aliases
-         return i
-      end
-   end
-   # Fallback for mock data standard names if not found in aliases
-   for (i, name) in enumerate(names)
-      if startswith(name, "u") && occursin(target_aliases[1][end:end], name)
-         return i
-      end
-   end
-   error("Component $(target_aliases) not found in data.")
-end
-
-idx_vx = find_component_index(names, ["vx", "velocity_x", "ux"])
-idx_vy = find_component_index(names, ["vy", "velocity_y", "uy"])
-# Try to find vz, might fail if 2D but mock data has it
-idx_vz = try
-   find_component_index(names, ["vz", "velocity_z", "uz"])
-catch
-   0
-end
+idx_vx = findfirst(n -> n in ["ux", "vx", "velocity_x"], names)
+idx_vy = findfirst(n -> n in ["uy", "vy", "velocity_y"], names)
+idx_vz = findfirst(n -> n in ["uz", "vz", "velocity_z"], names)
 
 vx = particles[idx_vx, :]
 vy = particles[idx_vy, :]
-vz = idx_vz > 0 ? particles[idx_vz, :] : zeros(length(vx))
+vz = (idx_vz !== nothing) ? particles[idx_vz, :] : zeros(length(vx))
 
 # ---------------------
-# Unified Plotting & Analysis
+# Section 2: Coordinate Transformation
 # ---------------------
-println("\n--- Unified Plotting & Analysis ---")
+println("\n--- Section 2: Coordinate Transformation ---")
+B_field = [1.0, -1.0, 0.0]
+println("Using B field: $B_field")
 
-# Create a unified figure with 4 subplots
-fig, axs = plt.subplots(2, 2, figsize = (14, 12), constrained_layout = true)
+# Get transformation function
+transform_func = get_particle_field_aligned_transform(B_field)
 
-# ---------------------
-# Subplot 1: Phase Space Distribution (Whole)
-# ---------------------
-println("Plotting Phase Space Distribution...")
-ax1 = axs[1] # Top-Left
-# Use plot_phase from Batsrus
-plot_phase(
-   data, names[idx_vx], names[idx_vy];
-   x_range = x_range,
-   y_range = selection_y_range, # Handle 2D mapping
-   plot_zero_lines = true,
-   edges = (range(-10, 10, length = 100), range(-10, 10, length = 100)),
-   ax = ax1
-)
-ax1.set_title("Overall Distribution")
+# Apply transform manually for plotting/analysis matrix
+# Typically this returns (new_data, new_names)
+# passing select_particles_in_region result (which contains ALL real components)
+transformed_data, transformed_names = transform_func(
+   particles, data.header.real_component_names)
+
+v_para = transformed_data[1, :]
+v_perp = transformed_data[2, :]
+
+println("Transformed components: $transformed_names")
 
 # ---------------------
-# Subplot 2: GMM Fitting & Reconstruction
+# Section 3: Plotting & GMM
 # ---------------------
-println("Fitting and Plotting GMM...")
-ax2 = axs[2] # Top-Right
+println("\n--- Section 3: Plotting & GMM ---")
 
-println("Fitting Gaussian Mixture Model (k=2) via fit_particle_velocity_gmm...")
+fig, axs = plt.subplots(2, 2, figsize = (12, 12), constrained_layout = true)
 
-# Fit GMM using the new API
-# Note: we use ranges to select data again (or could pass prepared data if API allowed)
-results = fit_particle_velocity_gmm(
-   data, 2;
-   x_range = x_range,
-   y_range = selection_y_range,
-   vdim = 3
-)
+# --- Plot 1: Original Coordinates (vx, vy) ---
+ax1 = axs[1]
+h1 = ax1.hist2d(
+   vx, vy, bins = 100, norm = PyPlot.matplotlib.colors.LogNorm(vmin = 1), cmap = "viridis")
+ax1.set_xlabel("\$v_x\$")
+ax1.set_ylabel("\$v_y\$")
+ax1.set_title("Original Coordinates (vx, vy)")
+plt.colorbar(h1[4], ax = ax1)
 
-println("GMM Fit Results:")
-for (i, comp) in enumerate(results)
-   println("  Component $i:")
-   println("    Weight: ", comp.weight)
-   println("    Mean:   ", comp.mean)
-   println("    Vth:    ", comp.vth)
+# --- Plot 2: Transformed Coordinates (v_para, v_perp) ---
+ax2 = axs[2]
+h2 = ax2.hist2d(v_para, v_perp, bins = 100,
+   norm = PyPlot.matplotlib.colors.LogNorm(vmin = 1), cmap = "viridis")
+ax2.set_xlabel("\$v_{\\parallel}\$")
+ax2.set_ylabel("\$v_{\\perp}\$")
+ax2.set_title("Field-Aligned Coordinates")
+plt.colorbar(h2[4], ax = ax2)
+
+# --- GMM Fitting on Transformed Data ---
+println("Fitting GMM on transformed data...")
+n_clusters = 2
+# Pass transformed matrix (2 x N) to the new matrix-input dispatch
+# Note: transformed_data is (2, N)
+gmm_results = fit_particle_velocity_gmm(transformed_data, n_clusters)
+
+println("GMM Results (Transformed Frame):")
+for (i, res) in enumerate(gmm_results)
+   println("  Component $i: Weight=$(res.weight), Mean=$(res.mean), Vth=$(res.vth)")
 end
 
-# --- Plotting Reconstruction ---
-# Plot original data histogram (Greys)
-ax2.hist2d(
-   vx, vy, bins = 100, norm = PyPlot.matplotlib.colors.LogNorm(vmin = 1), cmap = "Greys"
-)
+# --- Plot 3: GMM Reconstruction (Transformed) ---
+ax3 = axs[3]
+# Plot histogram again as background
+ax3.hist2d(v_para, v_perp, bins = 100,
+   norm = PyPlot.matplotlib.colors.LogNorm(vmin = 1), cmap = "Greys")
 
-# Create grid for contour plot
-xmin, xmax = minimum(vx), maximum(vx)
-ymin, ymax = minimum(vy), maximum(vy)
+# Overlay GMM contours
+# Grid for evaluation
+x_min, x_max = minimum(v_para), maximum(v_para)
+y_min, y_max = minimum(v_perp), maximum(v_perp)
+xi = range(x_min, x_max, length = 100)
+yi = range(y_min, y_max, length = 100)
+Z = zeros(100, 100)
 
-# Grid resolution
-ngrid = 100
-xi = range(xmin, xmax, length = ngrid)
-yi = range(ymin, ymax, length = ngrid)
+for i in 1:100, j in 1:100
+   v_loc = [xi[i], yi[j]] # (v_para, v_perp)
+   prob = 0.0
+   for k in 1:n_clusters
+      # Diagonal covariance assumption in fit_particle_velocity_gmm (kind=:diag)
+      # P(v) = w * PDF(v_para) * PDF(v_perp)
+      mu = gmm_results[k].mean
+      sigma = gmm_results[k].vth ./ sqrt(2)
 
-Z = zeros(ngrid, ngrid)
+      p_para = exp(-0.5 * ((v_loc[1] - mu[1]) / sigma[1])^2) / (sigma[1] * sqrt(2π))
+      p_perp = exp(-0.5 * ((v_loc[2] - mu[2]) / sigma[2])^2) / (sigma[2] * sqrt(2π))
 
-# Collect params for convenience
-weights = [r.weight for r in results]
-means = [r.mean for r in results]
-vths = [r.vth for r in results] # vth = sqrt(2*sigma^2) => sigma = vth / sqrt(2)
-sigmas = [v ./ sqrt(2) for v in vths]
+      prob += gmm_results[k].weight * p_para * p_perp
+   end
+   Z[j, i] = prob
+end
 
-gaussian_pdf(x, mu, sigma) = exp(-0.5 * ((x - mu) / sigma)^2) / (sigma * sqrt(2 * pi))
+levels = exp.(range(log(maximum(Z) * 1e-4), log(maximum(Z)), length = 10))
+ax3.contour(xi, yi, Z, levels = levels, cmap = "viridis", linewidths = 2)
+ax3.set_xlabel("\$v_{\\parallel}\$")
+ax3.set_ylabel("\$v_{\\perp}\$")
+ax3.set_title("GMM Reconstruction (Transformed)")
 
-for i in 1:ngrid
-   for j in 1:ngrid
-      val = 0.0
-      x_val = xi[i] # vx
-      y_val = yi[j] # vy
+# --- Plot 4: Classification (Transformed) ---
+ax4 = axs[4]
+# Assign particles to clusters (Hard assignment for visualization)
+labels = Vector{Int}(undef, length(v_para))
+for i in eachindex(v_para)
+   best_k = 0
+   max_p = -1.0
+   v_vec = [v_para[i], v_perp[i]]
 
-      for k in 1:length(weights)
-         # Marginal PDF(vx, vy)
-         pdf_x = gaussian_pdf(x_val, means[k][1], sigmas[k][1])
-         pdf_y = gaussian_pdf(y_val, means[k][2], sigmas[k][2])
-         val += weights[k] * pdf_x * pdf_y
+   for k in 1:n_clusters
+      mu = gmm_results[k].mean
+      sigma = gmm_results[k].vth ./ sqrt(2)
+      p = gmm_results[k].weight *
+          (exp(-0.5 * ((v_vec[1] - mu[1]) / sigma[1])^2) / sigma[1]) *
+          (exp(-0.5 * ((v_vec[2] - mu[2]) / sigma[2])^2) / sigma[2])
+      if p > max_p
+         max_p = p
+         best_k = k
       end
-      Z[j, i] = val # Note: PyPlot expects Z[row, col] -> y, x
+   end
+   labels[i] = best_k
+end
+
+# Color by label
+colors = ["red", "blue"]
+for k in 1:n_clusters
+   mask = labels .== k
+   if any(mask)
+      ax4.scatter(v_para[mask], v_perp[mask], s = 1, c = colors[k],
+         label = "Cluster $k", alpha = 0.5)
    end
 end
+ax4.set_xlabel("\$v_{\\parallel}\$")
+ax4.set_ylabel("\$v_{\\perp}\$")
+ax4.set_title("GMM Classification")
+ax4.legend()
 
-# Overlay contours
-levels = exp.(range(log(maximum(Z) * 1e-4), log(maximum(Z)), length = 10))
-c = ax2.contour(xi, yi, Z, levels = levels, cmap = "viridis", linewidths = 2)
-ax2.clabel(c, inline = 1, fontsize = 8)
-
-ax2.set_xlabel("\$v_x\$")
-ax2.set_ylabel("\$v_y\$")
-ax2.set_title("GMM Reconstruction")
-
-# ---------------------
-# Subplots 3 & 4: Classification
-# ---------------------
-println("Classifying Particles...")
-
-# Estimate thermal velocity
-vth_x = std(vx)
-vth_y = std(vy)
-vth_z = std(vz)
-vth_est = sqrt((vth_x^2 + vth_y^2 + vth_z^2) / 3)
-println("Estimated thermal velocity (vth): ", vth_est)
-
-core, supra = classify_particles(
-   data;
-   x_range = x_range,
-   y_range = selection_y_range,
-   vdim = 3,
-   vth = vth_est,
-   nsigma = 3.0
-)
-
-println("Core particles: ", size(core, 2))
-println("Suprathermal particles: ", size(supra, 2))
-
-v_range = [[minimum(vx), maximum(vx)], [minimum(vy), maximum(vy)]]
-
-# Subplot 3: Core
-ax3 = axs[3] # Bottom-Left
-if !isempty(core)
-   vx_core = core[idx_vx, :]
-   vy_core = core[idx_vy, :]
-   h3 = ax3.hist2d(vx_core, vy_core, bins = 100, range = v_range,
-      norm = PyPlot.matplotlib.colors.LogNorm(vmin = 1), cmap = "viridis")
-   plt.colorbar(h3[4], ax = ax3, label = "Count")
-else
-   ax3.text(0.5, 0.5, "No Core Particles", ha = "center", transform = ax3.transAxes)
-end
-ax3.set_title("Core Population")
-ax3.set_xlabel("\$v_x\$")
-ax3.set_ylabel("\$v_y\$")
-ax3.axhline(0, color = "gray", linestyle = "--")
-
-# Subplot 4: Suprathermal
-ax4 = axs[4] # Bottom-Right
-if !isempty(supra)
-   vx_supra = supra[idx_vx, :]
-   vy_supra = supra[idx_vy, :]
-   h4 = ax4.hist2d(vx_supra, vy_supra, bins = 100, range = v_range,
-      norm = PyPlot.matplotlib.colors.LogNorm(vmin = 1), cmap = "magma")
-   plt.colorbar(h4[4], ax = ax4, label = "Count")
-else
-   ax4.text(0.5, 0.5, "No Suprathermal Particles", ha = "center", transform = ax4.transAxes)
-end
-ax4.set_title("Suprathermal Population")
-ax4.set_xlabel("\$v_x\$")
-ax4.set_ylabel("\$v_y\$")
-ax4.axhline(0, color = "gray", linestyle = "--")
-
-# Save Unified Figure
-output_filename = "phase_space_analysis.png"
-savefig(output_filename)
-println("Unified analysis plot saved to $output_filename")
+savefig("phase_space_analysis.png")
+println("Unified analysis plot saved to phase_space_analysis.png")
