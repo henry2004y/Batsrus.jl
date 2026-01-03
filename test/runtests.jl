@@ -448,4 +448,56 @@ end
       @test new_data_eb[2, 1] ≈ 2.0
       @test new_data_eb[3, 1] ≈ 3.0
    end
+   @testset "GMM Fit" begin
+      mktempdir() do tmpdir
+         # Generate mock data: 2 populations
+         # Population 1 (Core): Weight 0.7, Mean 0, vth 1.0
+         # Population 2 (Beam): Weight 0.3, Mean 5.0, vth 0.5
+
+         n1 = 7000
+         n2 = 3000
+         n_total = n1 + n2
+
+         # Use Float32 to test generic support
+         T = Float32
+
+         s1 = T(1.0 / sqrt(2))
+         s2 = T(0.5 / sqrt(2))
+
+         Batsrus.generate_mock_amrex_data(tmpdir;
+            num_particles = n_total,
+            real_component_names = ["vx", "vy", "vz"],
+            particle_gen = (i, n_reals) -> begin
+               pos = rand(3)
+
+               if i <= n1
+                  vel = randn(T, 3) .* s1
+               else
+                  vel = randn(T, 3) .* s2
+                  vel[1] += 5.0f0 # Shift vx
+               end
+
+               (pos..., vel...)
+            end
+         )
+
+         data = AMReXParticle(tmpdir)
+
+         # Fit 2 clusters
+         results = fit_particle_velocity_gmm(data, 2)
+
+         @test length(results) == 2
+
+         # Check parameters (Results sorted by weight)
+         c1 = results[1] # Expected Core
+         @test isapprox(c1.weight, 0.7f0, atol = 0.05)
+         @test isapprox(c1.mean[1], 0.0f0, atol = 0.2)
+         @test isapprox(c1.vth[1], 1.0f0, atol = 0.2)
+
+         c2 = results[2] # Expected Beam
+         @test isapprox(c2.weight, 0.3f0, atol = 0.05)
+         @test isapprox(c2.mean[1], 5.0f0, atol = 0.2)
+         @test isapprox(c2.vth[1], 0.5f0, atol = 0.2)
+      end
+   end
 end
