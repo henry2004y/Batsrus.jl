@@ -4,7 +4,7 @@ using Batsrus, Test, SHA, LazyArtifacts
 using Batsrus.UnitfulBatsrus, Unitful
 using Batsrus: At, Near # DimensionalData
 using RecipesBase
-using Suppressor: @capture_out, @capture_err, @suppress_out, @suppress_err
+using Suppressor: @capture_out, @capture_err, @suppress_out, @suppress_err, @suppress
 using CairoMakie
 using CairoMakie
 # Check if we should run PyPlot tests (Only on Linux in CI, or always locally)
@@ -399,6 +399,17 @@ end
          # In 1D, we verify against x-velocity only.
          # Similar statistics hold.
          @test size(core_1d, 2) > n_core * 0.9
+
+         # Test 4: Direct test of get_core_population_mask
+         velocities = [0.0 1.0 2.0 10.0;
+                       0.0 0.0 0.0 0.0;
+                       0.0 0.0 0.0 0.0]
+         bulk_vel = [0.0, 0.0, 0.0]
+         vth = 1.0
+         nsigma = 3.0
+         mask = Batsrus.get_core_population_mask(velocities, bulk_vel, vth, nsigma)
+
+         @test mask == [true, true, true, false]
       end
    end
 
@@ -484,7 +495,7 @@ end
          data = AMReXParticle(tmpdir)
 
          # Fit 2 clusters
-         results = fit_particle_velocity_gmm(data, 2)
+         results = @suppress fit_particle_velocity_gmm(data, 2)
 
          @test length(results) == 2
 

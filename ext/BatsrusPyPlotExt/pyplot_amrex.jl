@@ -29,6 +29,7 @@ Plots the 2D phase space density for selected variables.
   - `transform`: Optional function to transform the data before binning.
   - `plot_zero_lines`: Whether to draw dashed lines at x=0 and y=0 (default: `false`).
   - `normalize`: Whether to normalize the histogram to a probability density (default: `false`).
+  - `vmin`, `vmax`: **Histogram range**. Explicitly defines the range for the histogram.
   - `kwargs`: Additional keyword arguments passed to `imshow` (e.g., `cmap`).
 """
 function plot_phase(
@@ -46,6 +47,8 @@ function plot_phase(
       transform::Union{Function, Nothing} = nothing,
       plot_zero_lines::Bool = false,
       normalize::Bool = false,
+      vmin = nothing,
+      vmax = nothing,
       kwargs...
 )
    # Get phase space density
@@ -66,12 +69,20 @@ function plot_phase(
    norm = nothing
    if log_scale
       if maximum(H) > 0
-         vmin = minimum(H[H .> 0])
-         vmax = maximum(H)
+         if isnothing(vmin)
+            vmin = minimum(H[H .> 0])
+         end
+         if isnothing(vmax)
+            vmax = maximum(H)
+         end
          norm = PyPlot.matplotlib.colors.LogNorm(vmin = vmin, vmax = vmax)
       end
    else
-      norm = PyPlot.matplotlib.colors.Normalize()
+      if isnothing(vmin) || isnothing(vmax)
+         norm = PyPlot.matplotlib.colors.Normalize(vmin = vmin, vmax = vmax)
+      else
+         norm = PyPlot.matplotlib.colors.Normalize(vmin = vmin, vmax = vmax)
+      end
    end
 
    extent = [xedges[1], xedges[end], yedges[1], yedges[end]]

@@ -458,6 +458,9 @@ function get_particle_field_aligned_transform(b_field::AbstractVector, e_field =
          idx_vy = findfirst(x -> x in ("vy", "v", "uy", "velocity_y"), names)
          idx_vz = findfirst(x -> x in ("vz", "w", "uz", "velocity_z"), names)
 
+         # Check for weights
+         idx_w = findfirst(x -> x in ("weight", "w"), names)
+
          if isnothing(idx_vx) || isnothing(idx_vy) || isnothing(idx_vz)
             error("Velocity components not found in data.")
          end
@@ -471,13 +474,15 @@ function get_particle_field_aligned_transform(b_field::AbstractVector, e_field =
 
          n_particles = n_dims[2]
 
-         new_data = zeros(eltype(data), 2, n_particles)
+         # output: v_para, v_perp, weight
+         new_data = zeros(eltype(data), 3, n_particles)
 
          bx, by, bz = bhat
          @inbounds @simd for i in 1:n_particles
             vx = data[idx_vx, i]
             vy = data[idx_vy, i]
             vz = data[idx_vz, i]
+            w = isnothing(idx_w) ? one(eltype(data)) : data[idx_w, i]
 
             v_para = vx * bx + vy * by + vz * bz
 
@@ -488,9 +493,10 @@ function get_particle_field_aligned_transform(b_field::AbstractVector, e_field =
 
             new_data[1, i] = v_para
             new_data[2, i] = v_perp
+            new_data[3, i] = w
          end
 
-         return new_data, ["v_parallel", "v_perp"]
+         return new_data, ["v_parallel", "v_perp", "weight"]
       end
    else # E and B provided
       # We want an orthonormal basis:
@@ -517,6 +523,9 @@ function get_particle_field_aligned_transform(b_field::AbstractVector, e_field =
          idx_vy = findfirst(x -> x in ("vy", "v", "uy", "velocity_y"), names)
          idx_vz = findfirst(x -> x in ("vz", "w", "uz", "velocity_z"), names)
 
+         # Check for weights
+         idx_w = findfirst(x -> x in ("weight", "w"), names)
+
          if isnothing(idx_vx) || isnothing(idx_vy) || isnothing(idx_vz)
             error("Velocity components not found in data.")
          end
@@ -530,7 +539,8 @@ function get_particle_field_aligned_transform(b_field::AbstractVector, e_field =
 
          n_particles = n_dims[2]
 
-         new_data = zeros(eltype(data), 3, n_particles)
+         # output: v_B, v_E, v_BxE, weight
+         new_data = zeros(eltype(data), 4, n_particles)
 
          bx, by, bz = bhat
          ex, ey, ez = eperp_hat
@@ -540,6 +550,7 @@ function get_particle_field_aligned_transform(b_field::AbstractVector, e_field =
             vx = data[idx_vx, i]
             vy = data[idx_vy, i]
             vz = data[idx_vz, i]
+            w = isnothing(idx_w) ? one(eltype(data)) : data[idx_w, i]
 
             # Project onto basis vectors
             v_b = vx * bx + vy * by + vz * bz
@@ -549,9 +560,10 @@ function get_particle_field_aligned_transform(b_field::AbstractVector, e_field =
             new_data[1, i] = v_b
             new_data[2, i] = v_e
             new_data[3, i] = v_exb
+            new_data[4, i] = w
          end
 
-         return new_data, ["v_B", "v_E", "v_BxE"]
+         return new_data, ["v_B", "v_E", "v_BxE", "weight"]
       end
    end
 end

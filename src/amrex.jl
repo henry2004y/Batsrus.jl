@@ -843,26 +843,49 @@ function classify_particles(
       error("Thermal velocity `vth` must be provided.")
    end
 
+   is_core = get_core_population_mask(velocities, bulk_vel, vth, nsigma)
+
+   return particles[:, is_core], particles[:, .!is_core]
+end
+
+"""
+    get_core_population_mask(velocities, bulk_vel, vth, nsigma=3.0)
+
+Identify core population particles based on velocity distribution.
+Returns a BitVector where true indicates a core particle.
+"""
+function get_core_population_mask(
+      velocities::AbstractMatrix{T},
+      bulk_vel::AbstractVector,
+      vth::Union{Real, AbstractVector},
+      nsigma::Real = 3.0
+) where T
+   vdim = size(velocities, 1)
+   n_part = size(velocities, 2)
+
    if vth isa Real
       vth_vec = fill(T(vth), vdim)
    else
       vth_vec = vth
    end
 
-   # 5. Classify
-   n_part = size(particles, 2)
-   is_core = Vector{Bool}(undef, n_part)
+   is_core = trues(n_part) # Initialize as BitVector
    threshold_sq = nsigma^2
 
-   for i in 1:n_part
+   # Pre-calculate inverse squared thermal velocities for efficiency
+   inv_vth_sq = 1 ./ (vth_vec .^ 2)
+
+   @inbounds for i in 1:n_part
       d2 = zero(T)
       for k in 1:vdim
-         d2 += ((velocities[k, i] - bulk_vel[k]) / vth_vec[k])^2
+         d2 += (velocities[k, i] - bulk_vel[k])^2 * inv_vth_sq[k]
       end
-      is_core[i] = d2 <= threshold_sq
+      if d2 > threshold_sq
+         is_core[i] = false
+      end
    end
 
-   return particles[:, is_core], particles[:, .!is_core]
+   return is_core
 end
 
 """
@@ -908,17 +931,51 @@ function fit_particle_velocity_gmm(
 end
 
 """
-    fit_particle_velocity_gmm(velocities::AbstractMatrix, n_clusters::Int)
+    fit_particle_velocity_gmm(velocities::AbstractMatrix, n_clusters::Int; weights=nothing)
 
 Fit a Gaussian Mixture Model to particle velocities provided as a matrix (vdim x n_particles).
+If `weights` are provided, particles are resampled based on weights before fitting.
 """
 function fit_particle_velocity_gmm(
       velocities::AbstractMatrix{T},
-      n_clusters::Int
+      n_clusters::Int;
+      weights::Union{AbstractVector, Nothing} = nothing
 ) where T
    # GaussianMixtures expects (n_samples, n_features). It supports Float32/Float64.
    # Note: GMM does not accept Adjoint types, so we must materialize the transpose.
-   X = Matrix{T}(velocities')
+
+   if isnothing(weights)
+      X = Matrix{T}(velocities')
+   else
+      # Resampling based on weights
+      # We assume weights represent relative importance/count.
+      # To avoid exploding array size, we resample to approximately the same number of particles,
+      # or a fixed reasonable number if n_particles is small.
+      n_particles = size(velocities, 2)
+
+      # Normalize weights to probabilities
+      w_sum = sum(weights)
+      probs = weights ./ w_sum
+
+      # Use a simple cumulative distribution sampling or Alias method.
+      # Since we don't want to add dependencies like StatsBase, we implement a simple inverse CDF.
+      # But for performance and simplicity in standard Julia:
+
+      # Construct CDF
+      cdf = cumsum(probs)
+      cdf[end] = 1.0 # Ensure last is exactly 1
+
+      X = Matrix{T}(undef, n_particles, size(velocities, 1))
+
+      # Resample
+      for i in 1:n_particles
+         r = rand()
+         # Find index where cdf[idx] >= r
+         idx = searchsortedfirst(cdf, r)
+         idx = clamp(idx, 1, n_particles)
+         X[i, :] = velocities[:, idx]
+      end
+   end
 
    # kind=:diag for diagonal covariance (independent velocity components)
    gmm = GMM(n_clusters, X, kind = :diag)
