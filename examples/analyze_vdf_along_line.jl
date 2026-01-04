@@ -9,6 +9,8 @@ using LinearAlgebra
 using StaticArrays
 using FHist
 
+const RE_km = 6378.0 # km
+
 # --- Configuration ---
 # Note: Update this path to your specific environment
 dir_prefix = "data_mock_line_demo" # Use a separate mock data dir
@@ -180,8 +182,6 @@ for (i, pt) in enumerate(sample_points)
    # L_phys = L_code * RE_km
    # V_phys = V_code
    # So psd_phys = psd_code / RE_km^3
-
-   RE_km = 6378.0 # km
 
    psd = psd_code ./ (RE_km^3)
 

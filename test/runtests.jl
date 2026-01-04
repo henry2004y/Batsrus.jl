@@ -304,14 +304,7 @@ end
          data_w = AMReXParticle(tmpdir)
 
          # Helper to calculate bin volume
-         function get_bin_vol(h)
-            edges = h.binedges
-            if edges isa Tuple
-               return prod(e -> e[2] - e[1], edges)
-            else
-               return edges[2] - edges[1]
-            end
-         end
+         get_bin_vol(h) = prod(e -> e[2] - e[1], h.binedges)
 
          h_w = get_phase_space_density(data_w, "x", "u", bins = 1,
             x_range = (0.0, 11.0), y_range = (0.0, 11.0))

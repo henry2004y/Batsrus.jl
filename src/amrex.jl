@@ -755,39 +755,12 @@ function _create_hist(selected_data, edges, weights)
    end
 end
 
-function _scale_by_volume!(h::Hist1D, vol_spatial)
-   edges = h.binedges
-   if edges isa Tuple
-      edges = edges[1]
-   end
-   dx = edges[2] - edges[1]
-   bin_vol = dx
+function _scale_by_volume!(h::Union{Hist1D, Hist2D, Hist3D}, vol_spatial)
+   # This works for all dimensions, assuming uniform bins.
+   bin_vol = prod(e[2] - e[1] for e in h.binedges)
    factor = inv(vol_spatial * bin_vol)
    h.bincounts .*= factor
-   return h
-end
 
-function _scale_by_volume!(h::Hist2D, vol_spatial)
-   edges_x = h.binedges[1]
-   edges_y = h.binedges[2]
-   dx = edges_x[2] - edges_x[1]
-   dy = edges_y[2] - edges_y[1]
-   bin_vol = dx * dy
-   factor = inv(vol_spatial * bin_vol)
-   h.bincounts .*= factor
-   return h
-end
-
-function _scale_by_volume!(h::Hist3D, vol_spatial)
-   edges_x = h.binedges[1]
-   edges_y = h.binedges[2]
-   edges_z = h.binedges[3]
-   dx = edges_x[2] - edges_x[1]
-   dy = edges_y[2] - edges_y[1]
-   dz = edges_z[2] - edges_z[1]
-   bin_vol = dx * dy * dz
-   factor = inv(vol_spatial * bin_vol)
-   h.bincounts .*= factor
    return h
 end
 
