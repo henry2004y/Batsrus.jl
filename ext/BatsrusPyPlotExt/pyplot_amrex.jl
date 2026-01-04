@@ -78,11 +78,7 @@ function plot_phase(
          norm = PyPlot.matplotlib.colors.LogNorm(vmin = vmin, vmax = vmax)
       end
    else
-      if isnothing(vmin) || isnothing(vmax)
-         norm = PyPlot.matplotlib.colors.Normalize(vmin = vmin, vmax = vmax)
-      else
-         norm = PyPlot.matplotlib.colors.Normalize(vmin = vmin, vmax = vmax)
-      end
+      norm = PyPlot.matplotlib.colors.Normalize(vmin = vmin, vmax = vmax)
    end
 
    extent = [xedges[1], xedges[end], yedges[1], yedges[end]]

@@ -428,7 +428,7 @@ end
 
       new_data, new_names = transform(data, names)
 
-      @test new_names == ["v_parallel", "v_perp"]
+      @test new_names == ["v_parallel", "v_perp", "weight"]
       @test new_data[1, 1] ≈ 1.0
       @test new_data[1, 2] ≈ 0.0
       @test new_data[2, 1] ≈ 0.0
@@ -454,7 +454,7 @@ end
 
       new_data_eb, new_names_eb = transform_eb(data_eb, names)
 
-      @test new_names_eb == ["v_B", "v_E", "v_BxE"]
+      @test new_names_eb == ["v_B", "v_E", "v_BxE", "weight"]
       @test new_data_eb[1, 1] ≈ 1.0
       @test new_data_eb[2, 1] ≈ 2.0
       @test new_data_eb[3, 1] ≈ 3.0
