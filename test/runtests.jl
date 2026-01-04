@@ -542,6 +542,13 @@ end
          @test isapprox(c2.weight, 0.3f0, atol = 0.05)
          @test isapprox(c2.mean[1], 5.0f0, atol = 0.2)
          @test isapprox(c2.vth[1], 0.5f0, atol = 0.2)
+
+         # Test Thermal Velocity Extraction
+         b_field = [1.0f0, 0.0f0, 0.0f0]
+         # c1 (core) is isotropic with vth=1.0. Parallel should be ~1.0, perp ~1.0.
+         vpara, vperp = Batsrus.get_gmm_thermal_velocity(c1, b_field)
+         @test isapprox(vpara, 1.0f0, atol = 0.2)
+         @test isapprox(vperp, 1.0f0, atol = 0.2)
       end
    end
 end

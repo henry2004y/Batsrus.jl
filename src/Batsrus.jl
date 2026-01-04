@@ -3,7 +3,7 @@ module Batsrus
 #
 # Hongyang Zhou, hyzhou@umich.edu
 
-using LinearAlgebra: normalize, ×, ⋅, Adjoint, norm
+using LinearAlgebra: normalize, ×, ⋅, Adjoint, norm, diag, diagm, tr, dot
 using Printf, Reexport
 using Parsers
 using Interpolations: cubic_spline_interpolation, BSpline, Linear, scale, interpolate
@@ -22,7 +22,8 @@ export BATS,
        generate_mock_amrex_data, # plot/utility,
        AMReXParticle, AMReXParticleHeader, read_amrex_binary_particle_file,
        select_particles_in_region, get_phase_space_density, classify_particles,
-       fit_particle_velocity_gmm, get_particle_field_aligned_transform # amrex
+       fit_particle_velocity_gmm, get_particle_field_aligned_transform,
+       get_gmm_thermal_velocity # amrex
 
 include("type.jl")
 include("unit/UnitfulBatsrus.jl")

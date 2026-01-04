@@ -919,6 +919,7 @@ Fit a Gaussian Mixture Model to particle velocities in a region.
   - `data`: AMReXParticle data.
   - `n_clusters`: Number of GMM components.
   - `vdim`: Velocity dimension (1, 2, or 3).
+  - `kind`: Covariance kind, `:full` (default) or `:diag`.
 
 # Returns
 
@@ -926,7 +927,8 @@ Fit a Gaussian Mixture Model to particle velocities in a region.
 
       + `weight`: Component weight.
       + `mean`: Component mean velocity (vector of length vdim).
-      + `vth`: Component thermal velocity (vector of length vdim).
+      + `cov`: Component covariance matrix (vdim x vdim).
+      + `vth`: Component thermal velocity (diagonal approximation).
 """
 function fit_particle_velocity_gmm(
       data::AMReXParticle{T},
@@ -934,7 +936,8 @@ function fit_particle_velocity_gmm(
       x_range = nothing,
       y_range = nothing,
       z_range = nothing,
-      vdim::Int = 3
+      vdim::Int = 3,
+      kind::Symbol = :full
 ) where T
    # 1. Select particles
    particles = select_particles_in_region(data; x_range, y_range, z_range)
@@ -948,68 +951,91 @@ function fit_particle_velocity_gmm(
    velocities = particles[vel_indices, :] # (vdim, n_particles)
 
    # 3. Fit GMM
-   return fit_particle_velocity_gmm(velocities, n_clusters)
+   return fit_particle_velocity_gmm(velocities, n_clusters; kind)
 end
 
 """
-    fit_particle_velocity_gmm(velocities::AbstractMatrix, n_clusters::Int; weights=nothing)
+    fit_particle_velocity_gmm(velocities::AbstractMatrix, n_clusters::Int; weights=nothing, kind=:full)
 
-Fit a Gaussian Mixture Model to particle velocities provided as a matrix (vdim x n_particles).
-If `weights` are provided, particles are resampled based on weights before fitting.
+Fit a Gaussian Mixture Model to particle velocities.
 """
 function fit_particle_velocity_gmm(
       velocities::AbstractMatrix{T},
       n_clusters::Int;
-      weights::Union{AbstractVector, Nothing} = nothing
+      weights::Union{AbstractVector, Nothing} = nothing,
+      kind::Symbol = :full
 ) where T
-   # GaussianMixtures expects (n_samples, n_features). It supports Float32/Float64.
-   # Note: GMM does not accept Adjoint types, so we must materialize the transpose.
+   # GaussianMixtures expects (n_samples, n_features).
+   vdim = size(velocities, 1)
 
    if isnothing(weights)
       X = Matrix{T}(velocities')
    else
-      # Resampling based on weights
-      # We assume weights represent relative importance/count.
-      # To avoid exploding array size, we resample to approximately the same number of particles,
-      # or a fixed reasonable number if n_particles is small.
+      # Resampling logic (simplified for brevity, identical to previous)
       n_particles = size(velocities, 2)
-
-      # Normalize weights to probabilities
       w_sum = sum(weights)
       probs = weights ./ w_sum
-
-      # Use a simple cumulative distribution sampling or Alias method.
-      # Since we don't want to add dependencies like StatsBase, we implement a simple inverse CDF.
-      # But for performance and simplicity in standard Julia:
-
-      # Construct CDF
       cdf = cumsum(probs)
-      cdf[end] = 1.0 # Ensure last is exactly 1
+      cdf[end] = 1.0
 
-      X = Matrix{T}(undef, n_particles, size(velocities, 1))
-
-      # Resample
+      X = Matrix{T}(undef, n_particles, vdim)
       for i in 1:n_particles
          r = rand()
-         # Find index where cdf[idx] >= r
          idx = searchsortedfirst(cdf, r)
          idx = clamp(idx, 1, n_particles)
          X[i, :] = velocities[:, idx]
       end
    end
 
-   # kind=:diag for diagonal covariance (independent velocity components)
-   gmm = GMM(n_clusters, X, kind = :diag)
+   gmm = GMM(n_clusters, X, kind = kind)
 
-   # Interpret results
-   results = [(
-                 weight = T(gmm.w[i]),
-                 mean = T.(gmm.μ[i, :]),
-                 vth = T.(sqrt.(2 .* gmm.Σ[i, :]))
-              ) for i in 1:n_clusters]
+   results = [begin
+                 μ = T.(gmm.μ[i, :])
+                 w = T(gmm.w[i])
+
+                 if kind == :diag
+                    Σ = diagm(T.(gmm.Σ[i, :]))
+                 else # :full
+                    covs = GaussianMixtures.covars(gmm)
+                    Σ = T.(covs[i])
+                 end
+
+                 # Derived thermal velocity (scalar approx from trace or diagonal)
+                 vth_diag = sqrt.(2 .* diag(Σ))
+
+                 (weight = w, mean = μ, cov = Σ, vth = vth_diag)
+              end
+              for i in 1:n_clusters]
 
    # Sort by weight descending
    sort!(results, by = x -> x.weight, rev = true)
 
    return results
+end
+
+"""
+    get_gmm_thermal_velocity(gmm_component, b_field)
+
+Calculate parallel and perpendicular thermal velocities from a GMM component.
+
+# Returns
+
+  - `(v_th_para, v_th_perp)`
+"""
+function get_gmm_thermal_velocity(gmm_component, b_field::AbstractVector{T}) where T
+   Σ = gmm_component.cov
+
+   bhat = SVector{3, T}(normalize(b_field))
+
+   # Variance parallel to B
+   var_para = dot(bhat, Σ * bhat)
+
+   # Variance perpendicular to B (assuming gyrotropy)
+   # Trace is invariant: tr(Σ) = var_para + 2 * var_perp
+   var_perp = (tr(Σ) - var_para) / 2
+
+   v_th_para = sqrt(2 * var_para)
+   v_th_perp = sqrt(2 * var_perp)
+
+   return v_th_para, v_th_perp
 end

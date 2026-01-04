@@ -36,7 +36,9 @@ using PrecompileTools: @setup_workload, @compile_workload
          vels = transformed_data[1:3, :]
          Batsrus.get_core_population_mask(vels, [0.0, 0.0, 0.0], 1.0)
 
-         Batsrus.fit_particle_velocity_gmm(vels, 1)
+         fit_particle_velocity_gmm(data, 1; kind = :full)
+         gmm = Batsrus.fit_particle_velocity_gmm(vels, 1; kind = :diag)
+         Batsrus.get_gmm_thermal_velocity(gmm[1], [1.0, 0.0, 0.0])
       end
    end
 end
