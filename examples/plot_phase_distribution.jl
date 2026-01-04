@@ -169,6 +169,26 @@ println("Transformed components: $transformed_names")
 println("\n--- Section 3: Analysis & Plotting ---")
 
 # Estimate Core parameters from histograms
+# Helper to detect velocity names
+function detect_velocity_names(rnames)
+   vx_name = "vx"
+   for cand in ["ux", "vx", "velocity_x"]
+      if cand in rnames
+         vx_name = cand
+         break
+      end
+   end
+
+   vy_name = "vy"
+   for cand in ["uy", "vy", "velocity_y"]
+      if cand in rnames
+         vy_name = cand
+         break
+      end
+   end
+   return vx_name, vy_name
+end
+
 # Function to get peak and width from 1D weighted histogram
 function estimate_1d_param(v, w, nbins = 50)
    h = Hist1D(v; binedges = range(minimum(v), maximum(v), length = nbins + 1), weights = w)
@@ -274,21 +294,8 @@ fig, axs = plt.subplots(2, 2, figsize = (12, 12), constrained_layout = true)
 # But here we just want basic Vx, Vy.
 
 # Detect names
-rnames = data.header.real_component_names
-vx_name = "vx"
-vy_name = "vy"
-for cand in ["ux", "vx", "velocity_x"]
-   if cand in rnames
-      global vx_name = cand
-      break
-   end
-end
-for cand in ["uy", "vy", "velocity_y"]
-   if cand in rnames
-      global vy_name = cand
-      break
-   end
-end
+# Detect names
+vx_name, vy_name = detect_velocity_names(data.header.real_component_names)
 
 plot_phase(data, vx_name, vy_name, ax = axs[1],
    x_range = x_range, z_range = z_range,
