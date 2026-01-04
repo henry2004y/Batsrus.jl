@@ -629,6 +629,7 @@ Supports 1D, 2D, and 3D histograms.
   - `transform`: Optional function to transform the data before binning.
   - `normalize`: Whether to normalize the histogram to a probability density (default: `false`).
 """
+
 function get_phase_space_density(
       data::AMReXParticle{T},
       variables::Vararg{String, N};
@@ -656,10 +657,9 @@ function get_phase_space_density(
       # Apply transform
       # Need full names including x, y, z
       names = data.header.real_component_names
-      full_names = ["x", "y", "z", names...]
 
       # rdata from select_particles_in_region has ALL real components.
-      new_data, new_names = transform(rdata, full_names)
+      new_data, new_names = transform(rdata, names)
 
       # Use transformed data
       rdata = new_data::Matrix{T}
@@ -723,7 +723,23 @@ function get_phase_space_density(
 
    h = _create_hist(selected_data, edges, weights)
 
-   return _finalize_hist(h, Val(normalize))
+   if normalize
+      return FHist.normalize(h)
+   end
+
+   # Calculate spatial volume for density normalization
+   dx = isnothing(x_range) ? (data.right_edge[1] - data.left_edge[1]) :
+        (x_range[2] - x_range[1])
+   dy = isnothing(y_range) ? (data.right_edge[2] - data.left_edge[2]) :
+        (y_range[2] - y_range[1])
+   dz = isnothing(z_range) ?
+        (
+      data.dim == 3 ? (data.right_edge[3] - data.left_edge[3]) : 1.0
+   ) : (z_range[2] - z_range[1])
+
+   vol_spatial = dx * dy * dz
+
+   return _scale_by_volume!(h, vol_spatial)
 end
 
 function _create_hist(selected_data, edges, weights)
@@ -739,9 +755,14 @@ function _create_hist(selected_data, edges, weights)
    end
 end
 
-_finalize_hist(h, ::Val{true}) = FHist.normalize(h)
+function _scale_by_volume!(h::Union{Hist1D, Hist2D, Hist3D}, vol_spatial)
+   # This works for all dimensions, assuming uniform bins.
+   bin_vol = prod(e[2] - e[1] for e in h.binedges)
+   factor = inv(vol_spatial * bin_vol)
+   h.bincounts .*= factor
 
-_finalize_hist(h, ::Val{false}) = h
+   return h
+end
 
 function _get_velocity_indices(data::AMReXParticle{T}, vdim::Int) where T
    possible_names = (

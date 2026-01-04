@@ -9,6 +9,8 @@ using LinearAlgebra
 using StaticArrays
 using FHist
 
+const RE_km = 6378.0 # km
+
 # --- Configuration ---
 # Note: Update this path to your specific environment
 dir_prefix = "data_mock_line_demo" # Use a separate mock data dir
@@ -53,7 +55,7 @@ if !isdir(data_path)
          # Near start (17.0): Core dominated
          # Near end (19.0): Beam dominated
          eff_pos = (x - 17.0) / 2.0 # 0 to 1 roughly
-         beam_prob = clamp(eff_pos, 0.1, 0.9) # simple linear mix
+         beam_prob = clamp(eff_pos * 0.5, 0.0, 0.4) # limit beam to 40% to keep core density dominant
 
          is_beam = rand() < beam_prob
 
@@ -64,9 +66,10 @@ if !isdir(data_path)
             v_perp2 = randn() * 2.0
          else
             # Static Core
-            v_para = randn() * 1.5
-            v_perp1 = randn() * 1.5
-            v_perp2 = randn() * 1.5
+            # Make core significantly colder (sigma 0.6) to ensure very high phase space density
+            v_para = randn() * 0.6
+            v_perp1 = randn() * 0.6
+            v_perp2 = randn() * 0.6
          end
 
          # Convert "local aligned" v to global Cartesian
@@ -105,15 +108,37 @@ println("\n--- Section 2: Extracting VDFs along the line ---")
 deltas = (end_point .- start_point) ./ (num_samples - 1)
 sample_points = [start_point .+ (i - 1) .* deltas for i in 1:num_samples]
 
-# Prepare plot
-fig, axs = plt.subplots(
-   1, num_samples, figsize = (4 * num_samples, 4), constrained_layout = true)
-
 # Transformation function
-transform_func = get_particle_field_aligned_transform(B_field)
+base_transform = get_particle_field_aligned_transform(B_field)
+
+transform_func = (data, names) -> begin
+   t_data, t_names = base_transform(data, names)
+
+   # Extract parallel velocity and weights
+   # v_para is row 1, v_perp is row 2, weight is row 3
+   v_para = @view t_data[1, :]
+   weights = @view t_data[3, :]
+
+   # Find bulk parallel velocity (peak location)
+   if !isempty(v_para)
+      vmin, vmax = extrema(v_para)
+      if vmin < vmax
+         # 100 bins for estimation is sufficient
+         h1 = Hist1D(v_para; binedges = range(vmin, vmax, length = 101), weights = weights)
+         _, max_idx = findmax(h1.bincounts)
+         edges = h1.binedges isa Tuple ? h1.binedges[1] : h1.binedges
+         bulk_v_para = (edges[max_idx] + edges[max_idx + 1]) / 2
+
+         # Shift parallel velocity to rest frame
+         v_para .-= bulk_v_para
+      end
+   end
+
+   return t_data, t_names
+end
 
 plot_data = []
-global_max_density = 1.0
+global_max_density = 1e-25 # Small initial value for PSD
 
 println("Pass 1: Identifying global density range...")
 for (i, pt) in enumerate(sample_points)
@@ -140,51 +165,69 @@ for (i, pt) in enumerate(sample_points)
       continue
    end
 
-   t_data, t_names = transform_func(particles, data.header.real_component_names)
-   v_para = t_data[1, :]
-   v_perp = t_data[2, :]
+   # Calculate histogram using get_phase_space_density
+   # density calculation is now default
+   edges = (range(v_para_range..., length = 51), range(v_perp_range..., length = 51))
+   h = get_phase_space_density(
+      data, "v_parallel", "v_perp";
+      x_range, y_range, z_range,
+      edges,
+      transform = transform_func
+   )
+   psd_code = Float64.(h.bincounts)
 
-   # Pre-calculate histogram to find max density
-   h = Hist2D((v_para, v_perp),
-      binedges = (range(v_para_range..., length = 51), range(v_perp_range..., length = 51)))
-   counts = bincounts(h)
-   local_max = maximum(counts)
+   # Convert from code units to s^3 km^-6
+   # Code density is N / (L_code^3 * V_code^3)  (assuming values are km/s already)
+   # We need N / (L_phys^3 * V_phys^3)
+   # L_phys = L_code * RE_km
+   # V_phys = V_code
+   # So psd_phys = psd_code / RE_km^3
+
+   psd = psd_code ./ (RE_km^3)
+
+   local_max = maximum(psd)
 
    global global_max_density = max(global_max_density, local_max)
 
-   push!(plot_data, counts)
+   push!(plot_data, psd)
 end
 
 println("Global Max Density: $global_max_density")
 
 println("Pass 2: Plotting...")
+
+fig, axs = plt.subplots(
+   1, num_samples, figsize = (4 * num_samples, 4), constrained_layout = true)
+
 for (i, pt) in enumerate(sample_points)
    ax = axs[i]
-   data_pair = plot_data[i]
+   psd = plot_data[i]
 
-   if isnothing(data_pair)
+   if isnothing(psd)
       ax.text(0.5, 0.5, "Not enough particles", ha = "center", va = "center")
       ax.set_title("Point $i")
       continue
    end
 
-   counts = data_pair
+   # Plot PSD
+   # Transpose psd because imshow expects (row, col) -> (y, x)
+   # Determine vmin dynamically to handle potentially small SI values
+   vmin_val = max(1e-40, global_max_density * 1e-6)
 
-   # Plot with fixed global normalization
-   # Transpose counts because imshow expects (row, col) -> (y, x)
-   # but bincounts returns (x, y)
-   im = ax.imshow(counts',
+   im = ax.imshow(psd',
       extent = [v_para_range[1], v_para_range[2], v_perp_range[1], v_perp_range[2]],
       origin = "lower",
-      norm = PyPlot.matplotlib.colors.LogNorm(vmin = 1, vmax = global_max_density),
+      norm = PyPlot.matplotlib.colors.LogNorm(vmin = vmin_val, vmax = global_max_density),
       cmap = "turbo",
       aspect = "auto",
       interpolation = "nearest")
 
    ax.set_title(@sprintf("Pt %d: x=%.1f", i, pt[1]))
-   ax.set_xlabel(L"v_{\parallel}")
+   ax.set_xlabel(L"v_{\parallel} \ [km/s]")
    if i == 1
-      ax.set_ylabel(L"v_{\perp}")
+      ax.set_ylabel(L"v_{\perp} \ [km/s]")
+   else
+      ax.set_yticklabels([])
    end
 
    # Save last handle for colorbar
@@ -193,10 +236,11 @@ end
 
 if @isdefined(h_plot)
    # Create a dummy ScalarMappable with the global norm for the colorbar
-   norm = PyPlot.matplotlib.colors.LogNorm(vmin = 1, vmax = global_max_density)
+   vmin_val = max(1e-40, global_max_density * 1e-6)
+   norm = PyPlot.matplotlib.colors.LogNorm(vmin = vmin_val, vmax = global_max_density)
    sm = PyPlot.matplotlib.cm.ScalarMappable(norm = norm, cmap = "turbo")
    sm.set_array([])
-   fig.colorbar(sm, ax = axs, label = "Counts", pad = 0.02)
+   fig.colorbar(sm, ax = axs, label = L"Phase Space Density $[s^3 km^{-6}]$", pad = 0.02)
 end
 
 # Add a global title
