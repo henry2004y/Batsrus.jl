@@ -64,10 +64,10 @@ if !isdir(data_path)
             v_perp2 = randn() * 2.0
          else
             # Static Core
-            # Make core slightly colder (sigma 1.2) to ensure high phase space density
-            v_para = randn() * 1.2
-            v_perp1 = randn() * 1.2
-            v_perp2 = randn() * 1.2
+            # Make core significantly colder (sigma 0.6) to ensure very high phase space density
+            v_para = randn() * 0.6
+            v_perp1 = randn() * 0.6
+            v_perp2 = randn() * 0.6
          end
 
          # Convert "local aligned" v to global Cartesian
