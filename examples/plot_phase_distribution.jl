@@ -269,7 +269,6 @@ fig, axs = plt.subplots(2, 2, figsize = (12, 12), constrained_layout = true)
 # --- Plot 1: Original Coordinates (vx, vy) transformed via plot_phase ---
 
 # Detect names
-# Detect names
 vx_name, vy_name = detect_velocity_names(data.header.real_component_names)
 
 plot_phase(data, vx_name, vy_name, ax = axs[1],

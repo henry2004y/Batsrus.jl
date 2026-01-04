@@ -656,10 +656,9 @@ function get_phase_space_density(
       # Apply transform
       # Need full names including x, y, z
       names = data.header.real_component_names
-      full_names = ["x", "y", "z", names...]
 
       # rdata from select_particles_in_region has ALL real components.
-      new_data, new_names = transform(rdata, full_names)
+      new_data, new_names = transform(rdata, names)
 
       # Use transformed data
       rdata = new_data::Matrix{T}
