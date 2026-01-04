@@ -6,6 +6,7 @@ using GaussianMixtures
 using Random
 using LinearAlgebra
 using StaticArrays
+using FHist
 
 # Script to load AMReX particle data and plot phase space distribution
 # Usage: julia examples/plot_phase_distribution.jl
@@ -38,14 +39,7 @@ if !isdir(data_path)
    B_hat = normalize(B_field)
 
    # Rotation matrix to align Z with B for generating anisotropic beam
-   # We want local_parallel -> B_hat
-   # We can use Batsrus.getRotationMatrix if available or construct manually
-   # Let's use a simple construction:
-   # Z' = B_hat
-   # Y' = Z x B_hat / |...| (if B not along Z)
-   # X' = Y' x Z'
-
-   # Or simpler: generate in local (para, perp1, perp2) and rotate
+   # We generate in local (para, perp1, perp2) and rotate
    function random_perp_vector(n)
       v = randn(3)
       v -= dot(v, n) * n
@@ -58,8 +52,8 @@ if !isdir(data_path)
       # Names according to typical AMReX output
       real_component_names = ["ux", "uy", "uz", "weight"],
       particle_gen = (i, n_reals) -> begin
-         # 50% Core, 50% Beam
-         is_core = rand() > 0.5
+         # 80% Core, 20% Beam
+         is_core = rand() > 0.2
 
          if is_core
             # Core: Centered at (-1, 1, 0), Isotropic vth=1
@@ -76,9 +70,7 @@ if !isdir(data_path)
             v_local_perp2 = randn() * 2.0
 
             # Construct global velocity from local components
-            # v_global = v_para * b_hat + v_perp1 * e1 + v_perp2 * e2
-            # Since we don't care about specific perp direction orientation, 
-            # we just need a vector perpendicular to B
+            # We just need a vector perpendicular to B
             perp_vec = random_perp_vector(B_hat)
             perp_vec2 = cross(B_hat, perp_vec)
 
@@ -136,181 +128,235 @@ println("\n--- Section 2: Coordinate Transformation ---")
 B_field = [1.0, -1.0, 0.0]
 println("Using B field: $B_field")
 
-# Get transformation function
-transform_func = get_particle_field_aligned_transform(B_field)
+# Define dummy E field perpcendicular to B for full 3D basis
+E_dummy = [1.0, 1.0, 0.0]
+# Check orthogonality
+if dot(B_field, E_dummy) != 0
+   error("Dummy E field not perpendicular")
+end
 
-# Apply transform manually for plotting/analysis matrix
-# Typically this returns (new_data, new_names)
-# passing select_particles_in_region result (which contains ALL real components)
+println("Using Dummy E field (for basis): $E_dummy")
+
+# Get transformation function (returns v_para, v_perp1, v_perp2, weight)
+transform_func = get_particle_field_aligned_transform(B_field, E_dummy)
+
+# Apply transform manually for analysis
 transformed_data, transformed_names = transform_func(
    particles, data.header.real_component_names)
 
 v_para = transformed_data[1, :]
-v_perp = transformed_data[2, :]
+v_perp1 = transformed_data[2, :]
+v_perp2 = transformed_data[3, :]
+weights = transformed_data[4, :]
 
 println("Transformed components: $transformed_names")
 
 # ---------------------
-# Section 3: Plotting & GMM
+# Section 3: Analysis & Plotting
 # ---------------------
-println("\n--- Section 3: Plotting & GMM ---")
+println("\n--- Section 3: Analysis & Plotting ---")
+
+# Estimate Core parameters from histograms
+# Helper to detect velocity names
+function detect_velocity_names(rnames)
+   vx_name = "vx"
+   for cand in ["ux", "vx", "velocity_x"]
+      if cand in rnames
+         vx_name = cand
+         break
+      end
+   end
+
+   vy_name = "vy"
+   for cand in ["uy", "vy", "velocity_y"]
+      if cand in rnames
+         vy_name = cand
+         break
+      end
+   end
+   return vx_name, vy_name
+end
+
+# Function to get peak and width from 1D weighted histogram
+function estimate_1d_param(v, w, nbins = 50)
+   h = Hist1D(v; binedges = range(minimum(v), maximum(v), length = nbins + 1), weights = w)
+   _, max_idx = findmax(h.bincounts)
+   edges = h.binedges isa Tuple ? h.binedges[1] : h.binedges
+   peak_loc = (edges[max_idx] + edges[max_idx + 1]) / 2
+
+   # Estimate width
+   return peak_loc, 1.0
+end
+
+bulk_para, vth_para_est = estimate_1d_param(v_para, weights)
+bulk_perp1, vth_perp1_est = estimate_1d_param(v_perp1, weights)
+bulk_perp2, vth_perp2_est = estimate_1d_param(v_perp2, weights)
+
+println("Estimated Core Bulk: Para=$bulk_para, Perp1=$bulk_perp1, Perp2=$bulk_perp2")
+
+# Construct parameter vectors
+bulk_vel = [bulk_para, bulk_perp1, bulk_perp2]
+vth_vec = [vth_para_est, vth_perp1_est, vth_perp2_est]
+vth_scalar = maximum(vth_vec)
+
+# Classify
+velocities_3d = transformed_data[1:3, :]
+
+println("Classifying particles...")
+mask_core = Batsrus.get_core_population_mask(velocities_3d, bulk_vel, vth_scalar, 3.0)
+
+println("Core particles: ", count(mask_core))
+println("Suprathermal particles: ", count(.!mask_core))
+
+# Split data
+core_data = transformed_data[:, mask_core]
+supra_data = transformed_data[:, .!mask_core]
+
+# Fit GMMs
+# Function to fit and print
+function fit_and_report(label, data_subset, n_comp)
+   println("\nFitting $label (N=$(size(data_subset,2)))...")
+   if size(data_subset, 2) < n_comp * 10
+      println("  Not enough particles for GMM.")
+      return nothing
+   end
+
+   # Extract velocities (3xN) and weights
+   vels = data_subset[1:3, :]
+   ws = data_subset[4, :]
+
+   res = fit_particle_velocity_gmm(vels, n_comp; weights = ws)
+
+   for (i, c) in enumerate(res)
+      println("  Comp $i: W=$(c.weight), Mean=$(c.mean), Vth=$(c.vth)")
+   end
+   return res
+end
+
+res_core = fit_and_report("Core", core_data, 1)
+res_supra = fit_and_report("Suprathermal", supra_data, 1) # Assuming single beam for now
+
+# Combine results for reconstruction
+all_results = []
+total_weight = sum(weights)
+weight_core = sum(core_data[4, :])
+weight_supra = sum(supra_data[4, :])
+
+if !isnothing(res_core)
+   for c in res_core
+      # Re-weight global weight
+      push!(all_results,
+         (
+            weight = c.weight * (weight_core / total_weight),
+            mean = c.mean,
+            vth = c.vth
+         ))
+   end
+end
+if !isnothing(res_supra)
+   for c in res_supra
+      push!(all_results,
+         (
+            weight = c.weight * (weight_supra / total_weight),
+            mean = c.mean,
+            vth = c.vth
+         ))
+   end
+end
 
 fig, axs = plt.subplots(2, 2, figsize = (12, 12), constrained_layout = true)
 
-# --- Plot 1: Original Coordinates (vx, vy) ---
-ax1 = axs[1]
-h1 = ax1.hist2d(
-   vx, vy, bins = 100, norm = PyPlot.matplotlib.colors.LogNorm(vmin = 1), cmap = "viridis")
-ax1.set_xlabel("\$v_x\$")
-ax1.set_ylabel("\$v_y\$")
-ax1.set_title("Original Coordinates (vx, vy)")
-plt.colorbar(h1[4], ax = ax1)
+# --- Plot 1: Original Coordinates (vx, vy) transformed via plot_phase ---
 
-# --- Plot 2: Transformed Coordinates (v_para, v_perp) ---
-ax2 = axs[2]
-h2 = ax2.hist2d(v_para, v_perp, bins = 100,
-   norm = PyPlot.matplotlib.colors.LogNorm(vmin = 1), cmap = "viridis")
-ax2.set_xlabel("\$v_{\\parallel}\$")
-ax2.set_ylabel("\$v_{\\perp}\$")
-ax2.set_title("Field-Aligned Coordinates")
-plt.colorbar(h2[4], ax = ax2)
+# Detect names
+# Detect names
+vx_name, vy_name = detect_velocity_names(data.header.real_component_names)
 
-# --- GMM Fitting on Transformed Data ---
-println("Fitting GMM on transformed data...")
-n_clusters = 2
-# Pass transformed matrix (2 x N) to the new matrix-input dispatch
-# Note: transformed_data is (2, N)
-gmm_results = fit_particle_velocity_gmm(transformed_data, n_clusters)
+plot_phase(data, vx_name, vy_name, ax = axs[1],
+   x_range = x_range, z_range = z_range,
+   y_range = selection_y_range, bins = 100)
+axs[1].set_title("Original Coordinates ($vx_name, $vy_name)")
 
-# --- GMM Fitting on Transformed Data ---
-println("Fitting GMM on transformed data...")
-n_clusters = 2
+# --- Plot 2: Transformed Coordinates (v_para, v_perp_mag) ---
+# We need to construct v_perp magnitude from our 3D basis for the 2D plot.
+v_perp_mag = sqrt.(v_perp1 .^ 2 .+ v_perp2 .^ 2)
 
-# Expand to pseudo-3D to handle v_perp > 0 nicely
-# v_perp represents a magnitude. To fit it with Gaussians, we "unroll" it 
-# into 2 Cartesian components assuming Gyrotropy (symmetry).
-n_samples = size(transformed_data, 2)
-phis = 2π .* rand(n_samples)
-v_perp_1 = transformed_data[2, :] .* cos.(phis)
-v_perp_2 = transformed_data[2, :] .* sin.(phis)
+h2 = Hist2D((v_para, v_perp_mag), nbins = (100, 100), weights = weights)
+# Determine generic vmin/vmax from this main plot to use elsewhere
+vmin_g = minimum(h2.bincounts[h2.bincounts .> 0])
+vmax_g = maximum(h2.bincounts)
 
-# New fitting matrix: (v_para, v_perp_1, v_perp_2)
-fitting_data = zeros(3, n_samples)
-fitting_data[1, :] = transformed_data[1, :] # v_para
-fitting_data[2, :] = v_perp_1
-fitting_data[3, :] = v_perp_2
+im2 = axs[2].imshow(h2.bincounts', origin = "lower",
+   extent = [minimum(v_para), maximum(v_para), minimum(v_perp_mag), maximum(v_perp_mag)],
+   norm = PyPlot.matplotlib.colors.LogNorm(vmin = vmin_g, vmax = vmax_g), aspect = "auto")
+axs[2].set_xlabel("\$v_{\\parallel}\$")
+axs[2].set_ylabel("\$v_{\\perp}\$")
+axs[2].set_title("Field-Aligned Coordinates")
+plt.colorbar(im2, ax = axs[2], pad = 0.02)
 
-gmm_results = fit_particle_velocity_gmm(fitting_data, n_clusters)
-
-println("GMM Results (Transformed Pseudo-3D Frame):")
-for (i, res) in enumerate(gmm_results)
-   # Combine perp components for display
-   # vth = sqrt(2) * sigma
-   # vth_para = res.vth[1]
-   # vth_perp = sqrt((res.vth[2]^2 + res.vth[3]^2)/2)
-   vth_perp_avg = sqrt((res.vth[2]^2 + res.vth[3]^2) / 2)
-
-   println("  Component $i:")
-   println("    Weight: ", res.weight)
-   println("    Mean (Para): ", res.mean[1])
-   println("    Vth (Para):  ", res.vth[1])
-   println("    Vth (Perp):  ", vth_perp_avg)
-end
-
-# --- Plot 3: GMM Reconstruction (Transformed) ---
-ax3 = axs[3]
-# Plot histogram again as background
-ax3.hist2d(v_para, v_perp, bins = 100,
-   norm = PyPlot.matplotlib.colors.LogNorm(vmin = 1), cmap = "Greys")
-
-# Overlay GMM contours
-# Grid for evaluation
-x_min, x_max = minimum(v_para), maximum(v_para)
-y_min, y_max = minimum(v_perp), maximum(v_perp)
-xi = range(x_min, x_max, length = 100)
-yi = range(y_min, y_max, length = 100)
+# --- Plot 3: GMM Reconstruction ---
+axs[3].set_title("GMM Reconstruction (Split Fit)")
+# Evaluate PDF on grid
+xi = range(minimum(v_para), maximum(v_para), length = 100)
+yi = range(minimum(v_perp_mag), maximum(v_perp_mag), length = 100)
 Z = zeros(100, 100)
 
 for i in 1:100, j in 1:100
-   v_p = xi[i]
-   v_t = yi[j] # v_perp value
+   vp = xi[i]
+   vt = yi[j] # v_perp magnitude
 
    prob = 0.0
-   for k in eachindex(gmm_results)
-      # For cylindrical coordinates with gyrotropy:
-      # f(v_para, v_perp) = w * (1 / (sqrt(2pi) sigma_para)) * exp(...) * (v_perp / sigma_perp^2) * exp(...)
-      # Note: We are plotting particle density in (v_para, v_perp) plane.
-      # The Jacobian v_perp comes from dv_x dv_y -> v_perp dv_perp dphi
-      # Integrating out phi gives 2pi.
-      # But fit_particle_velocity_gmm returns parameters for standard Cartesians.
+   for res in all_results
+      # res has 3D mean/vth: (para, perp1, perp2)
+      mu_p = res.mean[1]
+      sig_p = res.vth[1] / sqrt(2)
 
-      mu_para = gmm_results[k].mean[1]
-      sigma_para = gmm_results[k].vth[1] / sqrt(2)
+      # Average perp sigma for simplified Cylindrical PDF
+      sig_t = sqrt((res.vth[2]^2 + res.vth[3]^2) / 4)
 
-      # Average perp sigmas for reconstruction
-      sigma_perp = sqrt((gmm_results[k].vth[2]^2 + gmm_results[k].vth[3]^2) / 4) # vth^2 = 2*sigma^2
+      # Parallel part
+      p_para = exp(-0.5 * ((vp - mu_p) / sig_p)^2) / (sig_p * sqrt(2π))
 
-      # Parallel part (Gaussian)
-      p_para = exp(-0.5 * ((v_p - mu_para) / sigma_para)^2) / (sigma_para * sqrt(2π))
+      # Perp part (Rayleigh-like for magnitude)
+      p_perp = (vt / sig_t^2) * exp(-0.5 * (vt / sig_t)^2)
 
-      # Perpendicular part (Rayleigh-like density for magnitude)
-      # P(v_perp) = (v_perp / sigma_perp^2) * exp(-v_perp^2 / (2*sigma_perp^2))
-      # Note: This P(v_perp) integrates to 1 over [0, inf)
-      p_perp = (v_t / sigma_perp^2) * exp(-0.5 * (v_t / sigma_perp)^2)
-
-      prob += gmm_results[k].weight * p_para * p_perp
+      prob += res.weight * p_para * p_perp
    end
+   # Scale prob to match histogram counts roughly (N * bin_area)
+   # Or just plot PDF contours.
    Z[j, i] = prob
 end
 
-levels = exp.(range(log(maximum(Z) * 1e-4), log(maximum(Z)), length = 10))
-ax3.contour(xi, yi, Z, levels = levels, cmap = "viridis", linewidths = 2)
-ax3.set_xlabel("\$v_{\\parallel}\$")
-ax3.set_ylabel("\$v_{\\perp}\$")
-ax3.set_title("GMM Reconstruction (Transformed)")
+# Use histogram counts scale for comparison? No, just PDF contours is fine.
+# But to match colorbar, we need to multiply by TotalWeight * BinArea.
+# BinArea approx:
+dx = step(xi)
+dy = step(yi)
+Z_scaled = Z .* (total_weight * dx * dy)
 
-# --- Plot 4: Classification (Transformed) ---
-ax4 = axs[4]
-# Assign particles to clusters (Hard assignment for visualization)
-labels = Vector{Int}(undef, length(v_para))
-for i in eachindex(v_para)
-   best_k = 0
-   max_p = -1.0
+# Plot contours or heatmap
+im3 = axs[3].imshow(Z_scaled, origin = "lower", extent = [xi[1], xi[end], yi[1], yi[end]],
+   norm = PyPlot.matplotlib.colors.LogNorm(vmin = vmin_g, vmax = vmax_g), aspect = "auto")
+plt.colorbar(im3, ax = axs[3], pad = 0.02)
+axs[3].set_xlabel(L"v_{\parallel}")
+axs[3].set_ylabel(L"v_{\perp}")
 
-   v_p = v_para[i]
-   v_t = v_perp[i]
-
-   for k in eachindex(gmm_results)
-      mu_para = gmm_results[k].mean[1]
-      sigma_para = gmm_results[k].vth[1] / sqrt(2)
-      sigma_perp = sqrt((gmm_results[k].vth[2]^2 + gmm_results[k].vth[3]^2) / 4)
-
-      p_para = exp(-0.5 * ((v_p - mu_para) / sigma_para)^2) / (sigma_para * sqrt(2π))
-      p_perp = (v_t / sigma_perp^2) * exp(-0.5 * (v_t / sigma_perp)^2)
-
-      p = gmm_results[k].weight * p_para * p_perp
-
-      if p > max_p
-         max_p = p
-         best_k = k
-      end
-   end
-   labels[i] = best_k
+# --- Plot 4: Classification ---
+axs[4].set_title("Classification")
+# Scatter plot
+# Subsample for speed if needed
+stride = 1
+if size(v_para, 1) > 10000
+   stride = 10
 end
 
-# Color by label
-colors = ["red", "blue"]
-for k in eachindex(gmm_results)
-   mask = labels .== k
-   if any(mask)
-      ax4.scatter(v_para[mask], v_perp[mask], s = 1, c = colors[k],
-         label = "Cluster $k", alpha = 0.5)
-   end
-end
-ax4.set_xlabel("\$v_{\\parallel}\$")
-ax4.set_ylabel("\$v_{\\perp}\$")
-ax4.set_title("GMM Classification")
-ax4.legend()
+axs[4].scatter(v_para[mask_core][1:stride:end], v_perp_mag[mask_core][1:stride:end],
+   s = 1, c = "red", label = "Core", alpha = 0.5)
+axs[4].scatter(v_para[.!mask_core][1:stride:end], v_perp_mag[.!mask_core][1:stride:end],
+   s = 1, c = "blue", label = "Supra", alpha = 0.5)
+axs[4].legend(markerscale = 5.0)
+axs[4].set_xlabel(L"v_{\parallel}")
+axs[4].set_ylabel(L"v_{\perp}")
 
 savefig("phase_space_analysis.png")
 println("Unified analysis plot saved to phase_space_analysis.png")
