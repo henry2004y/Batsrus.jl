@@ -39,14 +39,7 @@ if !isdir(data_path)
    B_hat = normalize(B_field)
 
    # Rotation matrix to align Z with B for generating anisotropic beam
-   # We want local_parallel -> B_hat
-   # We can use Batsrus.getRotationMatrix if available or construct manually
-   # Let's use a simple construction:
-   # Z' = B_hat
-   # Y' = Z x B_hat / |...| (if B not along Z)
-   # X' = Y' x Z'
-
-   # Or simpler: generate in local (para, perp1, perp2) and rotate
+   # We generate in local (para, perp1, perp2) and rotate
    function random_perp_vector(n)
       v = randn(3)
       v -= dot(v, n) * n
@@ -59,8 +52,8 @@ if !isdir(data_path)
       # Names according to typical AMReX output
       real_component_names = ["ux", "uy", "uz", "weight"],
       particle_gen = (i, n_reals) -> begin
-         # 50% Core, 50% Beam
-         is_core = rand() > 0.5
+         # 80% Core, 20% Beam
+         is_core = rand() > 0.2
 
          if is_core
             # Core: Centered at (-1, 1, 0), Isotropic vth=1
@@ -77,9 +70,7 @@ if !isdir(data_path)
             v_local_perp2 = randn() * 2.0
 
             # Construct global velocity from local components
-            # v_global = v_para * b_hat + v_perp1 * e1 + v_perp2 * e2
-            # Since we don't care about specific perp direction orientation, 
-            # we just need a vector perpendicular to B
+            # We just need a vector perpendicular to B
             perp_vec = random_perp_vector(B_hat)
             perp_vec2 = cross(B_hat, perp_vec)
 
@@ -138,8 +129,6 @@ B_field = [1.0, -1.0, 0.0]
 println("Using B field: $B_field")
 
 # Define dummy E field perpcendicular to B for full 3D basis
-# B is (1, -1, 0). Let's pick something simple.
-# If B = (bx, by, bz), then (-by, bx, 0) is perpendicular if not zero.
 E_dummy = [1.0, 1.0, 0.0]
 # Check orthogonality
 if dot(B_field, E_dummy) != 0
@@ -152,7 +141,6 @@ println("Using Dummy E field (for basis): $E_dummy")
 transform_func = get_particle_field_aligned_transform(B_field, E_dummy)
 
 # Apply transform manually for analysis
-# transformed_data has 4 rows: v_b, v_e, v_bxe, weight
 transformed_data, transformed_names = transform_func(
    particles, data.header.real_component_names)
 
@@ -196,11 +184,7 @@ function estimate_1d_param(v, w, nbins = 50)
    edges = h.binedges isa Tuple ? h.binedges[1] : h.binedges
    peak_loc = (edges[max_idx] + edges[max_idx + 1]) / 2
 
-   # Estimate width (very rough, maybe FWHM or just a fixed value if core is dominant)
-   # For core extraction we just need a reasonable seed.
-   # Let's assume vth=1.0 if not easily determinable, or use standard deviation around peak?
-   # Simple: assume std dev of the whole distribution might be dominated by beam?
-   # Let's use a smaller range around peak.
+   # Estimate width
    return peak_loc, 1.0
 end
 
@@ -212,18 +196,14 @@ println("Estimated Core Bulk: Para=$bulk_para, Perp1=$bulk_perp1, Perp2=$bulk_pe
 
 # Construct parameter vectors
 bulk_vel = [bulk_para, bulk_perp1, bulk_perp2]
-# Using a scalar vth for classification for simplicity, or we could use the anisotropic vector
 vth_vec = [vth_para_est, vth_perp1_est, vth_perp2_est]
-# Let's use the max estimated vth to be safe/conservative
 vth_scalar = maximum(vth_vec)
 
 # Classify
-# Use top 3 rows (component velocities) for classification
-# transformed_data is 4xN
 velocities_3d = transformed_data[1:3, :]
 
 println("Classifying particles...")
-mask_core = Batsrus.get_core_population_mask(velocities_3d, bulk_vel, vth_scalar, 2.0)
+mask_core = Batsrus.get_core_population_mask(velocities_3d, bulk_vel, vth_scalar, 3.0)
 
 println("Core particles: ", count(mask_core))
 println("Suprathermal particles: ", count(.!mask_core))
@@ -287,11 +267,6 @@ end
 fig, axs = plt.subplots(2, 2, figsize = (12, 12), constrained_layout = true)
 
 # --- Plot 1: Original Coordinates (vx, vy) transformed via plot_phase ---
-# Using plot_phase directly.
-# Note: plot_phase selects data itself. If we want to verify our selection,
-# we should pass the same 'particles' via 'data' object or use the fact that data object loads all.
-# But plot_phase calls get_phase_space_density, which can take a transform.
-# But here we just want basic Vx, Vy.
 
 # Detect names
 # Detect names
@@ -304,9 +279,6 @@ axs[1].set_title("Original Coordinates ($vx_name, $vy_name)")
 
 # --- Plot 2: Transformed Coordinates (v_para, v_perp_mag) ---
 # We need to construct v_perp magnitude from our 3D basis for the 2D plot.
-# Or use the generic transform that returns (v_para, v_perp) for plotting.
-# Let's stick to our manually transformed data for consistency with analysis.
-# We will use Hist2D directly or helper since plot_phase expects AMReX object + transform function.
 v_perp_mag = sqrt.(v_perp1 .^ 2 .+ v_perp2 .^ 2)
 
 h2 = Hist2D((v_para, v_perp_mag), nbins = (100, 100), weights = weights)
@@ -366,8 +338,8 @@ Z_scaled = Z .* (total_weight * dx * dy)
 im3 = axs[3].imshow(Z_scaled, origin = "lower", extent = [xi[1], xi[end], yi[1], yi[end]],
    norm = PyPlot.matplotlib.colors.LogNorm(vmin = vmin_g, vmax = vmax_g), aspect = "auto")
 plt.colorbar(im3, ax = axs[3], pad = 0.02)
-axs[3].set_xlabel("\$v_{\\parallel}\$")
-axs[3].set_ylabel("\$v_{\\perp}\$")
+axs[3].set_xlabel(L"v_{\parallel}")
+axs[3].set_ylabel(L"v_{\perp}")
 
 # --- Plot 4: Classification ---
 axs[4].set_title("Classification")
@@ -382,9 +354,9 @@ axs[4].scatter(v_para[mask_core][1:stride:end], v_perp_mag[mask_core][1:stride:e
    s = 1, c = "red", label = "Core", alpha = 0.5)
 axs[4].scatter(v_para[.!mask_core][1:stride:end], v_perp_mag[.!mask_core][1:stride:end],
    s = 1, c = "blue", label = "Supra", alpha = 0.5)
-axs[4].legend()
-axs[4].set_xlabel("\$v_{\\parallel}\$")
-axs[4].set_ylabel("\$v_{\\perp}\$")
+axs[4].legend(markerscale = 5.0)
+axs[4].set_xlabel(L"v_{\parallel}")
+axs[4].set_ylabel(L"v_{\perp}")
 
 savefig("phase_space_analysis.png")
 println("Unified analysis plot saved to phase_space_analysis.png")
