@@ -302,28 +302,63 @@ end
             )
          )
          data_w = AMReXParticle(tmpdir)
+
+         # Helper to calculate bin volume
+         function get_bin_vol(h)
+            edges = h.binedges
+            if edges isa Tuple
+               return prod(e -> e[2] - e[1], edges)
+            else
+               return edges[2] - edges[1]
+            end
+         end
+
          h_w = get_phase_space_density(data_w, "x", "u", bins = 1,
             x_range = (0.0, 11.0), y_range = (0.0, 11.0))
 
          # 10 particles, each weight 2.0. Total sum should be 20.0.
-         # They all fall into the same bin since we only have 1 bin covering the range.
-         @test sum(h_w.bincounts) ≈ 20.0
+         # Density check: sum(density) * bin_vol * spatial_vol ≈ Total Weight
+         # x_range=11, y_range=11, z_range default=10 (domain size)
+         vol_spatial = 11.0 * 11.0 * 10.0
+         bin_vol = get_bin_vol(h_w)
+
+         @test sum(h_w.bincounts) * bin_vol * vol_spatial ≈ 20.0
 
          # Test 1D Plotting
          h1 = get_phase_space_density(data_w, "x"; bins = 1, x_range = (0.0, 11.0))
-         @test sum(h1.bincounts) ≈ 20.0
+         vol_spatial_1d = 11.0 * 10.0 * 10.0 # x=11, y=10, z=10 implicitly
+         bin_vol_1d = get_bin_vol(h1)
+
+         @test sum(h1.bincounts) * bin_vol_1d * vol_spatial_1d ≈ 20.0
          @test ndims(h1.bincounts) == 1
 
          # Test 1D density
          hist1d = get_phase_space_density(data, "x")
          @test ndims(hist1d.bincounts) == 1
+         # Mock data has 10 particles, weight 1 (default). Total 10.
+         # Spatial vol = 10*10*10 = 1000.
+         # bin_vol...
 
          # Test 1D density with z_range filter (Regression test)
          # Filter z to a range that includes particles (z=2.0 and z=3.0)
-         # Using a wider range to avoid boundary floating point issues
+         # Particles are at z = i for i=1..10.
+         # z_range (1.5, 3.5) captures i=2 and i=3. Total 2 particles, weight 1.
+         # x_range (1.5, 3.5) captures i=2 and i=3.
+         # Wait, particle i has x=i, y=i, z=i.
+         # So i=2: x=2, y=2, z=2.
+         # i=3: x=3, y=3, z=3.
+         # Both satisfy ranges.
+         # Total count = 2.
+
          hist1d_z = get_phase_space_density(data, "x";
             z_range = (1.5, 3.5), x_range = (1.5, 3.5))
-         @test sum(hist1d_z.bincounts) == 2 # Particles at z=2.0 and z=3.0
+
+         # Spatial vol = (3.5-1.5) * 10 * (3.5-1.5) = 2 * 10 * 2 = 40.0
+         # (y range is default 10)
+         vol_spatial_z = 2.0 * 10.0 * 2.0
+         bin_vol_z = get_bin_vol(hist1d_z)
+
+         @test sum(hist1d_z.bincounts) * bin_vol_z * vol_spatial_z ≈ 2.0
 
          # Filter z to a range that EXCLUDES particles
          # This might error if empty, check behavior.
@@ -334,7 +369,12 @@ end
          # Test 3D Plotting
          h3 = get_phase_space_density(data_w, "x", "y", "u"; bins = 1,
             x_range = (0.0, 11.0), y_range = (0.0, 20.0), z_range = (0.0, 11.0))
-         @test sum(h3.bincounts) ≈ 20.0
+
+         # Spatial vol = 11 * 20 * 11
+         vol_spatial_3d = 11.0 * 20.0 * 11.0
+         bin_vol_3 = get_bin_vol(h3)
+
+         @test sum(h3.bincounts) * bin_vol_3 * vol_spatial_3d ≈ 20.0
          @test ndims(h3.bincounts) == 3
       end
    end

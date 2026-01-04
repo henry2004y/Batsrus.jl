@@ -98,7 +98,7 @@ function plot_phase(
    end
 
    if add_colorbar
-      cbar_label = normalize ? "Probability Density" : "Count"
+      cbar_label = normalize ? "Probability Density" : "PSD"
       plt.colorbar(im; ax, label = cbar_label, pad = 0.02)
    end
 

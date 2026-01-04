@@ -164,7 +164,7 @@ for (i, pt) in enumerate(sample_points)
    end
 
    # Calculate histogram using get_phase_space_density
-   # This handles the transform internally
+   # density calculation is now default
    edges = (range(v_para_range..., length = 51), range(v_perp_range..., length = 51))
    h = get_phase_space_density(
       data, "v_parallel", "v_perp";
@@ -172,27 +172,18 @@ for (i, pt) in enumerate(sample_points)
       edges,
       transform = transform_func
    )
-   counts = Float64.(h.bincounts) # Convert to Float for division
+   psd_code = Float64.(h.bincounts)
 
-   # Constants for unit conversion
+   # Convert from code units to s^3 km^-6
+   # Code density is N / (L_code^3 * V_code^3)  (assuming values are km/s already)
+   # We need N / (L_phys^3 * V_phys^3)
+   # L_phys = L_code * RE_km
+   # V_phys = V_code
+   # So psd_phys = psd_code / RE_km^3
+
    RE_km = 6378.0 # km
 
-   # Spatial Volume (box_size * RE_km)^3
-   vol_spatial = (box_size * RE_km)^3
-
-   # Velocity Volume per bin (2*pi*v_perp * dv_perp * dv_para) -> (km/s)^3
-   # v_para is dim 1, v_perp is dim 2
-   dv_para = step(edges[1])
-   dv_perp = step(edges[2])
-   v_perp_centers = (edges[2][1:(end - 1)] .+ edges[2][2:end]) ./ 2
-
-   # Create 2D volume factor matrix
-   # vol_vel[i, j] depends only on j (v_perp)
-   vol_vel_1d = @. 2 * pi * v_perp_centers * dv_perp * dv_para
-
-   # Normalize: f = N / (Vol_spatial * Vol_vel)
-   # Broadcast division along second dimension
-   psd = counts ./ vol_spatial ./ vol_vel_1d'
+   psd = psd_code ./ (RE_km^3)
 
    local_max = maximum(psd)
 

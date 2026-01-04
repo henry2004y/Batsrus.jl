@@ -629,6 +629,7 @@ Supports 1D, 2D, and 3D histograms.
   - `transform`: Optional function to transform the data before binning.
   - `normalize`: Whether to normalize the histogram to a probability density (default: `false`).
 """
+
 function get_phase_space_density(
       data::AMReXParticle{T},
       variables::Vararg{String, N};
@@ -722,7 +723,23 @@ function get_phase_space_density(
 
    h = _create_hist(selected_data, edges, weights)
 
-   return _finalize_hist(h, Val(normalize))
+   if normalize
+      return FHist.normalize(h)
+   end
+
+   # Calculate spatial volume for density normalization
+   dx = isnothing(x_range) ? (data.right_edge[1] - data.left_edge[1]) :
+        (x_range[2] - x_range[1])
+   dy = isnothing(y_range) ? (data.right_edge[2] - data.left_edge[2]) :
+        (y_range[2] - y_range[1])
+   dz = isnothing(z_range) ?
+        (
+      data.dim == 3 ? (data.right_edge[3] - data.left_edge[3]) : 1.0
+   ) : (z_range[2] - z_range[1])
+
+   vol_spatial = dx * dy * dz
+
+   return _scale_by_volume!(h, vol_spatial)
 end
 
 function _create_hist(selected_data, edges, weights)
@@ -738,9 +755,41 @@ function _create_hist(selected_data, edges, weights)
    end
 end
 
-_finalize_hist(h, ::Val{true}) = FHist.normalize(h)
+function _scale_by_volume!(h::Hist1D, vol_spatial)
+   edges = h.binedges
+   if edges isa Tuple
+      edges = edges[1]
+   end
+   dx = edges[2] - edges[1]
+   bin_vol = dx
+   factor = inv(vol_spatial * bin_vol)
+   h.bincounts .*= factor
+   return h
+end
 
-_finalize_hist(h, ::Val{false}) = h
+function _scale_by_volume!(h::Hist2D, vol_spatial)
+   edges_x = h.binedges[1]
+   edges_y = h.binedges[2]
+   dx = edges_x[2] - edges_x[1]
+   dy = edges_y[2] - edges_y[1]
+   bin_vol = dx * dy
+   factor = inv(vol_spatial * bin_vol)
+   h.bincounts .*= factor
+   return h
+end
+
+function _scale_by_volume!(h::Hist3D, vol_spatial)
+   edges_x = h.binedges[1]
+   edges_y = h.binedges[2]
+   edges_z = h.binedges[3]
+   dx = edges_x[2] - edges_x[1]
+   dy = edges_y[2] - edges_y[1]
+   dz = edges_z[2] - edges_z[1]
+   bin_vol = dx * dy * dz
+   factor = inv(vol_spatial * bin_vol)
+   h.bincounts .*= factor
+   return h
+end
 
 function _get_velocity_indices(data::AMReXParticle{T}, vdim::Int) where T
    possible_names = (
