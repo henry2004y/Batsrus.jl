@@ -20,9 +20,23 @@ using PrecompileTools: @setup_workload, @compile_workload
       get_var_range(bd, "rho")
 
       mktempdir() do tmpdir
-         Batsrus.generate_mock_amrex_data(tmpdir)
+         Batsrus.generate_mock_amrex_data(tmpdir;
+            real_component_names = ["ux", "uy", "uz"],
+            particle_gen = (i, n_reals) -> (
+               rand(), rand(), rand(), randn(), randn(), randn())
+         )
          data = AMReXParticle(tmpdir)
-         get_phase_space_density(data, "x", "u"; bins = 2)
+         get_phase_space_density(data, "x", "ux"; bins = 2)
+
+         particles = select_particles_in_region(data)
+         transform_func = Batsrus.get_particle_field_aligned_transform([1.0, 0.0, 0.0])
+         transformed_data, _ = transform_func(
+            particles, data.header.real_component_names)
+
+         vels = transformed_data[1:3, :]
+         Batsrus.get_core_population_mask(vels, [0.0, 0.0, 0.0], 1.0)
+
+         Batsrus.fit_particle_velocity_gmm(vels, 1)
       end
    end
 end
