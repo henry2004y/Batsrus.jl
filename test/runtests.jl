@@ -42,11 +42,13 @@ datapath = artifact"testdata"
 @testset "Batsrus.jl" begin
    tests = isempty(ARGS) ? ["basic", "io", "plotting", "analysis"] : ARGS
    for t in tests
-      file = joinpath(@__DIR__, "tests_$(t).jl")
-      if isfile(file)
-         include(file)
-      else
-         @warn "Test file $file not found!"
+      @testset "$t" begin
+         file = joinpath(@__DIR__, "tests_$(t).jl")
+         if isfile(file)
+            include(file)
+         else
+            @warn "Test file $file not found!"
+         end
       end
    end
 end

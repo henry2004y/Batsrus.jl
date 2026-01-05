@@ -14,7 +14,6 @@
 *.tec
 *.gz
 *.batl
-
 test/data/
 benchmark/data/
 amrex_mock/

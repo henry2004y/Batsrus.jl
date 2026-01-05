@@ -1,6 +1,9 @@
 
+using Random
+
 @testset "Particle Classification" begin
    mktempdir() do tmpdir
+      Random.seed!(1234)
       n_core = 1000
       n_halo = 100
       n_total = n_core + n_halo
@@ -9,7 +12,7 @@
          num_particles = n_total,
          real_component_names = ["vx", "vy", "vz"],
          particle_gen = (i, n_reals) -> begin
-            # Positions (random in box 0-2 (since mock data is small?))
+            # Positions (random in box 0-2)
             pos = rand(3) .* 2.0 .- 0.5
 
             # Velocities
@@ -35,11 +38,6 @@
 
       core, halo = classify_particles(
          data; vdim = 3, bulk_vel = [0.0, 0.0, 0.0], vth = 1.0, nsigma = 3.0)
-
-      # Core efficiency: erte of 3 sigma is 0.997.
-      # So expected core count ~ n_core * 0.997 + halo_leak
-      # Halo leak: halo sigma=5. threshold=3. fraction within 3/5=0.6 sigma of halo distribution?
-      # erf(0.6/sqrt(2)) is small.
 
       # Just check counts roughly
       @test size(core, 2) > n_core * 0.9
@@ -122,6 +120,7 @@ end
 
 @testset "GMM Fit" begin
    mktempdir() do tmpdir
+      Random.seed!(5678)
       # Generate mock data: 2 populations
       # Population 1 (Core): Weight 0.7, Mean 0, vth 1.0
       # Population 2 (Beam): Weight 0.3, Mean 5.0, vth 0.5
