@@ -15,12 +15,12 @@ data resolution is the same as the original.
     interpolation. If true, a linear interpolation is performed on a constructed triangle mesh.
 """
 function interp2d(bd::BATS{2, TV, TX, TW}, var::AbstractString,
-      plotrangeIn::Vector = [-Inf32, Inf32, -Inf32, Inf32], plotinterval::Real = Inf32;
+      plotrange::Vector = [-Inf32, Inf32, -Inf32, Inf32], plotinterval::Real = Inf32;
       innermask::Bool = false, rbody::Real = 1.0, useMatplotlib::Bool = true
 ) where {TV, TX, TW}
    x, w = bd.x, bd.w
    varIndex_ = findindex(bd, var)
-   plotrange = TV.(plotrangeIn)
+   plotrange = TV.(plotrange)
 
    if bd.head.gencoord # Generalized coordinates
       X, Y = eachslice(x, dims = 3)
