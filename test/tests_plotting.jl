@@ -36,8 +36,12 @@
                # Test plot_phase into existing axis
                fig = CairoMakie.Figure()
                ax = CairoMakie.Axis(fig[1, 1])
-               pl = plot_phase(data, "ux", "uy"; ax = ax)
+               pl = plot_phase!(ax, data, "ux", "uy")
                @test pl isa Makie.Plot
+
+               # Test plot_phase creating new figure
+               obj = plot_phase(data, "ux", "uy")
+               @test obj isa Makie.FigureAxisPlot
             finally
                rm(tmpdir, recursive = true, force = true)
             end
@@ -69,7 +73,7 @@
 
                # Verify we can plot into an existing axis
                fig, ax = plt.subplots()
-               obj2 = plot_phase(data, "ux", "uy"; ax = ax)
+               obj2 = plot_phase!(ax, data, "ux", "uy")
                @test obj2 isa PyPlot.PyObject
 
                @test ax.get_xlabel() == "ux" || ax.get_xlabel() == "\$v_x\$"

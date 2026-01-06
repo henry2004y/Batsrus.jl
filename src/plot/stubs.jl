@@ -1,4 +1,4 @@
-export plotlogdata, cutplot, streamslice, plot_phase
+export plotlogdata, cutplot, streamslice, plot_phase, plot_phase!
 
 function plotlogdata end
 function cutplot end
