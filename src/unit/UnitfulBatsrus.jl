@@ -3,13 +3,13 @@ module UnitfulBatsrus
 using Unitful: Unitful
 import Unitful: q, c, μ0, ϵ0, k, me, mp
 using Unitful: @unit, Unitlike
-export @bu_str
 export getunit, getunits
 
 # lengths
-@unit R_bu "Rₑ" EarthRadii (6378)*Unitful.km false
-@unit Rg_bu "Rg" GanymedeRadii (2634)*Unitful.km false # Ganymede's radius
-@unit Rm_bu "Rm" MercuryRadii (2444)*Unitful.km false # Mercury's radius 
+@unit Re "Re" EarthRadii (6378)*Unitful.km false
+@unit Rg "Rg" GanymedeRadii (2634)*Unitful.km false # Ganymede's radius
+@unit RMercury "RMercury" MercuryRadii (2444)*Unitful.km false # Mercury's radius 
+@unit RSun "RSun" SolarRadii (695700)*Unitful.km false # Solar radius
 
 # masses
 @unit me_bu "mₑ" ElectronMass me false
@@ -21,32 +21,24 @@ export getunit, getunits
 @unit k_bu "k" BoltzmannConstant k false
 
 # densities
-@unit amucc_bu "amu/cc" AtomicDensity 1*Unitful.u/Unitful.cm^3 false
+@unit amucc "amu/cc" AtomicDensity 1 * Unitful.u/Unitful.cm^3 false
 
 # velocities
-@unit V_bu "V" Speed 1*Unitful.km/Unitful.s false
+@unit kms "km/s" KilometerPerSecond 1 * Unitful.km/Unitful.s false
 
 # current densities
-@unit ampm2_bu "μA/m²" CurrentDensity 1*Unitful.μA/Unitful.m^2 false
+@unit ampm2 "μA/m²" CurrentDensity 1 * Unitful.μA/Unitful.m^2 false
 
 # Others
-@unit tm2_bu "nT/m²" MagneticFieldDivergence 1*Unitful.nT/Unitful.m^2 false
-@unit vm2_bu "V/m²" ElectricFieldDivergence 1*Unitful.V/Unitful.m^2 false
+@unit tm2 "nT/m²" MagneticFieldDivergence 1 * Unitful.nT/Unitful.m^2 false
+@unit vm2 "V/m²" ElectricFieldDivergence 1 * Unitful.V/Unitful.m^2 false
 
-include("batsrusmacro.jl")
-
-# Some gymnastics required here because if we precompile, we cannot add to
-# Unitful.basefactors at compile time and expect the changes to persist to runtime.
-const localunits = Unitful.basefactors
-function __init__()
-   merge!(Unitful.basefactors, localunits)
-   Unitful.register(UnitfulBatsrus)
-end
+__init__() = Unitful.register(UnitfulBatsrus)
 
 function getunit(bd, var)
    # Batsrus has a bug in the 2D cuts of 3D runs: it always outputs the 3
    # coordinate units in the headline. To work around it, here the index is shifted by 1.
-   var_ = findfirst(x->lowercase(x)==lowercase(var), bd.head.wname) + bd.head.ndim + 1
+   var_ = findfirst(x -> lowercase(x) == lowercase(var), bd.head.wname) + bd.head.ndim + 1
    isnothing(var_) && error("$(var) not found in file header variables!")
    if bd.head.headline in ("normalized variables", "PLANETARY")
       var_unit = nothing
@@ -54,15 +46,20 @@ function getunit(bd, var)
       var_unit_strs = split(bd.head.headline)
 
       if var_unit_strs[var_] == "R"
-         var_unit = bu"R"
+         var_unit = UnitfulBatsrus.Re
       elseif var_unit_strs[var_] == "Mp/cc"
-         var_unit = bu"amucc"
+         var_unit = UnitfulBatsrus.amucc
       elseif var_unit_strs[var_] == "uA/m2"
-         var_unit = bu"ampm2"
+         var_unit = UnitfulBatsrus.ampm2
       elseif var_unit_strs[var_] == "V/m2"
-         var_unit = bu"vm2"
+         var_unit = UnitfulBatsrus.vm2
       else
-         var_unit = Unitful.uparse(var_unit_strs[var_])
+         try
+            var_unit = Unitful.uparse(var_unit_strs[var_])
+         catch
+            # Fallback for unknown units
+            var_unit = nothing
+         end
       end
    end
 
@@ -74,15 +71,19 @@ function getunits(bd)
    var_units = [] # needs to be improved!
    for var_unit_str in var_unit_strs
       if var_unit_str == "R"
-         var_unit = bu"R"
+         var_unit = UnitfulBatsrus.Re
       elseif var_unit_str == "Mp/cc"
-         var_unit = bu"amucc"
+         var_unit = UnitfulBatsrus.amucc
       elseif var_unit_str == "uA/m2"
-         var_unit = bu"ampm2"
+         var_unit = UnitfulBatsrus.ampm2
       elseif var_unit_str == "V/m2"
-         var_unit = bu"vm2"
+         var_unit = UnitfulBatsrus.vm2
       else
-         var_unit = UnitfulBatsrus.Unitful.uparse(var_unit_str)
+         try
+            var_unit = Unitful.uparse(var_unit_str)
+         catch
+            var_unit = nothing
+         end
       end
       push!(var_units, var_unit)
    end
