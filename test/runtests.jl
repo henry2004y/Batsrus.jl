@@ -5,11 +5,20 @@ using Batsrus.UnitfulBatsrus, Unitful
 using Batsrus: At, Near # DimensionalData
 using RecipesBase
 using Suppressor: @capture_out, @capture_err, @suppress_out, @suppress_err, @suppress
-using CairoMakie
-using CairoMakie
-# Check if we should run PyPlot tests (Only on Linux in CI, or always locally)
-const RUN_PYPLOT_TESTS = Sys.islinux() || get(ENV, "CI", "false") != "true"
+# Check if we should run PyPlot tests (Linux/Windows CI, or default locally)
+const RUN_PYPLOT_TESTS = get(ENV, "TEST_PYPLOT", "true") == "true" &&
+                         (Sys.islinux() || Sys.iswindows() ||
+                          get(ENV, "CI", "false") != "true")
+
+# Check if we should run Makie tests (MacOS CI, or explicit request)
+const RUN_MAKIE_TESTS = get(ENV, "TEST_MAKIE", "false") == "true" || Sys.isapple()
+
+if RUN_MAKIE_TESTS
+   using CairoMakie
+end
+
 if RUN_PYPLOT_TESTS
+   using DimensionalData # for .. (IntervalSet) usage
    using PyPlot
 end
 using FHist

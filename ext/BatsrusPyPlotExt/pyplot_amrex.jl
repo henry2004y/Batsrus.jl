@@ -10,29 +10,35 @@ const _AXIS_LABEL_MAP = Dict(
 
 _get_axis_label(variable_name::String) = get(_AXIS_LABEL_MAP, variable_name, variable_name)
 
+import Batsrus: plot_phase!
+
 """
-    plot_phase(data, x_variable, y_variable; bins=100, edges=nothing, x_range=nothing, y_range=nothing, z_range=nothing, log_scale=true, ax=nothing, add_colorbar=true, transform=nothing, plot_zero_lines=false, normalize=false, kwargs...)
+    plot_phase!(ax, data, x_variable, y_variable; kwargs...)
 
-Plots the 2D phase space density for selected variables.
+Plots the 2D phase space density for selected variables using PyPlot.
 
-# Arguments
+# Positional Arguments
 
+  - `ax`: PyPlot axis to plot on, or `nothing` (uses current axis).
   - `data`: `AMReXParticle` data object.
   - `x_variable`: Name of the variable for the x-axis (e.g., "vx").
   - `y_variable`: Name of the variable for the y-axis (e.g., "vy").
-  - `bins`: Number of bins for the histogram (default: 100).
-  - `edges`: **Histogram binning edges**. Explicitly defines the bin edges for `x_variable` and `y_variable`. Overrides `bins`.
-  - `x_range`, `y_range`, `z_range`: **Spatial selection ranges**. Only particles within these ranges in configuration space are included.
-  - `log_scale`: Whether to use a logarithmic color scale (default: `true`).
-  - `ax`: PyPlot axis to plot on. If `nothing`, uses the current axis.
-  - `add_colorbar`: Whether to add a colorbar to the plot (default: `true`).
-  - `transform`: Optional function to transform the data before binning.
-  - `plot_zero_lines`: Whether to draw dashed lines at x=0 and y=0 (default: `false`).
-  - `normalize`: Whether to normalize the histogram to a probability density (default: `false`).
-  - `vmin`, `vmax`: **Histogram range**. Explicitly defines the range for the histogram.
+
+# Keyword Arguments
+
+  - `bins=100`: Number of bins for the histogram.
+  - `edges=nothing`: **Histogram binning edges**. Explicitly defines the bin edges for `x_variable` and `y_variable`. Overrides `bins`.
+  - `x_range=nothing`, `y_range=nothing`, `z_range=nothing`: **Spatial selection ranges**. Only particles within these ranges in configuration space are included.
+  - `log_scale=true`: Whether to use a logarithmic color scale.
+  - `add_colorbar=true`: Whether to add a colorbar to the plot.
+  - `transform=nothing`: Optional function to transform the data before binning.
+  - `plot_zero_lines=false`: Whether to draw dashed lines at x=0 and y=0.
+  - `normalize=false`: Whether to normalize the histogram to a probability density.
+  - `vmin=nothing`, `vmax=nothing`: **Histogram range**. Explicitly defines the range for the histogram.
   - `kwargs`: Additional keyword arguments passed to `imshow` (e.g., `cmap`).
 """
-function plot_phase(
+function Batsrus.plot_phase!(
+      ax::Union{PyPlot.PyObject, Nothing},
       data::AMReXParticle,
       x_variable::String,
       y_variable::String;
@@ -42,7 +48,6 @@ function plot_phase(
       y_range = nothing,
       z_range = nothing,
       log_scale::Bool = true,
-      ax = nothing,
       add_colorbar::Bool = true,
       transform::Union{Function, Nothing} = nothing,
       plot_zero_lines::Bool = false,
