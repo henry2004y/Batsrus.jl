@@ -18,6 +18,7 @@ if RUN_MAKIE_TESTS
 end
 
 if RUN_PYPLOT_TESTS
+   using DimensionalData # for .. (IntervalSet) usage
    using PyPlot
 end
 using FHist
