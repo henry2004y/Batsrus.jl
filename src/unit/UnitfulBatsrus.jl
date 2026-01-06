@@ -103,7 +103,7 @@ function _get_system_units(typeunit::AbstractString)
    end
 end
 
-function _infer_unit_from_name(var::String, sys_units)
+function _infer_unit_from_name(var::AbstractString, sys_units)
    x_u, t_u, rho_u, u_u, p_u, b_u, j_u = sys_units
    v = lowercase(var)
    if startswith(v, "rho") || v == "n"
