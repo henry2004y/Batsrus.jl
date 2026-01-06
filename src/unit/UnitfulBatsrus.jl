@@ -33,7 +33,30 @@ export getunit, getunits
 @unit tm2 "nT/m²" MagneticFieldDivergence 1 * Unitful.nT/Unitful.m^2 false
 @unit vm2 "V/m²" ElectricFieldDivergence 1 * Unitful.V/Unitful.m^2 false
 
+const _UNIT_MAP = Dict(
+   "R" => Re,
+   "Mp/cc" => amucc,
+   "uA/m2" => ampm2,
+   "V/m2" => vm2
+)
+
 __init__() = Unitful.register(UnitfulBatsrus)
+
+function _parse_unit(unit_str::AbstractString)
+   # First, check our custom mapping.
+   unit = get(_UNIT_MAP, unit_str, nothing)
+   if !isnothing(unit)
+      return unit
+   end
+
+   # If not found, try standard parsing.
+   try
+      return Unitful.uparse(unit_str)
+   catch
+      # Return nothing if parsing fails.
+      return nothing
+   end
+end
 
 function getunit(bd, var)
    # Batsrus has a bug in the 2D cuts of 3D runs: it always outputs the 3
@@ -44,23 +67,7 @@ function getunit(bd, var)
       var_unit = nothing
    else
       var_unit_strs = split(bd.head.headline)
-
-      if var_unit_strs[var_] == "R"
-         var_unit = UnitfulBatsrus.Re
-      elseif var_unit_strs[var_] == "Mp/cc"
-         var_unit = UnitfulBatsrus.amucc
-      elseif var_unit_strs[var_] == "uA/m2"
-         var_unit = UnitfulBatsrus.ampm2
-      elseif var_unit_strs[var_] == "V/m2"
-         var_unit = UnitfulBatsrus.vm2
-      else
-         try
-            var_unit = Unitful.uparse(var_unit_strs[var_])
-         catch
-            # Fallback for unknown units
-            var_unit = nothing
-         end
-      end
+      var_unit = _parse_unit(var_unit_strs[var_])
    end
 
    var_unit
@@ -70,21 +77,7 @@ function getunits(bd)
    var_unit_strs = split(bd.head.headline)
    var_units = [] # needs to be improved!
    for var_unit_str in var_unit_strs
-      if var_unit_str == "R"
-         var_unit = UnitfulBatsrus.Re
-      elseif var_unit_str == "Mp/cc"
-         var_unit = UnitfulBatsrus.amucc
-      elseif var_unit_str == "uA/m2"
-         var_unit = UnitfulBatsrus.ampm2
-      elseif var_unit_str == "V/m2"
-         var_unit = UnitfulBatsrus.vm2
-      else
-         try
-            var_unit = Unitful.uparse(var_unit_str)
-         catch
-            var_unit = nothing
-         end
-      end
+      var_unit = _parse_unit(var_unit_str)
       push!(var_units, var_unit)
    end
 
