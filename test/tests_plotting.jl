@@ -24,6 +24,27 @@
       bd = load(joinpath(datapath, file))
       fig, ax, plt = CairoMakie.heatmap(bd, "p")
       @test plt isa Heatmap
+
+      @testset "Amrex Particles" begin
+         tmpdir = mktempdir()
+         try
+            generate_mock_amrex_data(tmpdir; num_particles = 100,
+               real_component_names = ["ux", "uy"])
+            data = AMReXParticle(tmpdir)
+
+            # Test plot_phase into existing axis
+            fig = CairoMakie.Figure()
+            ax = CairoMakie.Axis(fig[1, 1])
+            pl = plot_phase(data, "ux", "uy"; ax = ax)
+            @test pl isa Makie.Plot
+
+            # Test plot_phase creating new figure
+            obj = plot_phase(data, "ux", "uy")
+            @test obj isa Makie.FigureAxisPlot
+         finally
+            rm(tmpdir, recursive = true, force = true)
+         end
+      end
    end
 
    if RUN_PYPLOT_TESTS
