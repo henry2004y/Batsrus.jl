@@ -33,6 +33,8 @@ This function wraps `get_phase_space_density` and delegates plotting to `Makie.p
   - `plot_zero_lines`: Whether to draw dashed lines at x=0 and y=0 (default: `false`).
   - `normalize`: Whether to normalize the histogram to a probability density (default: `false`).
   - `kwargs`: Additional keyword arguments passed to `Makie.plot` (e.g., `colormap`).
+
+TODO: support 1D/2D/3D phase space plotting.
 """
 function Batsrus.plot_phase!(
       ax::Union{Makie.Axis, Nothing},
@@ -76,7 +78,7 @@ function Batsrus.plot_phase!(
          ax.ylabel = ylabel
       end
 
-      pl = Makie.plot!(ax, h; plot_kwargs...)
+      pl = Makie.heatmap!(ax, h; plot_kwargs...)
 
       if plot_zero_lines
          Makie.hlines!(ax, [0]; color = :gray, linestyle = :dash, linewidth = 1)
@@ -88,8 +90,7 @@ function Batsrus.plot_phase!(
       # Create new figure and axis
       axis_kwargs = merge((xlabel = xlabel, ylabel = ylabel), axis)
 
-      # FHist support: plot(h) returns FigureAxisPlot
-      p = Makie.plot(h; axis = axis_kwargs, figure = figure, plot_kwargs...)
+      p = Makie.heatmap(h; axis = axis_kwargs, figure = figure, plot_kwargs...)
 
       if plot_zero_lines
          Makie.hlines!(p.axis, [0]; color = :gray, linestyle = :dash, linewidth = 1)
