@@ -68,8 +68,6 @@ function _get_typeunit(headline::String)
    elseif occursin(r"(kg/m3)|(m/s)", headline)
       return "SI"
    elseif occursin(r"(nPa)|( nT )", headline) || headline == "PLANETARY"
-      # Some files might have "PLANETARY" in headline but also units?
-      # But setunits logic prioritized this.
       return "PLANETARY"
    elseif occursin(r"(dyne)|( G)", headline)
       return "SOLAR"

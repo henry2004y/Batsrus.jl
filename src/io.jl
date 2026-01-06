@@ -36,8 +36,6 @@ function load(file::AbstractString; npict::Int = 1, verbose::Bool = false)
 
    close(fileID)
 
-   #setunits(head,"")
-
    BATS(head, filelist, x, w)
 end
 

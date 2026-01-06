@@ -5,7 +5,6 @@
       load(joinpath(datapath, file), verbose = true)
    end
    @test startswith(repr(bd), "filename : 1d")
-   @test Batsrus.setunits(bd.head, "NORMALIZED")
    @test extrema(bd.x) == (-127.5, 127.5)
    @test extrema(bd.w) == (-0.79960780498, 1.9394335293)
 end
