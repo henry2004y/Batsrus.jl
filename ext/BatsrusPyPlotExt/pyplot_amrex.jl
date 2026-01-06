@@ -10,6 +10,8 @@ const _AXIS_LABEL_MAP = Dict(
 
 _get_axis_label(variable_name::String) = get(_AXIS_LABEL_MAP, variable_name, variable_name)
 
+import Batsrus: plot_phase!
+
 """
     plot_phase(data, x_variable, y_variable; bins=100, edges=nothing, x_range=nothing, y_range=nothing, z_range=nothing, log_scale=true, ax=nothing, add_colorbar=true, transform=nothing, plot_zero_lines=false, normalize=false, kwargs...)
 
@@ -32,7 +34,8 @@ Plots the 2D phase space density for selected variables.
   - `vmin`, `vmax`: **Histogram range**. Explicitly defines the range for the histogram.
   - `kwargs`: Additional keyword arguments passed to `imshow` (e.g., `cmap`).
 """
-function plot_phase(
+function Batsrus.plot_phase!(
+      ax::Union{PyPlot.PyObject, Nothing},
       data::AMReXParticle,
       x_variable::String,
       y_variable::String;
@@ -42,7 +45,6 @@ function plot_phase(
       y_range = nothing,
       z_range = nothing,
       log_scale::Bool = true,
-      ax = nothing,
       add_colorbar::Bool = true,
       transform::Union{Function, Nothing} = nothing,
       plot_zero_lines::Bool = false,

@@ -8,6 +8,8 @@ const _AXIS_LABEL_MAP = Dict(
 
 _get_axis_label(variable_name::String) = get(_AXIS_LABEL_MAP, variable_name, variable_name)
 
+import Batsrus: plot_phase!
+
 """
     plot_phase(data, x_variable, y_variable; bins=100, edges=nothing, x_range=nothing, y_range=nothing, z_range=nothing, log_scale=true, axis=(;), ax=nothing, figure=(;), add_colorbar=true, transform=nothing, plot_zero_lines=false, normalize=false, kwargs...)
 
@@ -32,7 +34,8 @@ This function wraps `get_phase_space_density` and delegates plotting to `Makie.p
   - `normalize`: Whether to normalize the histogram to a probability density (default: `false`).
   - `kwargs`: Additional keyword arguments passed to `Makie.plot` (e.g., `colormap`).
 """
-function plot_phase(
+function Batsrus.plot_phase!(
+      ax::Union{Makie.Axis, Nothing},
       data::AMReXParticle,
       x_variable::String,
       y_variable::String;
@@ -43,7 +46,6 @@ function plot_phase(
       z_range = nothing,
       log_scale::Bool = true,
       axis = (;),
-      ax = nothing,
       figure = (;),
       add_colorbar::Bool = true,
       transform::Union{Function, Nothing} = nothing,
