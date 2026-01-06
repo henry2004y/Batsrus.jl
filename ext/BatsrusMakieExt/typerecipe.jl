@@ -5,14 +5,18 @@ Conversion for 1D plots
 """
 function Makie.convert_arguments(P::Makie.PointBased, bd::BATS, var::String)
    var_ = findindex(bd, var)
+   x = bd.x
+   y = bd.w[:, var_]
+
    if hasunit(bd)
       unitx = getunit(bd, bd.head.wname[1])
       unitw = getunit(bd, var)
-      x = bd.x .* unitx
-      y = bd.w[:, var_] .* unitw
-   else
-      x = bd.x
-      y = bd.w[:, var_]
+      if unitx isa UnitfulBatsrus.Unitlike
+         x = x .* unitx
+      end
+      if unitw isa UnitfulBatsrus.Unitlike
+         y = y .* unitw
+      end
    end
 
    ([Makie.Point2f(i, j) for (i, j) in zip(x, y)],)
@@ -31,7 +35,11 @@ function Makie.convert_arguments(P::Makie.GridBased, bd::BATS, var::String;
 
    if unitx isa UnitfulBatsrus.Unitlike
       x *= unitx
+   end
+   if unity isa UnitfulBatsrus.Unitlike
       y *= unity
+   end
+   if unitw isa UnitfulBatsrus.Unitlike
       w *= unitw
    end
 
