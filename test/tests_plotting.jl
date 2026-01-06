@@ -36,11 +36,12 @@
                # Test plot_phase into existing axis
                fig = CairoMakie.Figure()
                ax = CairoMakie.Axis(fig[1, 1])
-               pl = plot_phase!(ax, data, "ux", "uy")
+               pl = plot_phase!(ax, data, "ux", "uy"; log_scale = false)
                @test pl isa Makie.Plot
 
                # Test plot_phase creating new figure
                obj = plot_phase(data, "ux", "uy")
+               obj = plot_phase(data, "ux", "uy"; log_scale = false)
                @test obj isa Makie.FigureAxisPlot
             finally
                rm(tmpdir, recursive = true, force = true)

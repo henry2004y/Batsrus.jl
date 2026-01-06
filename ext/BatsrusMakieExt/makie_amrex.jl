@@ -63,7 +63,8 @@ function Batsrus.plot_phase!(
    plot_kwargs = Dict{Symbol, Any}(kwargs...)
 
    if log_scale
-      plot_kwargs[:colorscale] = log10
+      #TODO log10 has some issues with the mock data
+      plot_kwargs[:colorscale] = Makie.pseudolog10
    end
 
    xlabel = _get_axis_label(_resolve_alias(x_variable))
