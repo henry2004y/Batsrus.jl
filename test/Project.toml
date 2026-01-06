@@ -1,5 +1,6 @@
 [deps]
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+DimensionalData = "0703355e-b756-11e9-17c0-8b28908087d0"
 LazyArtifacts = "4af54fe1-eca0-43a8-85a7-787d91b784e3"
 FHist = "68837c9b-b678-4cd5-9925-8a54edc8f695"
 PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
