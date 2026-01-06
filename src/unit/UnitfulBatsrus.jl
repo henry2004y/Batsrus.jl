@@ -60,7 +60,7 @@ function _parse_unit(unit_str::AbstractString)
    end
 end
 
-function _get_typeunit(headline::String)
+function _get_typeunit(headline::AbstractString)
    if occursin("PIC", headline)
       return "PIC"
    elseif occursin(" AU ", headline)
@@ -76,7 +76,7 @@ function _get_typeunit(headline::String)
    end
 end
 
-function _get_system_units(typeunit::String)
+function _get_system_units(typeunit::AbstractString)
    # Returns (distance, time, density, velocity, pressure, magnetic field, current density)
    if typeunit == "SI"
       return (Unitful.m, Unitful.s, Unitful.kg / Unitful.m^3, Unitful.m / Unitful.s,
