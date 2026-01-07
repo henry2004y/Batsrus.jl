@@ -14,6 +14,7 @@ data resolution is the same as the original.
   - `useMatplotlib=true`: Whether to Matplotlib (faster) or NaturalNeighbours for scattered
     interpolation. If true, a linear interpolation is performed on a constructed triangle mesh.
 """
+
 function interp2d(bd::BatsrusIDLUnstructured{2, TV, TX, TW}, var::AbstractString,
       plotrangeIn::Vector = [-Inf32, Inf32, -Inf32, Inf32], plotinterval::Real = Inf32;
       innermask::Bool = false, rbody::Real = 1.0, useMatplotlib::Bool = true
@@ -48,26 +49,7 @@ function interp2d(bd::BatsrusIDLUnstructured{2, TV, TX, TW}, var::AbstractString
       xi, yi, Wi = interpolate2d_generalized_coords(X, Y, W, plotrange, plotinterval)
    end
 
-   # Mask a circle at the inner boundary
-   if innermask
-      varIndex_ = findlast(x -> x == "rbody", bd.head.param)
-      if isnothing(varIndex_)
-         @info "rbody not found in file header parameters; use keyword rbody"
-         @inbounds @simd for i in CartesianIndices(Wi)
-            if xi[i[2]]^2 + yi[i[1]]^2 < rbody^2
-               Wi[i] = NaN
-            end
-         end
-      else
-         ndim = 2
-         ParamIndex_ = varIndex_ - ndim - bd.head.nw
-         @inbounds @simd for i in CartesianIndices(Wi)
-            if xi[i[1]]^2 + yi[i[2]]^2 < bd.head.eqpar[ParamIndex_]^2
-               Wi[i] = NaN
-            end
-         end
-      end
-   end
+   _mask_inner_boundary!(Wi, xi, yi, bd, innermask, rbody)
 
    xi, yi, Wi
 end
@@ -99,28 +81,30 @@ function interp2d(bd::BatsrusIDLStructured{2, TV, TX, TW}, var::AbstractString,
       Wi = [itp(i, j) for j in yi, i in xi]
    end
 
-   # Mask a circle at the inner boundary
-   if innermask
-      varIndex_ = findlast(x -> x == "rbody", bd.head.param)
-      if isnothing(varIndex_)
-         @info "rbody not found in file header parameters; use keyword rbody"
-         @inbounds @simd for i in CartesianIndices(Wi)
-            if xi[i[2]]^2 + yi[i[1]]^2 < rbody^2
-               Wi[i] = NaN
-            end
+   _mask_inner_boundary!(Wi, xi, yi, bd, innermask, rbody)
+
+   xi, yi, Wi
+end
+
+function _mask_inner_boundary!(Wi, xi, yi, bd::BatsrusIDL, innermask::Bool, rbody::Real)
+   !innermask && return
+   varIndex_ = findlast(x -> x == "rbody", bd.head.param)
+   if isnothing(varIndex_)
+      @info "rbody not found in file header parameters; use keyword rbody"
+      @inbounds @simd for i in CartesianIndices(Wi)
+         if xi[i[2]]^2 + yi[i[1]]^2 < rbody^2
+            Wi[i] = NaN
          end
-      else
-         ndim = 2
-         ParamIndex_ = varIndex_ - ndim - bd.head.nw
-         @inbounds @simd for i in CartesianIndices(Wi)
-            if xi[i[1]]^2 + yi[i[2]]^2 < bd.head.eqpar[ParamIndex_]^2
-               Wi[i] = NaN
-            end
+      end
+   else
+      ndim = 2
+      ParamIndex_ = varIndex_ - ndim - bd.head.nw
+      @inbounds @simd for i in CartesianIndices(Wi)
+         if xi[i[1]]^2 + yi[i[2]]^2 < bd.head.eqpar[ParamIndex_]^2
+            Wi[i] = NaN
          end
       end
    end
-
-   xi, yi, Wi
 end
 
 """
