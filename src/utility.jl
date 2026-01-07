@@ -14,6 +14,7 @@ data resolution is the same as the original.
   - `useMatplotlib=true`: Whether to Matplotlib (faster) or NaturalNeighbours for scattered
     interpolation. If true, a linear interpolation is performed on a constructed triangle mesh.
 """
+function interp2d end
 
 function interp2d(bd::BatsrusIDLUnstructured{2, TV, TX, TW}, var::AbstractString,
       plotrangeIn::Vector = [-Inf32, Inf32, -Inf32, Inf32], plotinterval::Real = Inf32;
