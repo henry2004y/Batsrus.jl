@@ -12,7 +12,7 @@ using StaticArrays: SVector, @SMatrix, SA, MVector
 using DimensionalData
 using ProgressMeter
 
-export BATS,
+export BATS, BatsrusIDL, BatsrusIDLStructured, BatsrusIDLUnstructured,
        load, readlogdata, readtecdata, showhead, # io
        getvar, cutdata, subvolume, subsurface, get_convection_E, get_hall_E, get_timeseries,
        get_anisotropy, get_vectors, get_magnitude, get_magnitude2,

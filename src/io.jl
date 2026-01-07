@@ -504,7 +504,7 @@ function getbinary!(x::Array{T, 4}, w, fileID::IOStream) where T
    end
 end
 
-function Base.show(io::IO, data::BATS)
+function Base.show(io::IO, data::BatsrusIDL)
    showhead(io, data)
    if data.list.bytes ≥ 1e9
       str = @sprintf "filesize: %.1f GB" data.list.bytes/1e9
@@ -567,5 +567,5 @@ end
 
 Display file information of `data`.
 """
-showhead(data::BATS) = showhead(data.list, data.head)
-showhead(io::IO, data::BATS) = showhead(data.list, data.head, io)
+showhead(data::BatsrusIDL) = showhead(data.list, data.head)
+showhead(io::IO, data::BatsrusIDL) = showhead(data.list, data.head, io)

@@ -1,4 +1,4 @@
-abstract type AbstractBATS{Dim, T} end
+abstract type AbstractBatsrusData{Dim, TV} end
 
 @enum FileType Real4Bat=1 Real8Bat=2 AsciiBat=3 LogBat=4 TecBat=5
 
@@ -38,49 +38,68 @@ struct BatsHead
    param::Vector{SubString{String}}
 end
 
+abstract type BatsrusIDL{Dim, TV} <: AbstractBatsrusData{Dim, TV} end
+
 """
-Batsrus data container, with `Dim` being the dimension of output.
+Batsrus structured data container, with `Dim` being the dimension of output.
 """
-struct BATS{Dim, TV <: AbstractFloat, TX, TW} <: AbstractBATS{Dim, TV}
+struct BatsrusIDLStructured{Dim, TV <: AbstractFloat, TX, TW} <: BatsrusIDL{Dim, TV}
    head::BatsHead
    list::FileList
    "Grid"
    x::TX
    "Variables"
    w::TW
+end
 
-   function BATS(head, list, x::Array{TV, Dimp1}, w::Array{TV, Dimp1}) where {TV, Dimp1}
-      @assert head.ndim + 1 == Dimp1 "Dimension mismatch!"
-      if head.gencoord
-         if head.ndim == 2
-            x = DimArray(x, (X, Y, :dim))
-            w = DimArray(w, (X, Y, Dim{:var}(head.wname)))
-         elseif head.ndim == 3
-            x = DimArray(x, (X, Y, Z, :dim))
-            w = DimArray(w, (X, Y, Z, Dim{:var}(head.wname)))
-         elseif head.ndim == 1
-            x = DimArray(x, (X, :dim))
-            w = DimArray(w, (X, Dim{:var}(head.wname)))
-         end
-      else
-         if head.ndim == 2
-            xrange = range(x[1, 1, 1], x[end, 1, 1], length = size(x, 1))
-            yrange = range(x[1, 1, 2], x[1, end, 2], length = size(x, 2))
-            x = DimArray(x, (X(xrange), Y(yrange), :dim))
-            w = DimArray(w, (X(xrange), Y(yrange), Dim{:var}(head.wname)))
-         elseif head.ndim == 3
-            xrange = range(x[1, 1, 1, 1], x[end, 1, 1, 1], length = size(x, 1))
-            yrange = range(x[1, 1, 1, 2], x[1, end, 1, 2], length = size(x, 2))
-            zrange = range(x[1, 1, 1, 3], x[1, 1, end, 3], length = size(x, 3))
-            x = DimArray(x, (X(xrange), Y(yrange), Z(zrange), :dim))
-            w = DimArray(w, (X(xrange), Y(yrange), Z(zrange), Dim{:var}(head.wname)))
-         elseif head.ndim == 1
-            xrange = range(x[1, 1], x[end, 1], length = size(x, 1))
-            x = DimArray(x, (X(xrange), :dim))
-            w = DimArray(w, (X(xrange), Dim{:var}(head.wname)))
-         end
+"""
+Batsrus unstructured data container, with `Dim` being the dimension of output.
+"""
+struct BatsrusIDLUnstructured{Dim, TV <: AbstractFloat, TX, TW} <: BatsrusIDL{Dim, TV}
+   head::BatsHead
+   list::FileList
+   "Grid"
+   x::TX
+   "Variables"
+   w::TW
+end
+
+"""
+Alias for backward compatibility and convenience.
+"""
+const BATS = BatsrusIDL
+
+function BATS(head, list, x::Array{TV, Dimp1}, w::Array{TV, Dimp1}) where {TV, Dimp1}
+   @assert head.ndim + 1==Dimp1 "Dimension mismatch!"
+   if head.gencoord
+      if head.ndim == 2
+         x = DimArray(x, (X, Y, :dim))
+         w = DimArray(w, (X, Y, Dim{:var}(head.wname)))
+      elseif head.ndim == 3
+         x = DimArray(x, (X, Y, Z, :dim))
+         w = DimArray(w, (X, Y, Z, Dim{:var}(head.wname)))
+      elseif head.ndim == 1
+         x = DimArray(x, (X, :dim))
+         w = DimArray(w, (X, Dim{:var}(head.wname)))
       end
-
-      new{head.ndim, TV, typeof(x), typeof(w)}(head, list, x, w)
+      return BatsrusIDLUnstructured{head.ndim, TV, typeof(x), typeof(w)}(head, list, x, w)
+   else
+      if head.ndim == 2
+         xrange = range(x[1, 1, 1], x[end, 1, 1], length = size(x, 1))
+         yrange = range(x[1, 1, 2], x[1, end, 2], length = size(x, 2))
+         x = DimArray(x, (X(xrange), Y(yrange), :dim))
+         w = DimArray(w, (X(xrange), Y(yrange), Dim{:var}(head.wname)))
+      elseif head.ndim == 3
+         xrange = range(x[1, 1, 1, 1], x[end, 1, 1, 1], length = size(x, 1))
+         yrange = range(x[1, 1, 1, 2], x[1, end, 1, 2], length = size(x, 2))
+         zrange = range(x[1, 1, 1, 3], x[1, 1, end, 3], length = size(x, 3))
+         x = DimArray(x, (X(xrange), Y(yrange), Z(zrange), :dim))
+         w = DimArray(w, (X(xrange), Y(yrange), Z(zrange), Dim{:var}(head.wname)))
+      elseif head.ndim == 1
+         xrange = range(x[1, 1], x[end, 1], length = size(x, 1))
+         x = DimArray(x, (X(xrange), :dim))
+         w = DimArray(w, (X(xrange), Dim{:var}(head.wname)))
+      end
+      return BatsrusIDLStructured{head.ndim, TV, typeof(x), typeof(w)}(head, list, x, w)
    end
 end
