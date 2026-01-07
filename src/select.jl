@@ -10,7 +10,7 @@ The returned 2D data lies in the `sequence` plane from - to + in `dir`.
 """
 function cutdata(bd::BATS, var::AbstractString;
       plotrange = [-Inf, Inf, -Inf, Inf], dir::String = "x", sequence::Int = 1)
-   var_ = findfirst(x->lowercase(x)==lowercase(var), bd.head.wname)
+   var_ = findfirst(x -> lowercase(x) == lowercase(var), bd.head.wname)
    isempty(var_) && error("$(var) not found in header variables!")
 
    if dir == "x"
@@ -21,9 +21,9 @@ function cutdata(bd::BATS, var::AbstractString;
       dim, d1, d2 = 3, 1, 2
    end
 
-   cut1 = selectdim(view(bd.x,:,:,:,d1), dim, sequence)
-   cut2 = selectdim(view(bd.x,:,:,:,d2), dim, sequence)
-   W = selectdim(view(bd.w,:,:,:,var_), dim, sequence)
+   cut1 = selectdim(view(bd.x, :, :, :, d1), dim, sequence)
+   cut2 = selectdim(view(bd.x, :, :, :, d2), dim, sequence)
+   W = selectdim(view(bd.w, :, :, :, var_), dim, sequence)
 
    if !all(isinf.(plotrange))
       cut1, cut2, W = subsurface(cut1, cut2, W, plotrange)
@@ -182,7 +182,7 @@ function getvar(bd::BATS{ndim, TV, TX, TW}, var::AbstractString) where {ndim, TV
 end
 
 @inline Base.@propagate_inbounds Base.getindex(
-   bd::BATS, var::AbstractString) = getvar(bd, var)
+bd::BATS, var::AbstractString) = getvar(bd, var)
 
 """
      fill_vector_from_scalars(bd::BATS, var)
@@ -231,19 +231,24 @@ end
 """
      get_vectors(bd::BATS, var)
 
-Return a tuple of vectors of `var`. `var` can be `:B`, `:E`, `:U`, `:U0`, or `:U1`.
+Return a tuple of vectors of `var`. `var` can be `:B`, `:E`, `:U`, or any `:U` followed by an index (e.g. `:U0` for species 0, `:U1` for species 1, etc.).
 """
 function get_vectors(bd::BATS, var)
-   if var == :B
+   str = string(var)
+   if str == "B"
       vx, vy, vz = bd["Bx"], bd["By"], bd["Bz"]
-   elseif var == :E
+   elseif str == "E"
       vx, vy, vz = bd["Ex"], bd["Ey"], bd["Ez"]
-   elseif var == :U
+   elseif str == "U"
       vx, vy, vz = bd["Ux"], bd["Uy"], bd["Uz"]
-   elseif var == :U0
-      vx, vy, vz = bd["UxS0"], bd["UyS0"], bd["UzS0"]
-   elseif var == :U1
-      vx, vy, vz = bd["UxS1"], bd["UyS1"], bd["UzS1"]
+   else
+      m = match(r"^U(\d+)$", str)
+      if !isnothing(m)
+         suffix = m[1]
+         vx, vy, vz = bd["UxS" * suffix], bd["UyS" * suffix], bd["UzS" * suffix]
+      else
+         throw(ArgumentError("Vector variable $var not supported"))
+      end
    end
 
    vx, vy, vz
@@ -256,8 +261,8 @@ Calculate the pressure anisotropy for `species`, indexing from 0. The default `m
 based on the fact that the trace of the pressure tensor is a constant. The `rotation`
 method is based on rotating the tensor.
 """
-function get_anisotropy(bd::BATS{2, TV, TX, TW}, species=0;
-   method::Symbol=:simple) where {TV, TX, TW}
+function get_anisotropy(bd::BATS{2, TV, TX, TW}, species = 0;
+      method::Symbol = :simple) where {TV, TX, TW}
    Bx, By, Bz = bd["Bx"], bd["By"], bd["Bz"]
    # Rotate the pressure tensor to align the 3rd direction with B
    pop = string(species)
@@ -281,7 +286,7 @@ function get_anisotropy(bd::BATS{2, TV, TX, TW}, species=0;
          Paniso[i, j] = p_perp / p_parallel
       elseif method == :rotation
          Prot = rotateTensorToVectorZ(P, b̂)
-         Paniso[i, j] = (Prot[1, 1] + Prot[2, 2]) / (2*Prot[3, 3])
+         Paniso[i, j] = (Prot[1, 1] + Prot[2, 2]) / (2 * Prot[3, 3])
       else
          error("Unknown method for get_anisotropy: $method. Use :simple or :rotation.")
       end
@@ -303,9 +308,9 @@ function get_convection_E(bd::BATS)
    Econvz = similar(Bz)
    # -Ui × B
    @simd for i in eachindex(Econvx)
-      Econvx[i] = -uiy[i]*Bz[i] + uiz[i]*By[i]
-      Econvy[i] = -uiz[i]*Bx[i] + uix[i]*Bz[i]
-      Econvz[i] = -uix[i]*By[i] + uiy[i]*Bx[i]
+      Econvx[i] = -uiy[i] * Bz[i] + uiz[i] * By[i]
+      Econvy[i] = -uiz[i] * Bx[i] + uix[i] * Bz[i]
+      Econvz[i] = -uix[i] * By[i] + uiy[i] * Bx[i]
    end
 
    Econvx, Econvy, Econvz
@@ -325,9 +330,9 @@ function get_hall_E(bd::BATS)
    Ehallz = similar(Bz)
    # (Ui - Ue) × B
    for i in eachindex(Ehallx)
-      Ehallx[i] = (uiy[i] - uey[i])*Bz[i] - (uiz[i] - uez[i])*By[i]
-      Ehally[i] = (uiz[i] - uez[i])*Bx[i] - (uix[i] - uex[i])*Bz[i]
-      Ehallz[i] = (uix[i] - uex[i])*By[i] - (uiy[i] - uey[i])*Bx[i]
+      Ehallx[i] = (uiy[i] - uey[i]) * Bz[i] - (uiz[i] - uez[i]) * By[i]
+      Ehally[i] = (uiz[i] - uez[i]) * Bx[i] - (uix[i] - uex[i]) * Bz[i]
+      Ehallz[i] = (uix[i] - uex[i]) * By[i] - (uiy[i] - uey[i]) * Bx[i]
    end
 
    Ehallx, Ehally, Ehallz
@@ -344,8 +349,8 @@ function get_timeseries(files::AbstractArray, loc; tstep = 1.0)
    bd = files[1] |> Batsrus.load
    xrange, yrange = get_range(bd)
    trange = range(bd.head.time, step = tstep, length = nfiles)
-   @assert xrange[1] ≤ loc[1] ≤ xrange[end] "x location out of range!"
-   @assert yrange[1] ≤ loc[2] ≤ yrange[end] "y location out of range!"
+   @assert xrange[1]≤loc[1]≤xrange[end] "x location out of range!"
+   @assert yrange[1]≤loc[2]≤yrange[end] "y location out of range!"
    x_ = searchsortedfirst(xrange, loc[1])
    y_ = searchsortedfirst(yrange, loc[2])
    v = zeros(Float32, 20, nfiles)
