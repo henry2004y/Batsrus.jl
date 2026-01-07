@@ -1,7 +1,7 @@
 # Utility functions for plotting and analyzing.
 
 """
-     interp2d(bd::BATS, var::AbstractString, plotrange=[-Inf, Inf, -Inf, Inf],
+     interp2d(bd::BatsrusIDL, var::AbstractString, plotrange=[-Inf, Inf, -Inf, Inf],
     	 plotinterval=Inf; kwargs...)
 
 Return 2D interpolated slices of data `var` from `bd`. If `plotrange` is not set, output
@@ -215,7 +215,7 @@ function interpolate2d_generalized_coords(X::T, Y::T, W::T,
 end
 
 """
-     interp1d(bd::BATS, var::AbstractString, loc::AbstractVector{<:AbstractFloat})
+     interp1d(bd::BatsrusIDLStructured, var::AbstractString, loc::AbstractVector{<:AbstractFloat})
 
 Interpolate `var` at spatial point `loc` in `bd`.
 """
@@ -232,7 +232,7 @@ function interp1d(
 end
 
 """
-     interp1d(bd::BATS, var::AbstractString, point1::Vector, point2::Vector)
+     interp1d(bd::BatsrusIDLStructured, var::AbstractString, point1::Vector, point2::Vector)
 
 Interpolate `var` along a line from `point1` to `point2` in `bd`.
 """
