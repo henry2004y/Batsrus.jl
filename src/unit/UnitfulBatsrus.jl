@@ -3,13 +3,14 @@ module UnitfulBatsrus
 using Unitful: Unitful
 import Unitful: q, c, μ0, ϵ0, k, me, mp
 using Unitful: @unit, Unitlike
-export @bu_str
 export getunit, getunits
 
 # lengths
-@unit R_bu "Rₑ" EarthRadii (6378)*Unitful.km false
-@unit Rg_bu "Rg" GanymedeRadii (2634)*Unitful.km false # Ganymede's radius
-@unit Rm_bu "Rm" MercuryRadii (2444)*Unitful.km false # Mercury's radius 
+@unit Re "Re" EarthRadii (6378)*Unitful.km false
+@unit Rg "Rg" GanymedeRadii (2634)*Unitful.km false # Ganymede's radius
+@unit RMercury "RMercury" MercuryRadii (2444)*Unitful.km false # Mercury's radius 
+@unit RSun "RSun" SolarRadii (695700)*Unitful.km false # Solar radius
+@unit AU "AU" AstronomicalUnit (149597870700)*Unitful.m false
 
 # masses
 @unit me_bu "mₑ" ElectronMass me false
@@ -21,48 +22,130 @@ export getunit, getunits
 @unit k_bu "k" BoltzmannConstant k false
 
 # densities
-@unit amucc_bu "amu/cc" AtomicDensity 1*Unitful.u/Unitful.cm^3 false
+@unit amucc "amu/cc" AtomicDensity 1 * Unitful.u/Unitful.cm^3 false
 
 # velocities
-@unit V_bu "V" Speed 1*Unitful.km/Unitful.s false
+@unit kms "km/s" KilometerPerSecond 1 * Unitful.km/Unitful.s false
 
 # current densities
-@unit ampm2_bu "μA/m²" CurrentDensity 1*Unitful.μA/Unitful.m^2 false
+@unit ampm2 "μA/m²" CurrentDensity 1 * Unitful.μA/Unitful.m^2 false
 
 # Others
-@unit tm2_bu "nT/m²" MagneticFieldDivergence 1*Unitful.nT/Unitful.m^2 false
-@unit vm2_bu "V/m²" ElectricFieldDivergence 1*Unitful.V/Unitful.m^2 false
+@unit tm2 "nT/m²" MagneticFieldDivergence 1 * Unitful.nT/Unitful.m^2 false
+@unit vm2 "V/m²" ElectricFieldDivergence 1 * Unitful.V/Unitful.m^2 false
 
-include("batsrusmacro.jl")
+const _UNIT_MAP = Dict(
+   "R" => Re,
+   "AU" => AU,
+   "Mp/cc" => amucc,
+   "uA/m2" => ampm2,
+   "V/m2" => vm2
+)
 
-# Some gymnastics required here because if we precompile, we cannot add to
-# Unitful.basefactors at compile time and expect the changes to persist to runtime.
-const localunits = Unitful.basefactors
-function __init__()
-   merge!(Unitful.basefactors, localunits)
-   Unitful.register(UnitfulBatsrus)
+__init__() = Unitful.register(UnitfulBatsrus)
+
+function _parse_unit(unit_str::AbstractString)
+   # First, check our custom mapping.
+   unit = get(_UNIT_MAP, unit_str, nothing)
+   if !isnothing(unit)
+      return unit
+   end
+
+   # If not found, try standard parsing.
+   try
+      return Unitful.uparse(unit_str)
+   catch
+      # Return nothing if parsing fails.
+      return nothing
+   end
+end
+
+function _get_typeunit(headline::AbstractString)
+   if occursin("PIC", headline)
+      return "PIC"
+   elseif occursin(" AU ", headline)
+      return "OUTERHELIO"
+   elseif occursin(r"(kg/m3)|(m/s)", headline)
+      return "SI"
+   elseif occursin(r"(nPa)|( nT )", headline) || headline == "PLANETARY"
+      return "PLANETARY"
+   elseif occursin(r"(dyne)|( G)", headline)
+      return "SOLAR"
+   else
+      return "NORMALIZED"
+   end
+end
+
+function _get_system_units(typeunit::AbstractString)
+   # Returns (distance, time, density, velocity, pressure, magnetic field, current density)
+   if typeunit == "SI"
+      return (Unitful.m, Unitful.s, Unitful.kg / Unitful.m^3, Unitful.m / Unitful.s,
+         Unitful.Pa, Unitful.T, Unitful.A / Unitful.m^2)
+   elseif typeunit == "CGS"
+      # Assuming Unitful.CGS or similar are available/parsed. 
+      # Using uparse for safety if symbols aren't exported.
+      return (Unitful.cm, Unitful.s, Unitful.g / Unitful.cm^3,
+         Unitful.cm / Unitful.s, Unitful.dyn / Unitful.cm^2,
+         Unitful.Gauss, Unitful.A / Unitful.m^2) # J in CGS is tricky, defaulting to SI-like or just A/m^2 for validity
+   elseif typeunit == "PLANETARY"
+      return (UnitfulBatsrus.Re, Unitful.s, UnitfulBatsrus.amucc,
+         Unitful.km / Unitful.s, Unitful.nPa, Unitful.nT, Unitful.μA / Unitful.m^2)
+   elseif typeunit == "OUTERHELIO"
+      return (UnitfulBatsrus.AU, Unitful.s, UnitfulBatsrus.amucc, Unitful.km / Unitful.s,
+         Unitful.dyn / Unitful.cm^2, Unitful.nT, Unitful.μA / Unitful.m^2)
+   elseif typeunit == "SOLAR"
+      return (
+         UnitfulBatsrus.RSun, Unitful.s, Unitful.g / Unitful.cm^3, Unitful.km / Unitful.s,
+         Unitful.dyn / Unitful.cm^2, Unitful.Gauss, Unitful.μA / Unitful.m^2)
+   else # NORMALIZED or PIC
+      return (Unitful.NoUnits, Unitful.NoUnits, Unitful.NoUnits, Unitful.NoUnits,
+         Unitful.NoUnits, Unitful.NoUnits, Unitful.NoUnits)
+   end
+end
+
+function _infer_unit_from_name(var::AbstractString, sys_units)
+   x_u, t_u, rho_u, u_u, p_u, b_u, j_u = sys_units
+   v = lowercase(var)
+   if startswith(v, "rho") || v == "n"
+      return rho_u
+   elseif startswith(v, "x") || startswith(v, "y") || startswith(v, "z") ||
+          startswith(v, "r")
+      return x_u
+   elseif startswith(v, "u") || startswith(v, "v")
+      return u_u
+   elseif startswith(v, "b")
+      return b_u
+   elseif startswith(v, "p")
+      return p_u
+   elseif startswith(v, "j")
+      return j_u
+   else
+      return nothing
+   end
 end
 
 function getunit(bd, var)
    # Batsrus has a bug in the 2D cuts of 3D runs: it always outputs the 3
    # coordinate units in the headline. To work around it, here the index is shifted by 1.
-   var_ = findfirst(x->lowercase(x)==lowercase(var), bd.head.wname) + bd.head.ndim + 1
+   var_ = findfirst(x -> lowercase(x) == lowercase(var), bd.head.wname) + bd.head.ndim + 1
    isnothing(var_) && error("$(var) not found in file header variables!")
+
    if bd.head.headline in ("normalized variables", "PLANETARY")
-      var_unit = nothing
+      # Known special cases where header string parsing might fail or be implicit
+      typeunit = bd.head.headline == "PLANETARY" ? "PLANETARY" :
+                 _get_typeunit(bd.head.headline)
+      sys_units = _get_system_units(typeunit)
+      var_unit = _infer_unit_from_name(var, sys_units)
    else
       var_unit_strs = split(bd.head.headline)
-
-      if var_unit_strs[var_] == "R"
-         var_unit = bu"R"
-      elseif var_unit_strs[var_] == "Mp/cc"
-         var_unit = bu"amucc"
-      elseif var_unit_strs[var_] == "uA/m2"
-         var_unit = bu"ampm2"
-      elseif var_unit_strs[var_] == "V/m2"
-         var_unit = bu"vm2"
+      # Ensure index is within bounds, otherwise fallback to inference
+      if var_ <= length(var_unit_strs)
+         var_unit = _parse_unit(var_unit_strs[var_])
       else
-         var_unit = Unitful.uparse(var_unit_strs[var_])
+         # Fallback
+         typeunit = _get_typeunit(bd.head.headline)
+         sys_units = _get_system_units(typeunit)
+         var_unit = _infer_unit_from_name(var, sys_units)
       end
    end
 
@@ -71,23 +154,17 @@ end
 
 function getunits(bd)
    var_unit_strs = split(bd.head.headline)
-   var_units = [] # needs to be improved!
-   for var_unit_str in var_unit_strs
-      if var_unit_str == "R"
-         var_unit = bu"R"
-      elseif var_unit_str == "Mp/cc"
-         var_unit = bu"amucc"
-      elseif var_unit_str == "uA/m2"
-         var_unit = bu"ampm2"
-      elseif var_unit_str == "V/m2"
-         var_unit = bu"vm2"
-      else
-         var_unit = UnitfulBatsrus.Unitful.uparse(var_unit_str)
-      end
-      push!(var_units, var_unit)
-   end
 
-   var_units
+   # If parsing strategies based on strings is risky, we might want to check for known types first
+   typeunit = _get_typeunit(bd.head.headline)
+   sys_units = _get_system_units(typeunit)
+
+   if length(var_unit_strs) < length(bd.head.wname)
+      # Use inference
+      return [_infer_unit_from_name(w, sys_units) for w in bd.head.wname]
+   else
+      return [_parse_unit(str) for str in var_unit_strs]
+   end
 end
 
 end
