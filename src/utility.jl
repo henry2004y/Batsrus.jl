@@ -1,7 +1,7 @@
 # Utility functions for plotting and analyzing.
 
 """
-     interp2d(bd::BATS, var::AbstractString, plotrange=[-Inf, Inf, -Inf, Inf],
+     interp2d(bd::BatsrusIDL, var::AbstractString, plotrange=[-Inf, Inf, -Inf, Inf],
     	 plotinterval=Inf; kwargs...)
 
 Return 2D interpolated slices of data `var` from `bd`. If `plotrange` is not set, output
@@ -14,7 +14,9 @@ data resolution is the same as the original.
   - `useMatplotlib=true`: Whether to Matplotlib (faster) or NaturalNeighbours for scattered
     interpolation. If true, a linear interpolation is performed on a constructed triangle mesh.
 """
-function interp2d(bd::BATS{2, TV, TX, TW}, var::AbstractString,
+function interp2d end
+
+function interp2d(bd::BatsrusIDLUnstructured{2, TV, TX, TW}, var::AbstractString,
       plotrangeIn::Vector = [-Inf32, Inf32, -Inf32, Inf32], plotinterval::Real = Inf32;
       innermask::Bool = false, rbody::Real = 1.0, useMatplotlib::Bool = true
 ) where {TV, TX, TW}
@@ -22,109 +24,127 @@ function interp2d(bd::BATS{2, TV, TX, TW}, var::AbstractString,
    varIndex_ = findindex(bd, var)
    plotrange = TV.(plotrangeIn)
 
-   if bd.head.gencoord # Generalized coordinates
-      X, Y = eachslice(x, dims = 3)
-      X, Y = vec(X), vec(Y)
-      W = @views w[:, :, varIndex_] |> vec
+   X, Y = eachslice(x, dims = 3)
+   X, Y = vec(X), vec(Y)
+   W = @views w[:, :, varIndex_] |> vec
 
-      adjust_plotrange!(plotrange, extrema(X), extrema(Y))
-      # Set a heuristic value if not set
-      if isinf(plotinterval)
-         plotinterval = (plotrange[2] - plotrange[1]) / size(X, 1)
-      end
-      xi = range(plotrange[1], stop = plotrange[2], step = plotinterval)
-      yi = range(plotrange[3], stop = plotrange[4], step = plotinterval)
+   adjust_plotrange!(plotrange, extrema(X), extrema(Y))
+   # Set a heuristic value if not set
+   if isinf(plotinterval)
+      plotinterval = (plotrange[2] - plotrange[1]) / size(X, 1)
+   end
+   xi = range(plotrange[1], stop = plotrange[2], step = plotinterval)
+   yi = range(plotrange[3], stop = plotrange[4], step = plotinterval)
 
-      if useMatplotlib
-         try
-            Wi = _triangulate_matplotlib(X, Y, W, xi, yi)
-         catch e
-            if e isa MethodError
-               error("Matplotlib interpolation requires PyPlot to be loaded.")
-            else
-               rethrow(e)
-            end
-         end
-      else
-         xi, yi, Wi = interpolate2d_generalized_coords(X, Y, W, plotrange, plotinterval)
-      end
-   else # Cartesian coordinates
-      xrange, yrange = get_range(bd)
-      if all(isinf.(plotrange))
-         xi, yi = xrange, yrange
-         Wi = w[:, :, varIndex_].data' # Matplotlib does not accept view!
-      else
-         adjust_plotrange!(plotrange, (xrange[1], xrange[end]), (yrange[1], yrange[end]))
-
-         if isinf(plotinterval)
-            xi = range(plotrange[1], stop = plotrange[2], step = xrange[2] - xrange[1])
-            yi = range(plotrange[3], stop = plotrange[4], step = yrange[2] - yrange[1])
+   if useMatplotlib
+      try
+         Wi = _triangulate_matplotlib(X, Y, W, xi, yi)
+      catch e
+         if e isa MethodError
+            error("Matplotlib interpolation requires PyPlot to be loaded.")
          else
-            xi = range(plotrange[1], stop = plotrange[2], step = plotinterval)
-            yi = range(plotrange[3], stop = plotrange[4], step = plotinterval)
+            rethrow(e)
          end
-         itp = @views scale(interpolate(w[:, :, varIndex_], BSpline(Linear())),
-            (xrange, yrange))
-         Wi = [itp(i, j) for j in yi, i in xi]
       end
+   else
+      xi, yi, Wi = interpolate2d_generalized_coords(X, Y, W, plotrange, plotinterval)
    end
 
-   # Mask a circle at the inner boundary
-   if innermask
-      varIndex_ = findlast(x -> x == "rbody", bd.head.param)
-      if isnothing(varIndex_)
-         @info "rbody not found in file header parameters; use keyword rbody"
-         @inbounds @simd for i in CartesianIndices(Wi)
-            if xi[i[2]]^2 + yi[i[1]]^2 < rbody^2
-               Wi[i] = NaN
-            end
-         end
-      else
-         ndim = 2
-         ParamIndex_ = varIndex_ - ndim - bd.head.nw
-         @inbounds @simd for i in CartesianIndices(Wi)
-            if xi[i[1]]^2 + yi[i[2]]^2 < bd.head.eqpar[ParamIndex_]^2
-               Wi[i] = NaN
-            end
-         end
-      end
-   end
+   _mask_inner_boundary!(Wi, xi, yi, bd, innermask, rbody)
 
    xi, yi, Wi
+end
+
+function interp2d(bd::BatsrusIDLStructured{2, TV, TX, TW}, var::AbstractString,
+      plotrangeIn::Vector = [-Inf32, Inf32, -Inf32, Inf32], plotinterval::Real = Inf32;
+      innermask::Bool = false, rbody::Real = 1.0, useMatplotlib::Bool = true
+) where {TV, TX, TW}
+   x, w = bd.x, bd.w
+   varIndex_ = findindex(bd, var)
+   plotrange = TV.(plotrangeIn)
+
+   xrange, yrange = get_range(bd)
+   if all(isinf.(plotrange))
+      xi, yi = xrange, yrange
+      Wi = w[:, :, varIndex_].data' # Matplotlib does not accept view!
+   else
+      adjust_plotrange!(plotrange, (xrange[1], xrange[end]), (yrange[1], yrange[end]))
+
+      if isinf(plotinterval)
+         xi = range(plotrange[1], stop = plotrange[2], step = xrange[2] - xrange[1])
+         yi = range(plotrange[3], stop = plotrange[4], step = yrange[2] - yrange[1])
+      else
+         xi = range(plotrange[1], stop = plotrange[2], step = plotinterval)
+         yi = range(plotrange[3], stop = plotrange[4], step = plotinterval)
+      end
+      itp = @views scale(interpolate(w[:, :, varIndex_], BSpline(Linear())),
+         (xrange, yrange))
+      Wi = [itp(i, j) for j in yi, i in xi]
+   end
+
+   _mask_inner_boundary!(Wi, xi, yi, bd, innermask, rbody)
+
+   xi, yi, Wi
+end
+
+function _mask_inner_boundary!(Wi, xi, yi, bd::BatsrusIDL, innermask::Bool, rbody::Real)
+   !innermask && return
+   varIndex_ = findlast(x -> x == "rbody", bd.head.param)
+   if isnothing(varIndex_)
+      @info "rbody not found in file header parameters; use keyword rbody"
+      @inbounds @simd for i in CartesianIndices(Wi)
+         if xi[i[2]]^2 + yi[i[1]]^2 < rbody^2
+            Wi[i] = NaN
+         end
+      end
+   else
+      ndim = 2
+      ParamIndex_ = varIndex_ - ndim - bd.head.nw
+      @inbounds @simd for i in CartesianIndices(Wi)
+         if xi[i[1]]^2 + yi[i[2]]^2 < bd.head.eqpar[ParamIndex_]^2
+            Wi[i] = NaN
+         end
+      end
+   end
 end
 
 """
 Return the axis range for 2D outputs. See [`interp2d`](@ref).
 """
-function meshgrid(bd::BATS,
+function meshgrid(bd::BatsrusIDLUnstructured,
       plotrange::Vector = [-Inf32, Inf32, -Inf32, Inf32], plotinterval::Real = Inf32)
    x = bd.x
 
-   if bd.head.gencoord # Generalized coordinates
-      X, Y = eachslice(x, dims = 3)
-      X, Y = vec(X), vec(Y)
+   X, Y = eachslice(x, dims = 3)
+   X, Y = vec(X), vec(Y)
 
-      adjust_plotrange!(plotrange, extrema(X), extrema(Y))
-      # Set a heuristic value if not set
+   adjust_plotrange!(plotrange, extrema(X), extrema(Y))
+   # Set a heuristic value if not set
+   if isinf(plotinterval)
+      plotinterval = (plotrange[2] - plotrange[1]) / size(X, 1)
+   end
+   xi = range(plotrange[1], stop = plotrange[2], step = plotinterval)
+   yi = range(plotrange[3], stop = plotrange[4], step = plotinterval)
+
+   xi, yi
+end
+
+function meshgrid(bd::BatsrusIDLStructured,
+      plotrange::Vector = [-Inf32, Inf32, -Inf32, Inf32], plotinterval::Real = Inf32)
+   x = bd.x
+
+   xrange, yrange = get_range(bd)
+   if all(isinf.(plotrange))
+      xi, yi = xrange, yrange
+   else
+      adjust_plotrange!(plotrange, (xrange[1], xrange[end]), (yrange[1], yrange[end]))
+
       if isinf(plotinterval)
-         plotinterval = (plotrange[2] - plotrange[1]) / size(X, 1)
-      end
-      xi = range(plotrange[1], stop = plotrange[2], step = plotinterval)
-      yi = range(plotrange[3], stop = plotrange[4], step = plotinterval)
-   else # Cartesian coordinates
-      xrange, yrange = get_range(bd)
-      if all(isinf.(plotrange))
-         xi, yi = xrange, yrange
+         xi = range(plotrange[1], stop = plotrange[2], step = xrange[2] - xrange[1])
+         yi = range(plotrange[3], stop = plotrange[4], step = yrange[2] - yrange[1])
       else
-         adjust_plotrange!(plotrange, (xrange[1], xrange[end]), (yrange[1], yrange[end]))
-
-         if isinf(plotinterval)
-            xi = range(plotrange[1], stop = plotrange[2], step = xrange[2] - xrange[1])
-            yi = range(plotrange[3], stop = plotrange[4], step = yrange[2] - yrange[1])
-         else
-            xi = range(plotrange[1], stop = plotrange[2], step = plotinterval)
-            yi = range(plotrange[3], stop = plotrange[4], step = plotinterval)
-         end
+         xi = range(plotrange[1], stop = plotrange[2], step = plotinterval)
+         yi = range(plotrange[3], stop = plotrange[4], step = plotinterval)
       end
    end
 
@@ -134,7 +154,7 @@ end
 """
 Find variable index in the BATSRUS data.
 """
-function findindex(bd::BATS, var::AbstractString)
+function findindex(bd::BatsrusIDL, var::AbstractString)
    varIndex_ = findfirst(x -> lowercase(x) == lowercase(var), bd.head.wname)
    isnothing(varIndex_) && error("$(var) not found in file header variables!")
 
@@ -151,7 +171,7 @@ function meshgrid(x, y)
    X, Y
 end
 
-@inline hasunit(bd::BATS) = startswith(bd.head.headline, "normalized") ? false : true
+@inline hasunit(bd::BatsrusIDL) = startswith(bd.head.headline, "normalized") ? false : true
 
 """
 Adjust 2D plot ranges.
@@ -180,17 +200,15 @@ function interpolate2d_generalized_coords(X::T, Y::T, W::T,
 end
 
 """
-     interp1d(bd::BATS, var::AbstractString, loc::AbstractVector{<:AbstractFloat})
+     interp1d(bd::BatsrusIDLStructured, var::AbstractString, loc::AbstractVector{<:AbstractFloat})
 
 Interpolate `var` at spatial point `loc` in `bd`.
 """
 function interp1d(
-      bd::BATS{2, TV, TX, TW},
+      bd::BatsrusIDLStructured{2, TV, TX, TW},
       var::AbstractString,
       loc::AbstractVector{<:AbstractFloat}
 ) where {TV, TX, TW}
-   @assert !bd.head.gencoord "Only accept structured grids!"
-
    v = getview(bd, var)
    xrange, yrange = get_range(bd)
    itp = scale(interpolate(v, BSpline(Linear())), (xrange, yrange))
@@ -199,18 +217,16 @@ function interp1d(
 end
 
 """
-     interp1d(bd::BATS, var::AbstractString, point1::Vector, point2::Vector)
+     interp1d(bd::BatsrusIDLStructured, var::AbstractString, point1::Vector, point2::Vector)
 
 Interpolate `var` along a line from `point1` to `point2` in `bd`.
 """
 function interp1d(
-      bd::BATS{2, TV, TX, TW},
+      bd::BatsrusIDLStructured{2, TV, TX, TW},
       var::AbstractString,
       point1::Vector,
       point2::Vector
 ) where {TV, TX, TW}
-   @assert !bd.head.gencoord "Only accept structured grids!"
-
    v = getview(bd, var)
    xrange, yrange = get_range(bd)
    itp = scale(interpolate(v, BSpline(Linear())), (xrange, yrange))
@@ -237,13 +253,13 @@ slice1d(bd, var, icut::Int = 1, dir::Int = 2) = selectdim(bd[var], dir, icut)
 """
 Return view of variable `var` in `bd`.
 """
-function getview(bd::BATS{1, TV, TX, TW}, var) where {TV, TX, TW}
+function getview(bd::BatsrusIDL{1, TV}, var) where {TV}
    varIndex_ = findindex(bd, var)
 
    v = @view bd.w[:, varIndex_]
 end
 
-function getview(bd::BATS{2, TV, TX, TW}, var) where {TV, TX, TW}
+function getview(bd::BatsrusIDL{2, TV}, var) where {TV}
    varIndex_ = findindex(bd, var)
 
    v = @view bd.w[:, :, varIndex_]
@@ -252,12 +268,12 @@ end
 """
 Return value range of `var` in `bd`.
 """
-get_var_range(bd::BATS, var) = getview(bd, var) |> extrema
+get_var_range(bd::BatsrusIDL, var) = getview(bd, var) |> extrema
 
 """
 Return mesh range of `bd`.
 """
-function get_range(bd::BATS{2, TV, TX, TW}) where {TV, TX, TW}
+function get_range(bd::BatsrusIDLStructured{2, TV, TX, TW}) where {TV, TX, TW}
    x = bd.x
    xrange = range(x[1, 1, 1], x[end, 1, 1], length = size(x, 1))
    yrange = range(x[1, 1, 2], x[1, end, 2], length = size(x, 2))
@@ -265,7 +281,7 @@ function get_range(bd::BATS{2, TV, TX, TW}) where {TV, TX, TW}
    xrange, yrange
 end
 
-function get_range(bd::BATS{3, TV, TX, TW}) where {TV, TX, TW}
+function get_range(bd::BatsrusIDLStructured{3, TV, TX, TW}) where {TV, TX, TW}
    x = bd.x
    xrange = range(x[1, 1, 1, 1], x[end, 1, 1, 1], length = size(x, 1))
    yrange = range(x[1, 1, 1, 2], x[1, end, 1, 2], length = size(x, 2))

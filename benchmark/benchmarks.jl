@@ -10,7 +10,7 @@ println()
 testdata_url = "https://github.com/henry2004y/batsrus_data/raw/master/batsrus_data.tar.gz"
 directory = "data"
 files = ("1d__raw_2_t25.60000_n00000258.out", "z=0_raw_1_t25.60000_n00000258.out",
-   "z=0_fluid_region0_0_t00001640_n00010142.out")
+   "z=0_fluid_region0_0_t00001640_n00010142.out", "3d_raw.out")
 
 # Check if all files already exist
 if joinpath(directory, files[1]) |> isfile
@@ -43,6 +43,12 @@ SUITE["read"]["Interp2d"] = @benchmarkable Batsrus.interp2d($bd, "rho")
 file = joinpath(directory, files[3])
 bd = load(file)
 SUITE["read"]["Anisotropy"] = @benchmarkable get_anisotropy($bd, 1)
+
+file = joinpath(directory, files[4])
+bd = load(file)
+SUITE["read"]["Cutdir"] = @benchmarkable cutdata($bd, "p", dir = "y", sequence = 1)
+SUITE["read"]["Cutdir subset"] = @benchmarkable cutdata(
+   $bd, "p", dir = "y", sequence = 1, plotrange = [-50.0, 50.0, -0.5, 0.5])
 
 println("Generating mock AMReX data for benchmark...")
 amrex_dir = joinpath(directory, "amrex_mock")

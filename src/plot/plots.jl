@@ -3,7 +3,7 @@
 using RecipesBase
 
 # Build a recipe which acts on a custom type.
-@recipe function f(bd::BATS{1, TV, TX, TW}, var::AbstractString) where {TV, TX, TW}
+@recipe function f(bd::BatsrusIDL{1, TV}, var::AbstractString) where {TV}
    hasunits = hasunit(bd)
 
    if hasunits
@@ -22,8 +22,8 @@ using RecipesBase
    end
 end
 
-@recipe function f(bd::BATS{2, TV, TX, TW}, var::AbstractString;
-      plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1) where {TV, TX, TW}
+@recipe function f(bd::BatsrusIDL{2, TV}, var::AbstractString;
+      plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1) where {TV}
    hasunits = hasunit(bd)
 
    x, y, w = interp2d(bd, var, plotrange, plotinterval)
