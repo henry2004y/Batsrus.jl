@@ -1,9 +1,3 @@
-
-using Batsrus
-using DimensionalData
-using StaticArrays
-using Test
-
 # Mock BATS creation
 function create_mock_bats(gencoord::Bool)
    nx, ny, nz = 10, 10, 10

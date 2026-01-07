@@ -70,25 +70,18 @@ function subsurface(x, y, data, limits)
    end
 
    xmin, xmax, ymin, ymax = limits
-   if isinf(xmin)
-      xmin = first(dims(data, 1))
-   end
-   if isinf(xmax)
-      xmax = last(dims(data, 1))
-   end
-   if isinf(ymin)
-      ymin = first(dims(data, 2))
-   end
-   if isinf(ymax)
-      ymax = last(dims(data, 2))
-   end
+   xmin = isinf(xmin) ? first(dims(data, 1)) : xmin
+   xmax = isinf(xmax) ? last(dims(data, 1)) : xmax
+   ymin = isinf(ymin) ? first(dims(data, 2)) : ymin
+   ymax = isinf(ymax) ? last(dims(data, 2)) : ymax
 
+   selectors = (Between(xmin, xmax), Between(ymin, ymax))
    # This assumes x and y are the dimensions of data, which they should be for cutdata results
-   subdata = data[Between(xmin, xmax), Between(ymin, ymax)]
+   subdata = data[selectors...]
    # subx and suby should also be sliced if they are DimArrays, or we can just return the dims from subdata
    # In cutdata, cut1 (x) and cut2 (y) are DimArrays.
-   subx = x[Between(xmin, xmax), Between(ymin, ymax)]
-   suby = y[Between(xmin, xmax), Between(ymin, ymax)]
+   subx = x[selectors...]
+   suby = y[selectors...]
 
    subx, suby, subdata
 end
@@ -102,24 +95,17 @@ function subsurface(x, y, u, v, limits)
    end
 
    xmin, xmax, ymin, ymax = limits
-   if isinf(xmin)
-      xmin = first(dims(u, 1))
-   end
-   if isinf(xmax)
-      xmax = last(dims(u, 1))
-   end
-   if isinf(ymin)
-      ymin = first(dims(u, 2))
-   end
-   if isinf(ymax)
-      ymax = last(dims(u, 2))
-   end
+   xmin = isinf(xmin) ? first(dims(u, 1)) : xmin
+   xmax = isinf(xmax) ? last(dims(u, 1)) : xmax
+   ymin = isinf(ymin) ? first(dims(u, 2)) : ymin
+   ymax = isinf(ymax) ? last(dims(u, 2)) : ymax
 
-   newu = u[Between(xmin, xmax), Between(ymin, ymax)]
-   newv = v[Between(xmin, xmax), Between(ymin, ymax)]
+   selectors = (Between(xmin, xmax), Between(ymin, ymax))
+   newu = u[selectors...]
+   newv = v[selectors...]
 
-   subx = x[Between(xmin, xmax), Between(ymin, ymax)]
-   suby = y[Between(xmin, xmax), Between(ymin, ymax)]
+   subx = x[selectors...]
+   suby = y[selectors...]
 
    subx, suby, newu, newv
 end
@@ -140,29 +126,18 @@ function subvolume(x, y, z, data, limits)
    end
 
    xmin, xmax, ymin, ymax, zmin, zmax = limits
-   if isinf(xmin)
-      xmin = first(dims(data, 1))
-   end
-   if isinf(xmax)
-      xmax = last(dims(data, 1))
-   end
-   if isinf(ymin)
-      ymin = first(dims(data, 2))
-   end
-   if isinf(ymax)
-      ymax = last(dims(data, 2))
-   end
-   if isinf(zmin)
-      zmin = first(dims(data, 3))
-   end
-   if isinf(zmax)
-      zmax = last(dims(data, 3))
-   end
+   xmin = isinf(xmin) ? first(dims(data, 1)) : xmin
+   xmax = isinf(xmax) ? last(dims(data, 1)) : xmax
+   ymin = isinf(ymin) ? first(dims(data, 2)) : ymin
+   ymax = isinf(ymax) ? last(dims(data, 2)) : ymax
+   zmin = isinf(zmin) ? first(dims(data, 3)) : zmin
+   zmax = isinf(zmax) ? last(dims(data, 3)) : zmax
 
-   subdata = data[Between(xmin, xmax), Between(ymin, ymax), Between(zmin, zmax)]
-   subx = x[Between(xmin, xmax), Between(ymin, ymax), Between(zmin, zmax)]
-   suby = y[Between(xmin, xmax), Between(ymin, ymax), Between(zmin, zmax)]
-   subz = z[Between(xmin, xmax), Between(ymin, ymax), Between(zmin, zmax)]
+   selectors = (Between(xmin, xmax), Between(ymin, ymax), Between(zmin, zmax))
+   subdata = data[selectors...]
+   subx = x[selectors...]
+   suby = y[selectors...]
+   subz = z[selectors...]
 
    subx, suby, subz, subdata
 end
@@ -177,32 +152,21 @@ function subvolume(x, y, z, u, v, w, limits)
    end
 
    xmin, xmax, ymin, ymax, zmin, zmax = limits
-   if isinf(xmin)
-      xmin = first(dims(u, 1))
-   end
-   if isinf(xmax)
-      xmax = last(dims(u, 1))
-   end
-   if isinf(ymin)
-      ymin = first(dims(u, 2))
-   end
-   if isinf(ymax)
-      ymax = last(dims(u, 2))
-   end
-   if isinf(zmin)
-      zmin = first(dims(u, 3))
-   end
-   if isinf(zmax)
-      zmax = last(dims(u, 3))
-   end
+   xmin = isinf(xmin) ? first(dims(u, 1)) : xmin
+   xmax = isinf(xmax) ? last(dims(u, 1)) : xmax
+   ymin = isinf(ymin) ? first(dims(u, 2)) : ymin
+   ymax = isinf(ymax) ? last(dims(u, 2)) : ymax
+   zmin = isinf(zmin) ? first(dims(u, 3)) : zmin
+   zmax = isinf(zmax) ? last(dims(u, 3)) : zmax
 
-   newu = u[Between(xmin, xmax), Between(ymin, ymax), Between(zmin, zmax)]
-   newv = v[Between(xmin, xmax), Between(ymin, ymax), Between(zmin, zmax)]
-   neww = w[Between(xmin, xmax), Between(ymin, ymax), Between(zmin, zmax)]
+   selectors = (Between(xmin, xmax), Between(ymin, ymax), Between(zmin, zmax))
+   newu = u[selectors...]
+   newv = v[selectors...]
+   neww = w[selectors...]
 
-   subx = x[Between(xmin, xmax), Between(ymin, ymax), Between(zmin, zmax)]
-   suby = y[Between(xmin, xmax), Between(ymin, ymax), Between(zmin, zmax)]
-   subz = z[Between(xmin, xmax), Between(ymin, ymax), Between(zmin, zmax)]
+   subx = x[selectors...]
+   suby = y[selectors...]
+   subz = z[selectors...]
 
    subx, suby, subz, newu, newv, neww
 end
