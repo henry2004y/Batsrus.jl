@@ -55,40 +55,6 @@ end
    end
 end
 
-@inline function findindexes(x, y, limits)
-   hx = @view x[:, 1]
-   hy = @view y[1, :]
-
-   limits[1] = ifelse(isinf(limits[1]), hx[1], limits[1])
-   limits[2] = ifelse(isinf(limits[2]), hx[end], limits[2])
-   limits[3] = ifelse(isinf(limits[3]), hy[1], limits[3])
-   limits[4] = ifelse(isinf(limits[4]), hy[end], limits[4])
-
-   xind = searchsortedfirst(hx, limits[1]):searchsortedlast(hx, limits[2])
-   yind = searchsortedfirst(hy, limits[3]):searchsortedlast(hy, limits[4])
-
-   CartesianIndices((xind, yind))
-end
-
-@inline function findindexes(x, y, z, limits)
-   hx = @view x[:, 1, 1]
-   hy = @view y[1, :, 1]
-   hz = @view z[1, 1, :]
-
-   limits[1] = ifelse(isinf(limits[1]), hx[1], limits[1])
-   limits[2] = ifelse(isinf(limits[2]), hx[end], limits[2])
-   limits[3] = ifelse(isinf(limits[3]), hy[1], limits[3])
-   limits[4] = ifelse(isinf(limits[4]), hy[end], limits[4])
-   limits[5] = ifelse(isinf(limits[5]), hz[1], limits[5])
-   limits[6] = ifelse(isinf(limits[6]), hz[end], limits[6])
-
-   xind = searchsortedfirst(hx, limits[1]):searchsortedlast(hx, limits[2])
-   yind = searchsortedfirst(hy, limits[3]):searchsortedlast(hy, limits[4])
-   zind = searchsortedfirst(hz, limits[5]):searchsortedlast(hz, limits[6])
-
-   CartesianIndices((xind, yind, zind))
-end
-
 """
     subsurface(x, y, data, limits)
     subsurface(x, y, u, v, limits)
@@ -98,14 +64,24 @@ Extract subset of 2D surface dataset in ndgrid format. See also: [`subvolume`](@
 function subsurface(x, y, data, limits)
    checkvalidlimits(limits)
 
-   ids = findindexes(x, y, limits)
-
-   @views begin
-      subdata = data[ids]
-
-      subx = x[ids]
-      suby = y[ids]
+   if DimensionalData.lookup(x, 1) isa DimensionalData.NoLookup ||
+      DimensionalData.lookup(x, 2) isa DimensionalData.NoLookup
+      error("Selectors are only supported for rectilinear grids (gencoord=false)!")
    end
+
+   xmin, xmax, ymin, ymax = limits
+   xmin = isinf(xmin) ? first(dims(data, 1)) : xmin
+   xmax = isinf(xmax) ? last(dims(data, 1)) : xmax
+   ymin = isinf(ymin) ? first(dims(data, 2)) : ymin
+   ymax = isinf(ymax) ? last(dims(data, 2)) : ymax
+
+   selectors = (Between(xmin, xmax), Between(ymin, ymax))
+   # This assumes x and y are the dimensions of data, which they should be for cutdata results
+   subdata = data[selectors...]
+   # subx and suby should also be sliced if they are DimArrays, or we can just return the dims from subdata
+   # In cutdata, cut1 (x) and cut2 (y) are DimArrays.
+   subx = x[selectors...]
+   suby = y[selectors...]
 
    subx, suby, subdata
 end
@@ -113,15 +89,23 @@ end
 function subsurface(x, y, u, v, limits)
    checkvalidlimits(limits)
 
-   ids = findindexes(x, y, limits)
-
-   @views begin
-      newu = u[ids]
-      newv = v[ids]
-
-      subx = x[ids]
-      suby = y[ids]
+   if DimensionalData.lookup(x, 1) isa DimensionalData.NoLookup ||
+      DimensionalData.lookup(x, 2) isa DimensionalData.NoLookup
+      error("Selectors are only supported for rectilinear grids (gencoord=false)!")
    end
+
+   xmin, xmax, ymin, ymax = limits
+   xmin = isinf(xmin) ? first(dims(u, 1)) : xmin
+   xmax = isinf(xmax) ? last(dims(u, 1)) : xmax
+   ymin = isinf(ymin) ? first(dims(u, 2)) : ymin
+   ymax = isinf(ymax) ? last(dims(u, 2)) : ymax
+
+   selectors = (Between(xmin, xmax), Between(ymin, ymax))
+   newu = u[selectors...]
+   newv = v[selectors...]
+
+   subx = x[selectors...]
+   suby = y[selectors...]
 
    subx, suby, newu, newv
 end
@@ -135,15 +119,25 @@ Extract subset of 3D dataset in ndgrid format. See also: [`subsurface`](@ref).
 function subvolume(x, y, z, data, limits)
    checkvalidlimits(limits, 3)
 
-   ids = findindexes(x, y, z, limits)
-
-   @views begin
-      subdata = data[ids]
-
-      subx = x[ids]
-      suby = y[ids]
-      subz = z[ids]
+   if DimensionalData.lookup(x, 1) isa DimensionalData.NoLookup ||
+      DimensionalData.lookup(x, 2) isa DimensionalData.NoLookup ||
+      DimensionalData.lookup(x, 3) isa DimensionalData.NoLookup
+      error("Selectors are only supported for rectilinear grids (gencoord=false)!")
    end
+
+   xmin, xmax, ymin, ymax, zmin, zmax = limits
+   xmin = isinf(xmin) ? first(dims(data, 1)) : xmin
+   xmax = isinf(xmax) ? last(dims(data, 1)) : xmax
+   ymin = isinf(ymin) ? first(dims(data, 2)) : ymin
+   ymax = isinf(ymax) ? last(dims(data, 2)) : ymax
+   zmin = isinf(zmin) ? first(dims(data, 3)) : zmin
+   zmax = isinf(zmax) ? last(dims(data, 3)) : zmax
+
+   selectors = (Between(xmin, xmax), Between(ymin, ymax), Between(zmin, zmax))
+   subdata = data[selectors...]
+   subx = x[selectors...]
+   suby = y[selectors...]
+   subz = z[selectors...]
 
    subx, suby, subz, subdata
 end
@@ -151,17 +145,28 @@ end
 function subvolume(x, y, z, u, v, w, limits)
    checkvalidlimits(limits, 3)
 
-   ids = findindexes(x, y, z, limits)
-
-   @views begin
-      newu = u[ids]
-      newv = v[ids]
-      neww = w[ids]
-
-      subx = x[ids]
-      suby = y[ids]
-      subz = z[ids]
+   if DimensionalData.lookup(x, 1) isa DimensionalData.NoLookup ||
+      DimensionalData.lookup(x, 2) isa DimensionalData.NoLookup ||
+      DimensionalData.lookup(x, 3) isa DimensionalData.NoLookup
+      error("Selectors are only supported for rectilinear grids (gencoord=false)!")
    end
+
+   xmin, xmax, ymin, ymax, zmin, zmax = limits
+   xmin = isinf(xmin) ? first(dims(u, 1)) : xmin
+   xmax = isinf(xmax) ? last(dims(u, 1)) : xmax
+   ymin = isinf(ymin) ? first(dims(u, 2)) : ymin
+   ymax = isinf(ymax) ? last(dims(u, 2)) : ymax
+   zmin = isinf(zmin) ? first(dims(u, 3)) : zmin
+   zmax = isinf(zmax) ? last(dims(u, 3)) : zmax
+
+   selectors = (Between(xmin, xmax), Between(ymin, ymax), Between(zmin, zmax))
+   newu = u[selectors...]
+   newv = v[selectors...]
+   neww = w[selectors...]
+
+   subx = x[selectors...]
+   suby = y[selectors...]
+   subz = z[selectors...]
 
    subx, suby, subz, newu, newv, neww
 end
