@@ -286,55 +286,80 @@ Obtain the header information from BATSRUS output file of `type` linked to `file
   - `filelist::FileList`: file information.
 """
 function getfilehead(fileID::IOStream, filelist::FileList)
-   type, lenstr = filelist.type, filelist.lenhead
+   if filelist.type == AsciiBat
+      return _read_head_ascii(fileID)
+   else # Real4Bat / Real8Bat
+      return _read_head_binary(fileID, filelist.lenhead)
+   end
+end
 
-   if type == AsciiBat
-      headline = readline(fileID)
-      line = readline(fileID) |> split
-      it = Parsers.parse(Int32, line[1])
-      t = Parsers.parse(Float32, line[2])
-      ndim = Parsers.parse(Int32, line[3])
-      neqpar = Parsers.parse(Int32, line[4])
-      nw = Parsers.parse(Int32, line[5])
-      gencoord = ndim < 0
-      ndim = abs(ndim)
-      nx = Parsers.parse.(Int32, split(readline(fileID)))
-      if neqpar > 0
-         eqpar = Parsers.parse.(Float32, split(readline(fileID)))
-      end
-      varname = readline(fileID)
-   elseif type ∈ (Real4Bat, Real8Bat)
-      skip(fileID, TAG)
-      headline = rstrip(String(read(fileID, lenstr)))
-      skip(fileID, 2 * TAG)
-      it = read(fileID, Int32)
-      t = read(fileID, Float32)
-      ndim = read(fileID, Int32)
-      gencoord = ndim < 0
-      ndim = abs(ndim)
-      neqpar = read(fileID, Int32)
-      nw = read(fileID, Int32)
-      skip(fileID, 2 * TAG)
-      nx = zeros(Int32, ndim)
-      read!(fileID, nx)
-      skip(fileID, 2 * TAG)
-      if neqpar > 0
-         eqpar = zeros(Float32, neqpar)
-         read!(fileID, eqpar)
-         skip(fileID, 2 * TAG)
-      end
-      varname = String(read(fileID, lenstr))
-      skip(fileID, TAG)
+function _read_head_ascii(fileID::IOStream)
+   headline = readline(fileID)
+   # Improve parsing performance by avoiding split?
+   # split creates a vector of substrings.
+   line_parts = split(readline(fileID))
+   it = Parsers.parse(Int32, line_parts[1])
+   t = Parsers.parse(Float32, line_parts[2])
+   ndim = Parsers.parse(Int32, line_parts[3])
+   neqpar = Parsers.parse(Int32, line_parts[4])
+   nw = Parsers.parse(Int32, line_parts[5])
+
+   gencoord = ndim < 0
+   ndim = abs(ndim)
+
+   nx = Parsers.parse.(Int32, split(readline(fileID)))
+
+   if neqpar > 0
+      eqpar = Parsers.parse.(Float32, split(readline(fileID)))
+   else
+      eqpar = Float32[]
    end
 
+   varname = readline(fileID)
+
+   _create_batshead(ndim, headline, it, t, gencoord, neqpar, nw, nx, eqpar, varname)
+end
+
+function _read_head_binary(fileID::IOStream, lenstr::Integer)
+   skip(fileID, TAG)
+   headline = rstrip(String(read(fileID, lenstr)))
+   skip(fileID, 2 * TAG)
+
+   it = read(fileID, Int32)
+   t = read(fileID, Float32)
+   ndim = read(fileID, Int32)
+   gencoord = ndim < 0
+   ndim = abs(ndim)
+   neqpar = read(fileID, Int32)
+   nw = read(fileID, Int32)
+
+   skip(fileID, 2 * TAG)
+   nx = Vector{Int32}(undef, ndim)
+   read!(fileID, nx)
+   skip(fileID, 2 * TAG)
+
+   if neqpar > 0
+      eqpar = Vector{Float32}(undef, neqpar)
+      read!(fileID, eqpar)
+      skip(fileID, 2 * TAG)
+   else
+      eqpar = Float32[]
+   end
+
+   varname = String(read(fileID, lenstr))
+   skip(fileID, TAG)
+
+   _create_batshead(ndim, headline, it, t, gencoord, neqpar, nw, nx, eqpar, varname)
+end
+
+function _create_batshead(ndim, headline, it, t, gencoord, neqpar, nw, nx, eqpar, varname)
    # Obtain output variable names
    variable = lowercase.(split(varname))
    coord = @view variable[1:ndim]
    wname = @view variable[(ndim + 1):(ndim + nw)]
    param = @view variable[(ndim + nw + 1):end]
 
-   head = BatsHead(ndim, headline, it, t, gencoord, neqpar, nw, nx, eqpar,
-      coord, wname, param)
+   BatsHead(ndim, headline, it, t, gencoord, neqpar, nw, nx, eqpar, coord, wname, param)
 end
 
 function skipline(s::IO)
@@ -351,7 +376,7 @@ end
 
 Return the size in bytes for one snapshot.
 """
-function _getfilesize_binary(fileID::IOStream, lenstr::Int32, ::Val{T}) where T
+function _getfilesize_binary(fileID::IOStream, lenstr::Integer, ::Val{T}) where T
    pointer0 = position(fileID) # Record header start location
 
    skip(fileID, TAG + lenstr + 2 * TAG + sizeof(Int32) + sizeof(Float32))
