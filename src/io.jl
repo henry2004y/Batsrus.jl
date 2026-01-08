@@ -427,19 +427,9 @@ getfilesize(fileID::IOStream, lenstr::Int32, ::Val{LogBat}) = 1
 Create buffer for x and w.
 """
 function allocateBuffer(head::BatsHead, T::DataType)
-   if head.ndim == 1
-      n1 = head.nx[1]
-      x = Array{T, 2}(undef, n1, head.ndim)
-      w = Array{T, 2}(undef, n1, head.nw)
-   elseif head.ndim == 2
-      n1, n2 = head.nx
-      x = Array{T, 3}(undef, n1, n2, head.ndim)
-      w = Array{T, 3}(undef, n1, n2, head.nw)
-   elseif head.ndim == 3
-      n1, n2, n3 = head.nx
-      x = Array{T, 4}(undef, n1, n2, n3, head.ndim)
-      w = Array{T, 4}(undef, n1, n2, n3, head.nw)
-   end
+   dims = Tuple(head.nx)
+   x = Array{T, head.ndim + 1}(undef, dims..., head.ndim)
+   w = Array{T, head.ndim + 1}(undef, dims..., head.nw)
 
    x, w
 end
@@ -447,59 +437,27 @@ end
 """
 Read ascii format coordinates and data values.
 """
-function getascii!(x::Array{T, 2}, w, fileID::IOStream) where T
-   @inbounds @views for id in axes(x, 1)
-      temp = Parsers.parse.(Float64, split(readline(fileID)))
-      x[id] = temp[1]
-      w[id, :] = temp[2:end]
-   end
-end
+function getascii!(x::AbstractArray{T, N}, w, fileID::IOStream) where {T, N}
+   # N is total dimensions (including species/components).
+   # The spatial dimensions are 1:N-1.
+   spatial_dims = ntuple(i -> size(x, i), N - 1)
+   ndim = size(x, N)
 
-function getascii!(x::Array{T, 3}, w, fileID::IOStream) where T
-   @inbounds @views for id in CartesianIndices(size(x)[1:2])
+   @inbounds @views for id in CartesianIndices(spatial_dims)
       temp = Parsers.parse.(Float64, split(readline(fileID)))
-      x[id, :] = temp[1:2]
-      w[id, :] = temp[3:end]
-   end
-end
-
-function getascii!(x::Array{T, 4}, w, fileID::IOStream) where T
-   @inbounds @views for id in CartesianIndices(size(x)[1:3])
-      temp = Parsers.parse.(Float64, split(readline(fileID)))
-      x[id, :] = temp[1:3]
-      w[id, :] = temp[4:end]
+      x[id, :] = temp[1:ndim]
+      w[id, :] = temp[(ndim + 1):end]
    end
 end
 
 """
 Read binary format coordinates and data values.
 """
-function getbinary!(x::Array{T, 2}, w, fileID::IOStream) where T
+function getbinary!(x::AbstractArray{T, N}, w, fileID::IOStream) where {T, N}
    read!(fileID, x)
    skip(fileID, 2 * TAG)
-   dimlast = 2
-   @inbounds for iw in axes(w, dimlast)
-      read!(fileID, selectdim(w, dimlast, iw))
-      skip(fileID, 2 * TAG)
-   end
-end
-
-function getbinary!(x::Array{T, 3}, w, fileID::IOStream) where T
-   read!(fileID, x)
-   skip(fileID, 2 * TAG)
-   dimlast = 3
-   @inbounds for iw in axes(w, dimlast)
-      read!(fileID, selectdim(w, dimlast, iw))
-      skip(fileID, 2 * TAG)
-   end
-end
-
-function getbinary!(x::Array{T, 4}, w, fileID::IOStream) where T
-   read!(fileID, x)
-   skip(fileID, 2 * TAG)
-   dimlast = 4
-   @inbounds for iw in axes(w, dimlast)
-      read!(fileID, selectdim(w, dimlast, iw))
+   @inbounds for iw in axes(w, N)
+      read!(fileID, selectdim(w, N, iw))
       skip(fileID, 2 * TAG)
    end
 end
