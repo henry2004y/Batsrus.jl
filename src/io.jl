@@ -426,9 +426,9 @@ getfilesize(fileID::IOStream, lenstr::Int32, ::Val{LogBat}) = 1
 """
 Create buffer for x and w.
 """
-allocateBuffer(head::BatsHead, T::DataType) = _allocateBuffer(Val(head.ndim), head, T)
+allocateBuffer(head::BatsHead, ::Type{T}) where T = _allocateBuffer(Val(head.ndim), head, T)
 
-function _allocateBuffer(::Val{N}, head::BatsHead, T::DataType) where N
+function _allocateBuffer(::Val{N}, head::BatsHead, ::Type{T}) where {N, T}
    dims = ntuple(i -> head.nx[i], Val(N))
    x = Array{T, N + 1}(undef, dims..., N)
    w = Array{T, N + 1}(undef, dims..., head.nw)
