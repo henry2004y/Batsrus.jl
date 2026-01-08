@@ -174,7 +174,8 @@ end
 """
      getvar(bd::BATS, var::AbstractString) -> Array
 
-Return variable data from string `var`. This is also supported via direct indexing,
+Return variable data from string `var`. This is also supported via direct indexing.
+Note that the query variable `var` must be in lowercase!
 
 # Examples
 
@@ -184,11 +185,11 @@ bd["rho"]
 """
 function getvar(
       bd::BatsrusIDL{ndim, TV}, var::AbstractString) where {ndim, TV}
-   w = @view bd.w[var = At(lowercase(var))]
+   w = @view bd.w[var = At(var)]
 end
 
-@inline Base.@propagate_inbounds Base.getindex(
-bd::BatsrusIDL, var::AbstractString) = getvar(bd, var)
+@inline Base.@propagate_inbounds Base.getindex(bd::BatsrusIDL, var::AbstractString) = getvar(
+   bd, var)
 
 """
      fill_vector_from_scalars(bd::BatsrusIDL, var)
@@ -242,16 +243,16 @@ Return a tuple of vectors of `var`. `var` can be `:B`, `:E`, `:U`, or any `:U` f
 function get_vectors(bd::BatsrusIDL, var)
    str = string(var)
    if str == "B"
-      vx, vy, vz = bd["Bx"], bd["By"], bd["Bz"]
+      vx, vy, vz = bd["bx"], bd["by"], bd["bz"]
    elseif str == "E"
-      vx, vy, vz = bd["Ex"], bd["Ey"], bd["Ez"]
+      vx, vy, vz = bd["ex"], bd["ey"], bd["ez"]
    elseif str == "U"
-      vx, vy, vz = bd["Ux"], bd["Uy"], bd["Uz"]
+      vx, vy, vz = bd["ux"], bd["uy"], bd["uz"]
    else
       m = match(r"^U(\d+)$", str)
       if !isnothing(m)
          suffix = m[1]
-         vx, vy, vz = bd["UxS" * suffix], bd["UyS" * suffix], bd["UzS" * suffix]
+         vx, vy, vz = bd["uxs" * suffix], bd["uys" * suffix], bd["uzs" * suffix]
       else
          throw(ArgumentError("Vector variable $var not supported"))
       end
@@ -267,17 +268,32 @@ Calculate the pressure anisotropy for `species`, indexing from 0. The default `m
 based on the fact that the trace of the pressure tensor is a constant. The `rotation`
 method is based on rotating the tensor.
 """
-function get_anisotropy(bd::BatsrusIDL{2, TV}, species = 0;
-      method::Symbol = :simple) where {TV}
-   Bx, By, Bz = bd["Bx"], bd["By"], bd["Bz"]
+function get_anisotropy(bd::BatsrusIDL{2, TV}, species = 0; method = :simple) where {TV}
+   Bx, By, Bz = bd["bx"], bd["by"], bd["bz"]
    # Rotate the pressure tensor to align the 3rd direction with B
-   pop = string(species)
-   Pxx = bd["pXXS" * pop]
-   Pyy = bd["pYYS" * pop]
-   Pzz = bd["pZZS" * pop]
-   Pxy = bd["pXYS" * pop]
-   Pxz = bd["pXZS" * pop]
-   Pyz = bd["pYZS" * pop]
+   if species == 0
+      Pxx = bd["pxxs0"]
+      Pyy = bd["pyys0"]
+      Pzz = bd["pzzs0"]
+      Pxy = bd["pxys0"]
+      Pxz = bd["pxzs0"]
+      Pyz = bd["pyzs0"]
+   elseif species == 1
+      Pxx = bd["pxxs1"]
+      Pyy = bd["pyys1"]
+      Pzz = bd["pzzs1"]
+      Pxy = bd["pxys1"]
+      Pxz = bd["pxzs1"]
+      Pyz = bd["pyzs1"]
+   else
+      pop = string(species)
+      Pxx = bd["pxxs" * pop]
+      Pyy = bd["pyys" * pop]
+      Pzz = bd["pzzs" * pop]
+      Pxy = bd["pxys" * pop]
+      Pxz = bd["pxzs" * pop]
+      Pyz = bd["pyzs" * pop]
+   end
    Paniso = similar(Pxx)
 
    @inbounds for j in axes(Pxx, 2), i in axes(Pxx, 1)
@@ -377,12 +393,12 @@ function get_timeseries(files::AbstractArray, loc; tstep = 1.0)
       v[12, it] = bd["pxxs1"][x_, y_]
       v[13, it] = bd["pyys1"][x_, y_]
       v[14, it] = bd["pzzs1"][x_, y_]
-      v[15, it] = bd["Bx"][x_, y_]
-      v[16, it] = bd["By"][x_, y_]
-      v[17, it] = bd["Bz"][x_, y_]
-      v[18, it] = bd["Ex"][x_, y_]
-      v[19, it] = bd["Ey"][x_, y_]
-      v[20, it] = bd["Ez"][x_, y_]
+      v[15, it] = bd["bx"][x_, y_]
+      v[16, it] = bd["by"][x_, y_]
+      v[17, it] = bd["bz"][x_, y_]
+      v[18, it] = bd["ex"][x_, y_]
+      v[19, it] = bd["ey"][x_, y_]
+      v[20, it] = bd["ez"][x_, y_]
    end
 
    trange, v

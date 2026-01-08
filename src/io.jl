@@ -286,55 +286,84 @@ Obtain the header information from BATSRUS output file of `type` linked to `file
   - `filelist::FileList`: file information.
 """
 function getfilehead(fileID::IOStream, filelist::FileList)
-   type, lenstr = filelist.type, filelist.lenhead
+   if filelist.type == AsciiBat
+      return _read_head_ascii(fileID)
+   else # Real4Bat / Real8Bat
+      return _read_head_binary(fileID, filelist.lenhead)
+   end
+end
 
-   if type == AsciiBat
-      headline = readline(fileID)
-      line = readline(fileID) |> split
-      it = Parsers.parse(Int32, line[1])
-      t = Parsers.parse(Float32, line[2])
-      ndim = Parsers.parse(Int32, line[3])
-      neqpar = Parsers.parse(Int32, line[4])
-      nw = Parsers.parse(Int32, line[5])
-      gencoord = ndim < 0
-      ndim = abs(ndim)
-      nx = Parsers.parse.(Int32, split(readline(fileID)))
-      if neqpar > 0
-         eqpar = Parsers.parse.(Float32, split(readline(fileID)))
-      end
-      varname = readline(fileID)
-   elseif type ∈ (Real4Bat, Real8Bat)
-      skip(fileID, TAG)
-      headline = rstrip(String(read(fileID, lenstr)))
-      skip(fileID, 2 * TAG)
-      it = read(fileID, Int32)
-      t = read(fileID, Float32)
-      ndim = read(fileID, Int32)
-      gencoord = ndim < 0
-      ndim = abs(ndim)
-      neqpar = read(fileID, Int32)
-      nw = read(fileID, Int32)
-      skip(fileID, 2 * TAG)
-      nx = zeros(Int32, ndim)
-      read!(fileID, nx)
-      skip(fileID, 2 * TAG)
-      if neqpar > 0
-         eqpar = zeros(Float32, neqpar)
-         read!(fileID, eqpar)
-         skip(fileID, 2 * TAG)
-      end
-      varname = String(read(fileID, lenstr))
-      skip(fileID, TAG)
+function _read_head_ascii(fileID::IOStream)
+   headline = readline(fileID)
+
+   line_iter = eachsplit(readline(fileID))
+   next = iterate(line_iter)
+   it = Parsers.parse(Int32, next[1])
+   next = iterate(line_iter, next[2])
+   t = Parsers.parse(Float32, next[1])
+   next = iterate(line_iter, next[2])
+   ndim = Parsers.parse(Int32, next[1])
+   next = iterate(line_iter, next[2])
+   neqpar = Parsers.parse(Int32, next[1])
+   next = iterate(line_iter, next[2])
+   nw = Parsers.parse(Int32, next[1])
+
+   gencoord = ndim < 0
+   ndim = abs(ndim)
+
+   nx = [Parsers.parse(Int32, s) for s in eachsplit(readline(fileID))]
+
+   if neqpar > 0
+      eqpar = [Parsers.parse(Float32, s) for s in eachsplit(readline(fileID))]
+   else
+      eqpar = Float32[]
    end
 
+   varname = readline(fileID)
+
+   _create_batshead(ndim, headline, it, t, gencoord, neqpar, nw, nx, eqpar, varname)
+end
+
+function _read_head_binary(fileID::IOStream, lenstr::Integer)
+   skip(fileID, TAG)
+   headline = rstrip(String(read(fileID, lenstr)))
+   skip(fileID, 2 * TAG)
+
+   it = read(fileID, Int32)
+   t = read(fileID, Float32)
+   ndim = read(fileID, Int32)
+   gencoord = ndim < 0
+   ndim = abs(ndim)
+   neqpar = read(fileID, Int32)
+   nw = read(fileID, Int32)
+
+   skip(fileID, 2 * TAG)
+   nx = Vector{Int32}(undef, ndim)
+   read!(fileID, nx)
+   skip(fileID, 2 * TAG)
+
+   if neqpar > 0
+      eqpar = Vector{Float32}(undef, neqpar)
+      read!(fileID, eqpar)
+      skip(fileID, 2 * TAG)
+   else
+      eqpar = Float32[]
+   end
+
+   varname = String(read(fileID, lenstr))
+   skip(fileID, TAG)
+
+   _create_batshead(ndim, headline, it, t, gencoord, neqpar, nw, nx, eqpar, varname)
+end
+
+function _create_batshead(ndim, headline, it, t, gencoord, neqpar, nw, nx, eqpar, varname)
    # Obtain output variable names
    variable = lowercase.(split(varname))
    coord = @view variable[1:ndim]
    wname = @view variable[(ndim + 1):(ndim + nw)]
    param = @view variable[(ndim + nw + 1):end]
 
-   head = BatsHead(ndim, headline, it, t, gencoord, neqpar, nw, nx, eqpar,
-      coord, wname, param)
+   BatsHead(ndim, headline, it, t, gencoord, neqpar, nw, nx, eqpar, coord, wname, param)
 end
 
 function skipline(s::IO)
@@ -351,7 +380,7 @@ end
 
 Return the size in bytes for one snapshot.
 """
-function getfilesize(fileID::IOStream, lenstr::Int32, ::Val{Real4Bat})
+function _getfilesize_binary(fileID::IOStream, lenstr::Integer, ::Val{T}) where T
    pointer0 = position(fileID) # Record header start location
 
    skip(fileID, TAG + lenstr + 2 * TAG + sizeof(Int32) + sizeof(Float32))
@@ -359,46 +388,35 @@ function getfilesize(fileID::IOStream, lenstr::Int32, ::Val{Real4Bat})
    nt = read(fileID, Int32)
    nw = read(fileID, Int32)
    skip(fileID, 2 * TAG)
-   nx = Vector{Int32}(undef, ndim)
-   read!(fileID, nx)
+
+   prod_nx = 1
+   for _ in 1:ndim
+      prod_nx *= read(fileID, Int32)
+   end
+
    skip(fileID, 2 * TAG)
    if nt > 0
-      tmp = zeros(Float32, nt)
-      read!(fileID, tmp)
+      skip(fileID, nt * sizeof(Float32))
       skip(fileID, 2 * TAG)
    end
-   read(fileID, lenstr)
+   skip(fileID, lenstr)
    skip(fileID, TAG)
 
    pointer1 = position(fileID)
    headlen = pointer1 - pointer0 # header length
+
+   type_size = T === Real4Bat ? 4 : 8
+
    # Calculate the snapshot size = header + data + recordmarks
-   pictsize = headlen + 8 * (1 + nw) + 4 * (ndim + nw) * prod(nx)
+   # 8 bytes = 2 * TAG (4 bytes each)
+   pictsize = headlen + 8 * (1 + nw) + type_size * (ndim + nw) * prod_nx
 end
 
-function getfilesize(fileID::IOStream, lenstr::Int32, ::Val{Real8Bat})
-   pointer0 = position(fileID) # Record header start location
-
-   skip(fileID, TAG + lenstr + 2 * TAG + sizeof(Int32) + sizeof(Float32))
-   ndim = abs(read(fileID, Int32))
-   nt = read(fileID, Int32)
-   nw = read(fileID, Int32)
-   skip(fileID, 2 * TAG)
-   nx = Vector{Int32}(undef, ndim)
-   read!(fileID, nx)
-   skip(fileID, 2 * TAG)
-   if nt > 0
-      tmp = zeros(Float32, nt)
-      read!(fileID, tmp)
-      skip(fileID, 2 * TAG)
-   end
-   read(fileID, lenstr)
-   skip(fileID, TAG)
-
-   pointer1 = position(fileID)
-   headlen = pointer1 - pointer0 # header length
-   # Calculate the snapshot size = header + data + recordmarks
-   pictsize = headlen + 8 * (1 + nw) + 8 * (ndim + nw) * prod(nx)
+function getfilesize(fileID::IOStream, lenstr::Int32, v::Val{Real4Bat})
+   _getfilesize_binary(fileID, lenstr, v)
+end
+function getfilesize(fileID::IOStream, lenstr::Int32, v::Val{Real8Bat})
+   _getfilesize_binary(fileID, lenstr, v)
 end
 
 function getfilesize(fileID::IOStream, lenstr::Int32, ::Val{AsciiBat})
@@ -426,80 +444,60 @@ getfilesize(fileID::IOStream, lenstr::Int32, ::Val{LogBat}) = 1
 """
 Create buffer for x and w.
 """
-function allocateBuffer(head::BatsHead, T::DataType)
-   if head.ndim == 1
-      n1 = head.nx[1]
-      x = Array{T, 2}(undef, n1, head.ndim)
-      w = Array{T, 2}(undef, n1, head.nw)
-   elseif head.ndim == 2
-      n1, n2 = head.nx
-      x = Array{T, 3}(undef, n1, n2, head.ndim)
-      w = Array{T, 3}(undef, n1, n2, head.nw)
-   elseif head.ndim == 3
-      n1, n2, n3 = head.nx
-      x = Array{T, 4}(undef, n1, n2, n3, head.ndim)
-      w = Array{T, 4}(undef, n1, n2, n3, head.nw)
-   end
+allocateBuffer(head::BatsHead, ::Type{T}) where T = _allocateBuffer(Val(head.ndim), head, T)
 
+function _allocateBuffer(::Val{N}, head::BatsHead, ::Type{T}) where {N, T}
+   dims = ntuple(i -> head.nx[i], Val(N))
+   x = Array{T, N + 1}(undef, dims..., N)
+   w = Array{T, N + 1}(undef, dims..., head.nw)
    x, w
 end
 
 """
 Read ascii format coordinates and data values.
 """
-function getascii!(x::Array{T, 2}, w, fileID::IOStream) where T
-   @inbounds @views for id in axes(x, 1)
-      temp = Parsers.parse.(Float64, split(readline(fileID)))
-      x[id] = temp[1]
-      w[id, :] = temp[2:end]
-   end
-end
+function getascii!(x::AbstractArray{T, N}, w, fileID::IOStream) where {T, N}
+   # N is total dimensions (including species/components).
+   # The spatial dimensions are 1:N-1.
+   spatial_dims = ntuple(i -> size(x, i), Val(N - 1))
+   ndim = size(x, N)
+   nw = size(w, N)
 
-function getascii!(x::Array{T, 3}, w, fileID::IOStream) where T
-   @inbounds @views for id in CartesianIndices(size(x)[1:2])
-      temp = Parsers.parse.(Float64, split(readline(fileID)))
-      x[id, :] = temp[1:2]
-      w[id, :] = temp[3:end]
-   end
-end
+   @inbounds for id in CartesianIndices(spatial_dims)
+      line = readline(fileID)
+      iter = eachsplit(line)
+      y = iterate(iter)
 
-function getascii!(x::Array{T, 4}, w, fileID::IOStream) where T
-   @inbounds @views for id in CartesianIndices(size(x)[1:3])
-      temp = Parsers.parse.(Float64, split(readline(fileID)))
-      x[id, :] = temp[1:3]
-      w[id, :] = temp[4:end]
+      # Read coordinates
+      for k in 1:ndim
+         if y === nothing
+            error("Insufficient data in line for coordinates")
+         end
+         val_str, state = y
+         x[id, k] = Parsers.parse(Float64, val_str)
+         y = iterate(iter, state)
+      end
+
+      # Read variables
+      for k in 1:nw
+         if y === nothing
+            error("Insufficient data in line for variables")
+         end
+         val_str, state = y
+         w[id, k] = Parsers.parse(Float64, val_str)
+         y = iterate(iter, state)
+      end
    end
 end
 
 """
 Read binary format coordinates and data values.
 """
-function getbinary!(x::Array{T, 2}, w, fileID::IOStream) where T
+function getbinary!(x::AbstractArray{T, N}, w, fileID::IOStream) where {T, N}
    read!(fileID, x)
    skip(fileID, 2 * TAG)
-   dimlast = 2
-   @inbounds for iw in axes(w, dimlast)
-      read!(fileID, selectdim(w, dimlast, iw))
-      skip(fileID, 2 * TAG)
-   end
-end
-
-function getbinary!(x::Array{T, 3}, w, fileID::IOStream) where T
-   read!(fileID, x)
-   skip(fileID, 2 * TAG)
-   dimlast = 3
-   @inbounds for iw in axes(w, dimlast)
-      read!(fileID, selectdim(w, dimlast, iw))
-      skip(fileID, 2 * TAG)
-   end
-end
-
-function getbinary!(x::Array{T, 4}, w, fileID::IOStream) where T
-   read!(fileID, x)
-   skip(fileID, 2 * TAG)
-   dimlast = 4
-   @inbounds for iw in axes(w, dimlast)
-      read!(fileID, selectdim(w, dimlast, iw))
+   @inbounds for iw in axes(w, N)
+      read!(fileID, selectdim(w, N, iw))
       skip(fileID, 2 * TAG)
    end
 end

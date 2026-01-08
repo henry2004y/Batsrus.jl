@@ -35,6 +35,8 @@ get_var_range(bd, "rho")
 
 - Raw variables
 
+Note that the variable names for queries must be in lowercase!
+
 ```julia
 ρ = getvar(bd, "rho")
 bd["rho"]
@@ -293,7 +295,7 @@ For 3D outputs, we may use `cutplot` for visualizing on a sliced plane, or `stre
 To get the index of a certain quantity, e.g. electron number density
 
 ```julia
-ρe_= findfirst(x->x=="rhoS0", bd.head.wname)
+ρe_= findfirst(x->x=="rhos0", bd.head.wname)
 ```
 
 #### Get variable range
