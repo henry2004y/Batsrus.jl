@@ -295,22 +295,26 @@ end
 
 function _read_head_ascii(fileID::IOStream)
    headline = readline(fileID)
-   # Improve parsing performance by avoiding split?
-   # split creates a vector of substrings.
-   line_parts = split(readline(fileID))
-   it = Parsers.parse(Int32, line_parts[1])
-   t = Parsers.parse(Float32, line_parts[2])
-   ndim = Parsers.parse(Int32, line_parts[3])
-   neqpar = Parsers.parse(Int32, line_parts[4])
-   nw = Parsers.parse(Int32, line_parts[5])
+
+   line_iter = eachsplit(readline(fileID))
+   next = iterate(line_iter)
+   it = Parsers.parse(Int32, next[1])
+   next = iterate(line_iter, next[2])
+   t = Parsers.parse(Float32, next[1])
+   next = iterate(line_iter, next[2])
+   ndim = Parsers.parse(Int32, next[1])
+   next = iterate(line_iter, next[2])
+   neqpar = Parsers.parse(Int32, next[1])
+   next = iterate(line_iter, next[2])
+   nw = Parsers.parse(Int32, next[1])
 
    gencoord = ndim < 0
    ndim = abs(ndim)
 
-   nx = Parsers.parse.(Int32, split(readline(fileID)))
+   nx = [Parsers.parse(Int32, s) for s in eachsplit(readline(fileID))]
 
    if neqpar > 0
-      eqpar = Parsers.parse.(Float32, split(readline(fileID)))
+      eqpar = [Parsers.parse(Float32, s) for s in eachsplit(readline(fileID))]
    else
       eqpar = Float32[]
    end
@@ -457,11 +461,32 @@ function getascii!(x::AbstractArray{T, N}, w, fileID::IOStream) where {T, N}
    # The spatial dimensions are 1:N-1.
    spatial_dims = ntuple(i -> size(x, i), Val(N - 1))
    ndim = size(x, N)
+   nw = size(w, N)
 
-   @inbounds @views for id in CartesianIndices(spatial_dims)
-      temp = Parsers.parse.(Float64, split(readline(fileID)))
-      x[id, :] = temp[1:ndim]
-      w[id, :] = temp[(ndim + 1):end]
+   @inbounds for id in CartesianIndices(spatial_dims)
+      line = readline(fileID)
+      iter = eachsplit(line)
+      y = iterate(iter)
+
+      # Read coordinates
+      for k in 1:ndim
+         if y === nothing
+            error("Insufficient data in line for coordinates")
+         end
+         val_str, state = y
+         x[id, k] = Parsers.parse(Float64, val_str)
+         y = iterate(iter, state)
+      end
+
+      # Read variables
+      for k in 1:nw
+         if y === nothing
+            error("Insufficient data in line for variables")
+         end
+         val_str, state = y
+         w[id, k] = Parsers.parse(Float64, val_str)
+         y = iterate(iter, state)
+      end
    end
 end
 
