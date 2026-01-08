@@ -351,7 +351,7 @@ end
 
 Return the size in bytes for one snapshot.
 """
-function getfilesize(fileID::IOStream, lenstr::Int32, ::Val{Real4Bat})
+function _getfilesize_binary(fileID::IOStream, lenstr::Int32, ::Val{T}) where T
    pointer0 = position(fileID) # Record header start location
 
    skip(fileID, TAG + lenstr + 2 * TAG + sizeof(Int32) + sizeof(Float32))
@@ -359,46 +359,35 @@ function getfilesize(fileID::IOStream, lenstr::Int32, ::Val{Real4Bat})
    nt = read(fileID, Int32)
    nw = read(fileID, Int32)
    skip(fileID, 2 * TAG)
-   nx = Vector{Int32}(undef, ndim)
-   read!(fileID, nx)
+
+   prod_nx = 1
+   for _ in 1:ndim
+      prod_nx *= read(fileID, Int32)
+   end
+
    skip(fileID, 2 * TAG)
    if nt > 0
-      tmp = zeros(Float32, nt)
-      read!(fileID, tmp)
+      skip(fileID, nt * sizeof(Float32))
       skip(fileID, 2 * TAG)
    end
-   read(fileID, lenstr)
+   skip(fileID, lenstr)
    skip(fileID, TAG)
 
    pointer1 = position(fileID)
    headlen = pointer1 - pointer0 # header length
+
+   type_size = T === Real4Bat ? 4 : 8
+
    # Calculate the snapshot size = header + data + recordmarks
-   pictsize = headlen + 8 * (1 + nw) + 4 * (ndim + nw) * prod(nx)
+   # 8 bytes = 2 * TAG (4 bytes each)
+   pictsize = headlen + 8 * (1 + nw) + type_size * (ndim + nw) * prod_nx
 end
 
-function getfilesize(fileID::IOStream, lenstr::Int32, ::Val{Real8Bat})
-   pointer0 = position(fileID) # Record header start location
-
-   skip(fileID, TAG + lenstr + 2 * TAG + sizeof(Int32) + sizeof(Float32))
-   ndim = abs(read(fileID, Int32))
-   nt = read(fileID, Int32)
-   nw = read(fileID, Int32)
-   skip(fileID, 2 * TAG)
-   nx = Vector{Int32}(undef, ndim)
-   read!(fileID, nx)
-   skip(fileID, 2 * TAG)
-   if nt > 0
-      tmp = zeros(Float32, nt)
-      read!(fileID, tmp)
-      skip(fileID, 2 * TAG)
-   end
-   read(fileID, lenstr)
-   skip(fileID, TAG)
-
-   pointer1 = position(fileID)
-   headlen = pointer1 - pointer0 # header length
-   # Calculate the snapshot size = header + data + recordmarks
-   pictsize = headlen + 8 * (1 + nw) + 8 * (ndim + nw) * prod(nx)
+function getfilesize(fileID::IOStream, lenstr::Int32, v::Val{Real4Bat})
+   _getfilesize_binary(fileID, lenstr, v)
+end
+function getfilesize(fileID::IOStream, lenstr::Int32, v::Val{Real8Bat})
+   _getfilesize_binary(fileID, lenstr, v)
 end
 
 function getfilesize(fileID::IOStream, lenstr::Int32, ::Val{AsciiBat})
@@ -441,7 +430,7 @@ Read ascii format coordinates and data values.
 function getascii!(x::AbstractArray{T, N}, w, fileID::IOStream) where {T, N}
    # N is total dimensions (including species/components).
    # The spatial dimensions are 1:N-1.
-   spatial_dims = ntuple(i -> size(x, i), N - 1)
+   spatial_dims = ntuple(i -> size(x, i), Val(N - 1))
    ndim = size(x, N)
 
    @inbounds @views for id in CartesianIndices(spatial_dims)
