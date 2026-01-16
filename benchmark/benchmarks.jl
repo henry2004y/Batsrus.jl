@@ -9,22 +9,24 @@ println()
 
 testdata_url = "https://github.com/henry2004y/batsrus_data/raw/master/batsrus_data.tar.gz"
 directory = "data"
-files = ("1d__raw_2_t25.60000_n00000258.out", "z=0_raw_1_t25.60000_n00000258.out",
-   "z=0_fluid_region0_0_t00001640_n00010142.out", "3d_raw.out")
+files = (
+    "1d__raw_2_t25.60000_n00000258.out", "z=0_raw_1_t25.60000_n00000258.out",
+    "z=0_fluid_region0_0_t00001640_n00010142.out", "3d_raw.out",
+)
 
 # Check if all files already exist
 if joinpath(directory, files[1]) |> isfile
-   println("✅ All data files already exist.")
+    println("✅ All data files already exist.")
 else
-   println("⬇️ Downloading and extracting data...")
+    println("⬇️ Downloading and extracting data...")
 
-   # Download and extract the data
-   testdata = Downloads.download(testdata_url)
-   open(GzipDecompressorStream, testdata) do io
-      Tar.extract(io, directory)
-   end
+    # Download and extract the data
+    testdata = Downloads.download(testdata_url)
+    open(GzipDecompressorStream, testdata) do io
+        Tar.extract(io, directory)
+    end
 
-   println("📦 Extraction complete.")
+    println("📦 Extraction complete.")
 end
 
 const SUITE = BenchmarkGroup()
@@ -48,20 +50,21 @@ file = joinpath(directory, files[4])
 bd = load(file)
 SUITE["read"]["Cutdir"] = @benchmarkable cutdata($bd, "p", dir = "y", sequence = 1)
 SUITE["read"]["Cutdir subset"] = @benchmarkable cutdata(
-   $bd, "p", dir = "y", sequence = 1, plotrange = [-50.0, 50.0, -0.5, 0.5])
+    $bd, "p", dir = "y", sequence = 1, plotrange = [-50.0, 50.0, -0.5, 0.5]
+)
 
 println("Generating mock AMReX data for benchmark...")
 amrex_dir = joinpath(directory, "amrex_mock")
 mkpath(amrex_dir)
 Batsrus.generate_mock_amrex_data(
-   amrex_dir,
-   num_particles = 1000,
-   real_component_names = ["u", "v", "w", "weight"],
-   particle_gen = (i, n_reals) -> (
-      Float64(i % 10), Float64(i % 10), Float64(i % 10), # x, y, z
-      randn(), randn(), randn(), # u, v, w
-      rand() # weight
-   )
+    amrex_dir,
+    num_particles = 1000,
+    real_component_names = ["u", "v", "w", "weight"],
+    particle_gen = (i, n_reals) -> (
+        Float64(i % 10), Float64(i % 10), Float64(i % 10), # x, y, z
+        randn(), randn(), randn(), # u, v, w
+        rand(), # weight
+    )
 )
 
 SUITE["amrex"] = BenchmarkGroup()
@@ -72,12 +75,15 @@ amrex_data = AMReXParticle(amrex_dir)
 Batsrus.load_data!(amrex_data) # Force load for selection benchmark
 
 SUITE["amrex"]["select_region"] = @benchmarkable select_particles_in_region(
-   $amrex_data, x_range = (2.5, 4.5))
+    $amrex_data, x_range = (2.5, 4.5)
+)
 
 SUITE["amrex"]["phase_space_3d"] = @benchmarkable get_phase_space_density(
-   $amrex_data, "u", "v", "w")
+    $amrex_data, "u", "v", "w"
+)
 
 # Helper for file-based selection benchmark (lazy load)
 amrex_data_unloaded = AMReXParticle(amrex_dir)
 SUITE["amrex"]["select_region_from_files"] = @benchmarkable select_particles_in_region(
-   $amrex_data_unloaded, x_range = (2.5, 4.5))
+    $amrex_data_unloaded, x_range = (2.5, 4.5)
+)

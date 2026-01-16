@@ -3,9 +3,9 @@
 export plot_phase
 
 const _AXIS_LABEL_MAP = Dict(
-   "velocity_x" => "\$v_x\$",
-   "velocity_y" => "\$v_y\$",
-   "velocity_z" => "\$v_z\$"
+    "velocity_x" => "\$v_x\$",
+    "velocity_y" => "\$v_y\$",
+    "velocity_z" => "\$v_z\$"
 )
 
 _get_axis_label(variable_name::String) = get(_AXIS_LABEL_MAP, variable_name, variable_name)
@@ -38,77 +38,77 @@ Plots the 2D phase space density for selected variables using PyPlot.
   - `kwargs`: Additional keyword arguments passed to `imshow` (e.g., `cmap`).
 """
 function Batsrus.plot_phase!(
-      ax::Union{PyPlot.PyObject, Nothing},
-      data::AMReXParticle,
-      x_variable::String,
-      y_variable::String;
-      bins::Union{Int, Tuple{Int, Int}} = 100,
-      edges = nothing,
-      x_range = nothing,
-      y_range = nothing,
-      z_range = nothing,
-      log_scale::Bool = true,
-      add_colorbar::Bool = true,
-      transform::Union{Function, Nothing} = nothing,
-      plot_zero_lines::Bool = false,
-      normalize::Bool = false,
-      vmin = nothing,
-      vmax = nothing,
-      kwargs...
-)
-   # Get phase space density
-   h = get_phase_space_density(
-      data, x_variable, y_variable; bins, edges, x_range, y_range, z_range, transform, normalize
-   )
+        ax::Union{PyPlot.PyObject, Nothing},
+        data::AMReXParticle,
+        x_variable::String,
+        y_variable::String;
+        bins::Union{Int, Tuple{Int, Int}} = 100,
+        edges = nothing,
+        x_range = nothing,
+        y_range = nothing,
+        z_range = nothing,
+        log_scale::Bool = true,
+        add_colorbar::Bool = true,
+        transform::Union{Function, Nothing} = nothing,
+        plot_zero_lines::Bool = false,
+        normalize::Bool = false,
+        vmin = nothing,
+        vmax = nothing,
+        kwargs...
+    )
+    # Get phase space density
+    h = get_phase_space_density(
+        data, x_variable, y_variable; bins, edges, x_range, y_range, z_range, transform, normalize
+    )
 
-   H = h.bincounts
-   xedges = h.binedges[1]
-   yedges = h.binedges[2]
+    H = h.bincounts
+    xedges = h.binedges[1]
+    yedges = h.binedges[2]
 
-   # Plot
-   if isnothing(ax)
-      ax = plt.gca()
-   end
+    # Plot
+    if isnothing(ax)
+        ax = plt.gca()
+    end
 
-   # Handle log scale
-   norm = nothing
-   if log_scale
-      if maximum(H) > 0
-         if isnothing(vmin)
-            vmin = minimum(H[H .> 0])
-         end
-         if isnothing(vmax)
-            vmax = maximum(H)
-         end
-         norm = PyPlot.matplotlib.colors.LogNorm(vmin = vmin, vmax = vmax)
-      end
-   else
-      norm = PyPlot.matplotlib.colors.Normalize(vmin = vmin, vmax = vmax)
-   end
+    # Handle log scale
+    norm = nothing
+    if log_scale
+        if maximum(H) > 0
+            if isnothing(vmin)
+                vmin = minimum(H[H .> 0])
+            end
+            if isnothing(vmax)
+                vmax = maximum(H)
+            end
+            norm = PyPlot.matplotlib.colors.LogNorm(vmin = vmin, vmax = vmax)
+        end
+    else
+        norm = PyPlot.matplotlib.colors.Normalize(vmin = vmin, vmax = vmax)
+    end
 
-   extent = [xedges[1], xedges[end], yedges[1], yedges[end]]
+    extent = [xedges[1], xedges[end], yedges[1], yedges[end]]
 
-   im = ax.imshow(
-      H';
-      origin = "lower",
-      extent,
-      aspect = "auto",
-      norm,
-      kwargs...
-   )
+    im = ax.imshow(
+        H';
+        origin = "lower",
+        extent,
+        aspect = "auto",
+        norm,
+        kwargs...
+    )
 
-   if plot_zero_lines
-      ax.axhline(0, color = "gray", linestyle = "--", linewidth = 1, alpha = 0.5)
-      ax.axvline(0, color = "gray", linestyle = "--", linewidth = 1, alpha = 0.5)
-   end
+    if plot_zero_lines
+        ax.axhline(0, color = "gray", linestyle = "--", linewidth = 1, alpha = 0.5)
+        ax.axvline(0, color = "gray", linestyle = "--", linewidth = 1, alpha = 0.5)
+    end
 
-   if add_colorbar
-      cbar_label = normalize ? "Probability Density" : "PSD"
-      plt.colorbar(im; ax, label = cbar_label, pad = 0.02)
-   end
+    if add_colorbar
+        cbar_label = normalize ? "Probability Density" : "PSD"
+        plt.colorbar(im; ax, label = cbar_label, pad = 0.02)
+    end
 
-   xlabel(_get_axis_label(_resolve_alias(x_variable)))
-   ylabel(_get_axis_label(_resolve_alias(y_variable)))
+    xlabel(_get_axis_label(_resolve_alias(x_variable)))
+    ylabel(_get_axis_label(_resolve_alias(y_variable)))
 
-   return im
+    return im
 end
