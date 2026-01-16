@@ -6,5 +6,5 @@ function streamslice end
 function plot_phase! end
 
 function plot_phase(data, args...; ax = nothing, kwargs...)
-   plot_phase!(ax, data, args...; kwargs...)
+    return plot_phase!(ax, data, args...; kwargs...)
 end

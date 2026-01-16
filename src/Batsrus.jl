@@ -13,17 +13,17 @@ using DimensionalData
 using ProgressMeter
 
 export BATS, BatsrusIDL, BatsrusIDLStructured, BatsrusIDLUnstructured,
-       load, readlogdata, readtecdata, showhead, # io
-       getvar, cutdata, subvolume, subsurface, get_convection_E, get_hall_E, get_timeseries,
-       get_anisotropy, get_vectors, get_magnitude, get_magnitude2,
-       fill_vector_from_scalars, # select
-       Batl, convertTECtoVTU, convertIDLtoVTK, readhead, readtree, getConnectivity, # vtk
-       interp1d, interp2d, slice1d, get_range, get_var_range, squeeze,
-       generate_mock_amrex_data, # plot/utility,
-       AMReXParticle, AMReXParticleHeader, read_amrex_binary_particle_file,
-       select_particles_in_region, get_phase_space_density, classify_particles,
-       fit_particle_velocity_gmm, get_particle_field_aligned_transform,
-       get_gmm_thermal_velocity # amrex
+    load, readlogdata, readtecdata, showhead, # io
+    getvar, cutdata, subvolume, subsurface, get_convection_E, get_hall_E, get_timeseries,
+    get_anisotropy, get_vectors, get_magnitude, get_magnitude2,
+    fill_vector_from_scalars, # select
+    Batl, convertTECtoVTU, convertIDLtoVTK, readhead, readtree, getConnectivity, # vtk
+    interp1d, interp2d, slice1d, get_range, get_var_range, squeeze,
+    generate_mock_amrex_data, # plot/utility,
+    AMReXParticle, AMReXParticleHeader, read_amrex_binary_particle_file,
+    select_particles_in_region, get_phase_space_density, classify_particles,
+    fit_particle_velocity_gmm, get_particle_field_aligned_transform,
+    get_gmm_thermal_velocity # amrex
 
 include("type.jl")
 include("unit/UnitfulBatsrus.jl")

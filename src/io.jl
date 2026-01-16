@@ -10,62 +10,64 @@ const TAG = 4 # Fortran record tag size
 Read BATSRUS output files. Stores the `npict` snapshot from an ascii or binary data file into the arrays of coordinates `x` and data `w`.
 """
 function load(file::AbstractString; npict::Int = 1, verbose::Bool = false)
-   filelist, fileID, pictsize = getfiletype(file)
+    filelist, fileID, pictsize = getfiletype(file)
 
-   verbose && @info "filename=$(filelist.name)\n" * "npict=$(filelist.npictinfiles)"
+    verbose && @info "filename=$(filelist.name)\n" * "npict=$(filelist.npictinfiles)"
 
-   if filelist.npictinfiles - npict < 0
-      throw(ArgumentError("Select snapshot $npict out of range $(filelist.npictinfiles)!"))
-   end
-   seekstart(fileID) # Rewind to start
-   # Jump to the npict-th snapshot
-   skip(fileID, pictsize * (npict - 1))
+    if filelist.npictinfiles - npict < 0
+        throw(ArgumentError("Select snapshot $npict out of range $(filelist.npictinfiles)!"))
+    end
+    seekstart(fileID) # Rewind to start
+    # Jump to the npict-th snapshot
+    skip(fileID, pictsize * (npict - 1))
 
-   head = getfilehead(fileID, filelist)
-   # Read data
-   if filelist.type == AsciiBat
-      T = Float64 # why Float64?
-      x, w = allocateBuffer(head, T)
-      getascii!(x, w, fileID)
-   else
-      skip(fileID, TAG) # skip record start tag
-      T = filelist.type == Real4Bat ? Float32 : Float64
-      x, w = allocateBuffer(head, T)
-      getbinary!(x, w, fileID)
-   end
+    head = getfilehead(fileID, filelist)
+    # Read data
+    if filelist.type == AsciiBat
+        T = Float64 # why Float64?
+        x, w = allocateBuffer(head, T)
+        getascii!(x, w, fileID)
+    else
+        skip(fileID, TAG) # skip record start tag
+        T = filelist.type == Real4Bat ? Float32 : Float64
+        x, w = allocateBuffer(head, T)
+        getbinary!(x, w, fileID)
+    end
 
-   close(fileID)
+    close(fileID)
 
-   BATS(head, filelist, x, w)
+    return BATS(head, filelist, x, w)
 end
 
 """
 Read information from log file.
 """
 function readlogdata(file::AbstractString)
-   open(file) do f
-      nLine = countlines(f) - 2
-      seekstart(f)
-      headline = readline(f)
-      variable = split(readline(f))
-      ndim = 1
-      it = 0
-      t = 0.0
-      gencoord = false
-      nx = 1
-      nw = length(variable)
+    return open(file) do f
+        nLine = countlines(f) - 2
+        seekstart(f)
+        headline = readline(f)
+        variable = split(readline(f))
+        ndim = 1
+        it = 0
+        t = 0.0
+        gencoord = false
+        nx = 1
+        nw = length(variable)
 
-      data = zeros(nw, nLine)
-      @inbounds for i in 1:nLine
-         line = split(readline(f))
-         data[:, i] = Parsers.parse.(Float64, line)
-      end
+        data = zeros(nw, nLine)
+        @inbounds for i in 1:nLine
+            line = split(readline(f))
+            data[:, i] = Parsers.parse.(Float64, line)
+        end
 
-      head = (ndim = ndim, headline = headline, it = it, time = t, gencoord = gencoord,
-         nw = nw, nx = nx, variable = variable)
+        head = (
+            ndim = ndim, headline = headline, it = it, time = t, gencoord = gencoord,
+            nw = nw, nx = nx, variable = variable,
+        )
 
-      return head, data
-   end
+        return head, data
+    end
 end
 
 """
@@ -81,198 +83,200 @@ head, data, connectivity = readtecdata(file)
 ```
 """
 function readtecdata(file::AbstractString; verbose::Bool = false)
-   open(file) do f
-      head, pt0 = read_tecplot_header(f)
+    return open(file) do f
+        head, pt0 = read_tecplot_header(f)
 
-      data = Array{Float32, 2}(undef, length(head.variable), head.nNode)
+        data = Array{Float32, 2}(undef, length(head.variable), head.nNode)
 
-      if head.nDim == 3
-         connectivity = Array{Int32, 2}(undef, 8, head.nCell)
-      elseif head.nDim == 2
-         connectivity = Array{Int32, 2}(undef, 4, head.nCell)
-      end
+        if head.nDim == 3
+            connectivity = Array{Int32, 2}(undef, 8, head.nCell)
+        elseif head.nDim == 2
+            connectivity = Array{Int32, 2}(undef, 4, head.nCell)
+        end
 
-      # Check file type
-      isBinary = false
-      try
-         Parsers.parse.(Float32, split(readline(f)))
-      catch
-         isBinary = true
-         verbose && @info "reading binary file"
-      end
+        # Check file type
+        isBinary = false
+        try
+            Parsers.parse.(Float32, split(readline(f)))
+        catch
+            isBinary = true
+            verbose && @info "reading binary file"
+        end
 
-      seek(f, pt0)
+        seek(f, pt0)
 
-      if isBinary
-         read_tecplot_data_binary!(f, data, connectivity)
-      else
-         read_tecplot_data_ascii!(f, data, connectivity)
-      end
+        if isBinary
+            read_tecplot_data_binary!(f, data, connectivity)
+        else
+            read_tecplot_data_ascii!(f, data, connectivity)
+        end
 
-      return head, data, connectivity
-   end
+        return head, data, connectivity
+    end
 end
 
 function read_tecplot_header(f)
-   nDim = 3
-   nNode = Int32(0)
-   nCell = Int32(0)
-   ET = ""
-   title = ""
-   VARS = SubString{String}[]
+    nDim = 3
+    nNode = Int32(0)
+    nCell = Int32(0)
+    ET = ""
+    title = ""
+    VARS = SubString{String}[]
 
-   # Read Tecplot header
-   ln = readline(f) |> strip
-   if startswith(ln, "TITLE")
-      title = match(r"\"(.*?)\"", split(ln, '=', keepempty = false)[2])[1]
-   else
-      @warn "No title provided."
-   end
-   ln = readline(f) |> strip
-   if startswith(ln, "VARIABLES")
-      # Read until another keyword appears
-      varline = split(ln, '=')[2]
+    # Read Tecplot header
+    ln = readline(f) |> strip
+    if startswith(ln, "TITLE")
+        title = match(r"\"(.*?)\"", split(ln, '=', keepempty = false)[2])[1]
+    else
+        @warn "No title provided."
+    end
+    ln = readline(f) |> strip
+    if startswith(ln, "VARIABLES")
+        # Read until another keyword appears
+        varline = split(ln, '=')[2]
 
-      ln = readline(f) |> strip
-      while !startswith(ln, "ZONE")
-         varline *= strip(ln)
-         ln = readline(f) |> strip
-      end
-      VARS = split(varline, '\"')
-      deleteat!(VARS, findall(x -> x in (" ", ", ") || isempty(x), VARS))
-   else
-      @warn "No variable names provided."
-   end
+        ln = readline(f) |> strip
+        while !startswith(ln, "ZONE")
+            varline *= strip(ln)
+            ln = readline(f) |> strip
+        end
+        VARS = split(varline, '\"')
+        deleteat!(VARS, findall(x -> x in (" ", ", ") || isempty(x), VARS))
+    else
+        @warn "No variable names provided."
+    end
 
-   while !startswith(ln, "AUXDATA")
-      if !startswith(ln, "ZONE") # ZONE allows multiple \n
-         zoneline = split(ln, ", ", keepempty = false)
-      else # if the ZONE line has nothing, this won't work!
-         zoneline = split(ln[6:end], ", ", keepempty = false)
-         replace(zoneline[1], '"' => "") # Remove the quotes in T
-      end
-      for zline in zoneline
-         name, value = split(zline, '=', keepempty = false)
-         name = uppercase(name)
-         if name == "T" # ZONE title
-            T = value
-         elseif name in ("NODES", "N")
-            nNode = Parsers.parse(Int32, value)
-         elseif name in ("ELEMENTS", "E")
-            nCell = Parsers.parse(Int32, value)
-         elseif name in ("ET", "ZONETYPE")
-            if uppercase(value) in ("BRICK", "FEBRICK")
-               nDim = 3
-            elseif uppercase(value) in ("QUADRILATERAL", "FEQUADRILATERAL")
-               nDim = 2
+    while !startswith(ln, "AUXDATA")
+        if !startswith(ln, "ZONE") # ZONE allows multiple \n
+            zoneline = split(ln, ", ", keepempty = false)
+        else # if the ZONE line has nothing, this won't work!
+            zoneline = split(ln[6:end], ", ", keepempty = false)
+            replace(zoneline[1], '"' => "") # Remove the quotes in T
+        end
+        for zline in zoneline
+            name, value = split(zline, '=', keepempty = false)
+            name = uppercase(name)
+            if name == "T" # ZONE title
+                T = value
+            elseif name in ("NODES", "N")
+                nNode = Parsers.parse(Int32, value)
+            elseif name in ("ELEMENTS", "E")
+                nCell = Parsers.parse(Int32, value)
+            elseif name in ("ET", "ZONETYPE")
+                if uppercase(value) in ("BRICK", "FEBRICK")
+                    nDim = 3
+                elseif uppercase(value) in ("QUADRILATERAL", "FEQUADRILATERAL")
+                    nDim = 2
+                end
+                ET = uppercase(value)
             end
-            ET = uppercase(value)
-         end
-      end
-      ln = readline(f) |> strip
-   end
+        end
+        ln = readline(f) |> strip
+    end
 
-   auxdataname = String[]
-   auxdata = Union{Int32, String}[]
-   pt0 = position(f)
+    auxdataname = String[]
+    auxdata = Union{Int32, String}[]
+    pt0 = position(f)
 
-   while startswith(ln, "AUXDATA")
-      name, value = split(ln, '"', keepempty = false)
-      name = string(name[9:(end - 1)])
-      str = string(strip(value))
-      if name in ("ITER", "NPROC")
-         str = Parsers.parse(Int32, value)
-      elseif name == "TIMESIM"
-         sec = split(str, "=")
-         str = string(strip(sec[2]))
-      end
-      push!(auxdataname, name)
-      push!(auxdata, str)
+    while startswith(ln, "AUXDATA")
+        name, value = split(ln, '"', keepempty = false)
+        name = string(name[9:(end - 1)])
+        str = string(strip(value))
+        if name in ("ITER", "NPROC")
+            str = Parsers.parse(Int32, value)
+        elseif name == "TIMESIM"
+            sec = split(str, "=")
+            str = string(strip(sec[2]))
+        end
+        push!(auxdataname, name)
+        push!(auxdata, str)
 
-      pt0 = position(f)
-      ln = readline(f) |> strip
-   end
+        pt0 = position(f)
+        ln = readline(f) |> strip
+    end
 
-   if startswith(ln, "DT")
-      pt0 = position(f)
-   end
+    if startswith(ln, "DT")
+        pt0 = position(f)
+    end
 
-   seek(f, pt0)
+    seek(f, pt0)
 
-   head = (variable = VARS, nNode = nNode, nCell = nCell, nDim = nDim, ET = ET,
-      title = title, auxdataname = auxdataname, auxdata = auxdata)
+    head = (
+        variable = VARS, nNode = nNode, nCell = nCell, nDim = nDim, ET = ET,
+        title = title, auxdataname = auxdataname, auxdata = auxdata,
+    )
 
-   return head, pt0
+    return head, pt0
 end
 
 function read_tecplot_data_binary!(f, data, connectivity)
-   nNode = size(data, 2)
-   nCell = size(connectivity, 2)
+    nNode = size(data, 2)
+    nCell = size(connectivity, 2)
 
-   @inbounds for i in 1:nNode
-      read!(f, @view data[:, i])
-   end
-   @inbounds for i in 1:nCell
-      read!(f, @view connectivity[:, i])
-   end
+    @inbounds for i in 1:nNode
+        read!(f, @view data[:, i])
+    end
+    return @inbounds for i in 1:nCell
+        read!(f, @view connectivity[:, i])
+    end
 end
 
 function read_tecplot_data_ascii!(f, data, connectivity)
-   nNode = size(data, 2)
-   nCell = size(connectivity, 2)
+    nNode = size(data, 2)
+    nCell = size(connectivity, 2)
 
-   @inbounds for i in 1:nNode
-      x = readline(f)
-      data[:, i] .= Parsers.parse.(Float32, split(x))
-   end
-   @inbounds for i in 1:nCell
-      x = readline(f)
-      connectivity[:, i] .= Parsers.parse.(Int32, split(x))
-   end
+    @inbounds for i in 1:nNode
+        x = readline(f)
+        data[:, i] .= Parsers.parse.(Float32, split(x))
+    end
+    return @inbounds for i in 1:nCell
+        x = readline(f)
+        connectivity[:, i] .= Parsers.parse.(Int32, split(x))
+    end
 end
 
 """
 Obtain file type.
 """
 function getfiletype(file::AbstractString)
-   fileID = open(file, "r")
-   bytes = filesize(file)
+    fileID = open(file, "r")
+    bytes = filesize(file)
 
-   # Check the appendix of file names
-   if occursin(r"^.*\.(log)$", file)
-      type = LogBat
-      npictinfiles = 1
-   elseif occursin(r"^.*\.(dat)$", file) # Tecplot ascii format
-      type = TecBat
-      npictinfiles = 1
-   else
-      # Obtain filetype based on the length info in the first 4 bytes (Gabor's trick)
-      lenhead = read(fileID, Int32)
+    # Check the appendix of file names
+    if occursin(r"^.*\.(log)$", file)
+        type = LogBat
+        npictinfiles = 1
+    elseif occursin(r"^.*\.(dat)$", file) # Tecplot ascii format
+        type = TecBat
+        npictinfiles = 1
+    else
+        # Obtain filetype based on the length info in the first 4 bytes (Gabor's trick)
+        lenhead = read(fileID, Int32)
 
-      if lenhead != 79 && lenhead != 500
-         type = AsciiBat
-      else
-         # The length of the 2nd line decides between real4 & real8
-         # since it contains the time; which is real*8 | real*4
-         skip(fileID, lenhead + TAG)
-         len = read(fileID, Int32)
-         if len == 20
-            type = Real4Bat
-         elseif len == 24
-            type = Real8Bat
-         else
-            throw(ArgumentError("Incorrect formatted file: $file"))
-         end
-      end
-      # Obtain file size & number of snapshots
-      seekstart(fileID)
-      pictsize = getfilesize(fileID, lenhead, Val(type))::Int
-      npictinfiles = bytes ÷ pictsize
-   end
+        if lenhead != 79 && lenhead != 500
+            type = AsciiBat
+        else
+            # The length of the 2nd line decides between real4 & real8
+            # since it contains the time; which is real*8 | real*4
+            skip(fileID, lenhead + TAG)
+            len = read(fileID, Int32)
+            if len == 20
+                type = Real4Bat
+            elseif len == 24
+                type = Real8Bat
+            else
+                throw(ArgumentError("Incorrect formatted file: $file"))
+            end
+        end
+        # Obtain file size & number of snapshots
+        seekstart(fileID)
+        pictsize = getfilesize(fileID, lenhead, Val(type))::Int
+        npictinfiles = bytes ÷ pictsize
+    end
 
-   filelist = FileList(basename(file), type, dirname(file), bytes, npictinfiles, lenhead)
+    filelist = FileList(basename(file), type, dirname(file), bytes, npictinfiles, lenhead)
 
-   filelist, fileID, pictsize
+    return filelist, fileID, pictsize
 end
 
 """
@@ -286,93 +290,93 @@ Obtain the header information from BATSRUS output file of `type` linked to `file
   - `filelist::FileList`: file information.
 """
 function getfilehead(fileID::IOStream, filelist::FileList)
-   if filelist.type == AsciiBat
-      return _read_head_ascii(fileID)
-   else # Real4Bat / Real8Bat
-      return _read_head_binary(fileID, filelist.lenhead)
-   end
+    if filelist.type == AsciiBat
+        return _read_head_ascii(fileID)
+    else # Real4Bat / Real8Bat
+        return _read_head_binary(fileID, filelist.lenhead)
+    end
 end
 
 function _read_head_ascii(fileID::IOStream)
-   headline = readline(fileID)
+    headline = readline(fileID)
 
-   line_iter = eachsplit(readline(fileID))
-   next = iterate(line_iter)
-   it = Parsers.parse(Int32, next[1])
-   next = iterate(line_iter, next[2])
-   t = Parsers.parse(Float32, next[1])
-   next = iterate(line_iter, next[2])
-   ndim = Parsers.parse(Int32, next[1])
-   next = iterate(line_iter, next[2])
-   neqpar = Parsers.parse(Int32, next[1])
-   next = iterate(line_iter, next[2])
-   nw = Parsers.parse(Int32, next[1])
+    line_iter = eachsplit(readline(fileID))
+    next = iterate(line_iter)
+    it = Parsers.parse(Int32, next[1])
+    next = iterate(line_iter, next[2])
+    t = Parsers.parse(Float32, next[1])
+    next = iterate(line_iter, next[2])
+    ndim = Parsers.parse(Int32, next[1])
+    next = iterate(line_iter, next[2])
+    neqpar = Parsers.parse(Int32, next[1])
+    next = iterate(line_iter, next[2])
+    nw = Parsers.parse(Int32, next[1])
 
-   gencoord = ndim < 0
-   ndim = abs(ndim)
+    gencoord = ndim < 0
+    ndim = abs(ndim)
 
-   nx = [Parsers.parse(Int32, s) for s in eachsplit(readline(fileID))]
+    nx = [Parsers.parse(Int32, s) for s in eachsplit(readline(fileID))]
 
-   if neqpar > 0
-      eqpar = [Parsers.parse(Float32, s) for s in eachsplit(readline(fileID))]
-   else
-      eqpar = Float32[]
-   end
+    if neqpar > 0
+        eqpar = [Parsers.parse(Float32, s) for s in eachsplit(readline(fileID))]
+    else
+        eqpar = Float32[]
+    end
 
-   varname = readline(fileID)
+    varname = readline(fileID)
 
-   _create_batshead(ndim, headline, it, t, gencoord, neqpar, nw, nx, eqpar, varname)
+    return _create_batshead(ndim, headline, it, t, gencoord, neqpar, nw, nx, eqpar, varname)
 end
 
 function _read_head_binary(fileID::IOStream, lenstr::Integer)
-   skip(fileID, TAG)
-   headline = rstrip(String(read(fileID, lenstr)))
-   skip(fileID, 2 * TAG)
+    skip(fileID, TAG)
+    headline = rstrip(String(read(fileID, lenstr)))
+    skip(fileID, 2 * TAG)
 
-   it = read(fileID, Int32)
-   t = read(fileID, Float32)
-   ndim = read(fileID, Int32)
-   gencoord = ndim < 0
-   ndim = abs(ndim)
-   neqpar = read(fileID, Int32)
-   nw = read(fileID, Int32)
+    it = read(fileID, Int32)
+    t = read(fileID, Float32)
+    ndim = read(fileID, Int32)
+    gencoord = ndim < 0
+    ndim = abs(ndim)
+    neqpar = read(fileID, Int32)
+    nw = read(fileID, Int32)
 
-   skip(fileID, 2 * TAG)
-   nx = Vector{Int32}(undef, ndim)
-   read!(fileID, nx)
-   skip(fileID, 2 * TAG)
+    skip(fileID, 2 * TAG)
+    nx = Vector{Int32}(undef, ndim)
+    read!(fileID, nx)
+    skip(fileID, 2 * TAG)
 
-   if neqpar > 0
-      eqpar = Vector{Float32}(undef, neqpar)
-      read!(fileID, eqpar)
-      skip(fileID, 2 * TAG)
-   else
-      eqpar = Float32[]
-   end
+    if neqpar > 0
+        eqpar = Vector{Float32}(undef, neqpar)
+        read!(fileID, eqpar)
+        skip(fileID, 2 * TAG)
+    else
+        eqpar = Float32[]
+    end
 
-   varname = String(read(fileID, lenstr))
-   skip(fileID, TAG)
+    varname = String(read(fileID, lenstr))
+    skip(fileID, TAG)
 
-   _create_batshead(ndim, headline, it, t, gencoord, neqpar, nw, nx, eqpar, varname)
+    return _create_batshead(ndim, headline, it, t, gencoord, neqpar, nw, nx, eqpar, varname)
 end
 
 function _create_batshead(ndim, headline, it, t, gencoord, neqpar, nw, nx, eqpar, varname)
-   # Obtain output variable names
-   variable = lowercase.(split(varname))
-   coord = @view variable[1:ndim]
-   wname = @view variable[(ndim + 1):(ndim + nw)]
-   param = @view variable[(ndim + nw + 1):end]
+    # Obtain output variable names
+    variable = lowercase.(split(varname))
+    coord = @view variable[1:ndim]
+    wname = @view variable[(ndim + 1):(ndim + nw)]
+    param = @view variable[(ndim + nw + 1):end]
 
-   BatsHead(ndim, headline, it, t, gencoord, neqpar, nw, nx, eqpar, coord, wname, param)
+    return BatsHead(ndim, headline, it, t, gencoord, neqpar, nw, nx, eqpar, coord, wname, param)
 end
 
 function skipline(s::IO)
-   while !eof(s)
-      c = read(s, Char)
-      c == '\n' && break
-   end
+    while !eof(s)
+        c = read(s, Char)
+        c == '\n' && break
+    end
 
-   return
+    return
 end
 
 """
@@ -380,63 +384,63 @@ end
 
 Return the size in bytes for one snapshot.
 """
-function _getfilesize_binary(fileID::IOStream, lenstr::Integer, ::Val{T}) where T
-   pointer0 = position(fileID) # Record header start location
+function _getfilesize_binary(fileID::IOStream, lenstr::Integer, ::Val{T}) where {T}
+    pointer0 = position(fileID) # Record header start location
 
-   skip(fileID, TAG + lenstr + 2 * TAG + sizeof(Int32) + sizeof(Float32))
-   ndim = abs(read(fileID, Int32))
-   nt = read(fileID, Int32)
-   nw = read(fileID, Int32)
-   skip(fileID, 2 * TAG)
+    skip(fileID, TAG + lenstr + 2 * TAG + sizeof(Int32) + sizeof(Float32))
+    ndim = abs(read(fileID, Int32))
+    nt = read(fileID, Int32)
+    nw = read(fileID, Int32)
+    skip(fileID, 2 * TAG)
 
-   prod_nx = 1
-   for _ in 1:ndim
-      prod_nx *= read(fileID, Int32)
-   end
+    prod_nx = 1
+    for _ in 1:ndim
+        prod_nx *= read(fileID, Int32)
+    end
 
-   skip(fileID, 2 * TAG)
-   if nt > 0
-      skip(fileID, nt * sizeof(Float32))
-      skip(fileID, 2 * TAG)
-   end
-   skip(fileID, lenstr)
-   skip(fileID, TAG)
+    skip(fileID, 2 * TAG)
+    if nt > 0
+        skip(fileID, nt * sizeof(Float32))
+        skip(fileID, 2 * TAG)
+    end
+    skip(fileID, lenstr)
+    skip(fileID, TAG)
 
-   pointer1 = position(fileID)
-   headlen = pointer1 - pointer0 # header length
+    pointer1 = position(fileID)
+    headlen = pointer1 - pointer0 # header length
 
-   type_size = T === Real4Bat ? 4 : 8
+    type_size = T === Real4Bat ? 4 : 8
 
-   # Calculate the snapshot size = header + data + recordmarks
-   # 8 bytes = 2 * TAG (4 bytes each)
-   pictsize = headlen + 8 * (1 + nw) + type_size * (ndim + nw) * prod_nx
+    # Calculate the snapshot size = header + data + recordmarks
+    # 8 bytes = 2 * TAG (4 bytes each)
+    return pictsize = headlen + 8 * (1 + nw) + type_size * (ndim + nw) * prod_nx
 end
 
 function getfilesize(fileID::IOStream, lenstr::Int32, v::Val{Real4Bat})
-   _getfilesize_binary(fileID, lenstr, v)
+    return _getfilesize_binary(fileID, lenstr, v)
 end
 function getfilesize(fileID::IOStream, lenstr::Int32, v::Val{Real8Bat})
-   _getfilesize_binary(fileID, lenstr, v)
+    return _getfilesize_binary(fileID, lenstr, v)
 end
 
 function getfilesize(fileID::IOStream, lenstr::Int32, ::Val{AsciiBat})
-   pointer0 = position(fileID) # Record header start location
+    pointer0 = position(fileID) # Record header start location
 
-   skipline(fileID)
-   line = readline(fileID)
-   line = split(line)
-   ndim = Parsers.parse(Int32, line[3])
-   neqpar = Parsers.parse(Int32, line[4])
-   nw = Parsers.parse(Int32, line[5])
-   ndim = abs(ndim)
-   nx = Parsers.parse.(Int64, split(readline(fileID)))
-   neqpar > 0 && skipline(fileID)
-   skipline(fileID)
+    skipline(fileID)
+    line = readline(fileID)
+    line = split(line)
+    ndim = Parsers.parse(Int32, line[3])
+    neqpar = Parsers.parse(Int32, line[4])
+    nw = Parsers.parse(Int32, line[5])
+    ndim = abs(ndim)
+    nx = Parsers.parse.(Int64, split(readline(fileID)))
+    neqpar > 0 && skipline(fileID)
+    skipline(fileID)
 
-   pointer1 = position(fileID)
-   headlen = pointer1 - pointer0 # header length
-   # Calculate the snapshot size = header + data + recordmarks
-   pictsize = headlen + (18 * (ndim + nw) + 1) * prod(nx)
+    pointer1 = position(fileID)
+    headlen = pointer1 - pointer0 # header length
+    # Calculate the snapshot size = header + data + recordmarks
+    return pictsize = headlen + (18 * (ndim + nw) + 1) * prod(nx)
 end
 
 getfilesize(fileID::IOStream, lenstr::Int32, ::Val{LogBat}) = 1
@@ -444,77 +448,77 @@ getfilesize(fileID::IOStream, lenstr::Int32, ::Val{LogBat}) = 1
 """
 Create buffer for x and w.
 """
-allocateBuffer(head::BatsHead, ::Type{T}) where T = _allocateBuffer(Val(head.ndim), head, T)
+allocateBuffer(head::BatsHead, ::Type{T}) where {T} = _allocateBuffer(Val(head.ndim), head, T)
 
 function _allocateBuffer(::Val{N}, head::BatsHead, ::Type{T}) where {N, T}
-   dims = ntuple(i -> head.nx[i], Val(N))
-   x = Array{T, N + 1}(undef, dims..., N)
-   w = Array{T, N + 1}(undef, dims..., head.nw)
-   x, w
+    dims = ntuple(i -> head.nx[i], Val(N))
+    x = Array{T, N + 1}(undef, dims..., N)
+    w = Array{T, N + 1}(undef, dims..., head.nw)
+    return x, w
 end
 
 """
 Read ascii format coordinates and data values.
 """
 function getascii!(x::AbstractArray{T, N}, w, fileID::IOStream) where {T, N}
-   # N is total dimensions (including species/components).
-   # The spatial dimensions are 1:N-1.
-   spatial_dims = ntuple(i -> size(x, i), Val(N - 1))
-   ndim = size(x, N)
-   nw = size(w, N)
+    # N is total dimensions (including species/components).
+    # The spatial dimensions are 1:N-1.
+    spatial_dims = ntuple(i -> size(x, i), Val(N - 1))
+    ndim = size(x, N)
+    nw = size(w, N)
 
-   @inbounds for id in CartesianIndices(spatial_dims)
-      line = readline(fileID)
-      iter = eachsplit(line)
-      y = iterate(iter)
+    return @inbounds for id in CartesianIndices(spatial_dims)
+        line = readline(fileID)
+        iter = eachsplit(line)
+        y = iterate(iter)
 
-      # Read coordinates
-      for k in 1:ndim
-         if y === nothing
-            error("Insufficient data in line for coordinates")
-         end
-         val_str, state = y
-         x[id, k] = Parsers.parse(Float64, val_str)
-         y = iterate(iter, state)
-      end
+        # Read coordinates
+        for k in 1:ndim
+            if y === nothing
+                error("Insufficient data in line for coordinates")
+            end
+            val_str, state = y
+            x[id, k] = Parsers.parse(Float64, val_str)
+            y = iterate(iter, state)
+        end
 
-      # Read variables
-      for k in 1:nw
-         if y === nothing
-            error("Insufficient data in line for variables")
-         end
-         val_str, state = y
-         w[id, k] = Parsers.parse(Float64, val_str)
-         y = iterate(iter, state)
-      end
-   end
+        # Read variables
+        for k in 1:nw
+            if y === nothing
+                error("Insufficient data in line for variables")
+            end
+            val_str, state = y
+            w[id, k] = Parsers.parse(Float64, val_str)
+            y = iterate(iter, state)
+        end
+    end
 end
 
 """
 Read binary format coordinates and data values.
 """
 function getbinary!(x::AbstractArray{T, N}, w, fileID::IOStream) where {T, N}
-   read!(fileID, x)
-   skip(fileID, 2 * TAG)
-   @inbounds for iw in axes(w, N)
-      read!(fileID, selectdim(w, N, iw))
-      skip(fileID, 2 * TAG)
-   end
+    read!(fileID, x)
+    skip(fileID, 2 * TAG)
+    return @inbounds for iw in axes(w, N)
+        read!(fileID, selectdim(w, N, iw))
+        skip(fileID, 2 * TAG)
+    end
 end
 
 function Base.show(io::IO, data::BatsrusIDL)
-   showhead(io, data)
-   if data.list.bytes ≥ 1e9
-      str = @sprintf "filesize: %.1f GB" data.list.bytes/1e9
-   elseif data.list.bytes ≥ 1e6
-      str = @sprintf "filesize: %.1f MB" data.list.bytes/1e6
-   elseif data.list.bytes ≥ 1e3
-      str = @sprintf "filesize: %.1f KB" data.list.bytes/1e3
-   else
-      str = @sprintf "filesize: %.1f Bytes" data.list.bytes
-   end
-   println(io, str)
-   println(io, "snapshots: ", data.list.npictinfiles)
+    showhead(io, data)
+    if data.list.bytes ≥ 1.0e9
+        str = @sprintf "filesize: %.1f GB" data.list.bytes / 1.0e9
+    elseif data.list.bytes ≥ 1.0e6
+        str = @sprintf "filesize: %.1f MB" data.list.bytes / 1.0e6
+    elseif data.list.bytes ≥ 1.0e3
+        str = @sprintf "filesize: %.1f KB" data.list.bytes / 1.0e3
+    else
+        str = @sprintf "filesize: %.1f Bytes" data.list.bytes
+    end
+    println(io, str)
+    return println(io, "snapshots: ", data.list.npictinfiles)
 end
 
 """
@@ -523,40 +527,40 @@ end
 Displaying file header information.
 """
 function showhead(file::FileList, head::BatsHead, io::IO = stdout)
-   print(io, "filename : ")
-   printstyled(io, file.name, '\n'; color = :cyan, underline = true)
-   println(io, "filetype : ", file.type)
-   println(io, "headline : ", head.headline)
-   print(io, "iteration: ")
-   printstyled(io, head.it, '\n'; color = :cyan)
-   print(io, "time     : ")
-   printstyled(io, head.time, '\n'; color = :cyan)
-   print(io, "gencoord: ")
-   printstyled(io, head.gencoord, '\n'; color = :yellow)
-   print(io, "ndim     : ")
-   printstyled(io, head.ndim, '\n'; color = :yellow)
+    print(io, "filename : ")
+    printstyled(io, file.name, '\n'; color = :cyan, underline = true)
+    println(io, "filetype : ", file.type)
+    println(io, "headline : ", head.headline)
+    print(io, "iteration: ")
+    printstyled(io, head.it, '\n'; color = :cyan)
+    print(io, "time     : ")
+    printstyled(io, head.time, '\n'; color = :cyan)
+    print(io, "gencoord: ")
+    printstyled(io, head.gencoord, '\n'; color = :yellow)
+    print(io, "ndim     : ")
+    printstyled(io, head.ndim, '\n'; color = :yellow)
 
-   if head.neqpar > 0
-      print(io, "parameters: [ ")
-      for par in head.eqpar
-         print(io, par, " ")
-      end
-      print(io, "]\ncoordinate names: [ ")
-      for c in head.coord
-         print(io, c, " ")
-      end
-      print(io, "]\nvariable   names: [ ")
-      for w in head.wname
-         printstyled(io, w, " "; color = :green)
-      end
-      print(io, "]\nparameter  names: [ ")
-      for p in head.param
-         print(io, p, " ")
-      end
-      println(io, "]")
-   end
+    if head.neqpar > 0
+        print(io, "parameters: [ ")
+        for par in head.eqpar
+            print(io, par, " ")
+        end
+        print(io, "]\ncoordinate names: [ ")
+        for c in head.coord
+            print(io, c, " ")
+        end
+        print(io, "]\nvariable   names: [ ")
+        for w in head.wname
+            printstyled(io, w, " "; color = :green)
+        end
+        print(io, "]\nparameter  names: [ ")
+        for p in head.param
+            print(io, p, " ")
+        end
+        println(io, "]")
+    end
 
-   return
+    return
 end
 
 """
