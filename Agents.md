@@ -1,10 +1,8 @@
 # Formatting
-- When writing Julia code, use _3 whitespaces_ for indentation and try to keep
-  the maximum line length under _92 characters_.
+- When writing Julia code, try to keep the maximum line length under _92 characters_.
 - When writing commit messages, follow the format `component: Brief summary` for
   the title. In the body of the commit message, provide a brief prose summary of
   the purpose of the changes made.
-  Also, ensure that the maximum line length never exceeds 72 characters.
   When referencing external GitHub PRs or issues, use proper GitHub interlinking
   format (e.g., `owner/repo#123` for PRs/issues).
 
