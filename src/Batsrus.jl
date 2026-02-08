@@ -17,7 +17,7 @@ export BATS, BatsrusIDL, BatsrusIDLStructured, BatsrusIDLUnstructured,
     getvar, cutdata, subvolume, subsurface, get_convection_E, get_hall_E, get_timeseries,
     get_anisotropy, get_vectors, get_magnitude, get_magnitude2,
     fill_vector_from_scalars, # select
-    Batl, convertTECtoVTU, convertIDLtoVTK, readhead, readtree, getConnectivity, # vtk
+    Batl, convertTECtoVTU, convertIDLtoVTK, create_pvd, readhead, readtree, getConnectivity, # vtk
     interp1d, interp2d, slice1d, get_range, get_var_range, squeeze,
     generate_mock_amrex_data, # plot/utility,
     AMReXParticle, AMReXParticleHeader, read_amrex_binary_particle_file,
