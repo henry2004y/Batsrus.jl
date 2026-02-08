@@ -96,13 +96,14 @@ function Batsrus.convertIDLtoVTK(
                 x, y = get_range(bd)
                 outfiles = vtk_grid(outname, x, y) do vtk
                     for ivar in 1:nVar
-                        if bd.head.wname[ivar][end] == 'x' # vector
+                        if endswith(bd.head.wname[ivar], "x") # vector
                             var1 = @view bd.w[:, :, ivar]
                             var2 = @view bd.w[:, :, ivar + 1]
                             var3 = @view bd.w[:, :, ivar + 2]
                             namevar = bd.head.wname[ivar][1:(end - 1)]
                             vtk_point_data(vtk, (var1, var2, var3), namevar)
-                        elseif bd.head.wname[ivar][end] in ('y', 'z')
+                        elseif endswith(bd.head.wname[ivar], "y") ||
+                                endswith(bd.head.wname[ivar], "z")
                             continue
                         else
                             var = @view bd.w[:, :, ivar]
@@ -260,8 +261,10 @@ Generate PVD file for a time series collection of VTK data.
 create_pvd("*.vtu")
 ```
 """
-function Batsrus.create_pvd(filepattern::String)
+function Batsrus.create_pvd(filepattern::String, debug::Bool = false)
     filenames = glob(filepattern)
+
+    isempty(filenames) && @error "No files found matching pattern $(filepattern)!"
 
     # create an empty XML document
     xdoc = XMLDocument()
@@ -284,7 +287,7 @@ function Batsrus.create_pvd(filepattern::String)
         second = parse(Int32, file[(i_end - 1):i_end])
         minute = parse(Int32, file[(i_end - 3):(i_end - 2)])
         timestep = 60 * minute + second
-        @show timestep
+        debug && @show timestep
 
         e = new_child(xs1, "DataSet")
 
