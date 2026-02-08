@@ -239,7 +239,7 @@ Return matrix X with swapped rows i and j.
 """
 function swaprows!(X::Matrix, i::Int, j::Int)
     m, n = size(X)
-    if (1 ≤ i ≤ n) && (1 ≤ j ≤ n)
+    if (1 ≤ i ≤ m) && (1 ≤ j ≤ m)
         @inbounds @simd for k in 1:n
             X[i, k], X[j, k] = X[j, k], X[i, k]
         end
