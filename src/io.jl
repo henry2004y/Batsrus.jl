@@ -233,55 +233,31 @@ function read_tecplot_data_ascii!(f, data::AbstractArray{T}, connectivity) where
     nNode = size(data, 2)
     nCell = size(connectivity, 2)
 
-    opts = Parsers.Options(delim = ' ', ignorerepeated = true, stripwhitespace = true)
-
     @inbounds for i in 1:nNode
         line = readline(f)
-        offset = 1
-        len = sizeof(line)
-        bytes = codeunits(line)
+        iter = eachsplit(line)
+        next = iterate(iter)
         for j in axes(data, 1)
-            # Skip local whitespace
-            while offset <= len
-                b = bytes[offset]
-                if b == 0x20 || b == 0x09 || b == 0x0a || b == 0x0d
-                    offset += 1
-                else
-                    break
-                end
+            if next === nothing
+                error("Insufficient data in line")
             end
-
-            res = Parsers.xparse(T, line, offset, len, opts)
-            if (res.code & Parsers.OK) != 0
-                data[j, i] = res.val
-                offset += res.tlen
-            else
-                error("Failed to parse value of type $T from line: '$line' at offset $offset")
-            end
+            val_str, state = next
+            data[j, i] = Parsers.parse(T, val_str)
+            next = iterate(iter, state)
         end
     end
 
     @inbounds for i in 1:nCell
         line = readline(f)
-        offset = 1
-        len = sizeof(line)
-        bytes = codeunits(line)
+        iter = eachsplit(line)
+        next = iterate(iter)
         for j in axes(connectivity, 1)
-            # Skip local whitespace
-            while offset <= len
-                b = bytes[offset]
-                if b == 0x20 || b == 0x09 || b == 0x0a || b == 0x0d
-                    offset += 1
-                else
-                    break
-                end
+            if next === nothing
+                error("Insufficient data in line")
             end
-
-            res = Parsers.xparse(Int32, line, offset, len, opts)
-            if (res.code & Parsers.OK) != 0
-                connectivity[j, i] = res.val
-                offset += res.tlen
-            end
+            val_str, state = next
+            connectivity[j, i] = Parsers.parse(Int32, val_str)
+            next = iterate(iter, state)
         end
     end
 
@@ -520,52 +496,31 @@ function getascii!(x::AbstractArray{T, N}, w::AbstractArray{T, N}, fileID::IOStr
     ndim = size(x, N)
     nw = size(w, N)
 
-    opts = Parsers.Options(delim = ' ', ignorerepeated = true, stripwhitespace = true)
-
     @inbounds for id in CartesianIndices(spatial_dims)
         line = readline(fileID)
-        offset = 1
-        len = sizeof(line)
-        bytes = codeunits(line)
+
+        # We need to iterate sequentially.
+        iter = eachsplit(line)
+        next = iterate(iter)
 
         # Read coordinates
         for k in 1:ndim
-            # Skip local whitespace
-            while offset <= len
-                b = bytes[offset]
-                if b == 0x20 || b == 0x09 || b == 0x0a || b == 0x0d
-                    offset += 1
-                else
-                    break
-                end
+            if next === nothing
+                error("Insufficient data in line for coordinates")
             end
-
-            res = Parsers.xparse(T, line, offset, len, opts)
-            if (res.code & Parsers.OK) != 0
-                x[id, k] = res.val
-                offset += res.tlen
-            else
-                error("Failed to parse coordinate from line: '$line' at offset $offset")
-            end
+            val_str, state = next
+            x[id, k] = Parsers.parse(T, val_str)
+            next = iterate(iter, state)
         end
 
         # Read variables
         for k in 1:nw
-            # Skip local whitespace
-            while offset <= len
-                b = bytes[offset]
-                if b == 0x20 || b == 0x09 || b == 0x0a || b == 0x0d
-                    offset += 1
-                else
-                    break
-                end
+            if next === nothing
+                error("Insufficient data in line for variables")
             end
-
-            res = Parsers.xparse(T, line, offset, len, opts)
-            if (res.code & Parsers.OK) != 0
-                w[id, k] = res.val
-                offset += res.tlen
-            end
+            val_str, state = next
+            w[id, k] = Parsers.parse(T, val_str)
+            next = iterate(iter, state)
         end
     end
 
