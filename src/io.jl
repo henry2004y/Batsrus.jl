@@ -233,6 +233,8 @@ function read_tecplot_data_ascii!(f, data::AbstractArray{T}, connectivity) where
     nNode = size(data, 2)
     nCell = size(connectivity, 2)
 
+    opts = Parsers.Options(delim = ' ', ignorerepeated = true, stripwhitespace = true)
+
     @inbounds for i in 1:nNode
         line = readline(f)
         offset = 1
@@ -249,14 +251,17 @@ function read_tecplot_data_ascii!(f, data::AbstractArray{T}, connectivity) where
                 end
             end
 
-            res = Parsers.xparse(T, line; pos = offset, len = len, delim = ' ')
+            res = Parsers.xparse(T, line, offset, len, opts)
             if (res.code & Parsers.OK) != 0
                 data[j, i] = res.val
                 offset += res.tlen
+            else
+                error("Failed to parse value of type $T from line: '$line' at offset $offset")
             end
         end
     end
-    return @inbounds for i in 1:nCell
+
+    @inbounds for i in 1:nCell
         line = readline(f)
         offset = 1
         len = sizeof(line)
@@ -272,13 +277,15 @@ function read_tecplot_data_ascii!(f, data::AbstractArray{T}, connectivity) where
                 end
             end
 
-            res = Parsers.xparse(Int32, line; pos = offset, len = len, delim = ' ')
+            res = Parsers.xparse(Int32, line, offset, len, opts)
             if (res.code & Parsers.OK) != 0
                 connectivity[j, i] = res.val
                 offset += res.tlen
             end
         end
     end
+
+    return
 end
 
 """
@@ -513,7 +520,9 @@ function getascii!(x::AbstractArray{T, N}, w::AbstractArray{T, N}, fileID::IOStr
     ndim = size(x, N)
     nw = size(w, N)
 
-    return @inbounds for id in CartesianIndices(spatial_dims)
+    opts = Parsers.Options(delim = ' ', ignorerepeated = true, stripwhitespace = true)
+
+    @inbounds for id in CartesianIndices(spatial_dims)
         line = readline(fileID)
         offset = 1
         len = sizeof(line)
@@ -531,10 +540,12 @@ function getascii!(x::AbstractArray{T, N}, w::AbstractArray{T, N}, fileID::IOStr
                 end
             end
 
-            res = Parsers.xparse(T, line; pos = offset, len = len, delim = ' ')
+            res = Parsers.xparse(T, line, offset, len, opts)
             if (res.code & Parsers.OK) != 0
                 x[id, k] = res.val
                 offset += res.tlen
+            else
+                error("Failed to parse coordinate from line: '$line' at offset $offset")
             end
         end
 
@@ -550,13 +561,15 @@ function getascii!(x::AbstractArray{T, N}, w::AbstractArray{T, N}, fileID::IOStr
                 end
             end
 
-            res = Parsers.xparse(T, line; pos = offset, len = len, delim = ' ')
+            res = Parsers.xparse(T, line, offset, len, opts)
             if (res.code & Parsers.OK) != 0
                 w[id, k] = res.val
                 offset += res.tlen
             end
         end
     end
+
+    return
 end
 
 """
