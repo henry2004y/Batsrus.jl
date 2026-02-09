@@ -216,9 +216,12 @@ function read_tecplot_data_binary!(f, data, connectivity)
     @inbounds for i in 1:nNode
         read!(f, @view data[:, i])
     end
-    return @inbounds for i in 1:nCell
+
+    @inbounds for i in 1:nCell
         read!(f, @view connectivity[:, i])
     end
+
+    return
 end
 
 function read_tecplot_data_ascii!(f, data, connectivity)
@@ -229,10 +232,13 @@ function read_tecplot_data_ascii!(f, data, connectivity)
         x = readline(f)
         data[:, i] .= Parsers.parse.(Float32, split(x))
     end
-    return @inbounds for i in 1:nCell
+
+    @inbounds for i in 1:nCell
         x = readline(f)
         connectivity[:, i] .= Parsers.parse.(Int32, split(x))
     end
+
+    return
 end
 
 """
@@ -467,7 +473,7 @@ function getascii!(x::AbstractArray{T, N}, w, fileID::IOStream) where {T, N}
     ndim = size(x, N)
     nw = size(w, N)
 
-    return @inbounds for id in CartesianIndices(spatial_dims)
+    @inbounds for id in CartesianIndices(spatial_dims)
         line = readline(fileID)
         iter = eachsplit(line)
         y = iterate(iter)
@@ -492,6 +498,8 @@ function getascii!(x::AbstractArray{T, N}, w, fileID::IOStream) where {T, N}
             y = iterate(iter, state)
         end
     end
+
+    return
 end
 
 """
@@ -500,10 +508,12 @@ Read binary format coordinates and data values.
 function getbinary!(x::AbstractArray{T, N}, w, fileID::IOStream) where {T, N}
     read!(fileID, x)
     skip(fileID, 2 * TAG)
-    return @inbounds for iw in axes(w, N)
+    @inbounds for iw in axes(w, N)
         read!(fileID, selectdim(w, N, iw))
         skip(fileID, 2 * TAG)
     end
+
+    return
 end
 
 function Base.show(io::IO, data::BatsrusIDL)
@@ -518,7 +528,9 @@ function Base.show(io::IO, data::BatsrusIDL)
         str = @sprintf "filesize: %.1f Bytes" data.list.bytes
     end
     println(io, str)
-    return println(io, "snapshots: ", data.list.npictinfiles)
+    println(io, "snapshots: ", data.list.npictinfiles)
+
+    return
 end
 
 """
