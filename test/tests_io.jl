@@ -88,6 +88,7 @@ end
 end
 
 @testset "VTK" begin
+    using WriteVTK, Glob, LightXML
     file = joinpath(datapath, "z=0_fluid_region0_0_t00001640_n00010142.out")
     convertIDLtoVTK(file)
     sha_str = bytes2hex(open(sha1, "out.vti"))
