@@ -50,15 +50,15 @@ struct HDF5Common{TI <: Signed, TF <: AbstractFloat} <: BatsrusHDF5File
         version = meta_int[1]
         geometry = meta_int[11]
         time = meta_real[1]
-        coordmin = SVector(meta_real[2:2:6]...)
-        coordmax = SVector(meta_real[3:2:7]...)
+        coordmin = SVector(meta_real[2], meta_real[4], meta_real[6])
+        coordmax = SVector(meta_real[3], meta_real[5], meta_real[7])
         timestep = meta_int[2]
         ndim = meta_int[3]
-        ncb = SVector(meta_int[8:10]...)
-        isperiodic = SVector(meta_int[12:14]...)
+        ncb = SVector(meta_int[8], meta_int[9], meta_int[10])
+        isperiodic = SVector(meta_int[12], meta_int[13], meta_int[14])
 
-        multi_cell_dims = SVector(ncb[1] != 0, ncb[2] != 0, ncb[3] != 0)
-        extent = SVector(coordmax .- coordmin...)
+        multi_cell_dims = ncb .!= 0
+        extent = coordmax .- coordmin
 
         return new{eltype(meta_int), eltype(meta_real)}(
             fid, version, geometry, time, coordmin,
@@ -84,7 +84,7 @@ struct BatsrusHDF5Uniform{TI, TF} <: BatsrusHDF5File
     function BatsrusHDF5Uniform(filename::AbstractString)
         bf = HDF5Common(filename)
 
-        nc = MVector{3, Int32}(undef)
+        nc = MVector{3, Int32}(1, 1, 1)
         try
             extent::Matrix{Int32} = bf.fid["MinLogicalExtents"] |> read
             nc[bf.multi_cell_dims] = extent[:, end] + bf.ncb[bf.multi_cell_dims]
@@ -92,10 +92,10 @@ struct BatsrusHDF5Uniform{TI, TF} <: BatsrusHDF5File
             iCoord_DB::Matrix{Int32} = bf.fid["iCoord_DB"] |> read
             nc[bf.multi_cell_dims] = iCoord_DB[:, end] + bf.ncb[bf.multi_cell_dims]
         end
-        nb = SVector(nc .÷ bf.ncb...)
+        nb = SVector{3}(nc .÷ bf.ncb)
 
-        dcoord = SVector(bf.extent ./ nc...)
-        dblock = SVector(bf.extent ./ nb...)
+        dcoord = SVector{3}(bf.extent ./ nc)
+        dblock = SVector{3}(bf.extent ./ nb)
 
         TI, TF = findparam(bf)
 
@@ -120,7 +120,7 @@ function Base.show(io::IO, file::BatsrusHDF5Uniform)
 end
 
 """
-     prep_extract(file::BatsrusHDF5Uniform, vmin=-Inf, vmax=Inf, step=1)
+    prep_extract(file::BatsrusHDF5Uniform, vmin=-Inf, vmax=Inf, step=1)
 
 Get info for data extraction in 1D.
 
@@ -167,7 +167,7 @@ function coord2index(file::BatsrusHDF5Uniform{TI, TF}, dim::Int, x::Real) where 
 end
 
 """
-     prepslice(file::BatsrusHDF5Uniform; dim::Int, vmin, vmax, step=1)
+    prepslice(file::BatsrusHDF5Uniform; dim::Int, vmin, vmax, step=1)
 
 Return range that covers [`vmin`, `vmax`) along dimension `dim`.
 
@@ -189,7 +189,7 @@ function prepslice(file::BatsrusHDF5Uniform; dim::Int = 1, vmin, vmax, step::Int
 end
 
 """
-     trimslice(start, stop, step, stop_max)
+    trimslice(start, stop, step, stop_max)
 
 Set slice's start to be nonnegative and start/stop to be within bound.
 Reverse slicing is not handled.
@@ -208,7 +208,7 @@ function trimslice(start, stop, step, stop_max)
 end
 
 """
-     prep_extract_per_block(file::BatsrusHDF5Uniform, dim, gslc, ib)
+    prep_extract_per_block(file::BatsrusHDF5Uniform, dim, gslc, ib)
 
 Get info for data extraction on a single block.
 
@@ -229,14 +229,15 @@ Get info for data extraction on a single block.
     # compute local slice on this block
     lslc = global_slice_to_local_slice(file, dim, gslc, ib)
     # compute the index bounds in the output array
-    ix0 = length(gslc.start:gslc.step:(lslc.start + file.common.ncb[dim] * ib))
+    offset = lslc.start + file.common.ncb[dim] * ib - gslc.start
+    ix0 = offset ÷ gslc.step + 1
     ix1 = ix0 + length(lslc) - 1
 
     return lslc, ix0:ix1
 end
 
 """
-     global_slice_to_local_slice(file::BatsrusHDF5Uniform, dim, gslc, ib)
+    global_slice_to_local_slice(file::BatsrusHDF5Uniform, dim, gslc, ib)
 
 Convert global slice `gslc` to local slice `lslc` on a given block index `ib`.
 """
@@ -251,7 +252,7 @@ function global_slice_to_local_slice(
 end
 
 """
-     extract_var(file::BatsrusHDF5Uniform, var::String; kwargs...)
+    extract_var(file::BatsrusHDF5Uniform, var::String; kwargs...)
 
 Extract variable `var` from HDF5 `file`.
 
@@ -270,7 +271,8 @@ Extract variable `var` from HDF5 `file`.
 """
 function extract_var(
         file::BatsrusHDF5Uniform{TI, TF}, var::String;
-        xmin = -Inf32, xmax = Inf32, stepx::Int = 1, ymin = -Inf32, ymax = Inf32, stepy::Int = 1,
+        xmin = -Inf32, xmax = Inf32, stepx::Int = 1,
+        ymin = -Inf32, ymax = Inf32, stepy::Int = 1,
         zmin = -Inf32, zmax = Inf32, stepz::Int = 1, verbose::Bool = false
     ) where {TI, TF}
     nbx, nby, nbz = file.nb
@@ -283,7 +285,7 @@ function extract_var(
         zu_new, ibz_ = prep_extract(file; dim = 3, vmin = zmin, vmax = zmax, step = stepz)
     nsize = (length(gslcx), length(gslcy), length(gslcz))
 
-    input = read(file.common.fid[var])::Array{TF, 4}
+    dset = file.common.fid[var]
     output = Array{TF, 3}(undef, nsize)
 
     if verbose
@@ -298,7 +300,7 @@ function extract_var(
             for ibx in ibx_
                 lslcx, ix_ = prep_extract_per_block(file, 1, gslcx, ibx)
                 ib = (ibz * nby + iby) * nbx + ibx + 1
-                output[ix_, iy_, iz_] = @view input[lslcx, lslcy, lslcz, ib]
+                output[ix_, iy_, iz_] = dset[lslcx, lslcy, lslcz, ib]
             end
         end
     end
