@@ -5,7 +5,7 @@
 const TAG = 4 # Fortran record tag size
 
 """
-     load(filename; npict=1, verbose=false)
+    load(filename; npict=1, verbose=false)
 
 Read BATSRUS output files. Stores the `npict` snapshot from an ascii or binary data file into the arrays of coordinates `x` and data `w`.
 """
@@ -22,21 +22,29 @@ function load(file::AbstractString; npict::Int = 1, verbose::Bool = false)
     skip(fileID, pictsize * (npict - 1))
 
     head = getfilehead(fileID, filelist)
+
     # Read data
     if filelist.type == AsciiBat
-        T = Float64 # why Float64?
-        x, w = allocateBuffer(head, T)
-        getascii!(x, w, fileID)
+        T = Float64
     else
         skip(fileID, TAG) # skip record start tag
         T = filelist.type == Real4Bat ? Float32 : Float64
-        x, w = allocateBuffer(head, T)
-        getbinary!(x, w, fileID)
     end
+
+    x, w = allocateBuffer(head, T)
+    _load_body!(x, w, fileID, filelist)
 
     close(fileID)
 
     return BATS(head, filelist, x, w)
+end
+
+function _load_body!(x::AbstractArray{T}, w::AbstractArray{T}, fileID::IOStream, filelist) where {T}
+    return if filelist.type == AsciiBat
+        getascii!(x, w, fileID)
+    else
+        getbinary!(x, w, fileID)
+    end
 end
 
 """
@@ -71,7 +79,7 @@ function readlogdata(file::AbstractString)
 end
 
 """
-     readtecdata(file; verbose=false)
+    readtecdata(file; verbose=false)
 
 Return header, data and connectivity from BATSRUS Tecplot outputs. Both 2D and 3D binary and ASCII formats are supported.
 
@@ -221,17 +229,55 @@ function read_tecplot_data_binary!(f, data, connectivity)
     end
 end
 
-function read_tecplot_data_ascii!(f, data, connectivity)
+function read_tecplot_data_ascii!(f, data::AbstractArray{T}, connectivity) where {T}
     nNode = size(data, 2)
     nCell = size(connectivity, 2)
 
     @inbounds for i in 1:nNode
-        x = readline(f)
-        data[:, i] .= Parsers.parse.(Float32, split(x))
+        line = readline(f)
+        offset = 1
+        len = sizeof(line)
+        bytes = codeunits(line)
+        for j in axes(data, 1)
+            # Skip local whitespace
+            while offset <= len
+                b = bytes[offset]
+                if b == 0x20 || b == 0x09 || b == 0x0a || b == 0x0d
+                    offset += 1
+                else
+                    break
+                end
+            end
+
+            res = Parsers.xparse(T, line; pos = offset, len = len, delim = ' ')
+            if (res.code & Parsers.OK) != 0
+                data[j, i] = res.val
+                offset += res.tlen
+            end
+        end
     end
     return @inbounds for i in 1:nCell
-        x = readline(f)
-        connectivity[:, i] .= Parsers.parse.(Int32, split(x))
+        line = readline(f)
+        offset = 1
+        len = sizeof(line)
+        bytes = codeunits(line)
+        for j in axes(connectivity, 1)
+            # Skip local whitespace
+            while offset <= len
+                b = bytes[offset]
+                if b == 0x20 || b == 0x09 || b == 0x0a || b == 0x0d
+                    offset += 1
+                else
+                    break
+                end
+            end
+
+            res = Parsers.xparse(Int32, line; pos = offset, len = len, delim = ' ')
+            if (res.code & Parsers.OK) != 0
+                connectivity[j, i] = res.val
+                offset += res.tlen
+            end
+        end
     end
 end
 
@@ -280,7 +326,7 @@ function getfiletype(file::AbstractString)
 end
 
 """
-     getfilehead(fileID::IoStream, filelist::FileList) -> NameTuple
+    getfilehead(fileID::IoStream, filelist::FileList) -> NameTuple
 
 Obtain the header information from BATSRUS output file of `type` linked to `fileID`.
 
@@ -380,7 +426,7 @@ function skipline(s::IO)
 end
 
 """
-     getfilesize(fileID::IOStream, lenstr::Int32, ::Val{FileType})
+    getfilesize(fileID::IOStream, lenstr::Int32, ::Val{FileType})
 
 Return the size in bytes for one snapshot.
 """
@@ -460,7 +506,7 @@ end
 """
 Read ascii format coordinates and data values.
 """
-function getascii!(x::AbstractArray{T, N}, w, fileID::IOStream) where {T, N}
+function getascii!(x::AbstractArray{T, N}, w::AbstractArray{T, N}, fileID::IOStream) where {T, N}
     # N is total dimensions (including species/components).
     # The spatial dimensions are 1:N-1.
     spatial_dims = ntuple(i -> size(x, i), Val(N - 1))
@@ -469,27 +515,46 @@ function getascii!(x::AbstractArray{T, N}, w, fileID::IOStream) where {T, N}
 
     return @inbounds for id in CartesianIndices(spatial_dims)
         line = readline(fileID)
-        iter = eachsplit(line)
-        y = iterate(iter)
+        offset = 1
+        len = sizeof(line)
+        bytes = codeunits(line)
 
         # Read coordinates
         for k in 1:ndim
-            if y === nothing
-                error("Insufficient data in line for coordinates")
+            # Skip local whitespace
+            while offset <= len
+                b = bytes[offset]
+                if b == 0x20 || b == 0x09 || b == 0x0a || b == 0x0d
+                    offset += 1
+                else
+                    break
+                end
             end
-            val_str, state = y
-            x[id, k] = Parsers.parse(Float64, val_str)
-            y = iterate(iter, state)
+
+            res = Parsers.xparse(T, line; pos = offset, len = len, delim = ' ')
+            if (res.code & Parsers.OK) != 0
+                x[id, k] = res.val
+                offset += res.tlen
+            end
         end
 
         # Read variables
         for k in 1:nw
-            if y === nothing
-                error("Insufficient data in line for variables")
+            # Skip local whitespace
+            while offset <= len
+                b = bytes[offset]
+                if b == 0x20 || b == 0x09 || b == 0x0a || b == 0x0d
+                    offset += 1
+                else
+                    break
+                end
             end
-            val_str, state = y
-            w[id, k] = Parsers.parse(Float64, val_str)
-            y = iterate(iter, state)
+
+            res = Parsers.xparse(T, line; pos = offset, len = len, delim = ' ')
+            if (res.code & Parsers.OK) != 0
+                w[id, k] = res.val
+                offset += res.tlen
+            end
         end
     end
 end
@@ -522,7 +587,7 @@ function Base.show(io::IO, data::BatsrusIDL)
 end
 
 """
-     showhead(file, head)
+    showhead(file, head)
 
 Displaying file header information.
 """
@@ -564,8 +629,8 @@ function showhead(file::FileList, head::BatsHead, io::IO = stdout)
 end
 
 """
-     showhead(data)
-     showhead(io, data)
+    showhead(data)
+    showhead(io, data)
 
 Display file information of `data`.
 """

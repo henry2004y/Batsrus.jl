@@ -4,6 +4,7 @@ version = "0.10.1"
 authors = ["Hongyang Zhou <hyzhou@umich.edu>"]
 
 [deps]
+CodecZlib = "944b1d66-785c-5afd-91f1-9de20f533193"
 DimensionalData = "0703355e-b756-11e9-17c0-8b28908087d0"
 FHist = "68837c9b-b678-4cd5-9925-8a54edc8f695"
 FortranFiles = "c58ffaec-ab22-586d-bfc5-781a99fd0b10"
@@ -23,11 +24,11 @@ Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [weakdeps]
+Glob = "c27321d9-0574-5035-807b-f59d2c89b15c"
+LightXML = "9c8b4983-aa76-5018-a973-4c85ecc9e179"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
 WriteVTK = "64499a7a-5c06-52f2-abe2-ccb03c286192"
-Glob = "c27321d9-0574-5035-807b-f59d2c89b15c"
-LightXML = "9c8b4983-aa76-5018-a973-4c85ecc9e179"
 
 [extensions]
 BatsrusMakieExt = "Makie"
@@ -35,6 +36,7 @@ BatsrusPyPlotExt = "PyPlot"
 BatsrusWriteVTKExt = ["WriteVTK", "Glob", "LightXML"]
 
 [compat]
+CodecZlib = "0.7.8"
 DimensionalData = "0.29"
 FHist = "0.11.17"
 FortranFiles = "0.6"
