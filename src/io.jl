@@ -5,7 +5,7 @@
 const TAG = 4 # Fortran record tag size
 
 """
-     load(filename; npict=1, verbose=false)
+    load(filename; npict=1, verbose=false)
 
 Read BATSRUS output files. Stores the `npict` snapshot from an ascii or binary data file into the arrays of coordinates `x` and data `w`.
 """
@@ -71,7 +71,7 @@ function readlogdata(file::AbstractString)
 end
 
 """
-     readtecdata(file; verbose=false)
+    readtecdata(file; verbose=false)
 
 Return header, data and connectivity from BATSRUS Tecplot outputs. Both 2D and 3D binary and ASCII formats are supported.
 
@@ -280,7 +280,7 @@ function getfiletype(file::AbstractString)
 end
 
 """
-     getfilehead(fileID::IoStream, filelist::FileList) -> NameTuple
+    getfilehead(fileID::IoStream, filelist::FileList) -> NameTuple
 
 Obtain the header information from BATSRUS output file of `type` linked to `fileID`.
 
@@ -380,7 +380,7 @@ function skipline(s::IO)
 end
 
 """
-     getfilesize(fileID::IOStream, lenstr::Int32, ::Val{FileType})
+    getfilesize(fileID::IOStream, lenstr::Int32, ::Val{FileType})
 
 Return the size in bytes for one snapshot.
 """
@@ -522,9 +522,11 @@ function Base.show(io::IO, data::BatsrusIDL)
 end
 
 """
-     showhead(file, head)
+    showhead(file, head)
+    showhead(data)
+    showhead(io, data)
 
-Displaying file header information.
+Displaying file header information of BATSRUS data.
 """
 function showhead(file::FileList, head::BatsHead, io::IO = stdout)
     print(io, "filename : ")
@@ -563,11 +565,5 @@ function showhead(file::FileList, head::BatsHead, io::IO = stdout)
     return
 end
 
-"""
-     showhead(data)
-     showhead(io, data)
-
-Display file information of `data`.
-"""
 showhead(data::BatsrusIDL) = showhead(data.list, data.head)
 showhead(io::IO, data::BatsrusIDL) = showhead(data.list, data.head, io)
