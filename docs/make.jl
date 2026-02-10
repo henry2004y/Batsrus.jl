@@ -9,7 +9,7 @@ assets = String[]
 isnothing(demo_assets) || (push!(assets, demo_assets))
 
 makedocs(;
-    modules = [Batsrus, Batsrus.UnitfulBatsrus, Batsrus.HDF],
+    modules = [Batsrus, Batsrus.UnitfulBatsrus],
     authors = "Hongyang Zhou <hyzhou@umich.edu>",
     sitename = "Batsrus.jl",
     format = Documenter.HTML(;
