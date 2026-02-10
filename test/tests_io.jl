@@ -117,12 +117,19 @@ end
 end
 
 @testset "HDF5" begin
+    using HDF5
     file = "3d__var_3_n00000000_single.batl"
     bd = BatsrusHDF5Uniform(joinpath(datapath, file))
+    # non-lazy
     var, _, _ = extract_var(bd, "bx")
     @test size(var) == (8, 8, 4) && eltype(var) == Float32
+    # lazy
+    var_lazy, _, _ = extract_var(bd, "bx"; lazy = true)
+    @test var == var_lazy
+
     file = "3d__var_3_n00000000_double.batl"
     bd = BatsrusHDF5Uniform(joinpath(datapath, file))
+    # non-lazy
     var, _, _ = extract_var(bd, "bx")
     @test size(var) == (8, 8, 4) && eltype(var) == Float64
 end

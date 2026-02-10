@@ -150,6 +150,7 @@ More examples can be found in [examples](https://github.com/henry2004y/Batsrus.j
 ## HDF format output loader
 
 ```julia
+using HDF5  # required to activate the HDF5 extension
 filename = "3d__var_1_n00006288.h5"
 file = BatsrusHDF5Uniform(filename)
 ```

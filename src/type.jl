@@ -1,5 +1,7 @@
 abstract type AbstractBatsrusData{Dim, TV} end
 
+abstract type BatsrusHDF5File end
+
 @enum FileType Real4Bat = 1 Real8Bat = 2 AsciiBat = 3 LogBat = 4 TecBat = 5
 
 """

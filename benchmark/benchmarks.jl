@@ -1,4 +1,4 @@
-using BenchmarkTools, Downloads, Tar, CodecZlib
+using BenchmarkTools, Downloads, Tar, CodecZlib, HDF5
 
 t = @elapsed using Batsrus
 println("Julia version is $VERSION")

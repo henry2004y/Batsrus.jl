@@ -20,12 +20,10 @@ CurrentModule = Batsrus.UnitfulBatsrus
 Modules = [UnitfulBatsrus]
 ```
 
-## HDF
+## HDF5 Extension
 
-```@meta
-CurrentModule = Batsrus.HDF
-```
+The HDF5 functionality is provided via a package extension. Load `HDF5` alongside `Batsrus` to enable it:
 
-```@autodocs
-Modules = [HDF]
+```julia
+using Batsrus, HDF5
 ```
