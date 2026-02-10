@@ -27,5 +27,3 @@ The HDF5 functionality is provided via a package extension. Load `HDF5` alongsid
 ```julia
 using Batsrus, HDF5
 ```
-
-See [`BatsrusHDF5Uniform`](@ref) and [`extract_var`](@ref) for the API.
