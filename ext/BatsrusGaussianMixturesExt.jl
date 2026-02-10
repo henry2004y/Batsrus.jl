@@ -1,12 +1,11 @@
 module BatsrusGaussianMixturesExt
 
 using Batsrus
+import Batsrus: fit_particle_velocity_gmm, get_gmm_thermal_velocity
 using GaussianMixtures: GMM, covars
 using LinearAlgebra: diag, diagm, normalize, tr, dot
-
-import Batsrus: fit_particle_velocity_gmm, get_gmm_thermal_velocity
-
 using StaticArrays: SVector
+using PrecompileTools: @setup_workload, @compile_workload
 
 """
     fit_particle_velocity_gmm(data, n_clusters; x_range=nothing, y_range=nothing, z_range=nothing, vdim=3)
@@ -83,23 +82,20 @@ function Batsrus.fit_particle_velocity_gmm(
 
     gmm = GMM(n_clusters, X, kind = kind)
 
-    results = [
-        begin
-                μ = T.(gmm.μ[i, :])
-                w = T(gmm.w[i])
+    results = map(1:n_clusters) do i
+        μ = T.(gmm.μ[i, :])
+        w = T(gmm.w[i])
 
-                if kind == :diag
-                    Σ = diagm(T.(gmm.Σ[i, :]))
-            else # :full
-                    Σ = T.(covars(gmm)[i])
-            end
+        Σ = if kind == :diag
+            diagm(T.(gmm.Σ[i, :]))
+        else # :full
+            T.(covars(gmm)[i])
+        end
 
-                vth_diag = sqrt.(2 .* diag(Σ))
+        vth_diag = sqrt.(2 .* diag(Σ))
 
-                (weight = w, mean = μ, cov = Σ, vth = vth_diag)
-            end
-            for i in 1:n_clusters
-    ]
+        (weight = w, mean = μ, cov = Σ, vth = vth_diag)
+    end
 
     sort!(results, by = x -> x.weight, rev = true)
 
@@ -132,6 +128,35 @@ function Batsrus.get_gmm_thermal_velocity(
     v_th_perp = sqrt(2 * var_perp)
 
     return v_th_para, v_th_perp
+end
+
+# Precompilation
+@setup_workload begin
+    @compile_workload begin
+        mktempdir() do tmpdir
+            Batsrus.generate_mock_amrex_data(
+                tmpdir;
+                real_component_names = ["ux", "uy", "uz"],
+                particle_gen = (i, n_reals) -> (
+                    rand(), rand(), rand(), randn(), randn(), randn(),
+                )
+            )
+            data = AMReXParticle(tmpdir)
+
+            fit_particle_velocity_gmm(data, 1; kind = :full)
+
+            particles = select_particles_in_region(data)
+            transform_func =
+                Batsrus.get_particle_field_aligned_transform([1.0, 0.0, 0.0])
+            transformed_data, _ = transform_func(
+                particles, data.header.real_component_names
+            )
+            vels = transformed_data[1:3, :]
+
+            gmm = fit_particle_velocity_gmm(vels, 1; kind = :diag)
+            Batsrus.get_gmm_thermal_velocity(gmm[1], [1.0, 0.0, 0.0])
+        end
+    end
 end
 
 end
