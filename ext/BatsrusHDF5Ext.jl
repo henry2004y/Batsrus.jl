@@ -68,7 +68,7 @@ end
 """
 BATSRUS HDF5 file with uniform Cartesian mesh.
 """
-struct _BatsrusHDF5Uniform{TI, TF} <: BatsrusHDF5File
+struct BatsrusHDF5Uniform{TI, TF} <: BatsrusHDF5File
     common::HDF5Common{TI, TF}
     "Numbers of cells along each direction"
     nc::SVector{3, TI}
@@ -79,7 +79,7 @@ struct _BatsrusHDF5Uniform{TI, TF} <: BatsrusHDF5File
     "Block length along each direction"
     dblock::SVector{3, TF}
 
-    function _BatsrusHDF5Uniform(filename::AbstractString)
+    function BatsrusHDF5Uniform(filename::AbstractString)
         bf = HDF5Common(filename)
 
         nc = MVector{3, Int32}(1, 1, 1)
@@ -101,11 +101,11 @@ struct _BatsrusHDF5Uniform{TI, TF} <: BatsrusHDF5File
     end
 end
 
-Batsrus.BatsrusHDF5Uniform(filename::AbstractString) = _BatsrusHDF5Uniform(filename)
+Batsrus.BatsrusHDF5Uniform(filename::AbstractString) = BatsrusHDF5Uniform(filename)
 
 findparam(::HDF5Common{TI, TF}) where {TI, TF} = (TI, TF)
 
-function Base.show(io::IO, file::_BatsrusHDF5Uniform)
+function Base.show(io::IO, file::BatsrusHDF5Uniform)
     println(io, "Dimension                : ", file.common.ndim)
     println(io, "Mesh coordmin            : ", file.common.coordmin)
     println(io, "Mesh coordmax            : ", file.common.coordmax)
@@ -136,7 +136,7 @@ Get info for data extraction in 1D.
   - `ibmin:ibmax`: block range.
 """
 function prep_extract(
-        file::_BatsrusHDF5Uniform;
+        file::BatsrusHDF5Uniform;
         dim::Int = 1, vmin = -Inf32, vmax = Inf32, step::Int = 1
     )
     vmin = isinf(vmin) ? file.common.coordmin[dim] : max(file.common.coordmin[dim], vmin)
@@ -158,7 +158,7 @@ end
 """
 Return lower corner index.
 """
-function coord2index(file::_BatsrusHDF5Uniform{TI, TF}, dim::Int, x::Real) where {TI, TF}
+function coord2index(file::BatsrusHDF5Uniform{TI, TF}, dim::Int, x::Real) where {TI, TF}
     if file.nc[dim] == 1
         return 1
     else
@@ -177,7 +177,7 @@ Return range that covers [`vmin`, `vmax`) along dimension `dim`.
   - `xl_new`: adjusted lower corner coordinate matching `slc_new.start`.
   - `xu_new`: adjusted lower corner coordinate matching `slc_new.stop`.
 """
-function prepslice(file::_BatsrusHDF5Uniform; dim::Int = 1, vmin, vmax, step::Int = 1)
+function prepslice(file::BatsrusHDF5Uniform; dim::Int = 1, vmin, vmax, step::Int = 1)
     start = coord2index(file, dim, vmin)
     stop = max(coord2index(file, dim, vmax), start)
 
@@ -223,7 +223,7 @@ Get info for data extraction on a single block.
   - `ix0:ix1`: index range in the global array.
 """
 @inline function prep_extract_per_block(
-        file::_BatsrusHDF5Uniform, dim::Int,
+        file::BatsrusHDF5Uniform, dim::Int,
         gslc::OrdinalRange, ib::Int
     )
     # compute local slice on this block
@@ -242,7 +242,7 @@ end
 Convert global slice `gslc` to local slice `lslc` on a given block index `ib`.
 """
 function global_slice_to_local_slice(
-        file::_BatsrusHDF5Uniform, dim::Int, gslc::OrdinalRange,
+        file::BatsrusHDF5Uniform, dim::Int, gslc::OrdinalRange,
         ib::Int
     )
     return trimslice(
@@ -257,7 +257,7 @@ Fill `output` by iterating over the block grid defined by `ibx_`, `iby_`, `ibz_`
 `getblock(lslcx, lslcy, lslcz, ib)` returns a block slice for a given block index.
 """
 function _fill_output!(
-        getblock, output, file::_BatsrusHDF5Uniform,
+        getblock, output, file::BatsrusHDF5Uniform,
         gslcx, gslcy, gslcz, ibx_, iby_, ibz_
     )
     nbx, nby, _ = file.nb
@@ -296,7 +296,7 @@ Extract variable `var` from HDF5 `file`.
     Use for files too large to fit in memory.
 """
 function Batsrus.extract_var(
-        file::_BatsrusHDF5Uniform{TI, TF}, var::String;
+        file::BatsrusHDF5Uniform{TI, TF}, var::String;
         xmin = -Inf32, xmax = Inf32, stepx::Int = 1,
         ymin = -Inf32, ymax = Inf32, stepy::Int = 1,
         zmin = -Inf32, zmax = Inf32, stepz::Int = 1,
