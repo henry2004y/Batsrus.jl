@@ -117,6 +117,7 @@ end
 end
 
 @testset "HDF5" begin
+    using HDF5
     file = "3d__var_3_n00000000_single.batl"
     bd = BatsrusHDF5Uniform(joinpath(datapath, file))
     var, _, _ = extract_var(bd, "bx")

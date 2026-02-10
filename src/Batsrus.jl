@@ -23,7 +23,8 @@ export BATS, BatsrusIDL, BatsrusIDLStructured, BatsrusIDLUnstructured,
     AMReXParticle, AMReXParticleHeader, read_amrex_binary_particle_file,
     select_particles_in_region, get_phase_space_density, classify_particles,
     fit_particle_velocity_gmm, get_particle_field_aligned_transform,
-    get_gmm_thermal_velocity # amrex
+    get_gmm_thermal_velocity, # amrex
+    BatsrusHDF5File, BatsrusHDF5Uniform, extract_var # hdf5
 
 include("type.jl")
 include("unit/UnitfulBatsrus.jl")
@@ -36,8 +37,8 @@ include("utility.jl")
 include("amrex.jl")
 include("plot/plots.jl")
 
-include("hdf.jl")
-@reexport using .HDF
+function BatsrusHDF5Uniform end
+function extract_var end
 
 include("precompile.jl")
 
