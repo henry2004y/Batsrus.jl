@@ -12,6 +12,7 @@ directory = "data"
 files = (
     "1d__raw_2_t25.60000_n00000258.out", "z=0_raw_1_t25.60000_n00000258.out",
     "z=0_fluid_region0_0_t00001640_n00010142.out", "3d_raw.out",
+    "3d__var_3_n00000000_double.batl",
 )
 
 # Check if all files already exist
@@ -51,6 +52,11 @@ SUITE["read"]["Cutdir"] = @benchmarkable cutdata($bd, "p", dir = "y", sequence =
 SUITE["read"]["Cutdir subset"] = @benchmarkable cutdata(
     $bd, "p", dir = "y", sequence = 1, plotrange = [-50.0, 50.0, -0.5, 0.5]
 )
+
+file = joinpath(directory, files[5])
+SUITE["read"]["HDF5"] = @benchmarkable BatsrusHDF5Uniform($file)
+bd_hdf = BatsrusHDF5Uniform(file)
+SUITE["read"]["HDF5 extract"] = @benchmarkable extract_var($bd_hdf, "bx")
 
 println("Generating mock AMReX data for benchmark...")
 amrex_dir = joinpath(directory, "amrex_mock")
