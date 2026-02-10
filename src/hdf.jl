@@ -267,13 +267,16 @@ Extract variable `var` from HDF5 `file`.
   - `zmin`: minimum extracted coordinate in z.
   - `zmax`: maximum extracted coordinate in z.
   - `stepz`: extracted stride in z.
-  - `verbose::Bool=true`: display type and size information of output variable.
+  - `verbose::Bool=false`: display type and size information of output variable.
+  - `lazy::Bool=false`: if `true`, read data per-block instead of loading the entire dataset.
+    Use for files too large to fit in memory.
 """
 function extract_var(
         file::BatsrusHDF5Uniform{TI, TF}, var::String;
         xmin = -Inf32, xmax = Inf32, stepx::Int = 1,
         ymin = -Inf32, ymax = Inf32, stepy::Int = 1,
-        zmin = -Inf32, zmax = Inf32, stepz::Int = 1, verbose::Bool = false
+        zmin = -Inf32, zmax = Inf32, stepz::Int = 1,
+        verbose::Bool = false, lazy::Bool = false
     ) where {TI, TF}
     nbx, nby, nbz = file.nb
 
@@ -293,14 +296,31 @@ function extract_var(
         @info "nx, ny, nz = $nsize"
     end
 
-    for ibz in ibz_
-        lslcz, iz_ = prep_extract_per_block(file, 3, gslcz, ibz)
-        for iby in iby_
-            lslcy, iy_ = prep_extract_per_block(file, 2, gslcy, iby)
-            for ibx in ibx_
-                lslcx, ix_ = prep_extract_per_block(file, 1, gslcx, ibx)
-                ib = (ibz * nby + iby) * nbx + ibx + 1
-                output[ix_, iy_, iz_] = dset[lslcx, lslcy, lslcz, ib]
+    if !lazy
+        # Fast path: bulk read + in-memory slicing
+        input = read(dset)::Array{TF, 4}
+        for ibz in ibz_
+            lslcz, iz_ = prep_extract_per_block(file, 3, gslcz, ibz)
+            for iby in iby_
+                lslcy, iy_ = prep_extract_per_block(file, 2, gslcy, iby)
+                for ibx in ibx_
+                    lslcx, ix_ = prep_extract_per_block(file, 1, gslcx, ibx)
+                    ib = (ibz * nby + iby) * nbx + ibx + 1
+                    output[ix_, iy_, iz_] = @view input[lslcx, lslcy, lslcz, ib]
+                end
+            end
+        end
+    else
+        # Memory-safe path: per-block partial reads
+        for ibz in ibz_
+            lslcz, iz_ = prep_extract_per_block(file, 3, gslcz, ibz)
+            for iby in iby_
+                lslcy, iy_ = prep_extract_per_block(file, 2, gslcy, iby)
+                for ibx in ibx_
+                    lslcx, ix_ = prep_extract_per_block(file, 1, gslcx, ibx)
+                    ib = (ibz * nby + iby) * nbx + ibx + 1
+                    output[ix_, iy_, iz_] = dset[lslcx, lslcy, lslcz, ib]
+                end
             end
         end
     end
