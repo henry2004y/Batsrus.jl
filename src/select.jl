@@ -197,7 +197,7 @@ end
 )
 
 """
-     fill_vector_from_scalars(bd::BatsrusIDL, var)
+    fill_vector_from_scalars(bd::BatsrusIDL, var)
 
 Construct vector of `var` from its scalar components. Alternatively, check
 [`get_vectors`](@ref) for returning vector components as separate arrays.
@@ -209,7 +209,7 @@ function fill_vector_from_scalars(bd::BatsrusIDL, var)
 end
 
 """
-     get_magnitude2(bd::BatsrusIDL, var)
+    get_magnitude2(bd::BatsrusIDL, var)
 
 Calculate the magnitude square of vector `var`. See [`get_vectors`](@ref) for the options.
 """
@@ -225,7 +225,7 @@ function get_magnitude2(bd::BatsrusIDL, var = :B)
 end
 
 """
-     get_magnitude(bd::BatsrusIDL, var)
+    get_magnitude(bd::BatsrusIDL, var)
 
 Calculate the magnitude of vector `var`. See [`get_vectors`](@ref) for the options.
 """
@@ -241,7 +241,7 @@ function get_magnitude(bd::BatsrusIDL, var = :B)
 end
 
 """
-     get_vectors(bd::BatsrusIDL, var)
+    get_vectors(bd::BatsrusIDL, var)
 
 Return a tuple of vectors of `var`. `var` can be `:B`, `:E`, `:U`, or any `:U` followed by an index (e.g. `:U0` for species 0, `:U1` for species 1, etc.).
 """
@@ -267,7 +267,7 @@ function get_vectors(bd::BatsrusIDL, var)
 end
 
 """
-     get_anisotropy(bd::BatsrusIDL, species=0)
+    get_anisotropy(bd::BatsrusIDL, species=0)
 
 Calculate the pressure anisotropy for `species`, indexing from 0. The default `method` is
 based on the fact that the trace of the pressure tensor is a constant. The `rotation`
@@ -368,7 +368,7 @@ function get_hall_E(bd::BatsrusIDL)
 end
 
 """
-     get_timeseries(files::AbstractArray, loc; tstep = 1.0)
+    get_timeseries(files::AbstractArray, loc; tstep = 1.0)
 
 Extract plasma moments and EM field from PIC output `files` at `loc` with nearest neighbor.
 Currently only works for 2D outputs. If a single point variable is needed, see [`interp1d`](@ref).

@@ -24,6 +24,7 @@ if RUN_PYPLOT_TESTS
     using PyPlot
 end
 using FHist
+using GaussianMixtures
 
 ENV["MPLBACKEND"] = "agg" # no GUI
 
