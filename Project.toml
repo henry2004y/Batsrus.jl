@@ -37,7 +37,7 @@ BatsrusWriteVTKExt = ["WriteVTK", "Glob", "LightXML"]
 BatsrusHDF5Ext = "HDF5"
 
 [compat]
-DimensionalData = "0.29"
+DimensionalData = "0.29, 0.30"
 FHist = "0.11.17"
 FortranFiles = "0.6"
 GaussianMixtures = "0.3.13"
