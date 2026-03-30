@@ -6,7 +6,8 @@
 [![][codecov-img]][codecov-url]
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4761843.svg)](https://doi.org/10.5281/zenodo.4761842)
 
-Fast [BATSRUS](https://github.com/MSTEM-QUDA/BATSRUS)/[SWMF](https://github.com/MSTEM-QUDA/SWMF) data loading, conversion, and visualization using Julia, successor of [VisAnaMatlab](https://github.com/henry2004y/VisAnaMatlab).
+
+Fast [BATSRUS](https://github.com/SWMFsoftware/BATSRUS)/[SWMF](https://github.com/SWMFsoftware/SWMF) data loading, conversion, and visualization using Julia, successor of [VisAnaMatlab](https://github.com/henry2004y/VisAnaMatlab).
 
 This package provides the following functionalities:
 
