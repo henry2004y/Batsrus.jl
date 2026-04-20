@@ -43,7 +43,6 @@ jobs:
       - uses: julia-actions/setup-julia@v3
         with:
           version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v3
       - name: Build PyCall with system Python
         run: julia -e 'using Pkg; Pkg.add("PyCall"); Pkg.build("PyCall")'
