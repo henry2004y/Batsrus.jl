@@ -247,8 +247,8 @@ Wrapper over `contour` in matplotlib.
 """
 function PyPlot.contour(
         bd::BatsrusIDL{2, TV}, var::AbstractString, ax = nothing;
-        levels = 0,
-        plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1, innermask = false, rbody = 1.0,
+        levels = 0, plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1,
+        innermask = false, rbody = nothing,
         kwargs...
     ) where {TV}
     Xi, Yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
@@ -276,7 +276,8 @@ Wrapper over `contourf` in matplotlib. See [`interp2d`](@ref) for some related k
 function PyPlot.contourf(
         bd::BatsrusIDL{2, TV}, var::AbstractString, ax = nothing;
         levels::Int = 0,
-        plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1, innermask = false, rbody = 1.0,
+        plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1, innermask = false,
+        rbody = nothing,
         add_colorbar = true, vmin = -Inf, vmax = Inf, colorscale = :linear, kwargs...
     ) where {TV}
     Xi, Yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
@@ -398,7 +399,8 @@ Wrapper over `plot_surface` in matplotlib.
 """
 function PyPlot.plot_surface(
         bd::BatsrusIDL{2, TV}, var::AbstractString, ax = nothing;
-        plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1, innermask = false, rbody = 1.0,
+        plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1, innermask = false,
+        rbody = nothing,
         kwargs...
     ) where {TV}
     if isnothing(ax)
@@ -421,7 +423,7 @@ end
 
 # Keywords
 
-  - `rbody=1.0`: inner body radius.
+  - `rbody=nothing`: inner body radius. If not set, it will be read from the header.
   - `colorscale::Symbol`: colormap scale from [`:linear`, `:log`].
   - `add_colorbar=true`: turn on colorbar.
 
@@ -429,7 +431,8 @@ Wrapper over `pcolormesh` in matplotlib.
 """
 function PyPlot.pcolormesh(
         bd::BatsrusIDL{2, TV}, var::AbstractString, ax = nothing;
-        plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1, innermask = false, rbody = 1.0,
+        plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1, innermask = false,
+        rbody = nothing,
         vmin = -Inf, vmax = Inf, colorscale = :linear, add_colorbar = true, kwargs...
     ) where {TV}
     xi, yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
@@ -456,7 +459,7 @@ Wrapper over `tripcolor` in matplotlib.
 """
 function PyPlot.tripcolor(
         bd::BatsrusIDL{2, TV}, var::AbstractString, ax = nothing;
-        plotrange = [-Inf, Inf, -Inf, Inf], innermask = false, kwargs...
+        plotrange = [-Inf, Inf, -Inf, Inf], innermask = false, rbody = nothing, kwargs...
     ) where {TV}
     x, w = bd.x, bd.w
 
@@ -471,10 +474,16 @@ function PyPlot.tripcolor(
 
     # Mask off unwanted triangles at the inner boundary.
     if innermask
-        varIndex_ = findlast(x -> x == "rbody", bd.head.param)
-        isnothing(varIndex_) && error("rbody not found in file header parameters!")
-        ParamIndex_ = varIndex_ - 2 - bd.head.nw
-        r2 = bd.head.eqpar[ParamIndex_]^2
+        if isnothing(rbody)
+            varIndex_ = findlast(x -> x == "rbody", bd.head.param)
+            if !isnothing(varIndex_)
+                rbody = bd.head.eqpar[varIndex_]
+            else
+                @info "rbody not found in file header parameters; use default rbody=1.0"
+                rbody = 1.0
+            end
+        end
+        r2 = rbody^2
 
         ids = triang.triangles .+ Int32(1)
         mask = Vector{Bool}(undef, size(ids, 1))
@@ -506,7 +515,7 @@ end
 
 # Keywords
 
-  - `rbody=1.0`: inner body radius.
+  - `rbody=nothing`: inner body radius. If not set, it will be read from the header.
   - `colorscale::Symbol`: colormap scale from [`:linear`, `:log`].
   - `vmin`: minimum value of colorbar.
   - `vmax`: maximum value of colorbar.
@@ -516,7 +525,8 @@ Wrapper over `imshow` in matplotlib. For large matrices, this is faster than `pc
 """
 function PyPlot.imshow(
         bd::BatsrusIDL{2, TV}, var::AbstractString, ax = nothing;
-        plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1, innermask = false, rbody = 1.0,
+        plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1, innermask = false,
+        rbody = nothing,
         add_colorbar = true, vmin = -Inf, vmax = Inf, colorscale = :linear, kwargs...
     ) where {
         TV,

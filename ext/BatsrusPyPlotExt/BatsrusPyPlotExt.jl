@@ -7,6 +7,7 @@ using Interpolations
 
 import Batsrus: meshgrid, findindex, adjust_plotrange!, _resolve_alias
 import Batsrus: plotlogdata, cutplot, streamslice, plot_phase
+import Batsrus: dims, (..)
 
 function __init__()
     if VersionNumber(PyPlot.matplotlib.__version__) >= v"3.3"
@@ -32,5 +33,6 @@ function Batsrus._triangulate_matplotlib(X, Y, W, xi, yi)
 end
 
 include("pyplot.jl")
+include("animate.jl")
 
 end

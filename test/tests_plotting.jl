@@ -11,6 +11,53 @@
         bd = load(joinpath(datapath, file))
         rec = RecipesBase.apply_recipe(Dict{Symbol, Any}(), bd, "p")
         @test getfield(rec[1], 1)[:seriestype] == :contourf
+
+        @testset "rbody and inner masking" begin
+            # Mock BatsHead
+            # param names: ["rbody"]
+            # eqpar values: [2.5f0]
+            head = Batsrus.BatsHead(
+                2, "headline", 0, 0.0f0, false, 1, 1, [10, 10],
+                [2.5f0], ["x", "y"], ["rho"], ["rbody"]
+            )
+            list = Batsrus.FileList("test", Batsrus.Real4Bat, ".", 0, 1, 0)
+
+            # 10x10 grid from -4.5 to 4.5
+            # x[i, j, 1] = -5.5 + i
+            # i=5 -> -0.5, i=6 -> 0.5, i=7 -> 1.5, i=8 -> 2.5
+            x = zeros(Float32, 10, 10, 2)
+            for j in 1:10, i in 1:10
+                x[i, j, 1] = -5.5 + i
+                x[i, j, 2] = -5.5 + j
+            end
+            w = ones(Float32, 10, 10, 1)
+
+            bd = Batsrus.BATS(head, list, x, w)
+
+            @testset "Keyword overrides header" begin
+                xi, yi, Wi = interp2d(bd, "rho"; innermask = true, rbody = 1.0)
+                @test isnan(Wi[5, 5])
+                @test isnan(Wi[6, 6])
+                @test !isnan(Wi[7, 7])
+            end
+
+            @testset "Header fallback" begin
+                xi, yi, Wi = interp2d(bd, "rho"; innermask = true)
+                @test isnan(Wi[7, 7])
+                @test !isnan(Wi[8, 8])
+            end
+
+            @testset "Default fallback" begin
+                head_no_rbody = Batsrus.BatsHead(
+                    2, "headline", 0, 0.0f0, false, 0, 1, [10, 10],
+                    Float32[], ["x", "y"], ["rho"], String[]
+                )
+                bd_no_rbody = Batsrus.BATS(head_no_rbody, list, x, w)
+                xi, yi, Wi = interp2d(bd_no_rbody, "rho"; innermask = true)
+                @test isnan(Wi[5, 5])
+                @test !isnan(Wi[7, 7])
+            end
+        end
     end
 
     if RUN_MAKIE_TESTS
@@ -116,6 +163,26 @@
             plot_surface(bd, "rho")
             @test isa(gca(), PyPlot.PyObject)
             plt.close()
+
+            mktempdir() do tmpdir
+                # 2D structured binary with streamlines
+                animate([joinpath(datapath, file)], outdir = tmpdir,
+                    streamvars = "bx;by",
+                    stream_kwargs = (; color = "red"),
+                    plot_kwargs = (; cmap = "viridis"),
+                    fig_kwargs = (; figsize = (4, 3)),
+                    title = "Custom Title")
+                @test isfile(joinpath(tmpdir, "z=0_raw_1_t25.60000_n00000258.png"))
+            end
+
+            mktempdir() do tmpdir
+                # 2D unstructured data with streamlines
+                file_unstructured = "bx0_mhd_6_t00000100_n00000352.out"
+                animate([joinpath(datapath, file_unstructured)], outdir = tmpdir,
+                    var = "P", streamvars = "ux;uy",
+                    stream_kwargs = (; color = "white", density = 0.5))
+                @test isfile(joinpath(tmpdir, "bx0_mhd_6_t00000100_n00000352.png"))
+            end
 
             # 2D AMR Cartesian
             file = "bx0_mhd_6_t00000100_n00000352.out"

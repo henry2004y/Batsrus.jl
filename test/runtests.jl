@@ -1,4 +1,4 @@
-﻿# Tests of BATSRUS.jl
+# Tests of BATSRUS.jl
 
 using Batsrus, Test, SHA, LazyArtifacts
 using Batsrus.UnitfulBatsrus, Unitful
