@@ -7,10 +7,29 @@ export animate
 
 Save figures of colored contour from SWMF output files.
 Uses DimensionalData selectors or interpolation for data extraction.
+
+# Keywords
+- `var::String`: variable to plot with pcolormesh.
+- `vmin::Real`: minimum plotting value.
+- `vmax::Real`: maximum plotting value.
+- `plotrange`: 2D plotting spatial range `[xmin, xmax, ymin, ymax]`.
+- `plotinterval`: spatial sampling interval.
+- `innermask::Bool`: if true, mask the inner boundary (useful for generalized coordinates).
+- `rbody`: inner body radius for the mask.
+- `xlabel`, `ylabel`: strings for the x and y axis labels.
+- `title`: title of the figure. Can be a `String`, or a function `(bd) -> String` that takes the `BatsrusIDL` object to generate time-dependent titles.
+- `plot_kwargs`: NamedTuple or Dict of keyword arguments passed to Matplotlib's `pcolormesh`.
+- `cbar_kwargs`: NamedTuple or Dict of keyword arguments passed to Matplotlib's `colorbar`. You can also specify a `label` here.
+- `streamvars`: string with two variables separated by `;` for streamlines (e.g., `"bx;by"`).
+- `stream_kwargs`: NamedTuple or Dict of keyword arguments passed to Matplotlib's `streamplot`.
+- `outdir::String`: output directory for the image files.
+- `overwrite::Bool`: if true, overwrite the existing image files.
+- `fig_kwargs`: NamedTuple or Dict of keyword arguments passed to Matplotlib's `figure`.
+- `savefig_kwargs`: NamedTuple or Dict of keyword arguments passed to Matplotlib's `savefig`.
 """
 function Batsrus.animate(
         files::Vector{String}; var = "rho", vmin = -Inf, vmax = Inf,
-        plotrange = nothing, plotinterval = 1.0,
+        plotrange = nothing, plotinterval = Inf,
         innermask = false, rbody = nothing,
         xlabel = nothing, ylabel = nothing, title = nothing,
         plot_kwargs = (; cmap = PyPlot.matplotlib.cm.turbo),
@@ -99,7 +118,7 @@ function Batsrus.animate(
             # Labels and aspect ratio
             x_label = isnothing(xlabel) ? L"X [$R_\mathrm{E}$]" : xlabel
             ax.set_xlabel(x_label)
-            
+
             if isnothing(ylabel)
                 fname = basename(files[1])
                 y_label = startswith(fname, "y") ? L"Z [$R_\mathrm{E}$]" : L"Y [$R_\mathrm{E}$]"
@@ -114,7 +133,7 @@ function Batsrus.animate(
 
             if isnothing(cb)
                 cb = colorbar(c; ax, cbar_kwargs...)
-                c_label = haskey(cbar_kwargs, :label) ? cbar_kwargs.label : var
+                c_label = hasproperty(cbar_kwargs, :label) ? cbar_kwargs.label : var
                 cb.ax.set_ylabel(c_label)
             end
         else
