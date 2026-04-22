@@ -11,10 +11,15 @@ Uses DimensionalData selectors or interpolation for data extraction.
 function Batsrus.animate(
         files::Vector{String}; var = "rho", vmin = -Inf, vmax = Inf,
         plotrange = nothing, plotinterval = 1.0,
-        cmap = PyPlot.matplotlib.cm.turbo, streamvars = nothing, density = 1,
-        orientation = "vertical", extend = "neither",
-        outdir = "figs/", overwrite = false, pad = 0.005, clabel = "",
-        innermask = false, rbody = nothing
+        innermask = false, rbody = nothing,
+        xlabel = nothing, ylabel = nothing, title = nothing,
+        plot_kwargs = (; cmap = PyPlot.matplotlib.cm.turbo),
+        cbar_kwargs = (; orientation = "vertical", extend = "neither", pad = 0.005),
+        streamvars = nothing,
+        stream_kwargs = (; color = "white", density = 1),
+        outdir = "figs/", overwrite = false,
+        fig_kwargs = (; figsize = (8, 6), constrained_layout = true),
+        savefig_kwargs = (; bbox_inches = "tight", dpi = 200)
     )
 
     if !isdir(outdir)
@@ -49,7 +54,7 @@ function Batsrus.animate(
 
     norm = PyPlot.matplotlib.colors.Normalize(vmin, vmax)
 
-    fig = figure(figsize = (8, 6), constrained_layout = true)
+    fig = figure(; fig_kwargs...)
     ax = plt.axes()
 
     c = nothing
@@ -90,20 +95,27 @@ function Batsrus.animate(
         if isnothing(c)
             # Initialization
             # Plotting
-            c = ax.pcolormesh(x_coords, y_coords, data; norm, cmap)
+            c = ax.pcolormesh(x_coords, y_coords, data; norm, plot_kwargs...)
             # Labels and aspect ratio
-            ax.set_xlabel(L"X [$R_\mathrm{E}$]")
-            fname = basename(files[1])
-            ylabel_str = startswith(fname, "y") ? L"Z [$R_\mathrm{E}$]" : L"Y [$R_\mathrm{E}$]"
-            ax.set_ylabel(ylabel_str)
+            x_label = isnothing(xlabel) ? L"X [$R_\mathrm{E}$]" : xlabel
+            ax.set_xlabel(x_label)
+            
+            if isnothing(ylabel)
+                fname = basename(files[1])
+                y_label = startswith(fname, "y") ? L"Z [$R_\mathrm{E}$]" : L"Y [$R_\mathrm{E}$]"
+            else
+                y_label = ylabel
+            end
+            ax.set_ylabel(y_label)
+
             ax.set_aspect("equal", adjustable = "box", anchor = "C")
             ax.set_xlim(x_coords[1], x_coords[end])
             ax.set_ylim(y_coords[1], y_coords[end])
 
             if isnothing(cb)
-                cb = colorbar(c; ax, orientation, extend, pad, aspect = 40)
-                label = isempty(clabel) ? var : clabel
-                cb.ax.set_ylabel(label)
+                cb = colorbar(c; ax, cbar_kwargs...)
+                c_label = haskey(cbar_kwargs, :label) ? cbar_kwargs.label : var
+                cb.ax.set_ylabel(c_label)
             end
         else
             # Optimization: only update the array data
@@ -111,7 +123,13 @@ function Batsrus.animate(
         end
 
         # Update Title
-        title_str = @sprintf "t = %.1f s" bd.head.time
+        title_str = if isnothing(title)
+            @sprintf "t = %.1f s" bd.head.time
+        elseif title isa Function
+            title(bd)
+        else
+            title
+        end
         ax.set_title(title_str)
 
         if !isnothing(streamvars)
@@ -140,11 +158,11 @@ function Batsrus.animate(
                     xi, yi = x_coords, y_coords
                 end
                 # Assuming same grid for streamlines
-                st = ax.streamplot(xi, yi, v1, v2; color = "white", density)
+                st = ax.streamplot(xi, yi, v1, v2; stream_kwargs...)
             end
         end
 
-        savefig(outname, bbox_inches = "tight", dpi = 200)
+        savefig(outname; savefig_kwargs...)
         @info "Saved $outname"
 
         if !isnothing(st) # Clean up streamlines for next iteration

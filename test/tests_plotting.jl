@@ -165,7 +165,10 @@
             plt.close()
 
             mktempdir() do tmpdir
-                animate([joinpath(datapath, file)], outdir = tmpdir)
+                animate([joinpath(datapath, file)], outdir = tmpdir,
+                    plot_kwargs = (; cmap = "viridis"),
+                    fig_kwargs = (; figsize=(4,3)),
+                    title = "Custom Title")
                 @test isfile(joinpath(tmpdir, "z=0_raw_1_t25.60000_n00000258.png"))
             end
 
