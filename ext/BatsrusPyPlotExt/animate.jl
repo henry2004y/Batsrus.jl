@@ -1,0 +1,165 @@
+# Sequence of figure plotting
+
+export animate
+
+"""
+    animate(files::Vector{String}; kwargs...)
+
+Save figures of colored contour from SWMF output files.
+Uses DimensionalData selectors or interpolation for data extraction.
+"""
+function Batsrus.animate(
+        files::Vector{String}; var = "rho", vmin = -Inf, vmax = Inf,
+        plotrange = nothing, plotinterval = 1.0,
+        cmap = PyPlot.matplotlib.cm.turbo, streamvars = nothing, density = 1,
+        orientation = "vertical", extend = "neither",
+        outdir = "figs/", overwrite = false, pad = 0.005, clabel = "",
+        innermask = false, rbody = nothing
+    )
+
+    if !isdir(outdir)
+        mkpath(outdir)
+    end
+
+    nfile = length(files)
+    if nfile == 0
+        @warn "No files found to process."
+        return
+    end
+
+    # First file to setup parameters if vmin/vmax are Inf
+    bd = load(files[1])
+    if bd.head.gencoord
+        range = isnothing(plotrange) ? [-Inf, Inf, -Inf, Inf] : plotrange
+        _, _, data = interp2d(bd, var, range, plotinterval; innermask, rbody)
+    else
+        data = bd[var]
+        if !isnothing(plotrange)
+            data = data[
+                dims(data, 1) => plotrange[1] .. plotrange[2],
+                dims(data, 2) => plotrange[3] .. plotrange[4],
+            ]
+        end
+    end
+
+    if isinf(vmin) || isinf(vmax)
+        vmin = isinf(vmin) ? minimum(data) : vmin
+        vmax = isinf(vmax) ? maximum(data) : vmax
+    end
+
+    norm = PyPlot.matplotlib.colors.Normalize(vmin, vmax)
+
+    fig = figure(figsize = (8, 6), constrained_layout = true)
+    ax = plt.axes()
+
+    c = nothing
+    cb = nothing
+    st = nothing
+    for (i, file) in enumerate(files)
+        @info "Processing $i out of $nfile: $file"
+
+        # Generate output name
+        base, ext = splitext(basename(file))
+        outname = joinpath(outdir, base * ".png")
+
+        if !overwrite && isfile(outname)
+            @info "Skipping existing file: $outname"
+            continue
+        end
+
+        bd = load(file)
+        if bd.head.gencoord
+            range = isnothing(plotrange) ? [-Inf, Inf, -Inf, Inf] : plotrange
+            x_coords, y_coords, data =
+                interp2d(bd, var, range, plotinterval; innermask, rbody)
+        else
+            data = bd[var]
+            # Apply plotrange if provided (using DimensionalData selectors)
+            if !isnothing(plotrange)
+                data = data[
+                    dims(data, 1) => plotrange[1] .. plotrange[2],
+                    dims(data, 2) => plotrange[3] .. plotrange[4],
+                ]
+            end
+            # Get coordinates
+            x_coords = dims(data, 1).val
+            y_coords = dims(data, 2).val
+            data = data'
+        end
+
+        if isnothing(c)
+            # Initialization
+            # Plotting
+            c = ax.pcolormesh(x_coords, y_coords, data; norm, cmap)
+            # Labels and aspect ratio
+            ax.set_xlabel(L"X [$R_\mathrm{E}$]")
+            fname = basename(files[1])
+            ylabel_str = startswith(fname, "y") ? L"Z [$R_\mathrm{E}$]" : L"Y [$R_\mathrm{E}$]"
+            ax.set_ylabel(ylabel_str)
+            ax.set_aspect("equal", adjustable = "box", anchor = "C")
+            ax.set_xlim(x_coords[1], x_coords[end])
+            ax.set_ylim(y_coords[1], y_coords[end])
+
+            if isnothing(cb)
+                cb = colorbar(c; ax, orientation, extend, pad, aspect = 40)
+                label = isempty(clabel) ? var : clabel
+                cb.ax.set_ylabel(label)
+            end
+        else
+            # Optimization: only update the array data
+            c.set_array(data)
+        end
+
+        # Update Title
+        title_str = @sprintf "t = %.1f s" bd.head.time
+        ax.set_title(title_str)
+
+        if !isnothing(streamvars)
+            vars = split(streamvars, ";")
+            if length(vars) == 2
+                if bd.head.gencoord
+                    range = isnothing(plotrange) ? [-Inf, Inf, -Inf, Inf] : plotrange
+                    xi, yi, v1 =
+                        interp2d(bd, String(vars[1]), range, plotinterval; innermask, rbody)
+                    _, _, v2 =
+                        interp2d(bd, String(vars[2]), range, plotinterval; innermask, rbody)
+                else
+                    v1 = bd[vars[1]]
+                    v2 = bd[vars[2]]
+                    if !isnothing(plotrange)
+                        v1 = v1[
+                            dims(v1, 1) => plotrange[1] .. plotrange[2],
+                            dims(v1, 2) => plotrange[3] .. plotrange[4],
+                        ]
+                        v2 = v2[
+                            dims(v2, 1) => plotrange[1] .. plotrange[2],
+                            dims(v2, 2) => plotrange[3] .. plotrange[4],
+                        ]
+                    end
+                    v1, v2 = v1', v2'
+                    xi, yi = x_coords, y_coords
+                end
+                # Assuming same grid for streamlines
+                st = ax.streamplot(xi, yi, v1, v2; color = "white", density)
+            end
+        end
+
+        savefig(outname, bbox_inches = "tight", dpi = 200)
+        @info "Saved $outname"
+
+        if !isnothing(st) # Clean up streamlines for next iteration
+            st.lines.remove()
+            for art in ax.get_children()
+                if PyPlot.PyCall.pybuiltin(:isinstance)(
+                        art,
+                        PyPlot.matplotlib.patches.FancyArrowPatch
+                    )
+                    art.remove()
+                end
+            end
+            st = nothing
+        end
+    end
+
+    return PyPlot.plt.close(fig)
+end

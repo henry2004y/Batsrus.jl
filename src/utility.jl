@@ -10,7 +10,7 @@ data resolution is the same as the original.
 # Keyword Arguments
 
   - `innermask=false`: Whether to mask the inner boundary with NaN.
-  - `rbody=1.0`: Radius of the inner mask. Used when the rbody parameter is not found in the header.
+  - `rbody=nothing`: Radius of the inner mask. If not set, it will be read from the header.
   - `useMatplotlib=true`: Whether to Matplotlib (faster) or NaturalNeighbours for scattered
     interpolation. If true, a linear interpolation is performed on a constructed triangle mesh.
 """
@@ -19,7 +19,8 @@ function interp2d end
 function interp2d(
         bd::BatsrusIDLUnstructured{2, TV, TX, TW}, var::AbstractString,
         plotrangeIn::Vector = [-Inf32, Inf32, -Inf32, Inf32], plotinterval::Real = Inf32;
-        innermask::Bool = false, rbody::Real = 1.0, useMatplotlib::Bool = true
+        innermask::Bool = false, rbody::Union{Nothing, Real} = nothing,
+        useMatplotlib::Bool = true
     ) where {TV, TX, TW}
     x, w = bd.x, bd.w
     varIndex_ = findindex(bd, var)
@@ -59,7 +60,8 @@ end
 function interp2d(
         bd::BatsrusIDLStructured{2, TV, TX, TW}, var::AbstractString,
         plotrangeIn::Vector = [-Inf32, Inf32, -Inf32, Inf32], plotinterval::Real = Inf32;
-        innermask::Bool = false, rbody::Real = 1.0, useMatplotlib::Bool = true
+        innermask::Bool = false, rbody::Union{Nothing, Real} = nothing,
+        useMatplotlib::Bool = true
     ) where {TV, TX, TW}
     x, w = bd.x, bd.w
     varIndex_ = findindex(bd, var)
@@ -91,23 +93,25 @@ function interp2d(
     return xi, yi, Wi
 end
 
-function _mask_inner_boundary!(Wi, xi, yi, bd::BatsrusIDL, innermask::Bool, rbody::Real)
+function _mask_inner_boundary!(
+        Wi, xi, yi, bd::BatsrusIDL, innermask::Bool, rbody::Union{Nothing, Real}
+    )
     !innermask && return
-    varIndex_ = findlast(x -> x == "rbody", bd.head.param)
-    return if isnothing(varIndex_)
-        @info "rbody not found in file header parameters; use keyword rbody"
-        @inbounds @simd for i in CartesianIndices(Wi)
-            if xi[i[2]]^2 + yi[i[1]]^2 < rbody^2
-                Wi[i] = NaN
-            end
+    if isnothing(rbody)
+        varIndex_ = findlast(x -> x == "rbody", bd.head.param)
+        if !isnothing(varIndex_)
+            rbody = bd.head.eqpar[varIndex_]
+        else
+            @info "rbody not found in file header parameters; use default rbody=1.0"
+            rbody = 1.0
         end
-    else
-        ndim = 2
-        ParamIndex_ = varIndex_ - ndim - bd.head.nw
-        @inbounds @simd for i in CartesianIndices(Wi)
-            if xi[i[1]]^2 + yi[i[2]]^2 < bd.head.eqpar[ParamIndex_]^2
-                Wi[i] = NaN
-            end
+    end
+
+    @inbounds @simd for i in CartesianIndices(Wi)
+        # Wi[j, i] corresponds to yi[j] and xi[i]
+        # i[1] is row index (j), i[2] is column index (i)
+        if xi[i[2]]^2 + yi[i[1]]^2 < rbody^2
+            Wi[i] = NaN
         end
     end
 end
