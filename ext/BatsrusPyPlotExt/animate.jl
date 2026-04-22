@@ -173,7 +173,7 @@ function Batsrus.animate(
                             dims(v2, 2) => plotrange[3] .. plotrange[4],
                         ]
                     end
-                    v1, v2 = v1', v2'
+                    v1, v2 = collect(v1'), collect(v2')
                     xi, yi = x_coords, y_coords
                 end
                 # Assuming same grid for streamlines
