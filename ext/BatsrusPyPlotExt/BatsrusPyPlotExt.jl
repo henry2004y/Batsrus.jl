@@ -6,7 +6,7 @@ using Printf
 using Interpolations
 
 import Batsrus: meshgrid, findindex, adjust_plotrange!, _resolve_alias
-import Batsrus: plotlogdata, cutplot, streamslice, plot_phase
+import Batsrus: plotlogdata, cutplot, streamslice, plot_phase, plot_phase!, animate
 import Batsrus: dims, (..)
 
 function __init__()

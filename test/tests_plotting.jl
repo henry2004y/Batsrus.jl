@@ -124,9 +124,7 @@
                 end
             end
         end
-    end
-
-    if RUN_PYPLOT_TESTS
+    elseif RUN_PYPLOT_TESTS
         @testset "PyPlot" begin
             @test size(squeeze(zeros(2, 3, 1))) == (2, 3)
             # 1D ascii

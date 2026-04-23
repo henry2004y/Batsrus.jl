@@ -40,7 +40,9 @@ function Batsrus.animate(
         fig_kwargs = (size = (800, 600),),
         savefig_kwargs = Dict(),
         use_units = false,
-        colgap = 10
+        colgap = 10,
+        plot_kwargs = (;),
+        kwargs...
     )
 
     if !isdir(outdir)
@@ -123,8 +125,8 @@ function Batsrus.animate(
                     dims(data, 2) => plotrange[3] .. plotrange[4],
                 ]
             end
-            x_coords = dims(data, 1).val
-            y_coords = dims(data, 2).val
+            x_coords = val(dims(data, 1))
+            y_coords = val(dims(data, 2))
         end
 
         if use_units && hasunit(bd)
@@ -190,9 +192,12 @@ function Batsrus.animate(
                             dims(v2, 2) => plotrange[3] .. plotrange[4],
                         ]
                     end
-                    v1, v2 = v1.val, v2.val
+                    v1, v2 = parent(v1), parent(v2)
                 end
-                str = evenstream(x_coords, y_coords, v1', v2')
+                if size(v1) != (length(x_coords), length(y_coords))
+                    v1, v2 = v1', v2'
+                end
+                str = evenstream(x_coords, y_coords, v1, v2)
                 st = streamlines!(ax, str; stream_kwargs...)
             end
         end

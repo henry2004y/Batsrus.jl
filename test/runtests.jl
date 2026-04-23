@@ -18,9 +18,7 @@ const RUN_MAKIE_TESTS = get(ENV, "TEST_MAKIE", "false") == "true" || Sys.isapple
 if RUN_MAKIE_TESTS
     using CairoMakie
     using UniformStreamlines
-end
-
-if RUN_PYPLOT_TESTS
+elseif RUN_PYPLOT_TESTS
     using DimensionalData # for .. (IntervalSet) usage
     using PyPlot
 end

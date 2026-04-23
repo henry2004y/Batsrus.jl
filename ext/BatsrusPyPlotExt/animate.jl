@@ -32,14 +32,16 @@ function Batsrus.animate(
         plotrange = nothing, plotinterval = Inf,
         innermask = false, rbody = nothing,
         xlabel = nothing, ylabel = nothing, title = nothing,
-        plot_kwargs = (; cmap = PyPlot.matplotlib.cm.turbo),
         cbar_kwargs = (; orientation = "vertical", extend = "neither", pad = 0.005),
         streamvars = nothing,
         stream_kwargs = (; color = "white", density = 1),
         outdir = "figs/", overwrite = false,
         fig_kwargs = (; figsize = (8, 6), constrained_layout = true),
         savefig_kwargs = (; bbox_inches = "tight", dpi = 200),
-        use_units = false
+        use_units = false,
+        colormap = nothing,
+        plot_kwargs = (; cmap = isnothing(colormap) ? PyPlot.matplotlib.cm.turbo : colormap),
+        kwargs...
     )
 
     if !isdir(outdir)

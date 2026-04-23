@@ -1,13 +1,15 @@
 module BatsrusMakieExt
 
 using Batsrus, Printf
-import Batsrus: findindex, hasunit, getunit, interp2d, plot_phase, _resolve_alias
+import Batsrus: findindex, hasunit, getunit, interp2d, plot_phase, plot_phase!, animate,
+    _resolve_alias
 import Batsrus.UnitfulBatsrus
 import Makie
-using Makie: @L_str, heatmap!, poly!, streamlines!, Circle, Point2f, Figure, Axis, Colorbar,
+using Makie: @L_str, heatmap!, poly!, Circle, Point2f, Figure, Axis, Colorbar,
     colgap!, DataAspect, save, delete!, Observable
 using UniformStreamlines
 using Unitful: ustrip
+using DimensionalData: dims, val
 
 include("typerecipe.jl")
 include("makie_amrex.jl")
