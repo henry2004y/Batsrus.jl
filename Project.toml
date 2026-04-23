@@ -28,10 +28,11 @@ WriteVTK = "64499a7a-5c06-52f2-abe2-ccb03c286192"
 Glob = "c27321d9-0574-5035-807b-f59d2c89b15c"
 LightXML = "9c8b4983-aa76-5018-a973-4c85ecc9e179"
 HDF5 = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
+UniformStreamlines = "d45a1faf-ed48-5bcd-af90-6f9b3352014e"
 
 [extensions]
 BatsrusGaussianMixturesExt = "GaussianMixtures"
-BatsrusMakieExt = "Makie"
+BatsrusMakieExt = ["Makie", "UniformStreamlines"]
 BatsrusPyPlotExt = "PyPlot"
 BatsrusWriteVTKExt = ["WriteVTK", "Glob", "LightXML"]
 BatsrusHDF5Ext = "HDF5"
@@ -58,6 +59,7 @@ Reexport = "1.2"
 StaticArrays = "1.2"
 Suppressor = "0.2.8"
 Unitful = "1.7"
+UniformStreamlines = "0.2"
 WriteVTK = "1.9"
 julia = "1.10"
 
@@ -72,7 +74,8 @@ PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
 SHA = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+UniformStreamlines = "d45a1faf-ed48-5bcd-af90-6f9b3352014e"
 WriteVTK = "64499a7a-5c06-52f2-abe2-ccb03c286192"
 
 [targets]
-test = ["CairoMakie", "GaussianMixtures", "Glob", "HDF5", "LazyArtifacts", "LightXML", "PyPlot", "SHA", "Suppressor", "Test", "WriteVTK"]
+test = ["CairoMakie", "GaussianMixtures", "Glob", "HDF5", "LazyArtifacts", "LightXML", "PyPlot", "SHA", "Suppressor", "Test", "UniformStreamlines", "WriteVTK"]
