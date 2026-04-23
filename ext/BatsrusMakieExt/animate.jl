@@ -26,6 +26,7 @@ takes the `BatsrusIDL` object to generate time-dependent titles.
 - `overwrite::Bool`: if true, overwrite the existing image files.
 - `fig_kwargs`: NamedTuple or Dict of keyword arguments passed to Makie's `Figure`.
 - `savefig_kwargs`: NamedTuple or Dict of keyword arguments passed to Makie's `save`.
+- `colgap`: gap between the axis and the colorbar.
 """
 function Batsrus.animate(
         files::Vector{String}; var = "rho", vmin = -Inf, vmax = Inf,
@@ -37,7 +38,9 @@ function Batsrus.animate(
         stream_kwargs = (color = :white, linewidth = 1.0, with_arrows = true),
         outdir = "figs/", overwrite = false,
         fig_kwargs = (size = (800, 600),),
-        savefig_kwargs = Dict()
+        savefig_kwargs = Dict(),
+        use_units = false,
+        colgap = 10
     )
 
     if !isdir(outdir)
@@ -124,14 +127,29 @@ function Batsrus.animate(
             y_coords = dims(data, 2).val
         end
 
+        if use_units && hasunit(bd)
+            unitx = getunit(bd, bd.head.coord[1])
+            unity = getunit(bd, bd.head.coord[2])
+            unitw = getunit(bd, var)
+            if unitx isa UnitfulBatsrus.Unitlike
+                x_coords = x_coords .* unitx
+            end
+            if unity isa UnitfulBatsrus.Unitlike
+                y_coords = y_coords .* unity
+            end
+            if unitw isa UnitfulBatsrus.Unitlike
+                data = data .* unitw
+            end
+        end
+
         if isnothing(hm)
             hm = heatmap!(
-                ax, x_coords, y_coords, data', colormap = colormap,
-                colorrange = (vmin, vmax)
+                ax, x_coords, y_coords, data';
+                colormap, colorrange = (vmin, vmax)
             )
             cb = Colorbar(fig[1, 2], hm, label = var)
             # Adjust gap between axis and colorbar
-            colgap!(fig.layout, -120)
+            colgap!(fig.layout, colgap)
         else
             # For simplicity in this implementation, we recreate the plot elements
             # that might change significantly, like streamlines.

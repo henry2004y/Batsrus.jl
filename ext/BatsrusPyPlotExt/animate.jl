@@ -38,7 +38,8 @@ function Batsrus.animate(
         stream_kwargs = (; color = "white", density = 1),
         outdir = "figs/", overwrite = false,
         fig_kwargs = (; figsize = (8, 6), constrained_layout = true),
-        savefig_kwargs = (; bbox_inches = "tight", dpi = 200)
+        savefig_kwargs = (; bbox_inches = "tight", dpi = 200),
+        use_units = false
     )
 
     if !isdir(outdir)
@@ -109,6 +110,21 @@ function Batsrus.animate(
             x_coords = dims(data, 1).val
             y_coords = dims(data, 2).val
             data = data'
+        end
+
+        if use_units && hasunit(bd)
+            unitx = getunit(bd, bd.head.coord[1])
+            unity = getunit(bd, bd.head.coord[2])
+            unitw = getunit(bd, var)
+            if unitx isa UnitfulBatsrus.Unitlike
+                x_coords = x_coords .* unitx
+            end
+            if unity isa UnitfulBatsrus.Unitlike
+                y_coords = y_coords .* unity
+            end
+            if unitw isa UnitfulBatsrus.Unitlike
+                data = data .* unitw
+            end
         end
 
         if isnothing(c)
