@@ -7,6 +7,7 @@ import Makie
 using Makie: @L_str, heatmap!, poly!, streamlines!, Circle, Point2f, Figure, Axis, Colorbar,
     colgap!, DataAspect, save, delete!, Observable
 using UniformStreamlines
+using Unitful: ustrip
 
 include("typerecipe.jl")
 include("makie_amrex.jl")
