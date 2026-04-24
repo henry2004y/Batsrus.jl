@@ -1,9 +1,40 @@
 export plotlogdata, cutplot, streamslice, plot_phase, plot_phase!, animate
 
+"""
+    plotlogdata(data, head::NamedTuple, func::AbstractString; plotmode = "line")
+
+Plot log data. Stub to be implemented by plotting extensions.
+"""
 function plotlogdata end
+
+"""
+    cutplot(data, var, cut; kwargs...)
+
+Plot a 2D slice of the data. Stub to be implemented by plotting extensions.
+"""
 function cutplot end
+
+"""
+    streamslice(data, var1, var2, cut; kwargs...)
+
+Plot 2D streamlines. Stub to be implemented by plotting extensions.
+"""
 function streamslice end
+
+"""
+    plot_phase!(ax, data, x_variable, y_variable; kwargs...)
+
+Plots the 2D phase space density for selected variables.
+Stub to be implemented by plotting extensions.
+"""
 function plot_phase! end
+
+"""
+    animate(files::Vector{String}; kwargs...)
+
+Save figures or create an animation from a sequence of SWMF output files.
+Stub to be implemented by plotting extensions.
+"""
 function animate end
 
 """
