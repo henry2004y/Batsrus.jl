@@ -147,7 +147,7 @@ function Batsrus.animate(
         if isnothing(hm)
             hm = heatmap!(
                 ax, x_coords, y_coords, data';
-                colormap, colorrange = (vmin, vmax)
+                colormap, colorrange = (vmin, vmax), plot_kwargs...
             )
             cb = Colorbar(fig[1, 2], hm, label = var)
             # Adjust gap between axis and colorbar
