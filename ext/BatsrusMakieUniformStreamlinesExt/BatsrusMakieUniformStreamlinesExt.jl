@@ -1,16 +1,14 @@
-module BatsrusMakieExt
+module BatsrusMakieUniformStreamlinesExt
 
 using Batsrus, Printf
-import Batsrus: findindex, hasunit, getunit, interp2d, plot_phase, plot_phase!,
-    _resolve_alias
+import Batsrus: hasunit, getunit, interp2d, animate
 import Batsrus.UnitfulBatsrus
 import Makie
 using Makie: @L_str, heatmap!, poly!, Circle, Point2f, Figure, Axis, Colorbar,
     colgap!, DataAspect, save, delete!, Observable
-using Unitful: ustrip
 using DimensionalData: dims, val
+using UniformStreamlines: streamlines!, evenstream
 
-include("typerecipe.jl")
-include("makie_amrex.jl")
+include("animate.jl")
 
 end

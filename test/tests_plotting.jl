@@ -72,6 +72,34 @@
             fig, ax, plt = CairoMakie.heatmap(bd, "p")
             @test plt isa Heatmap
 
+            @testset "Makie Animation" begin
+                mktempdir() do tmpdir
+                    # 2D structured binary with streamlines
+                    file = "z=0_raw_1_t25.60000_n00000258.out"
+                    animate(
+                        [joinpath(datapath, file)],
+                        outdir = tmpdir,
+                        streamvars = "bx;by",
+                        stream_kwargs = (; color = :red),
+                        colormap = :viridis,
+                        title = "Custom Title"
+                    )
+                    @test isfile(joinpath(tmpdir, "z=0_raw_1_t25.60000_n00000258.png"))
+                end
+
+                mktempdir() do tmpdir
+                    # 2D unstructured data with streamlines
+                    file_unstructured = "bx0_mhd_6_t00000100_n00000352.out"
+                    animate(
+                        [joinpath(datapath, file_unstructured)],
+                        outdir = tmpdir,
+                        var = "P", streamvars = "ux;uy",
+                        stream_kwargs = (; color = :white, linewidth = 0.5)
+                    )
+                    @test isfile(joinpath(tmpdir, "bx0_mhd_6_t00000100_n00000352.png"))
+                end
+            end
+
             @testset "Amrex Particles" begin
                 tmpdir = mktempdir()
                 try
@@ -96,9 +124,7 @@
                 end
             end
         end
-    end
-
-    if RUN_PYPLOT_TESTS
+    elseif RUN_PYPLOT_TESTS
         @testset "PyPlot" begin
             @test size(squeeze(zeros(2, 3, 1))) == (2, 3)
             # 1D ascii
@@ -166,21 +192,25 @@
 
             mktempdir() do tmpdir
                 # 2D structured binary with streamlines
-                animate([joinpath(datapath, file)], outdir = tmpdir,
+                animate(
+                    [joinpath(datapath, file)], outdir = tmpdir,
                     streamvars = "bx;by",
                     stream_kwargs = (; color = "red"),
                     plot_kwargs = (; cmap = "viridis"),
                     fig_kwargs = (; figsize = (4, 3)),
-                    title = "Custom Title")
+                    title = "Custom Title"
+                )
                 @test isfile(joinpath(tmpdir, "z=0_raw_1_t25.60000_n00000258.png"))
             end
 
             mktempdir() do tmpdir
                 # 2D unstructured data with streamlines
                 file_unstructured = "bx0_mhd_6_t00000100_n00000352.out"
-                animate([joinpath(datapath, file_unstructured)], outdir = tmpdir,
+                animate(
+                    [joinpath(datapath, file_unstructured)], outdir = tmpdir,
                     var = "P", streamvars = "ux;uy",
-                    stream_kwargs = (; color = "white", density = 0.5))
+                    stream_kwargs = (; color = "white", density = 0.5)
+                )
                 @test isfile(joinpath(tmpdir, "bx0_mhd_6_t00000100_n00000352.png"))
             end
 

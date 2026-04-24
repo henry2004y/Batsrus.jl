@@ -8,8 +8,6 @@ const _AXIS_LABEL_MAP = Dict(
 
 _get_axis_label(variable_name::String) = get(_AXIS_LABEL_MAP, variable_name, variable_name)
 
-import Batsrus: plot_phase!
-
 """
     plot_phase!(ax, data, x_variable, y_variable; kwargs...)
 

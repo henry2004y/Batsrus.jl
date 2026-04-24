@@ -2,7 +2,8 @@
     # Mockup for PLANETARY units
     # Using NamedTuple to avoid struct definition issues in test scope
     head_mock = (
-        headline = "PLANETARY", wname = ["x", "rho", "ux", "bx", "p", "jx"], ndim = 3,
+        headline = "PLANETARY", coord = ["x", "y", "z"],
+        wname = ["rho", "ux", "bx", "p", "jx"], ndim = 3,
     )
     bd_mock = (head = head_mock,)
 
@@ -36,8 +37,7 @@
 
     # Test getunits
     units = getunits(bd_mock)
-    @test length(units) == 6
-    @test units[1] == u"Re"
-    @test units[2] == u"amucc"
-    @test units[6] == u"μA/m^2"
+    @test length(units) == 5
+    @test units[1] == u"amucc"
+    @test units[5] == u"μA/m^2"
 end

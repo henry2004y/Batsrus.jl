@@ -136,10 +136,17 @@ function _infer_unit_from_name(var::AbstractString, sys_units)
 end
 
 function getunit(bd, var)
-    # Batsrus has a bug in the 2D cuts of 3D runs: it always outputs the 3
-    # coordinate units in the headline. To work around it, here the index is shifted by 1.
-    var_ = findfirst(x -> lowercase(x) == lowercase(var), bd.head.wname) + bd.head.ndim + 1
-    isnothing(var_) && error("$(var) not found in file header variables!")
+    # Search in coordinates first
+    idx = findfirst(x -> lowercase(x) == lowercase(var), bd.head.coord)
+    if isnothing(idx)
+        # Batsrus has a bug in the 2D cuts of 3D runs: it always outputs the 3
+        # coordinate units in the headline. To work around it, here the index is shifted by 1.
+        idx = findfirst(x -> lowercase(x) == lowercase(var), bd.head.wname)
+        isnothing(idx) && error("$(var) not found in file header variables!")
+        var_ = idx + bd.head.ndim + 1
+    else
+        var_ = idx
+    end
 
     if bd.head.headline in ("normalized variables", "PLANETARY")
         # Known special cases where header string parsing might fail or be implicit
