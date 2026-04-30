@@ -4,6 +4,7 @@ using Batsrus
 using PyPlot
 using Printf
 using Interpolations
+using ProgressMeter
 
 import Batsrus: meshgrid, findindex, adjust_plotrange!, _resolve_alias
 import Batsrus: plotlogdata, cutplot, streamslice, plot_phase, plot_phase!, animate
