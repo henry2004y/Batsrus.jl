@@ -183,6 +183,32 @@
             @test p[end] == 0.1f0
             p = PyPlot.imshow(bd, "p").get_array()
             @test p[2, 128] == 0.51229393f0
+
+            @testset "set_colorbar" begin
+                ext = Base.get_extension(Batsrus, :BatsrusPyPlotExt)
+
+                # twoslope
+                norm_two = ext.set_colorbar(:twoslope, -1.0, 1.0, [-1.0, 1.0]; vcenter = 0.5)
+                @test norm_two.vcenter == 0.5
+                @test norm_two.vmin == -1.0
+                @test norm_two.vmax == 1.0
+
+                # linear
+                norm_lin = ext.set_colorbar(:linear, 0.0, 1.0, [0.0, 1.0])
+                @test norm_lin.vmin == 0.0
+                @test norm_lin.vmax == 1.0
+
+                # symlog
+                norm_sym = ext.set_colorbar(:symlog, -10.0, 10.0, [-10.0, 10.0])
+                @test norm_sym.vmin == -10.0
+                @test norm_sym.vmax == 10.0
+
+                # log
+                norm_log = ext.set_colorbar(:log, 0.1, 10.0, [0.1, 10.0])
+                @test norm_log.vmin == 0.1
+                @test norm_log.vmax == 10.0
+            end
+
             plt.close()
             fig = plt.figure()
             ax = fig.add_subplot(111, projection = "3d")
