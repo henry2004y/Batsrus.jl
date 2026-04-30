@@ -74,7 +74,9 @@ end
 """
 function cutplot(
         bd::BatsrusIDL{3, TV}, var::AbstractString, ax = nothing;
-        plotrange = [-Inf, Inf, -Inf, Inf], dir = "x", sequence = 1
+        plotrange = [-Inf, Inf, -Inf, Inf], dir = "x", sequence = 1,
+        vmin = -Inf, vmax = Inf, vcenter = 0.0, colorscale = :linear,
+        add_colorbar = true, kwargs...
     ) where {TV}
     x, w = bd.x, bd.w
     varIndex_ = findindex(bd, var)
@@ -103,7 +105,10 @@ function cutplot(
     if isnothing(ax)
         ax = plt.gca()
     end
-    c = ax.pcolormesh(cut1, cut2, W)
+
+    norm = set_colorbar(colorscale, vmin, vmax, W; vcenter)
+    c = ax.pcolormesh(cut1, cut2, W; norm, kwargs...)
+    add_colorbar && colorbar(c; ax, fraction = 0.04, pad = 0.02)
 
     title(bd.head.wname[varIndex_])
 
@@ -249,18 +254,22 @@ function PyPlot.contour(
         bd::BatsrusIDL{2, TV}, var::AbstractString, ax = nothing;
         levels = 0, plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1,
         innermask = false, rbody = nothing,
-        kwargs...
+        vmin = -Inf, vmax = Inf, vcenter = 0.0, colorscale = :linear,
+        add_colorbar = false, kwargs...
     ) where {TV}
     Xi, Yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
     if isnothing(ax)
         ax = plt.gca()
     end
 
+    norm = set_colorbar(colorscale, vmin, vmax, Wi; vcenter)
     if levels != 0
-        c = ax.contour(Xi, Yi, Wi, levels; kwargs...)
+        c = ax.contour(Xi, Yi, Wi, levels; norm, kwargs...)
     else
-        c = ax.contour(Xi, Yi, Wi; kwargs...)
+        c = ax.contour(Xi, Yi, Wi; norm, kwargs...)
     end
+    add_colorbar && colorbar(c; ax, fraction = 0.04, pad = 0.02)
+
     add_titles!(bd, var, ax)
 
     return c
@@ -278,14 +287,15 @@ function PyPlot.contourf(
         levels::Int = 0,
         plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1, innermask = false,
         rbody = nothing,
-        add_colorbar = true, vmin = -Inf, vmax = Inf, colorscale = :linear, kwargs...
+        add_colorbar = true, vmin = -Inf, vmax = Inf, vcenter = 0.0,
+        colorscale = :linear, kwargs...
     ) where {TV}
     Xi, Yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
     if isnothing(ax)
         ax = plt.gca()
     end
 
-    norm = set_colorbar(colorscale, vmin, vmax, Wi)
+    norm = set_colorbar(colorscale, vmin, vmax, Wi; vcenter)
     if levels != 0
         c = ax.contourf(Xi, Yi, Wi, levels; norm, kwargs...)
     else
@@ -304,7 +314,9 @@ Wrapper over `tricontourf` in matplotlib.
 """
 function PyPlot.tricontourf(
         bd::BatsrusIDL{2, TV}, var::AbstractString, ax = nothing;
-        plotrange = [-Inf, Inf, -Inf, Inf], kwargs...
+        plotrange = [-Inf, Inf, -Inf, Inf],
+        vmin = -Inf, vmax = Inf, vcenter = 0.0, colorscale = :linear,
+        add_colorbar = true, kwargs...
     ) where {TV}
     x, w = bd.x, bd.w
     varIndex_ = findindex(bd, var)
@@ -325,7 +337,9 @@ function PyPlot.tricontourf(
         ax = plt.gca()
     end
 
-    c = ax.tricontourf(X, Y, W; kwargs...)
+    norm = set_colorbar(colorscale, vmin, vmax, W; vcenter)
+    c = ax.tricontourf(X, Y, W; norm, kwargs...)
+    add_colorbar && colorbar(c; ax, fraction = 0.04, pad = 0.02)
 
     add_titles!(bd, var, ax)
 
@@ -401,7 +415,8 @@ function PyPlot.plot_surface(
         bd::BatsrusIDL{2, TV}, var::AbstractString, ax = nothing;
         plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1, innermask = false,
         rbody = nothing,
-        kwargs...
+        vmin = -Inf, vmax = Inf, vcenter = 0.0, colorscale = :linear,
+        add_colorbar = true, kwargs...
     ) where {TV}
     if isnothing(ax)
         ax = plt.gca()
@@ -409,7 +424,9 @@ function PyPlot.plot_surface(
     xi, yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
     Xi, Yi = meshgrid(xi, yi)
 
-    c = plot_surface(Xi, Yi, Wi; kwargs...)
+    norm = set_colorbar(colorscale, vmin, vmax, Wi; vcenter)
+    c = plot_surface(Xi, Yi, Wi; norm, kwargs...)
+    add_colorbar && colorbar(c; ax, fraction = 0.04, pad = 0.02)
 
     add_titles!(bd, var, ax)
 
@@ -424,7 +441,7 @@ end
 # Keywords
 
   - `rbody=nothing`: inner body radius. If not set, it will be read from the header.
-  - `colorscale::Symbol`: colormap scale from [`:linear`, `:log`].
+  - `colorscale::Symbol`: colormap scale from [`:linear`, `:log`, `:symlog`, `:twoslope`].
   - `add_colorbar=true`: turn on colorbar.
 
 Wrapper over `pcolormesh` in matplotlib.
@@ -433,7 +450,8 @@ function PyPlot.pcolormesh(
         bd::BatsrusIDL{2, TV}, var::AbstractString, ax = nothing;
         plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1, innermask = false,
         rbody = nothing,
-        vmin = -Inf, vmax = Inf, colorscale = :linear, add_colorbar = true, kwargs...
+        vmin = -Inf, vmax = Inf, vcenter = 0.0, colorscale = :linear,
+        add_colorbar = true, kwargs...
     ) where {TV}
     xi, yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
 
@@ -441,7 +459,7 @@ function PyPlot.pcolormesh(
         ax = plt.gca()
     end
 
-    norm = set_colorbar(colorscale, vmin, vmax, Wi)
+    norm = set_colorbar(colorscale, vmin, vmax, Wi; vcenter)
     c = ax.pcolormesh(xi, yi, Wi; norm, kwargs...)
 
     add_colorbar && colorbar(c; ax, fraction = 0.04, pad = 0.02)
@@ -459,7 +477,9 @@ Wrapper over `tripcolor` in matplotlib.
 """
 function PyPlot.tripcolor(
         bd::BatsrusIDL{2, TV}, var::AbstractString, ax = nothing;
-        plotrange = [-Inf, Inf, -Inf, Inf], innermask = false, rbody = nothing, kwargs...
+        plotrange = [-Inf, Inf, -Inf, Inf], innermask = false, rbody = nothing,
+        vmin = -Inf, vmax = Inf, vcenter = 0.0, colorscale = :linear,
+        add_colorbar = true, kwargs...
     ) where {TV}
     x, w = bd.x, bd.w
 
@@ -499,7 +519,9 @@ function PyPlot.tripcolor(
         ax = plt.gca()
     end
 
-    c = ax.tripcolor(triang, W; kwargs...)
+    norm = set_colorbar(colorscale, vmin, vmax, W; vcenter)
+    c = ax.tripcolor(triang, W; norm, kwargs...)
+    add_colorbar && colorbar(c; ax, fraction = 0.04, pad = 0.02)
 
     ax.set_xlim(plotrange[1], plotrange[2])
     ax.set_ylim(plotrange[3], plotrange[4])
@@ -516,7 +538,7 @@ end
 # Keywords
 
   - `rbody=nothing`: inner body radius. If not set, it will be read from the header.
-  - `colorscale::Symbol`: colormap scale from [`:linear`, `:log`].
+  - `colorscale::Symbol`: colormap scale from [`:linear`, `:log`, `:twoslope`].
   - `vmin`: minimum value of colorbar.
   - `vmax`: maximum value of colorbar.
   - `add_colorbar=true`: turn on colorbar.
@@ -527,7 +549,8 @@ function PyPlot.imshow(
         bd::BatsrusIDL{2, TV}, var::AbstractString, ax = nothing;
         plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1, innermask = false,
         rbody = nothing,
-        add_colorbar = true, vmin = -Inf, vmax = Inf, colorscale = :linear, kwargs...
+        add_colorbar = true, vmin = -Inf, vmax = Inf, vcenter = 0.0,
+        colorscale = :linear, kwargs...
     ) where {
         TV,
     }
@@ -537,7 +560,7 @@ function PyPlot.imshow(
         ax = plt.gca()
     end
 
-    norm = set_colorbar(colorscale, vmin, vmax, Wi)
+    norm = set_colorbar(colorscale, vmin, vmax, Wi; vcenter)
     c = ax.imshow(
         Wi; extent = [xi[1], xi[end], yi[1], yi[end]],
         origin = "lower", aspect = "auto", interpolation = "nearest", norm, kwargs...
@@ -654,8 +677,15 @@ end
 """
 Set colorbar norm and ticks.
 """
-function set_colorbar(colorscale, vmin, vmax, data = [1.0])
-    if colorscale == :linear || any(<(0), data)
+function set_colorbar(colorscale, vmin, vmax, data = [1.0]; vcenter = 0.0)
+    if colorscale == :twoslope
+        vmin = isinf(vmin) ? minimum(x -> isnan(x) ? +Inf : x, data) : vmin
+        vmax = isinf(vmax) ? maximum(x -> isnan(x) ? -Inf : x, data) : vmax
+        cnorm = PyPlot.matplotlib.colors.TwoSlopeNorm(
+            vcenter = vcenter, vmin = vmin,
+            vmax = vmax
+        )
+    elseif colorscale == :linear || any(<(0), data)
         colorscale == :log && @warn "Nonpositive data detected: use linear scale instead!"
         vmin = isinf(vmin) ? minimum(x -> isnan(x) ? +Inf : x, data) : vmin
         vmax = isinf(vmax) ? maximum(x -> isnan(x) ? -Inf : x, data) : vmax
