@@ -12,12 +12,14 @@ Uses DimensionalData selectors or interpolation for data extraction.
 - `var::String`: variable to plot with pcolormesh.
 - `vmin::Real`: minimum plotting value.
 - `vmax::Real`: maximum plotting value.
+- `vcenter::Real`: center value of the color scale for TwoSlopeNorm.
 - `plotrange`: 2D plotting spatial range `[xmin, xmax, ymin, ymax]`.
 - `plotinterval`: spatial sampling interval.
 - `innermask::Bool`: if true, mask the inner boundary (useful for generalized coordinates).
 - `rbody`: inner body radius for the mask.
 - `xlabel`, `ylabel`: strings for the x and y axis labels.
 - `title`: title of the figure. Can be a `String`, or a function `(bd) -> String` that takes the `BatsrusIDL` object to generate time-dependent titles.
+- `xlabel_kwargs`, `ylabel_kwargs`, `title_kwargs`, `clabel_kwargs`: keyword arguments for labels and title properties.
 - `plot_kwargs`: NamedTuple or Dict of keyword arguments passed to Matplotlib's `pcolormesh`.
 - `cbar_kwargs`: NamedTuple or Dict of keyword arguments passed to Matplotlib's `colorbar`. You can also specify a `label` here.
 - `streamvars`: string with two variables separated by `;` for streamlines (e.g., `"bx;by"`).
@@ -26,12 +28,15 @@ Uses DimensionalData selectors or interpolation for data extraction.
 - `overwrite::Bool`: if true, overwrite the existing image files.
 - `fig_kwargs`: NamedTuple or Dict of keyword arguments passed to Matplotlib's `figure`.
 - `savefig_kwargs`: NamedTuple or Dict of keyword arguments passed to Matplotlib's `savefig`.
+- `show_progress::Bool`: if true, show progress bar.
 """
 function Batsrus.animate(
-        files::Vector{String}; var = "rho", vmin = -Inf, vmax = Inf,
-        plotrange = nothing, plotinterval = Inf,
+        files::Vector{String}; var = "rho", vmin = -Inf, vmax = Inf, vcenter = 0.0,
+        colorscale = :linear, plotrange = nothing, plotinterval = Inf,
         innermask = false, rbody = nothing,
         xlabel = nothing, ylabel = nothing, title = nothing,
+        xlabel_kwargs = (;), ylabel_kwargs = (;), title_kwargs = (;),
+        clabel_kwargs = (;),
         cbar_kwargs = (; orientation = "vertical", extend = "neither", pad = 0.005),
         streamvars = nothing,
         stream_kwargs = (; color = "white", density = 1),
@@ -41,6 +46,7 @@ function Batsrus.animate(
         use_units = false,
         colormap = nothing,
         plot_kwargs = (; cmap = isnothing(colormap) ? PyPlot.matplotlib.cm.turbo : colormap),
+        show_progress = true,
         kwargs...
     )
 
@@ -74,7 +80,7 @@ function Batsrus.animate(
         vmax = isinf(vmax) ? maximum(data) : vmax
     end
 
-    norm = PyPlot.matplotlib.colors.Normalize(vmin, vmax)
+    norm = set_colorbar(colorscale, vmin, vmax; vcenter)
 
     fig = figure(; fig_kwargs...)
     ax = plt.axes()
@@ -82,9 +88,9 @@ function Batsrus.animate(
     c = nothing
     cb = nothing
     st = nothing
-    for (i, file) in enumerate(files)
-        @info "Processing $i out of $nfile: $file"
+    p = Progress(length(files); dt = 4, enabled = show_progress)
 
+    for file in files
         # Generate output name
         base, ext = splitext(basename(file))
         outname = joinpath(outdir, base * ".png")
@@ -135,7 +141,7 @@ function Batsrus.animate(
             c = ax.pcolormesh(x_coords, y_coords, data; norm, plot_kwargs...)
             # Labels and aspect ratio
             x_label = isnothing(xlabel) ? L"X [$R_\mathrm{E}$]" : xlabel
-            ax.set_xlabel(x_label)
+            ax.set_xlabel(x_label; xlabel_kwargs...)
 
             if isnothing(ylabel)
                 fname = basename(files[1])
@@ -143,7 +149,7 @@ function Batsrus.animate(
             else
                 y_label = ylabel
             end
-            ax.set_ylabel(y_label)
+            ax.set_ylabel(y_label; ylabel_kwargs...)
 
             ax.set_aspect("equal", adjustable = "box", anchor = "C")
             ax.set_xlim(x_coords[1], x_coords[end])
@@ -152,7 +158,7 @@ function Batsrus.animate(
             if isnothing(cb)
                 cb = colorbar(c; ax, cbar_kwargs...)
                 c_label = hasproperty(cbar_kwargs, :label) ? cbar_kwargs.label : var
-                cb.ax.set_ylabel(c_label)
+                cb.ax.set_ylabel(c_label; clabel_kwargs...)
             end
         else
             # Optimization: only update the array data
@@ -167,7 +173,7 @@ function Batsrus.animate(
         else
             title
         end
-        ax.set_title(title_str)
+        ax.set_title(title_str; title_kwargs...)
 
         if !isnothing(streamvars)
             vars = split(streamvars, ";")
@@ -200,7 +206,6 @@ function Batsrus.animate(
         end
 
         savefig(outname; savefig_kwargs...)
-        @info "Saved $outname"
 
         if !isnothing(st) # Clean up streamlines for next iteration
             st.lines.remove()
@@ -214,7 +219,9 @@ function Batsrus.animate(
             end
             st = nothing
         end
+        next!(p)
     end
 
-    return PyPlot.plt.close(fig)
+    PyPlot.plt.close(fig)
+    return
 end

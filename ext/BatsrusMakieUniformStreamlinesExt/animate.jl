@@ -27,6 +27,7 @@ takes the `BatsrusIDL` object to generate time-dependent titles.
 - `fig_kwargs`: NamedTuple or Dict of keyword arguments passed to Makie's `Figure`.
 - `savefig_kwargs`: NamedTuple or Dict of keyword arguments passed to Makie's `save`.
 - `colgap`: gap between the axis and the colorbar.
+- `show_progress::Bool`: if true, show progress bar.
 """
 function Batsrus.animate(
         files::Vector{String}; var = "rho", vmin = -Inf, vmax = Inf,
@@ -42,6 +43,7 @@ function Batsrus.animate(
         use_units = false,
         colgap = 10,
         plot_kwargs = (;),
+        show_progress = true,
         kwargs...
     )
 
@@ -96,10 +98,9 @@ function Batsrus.animate(
     cb = nothing
     st = nothing
     inner_mask_poly = nothing
+    p = Progress(length(files); dt = 4, enabled = show_progress)
 
-    for (i, file) in enumerate(files)
-        @info "Processing $i out of $nfile: $file"
-
+    for file in files
         # Generate output name
         base, _ = splitext(basename(file))
         outname = joinpath(outdir, base * ".png")
@@ -210,7 +211,7 @@ function Batsrus.animate(
         end
 
         save(outname, fig; savefig_kwargs...)
-        @info "Saved $outname"
+        next!(p)
     end
 
     return
