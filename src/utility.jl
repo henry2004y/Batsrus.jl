@@ -196,10 +196,20 @@ end
 Find variable index in the BATSRUS data.
 """
 function findindex(bd::BatsrusIDL, var::AbstractString)
-    varIndex_ = findfirst(x -> lowercase(x) == lowercase(var), bd.head.wname)
-    isnothing(varIndex_) && error("$(var) not found in file header variables!")
-
-    return varIndex_
+    vlow = lowercase(var)
+    for (i, name) in enumerate(bd.head.wname)
+        if length(name) == length(vlow)
+            match = true
+            for (c1, c2) in zip(name, vlow)
+                if lowercase(c1) != c2
+                    match = false
+                    break
+                end
+            end
+            match && return i
+        end
+    end
+    error("$(var) not found in file header variables!")
 end
 
 """

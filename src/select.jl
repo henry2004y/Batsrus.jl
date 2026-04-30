@@ -201,7 +201,7 @@ function getvar(
         bd::BatsrusIDL{ndim, TV}, var::AbstractString
     ) where {ndim, TV}
     varIndex_ = findindex(bd, var)
-    return @view bd.w[var = varIndex_]
+    return selectdim(bd.w, ndims(bd.w), varIndex_)
 end
 
 """
@@ -223,7 +223,7 @@ and returns a concretely typed array with no runtime branching inside the loop.
         bd::BatsrusIDL{ndim, TV}, ::Val{V}
     ) where {ndim, TV, V}
     varIndex_ = findindex(bd, string(V))
-    return @view bd.w[var = varIndex_]
+    return selectdim(bd.w, ndims(bd.w), varIndex_)
 end
 
 @inline Base.@propagate_inbounds Base.getindex(bd::BatsrusIDL, var) =
@@ -247,14 +247,19 @@ end
 Calculate the magnitude square of vector `var`. See [`get_vectors`](@ref) for the options.
 """
 function get_magnitude2(bd::BatsrusIDL, var = :B)
-    vx, vy, vz = get_vectors(bd, var)
-    v = similar(vx)
+    vx_da, vy_da, vz_da = get_vectors(bd, var)
+    return _get_magnitude2(vx_da, vy_da, vz_da)
+end
 
-    @inbounds @simd for i in eachindex(v)
-        v[i] = vx[i]^2 + vy[i]^2 + vz[i]^2
+function _get_magnitude2(vx_da::AbstractArray{T}, vy_da, vz_da) where {T}
+    vx, vy, vz = parent(vx_da), parent(vy_da), parent(vz_da)
+    v_raw = similar(vx)
+
+    @inbounds @simd for i in eachindex(v_raw)
+        v_raw[i] = vx[i]^2 + vy[i]^2 + vz[i]^2
     end
 
-    return v
+    return rebuild(vx_da, v_raw)
 end
 
 """
@@ -263,14 +268,19 @@ end
 Calculate the magnitude of vector `var`. See [`get_vectors`](@ref) for the options.
 """
 function get_magnitude(bd::BatsrusIDL, var = :B)
-    vx, vy, vz = get_vectors(bd, var)
-    v = similar(vx)
+    vx_da, vy_da, vz_da = get_vectors(bd, var)
+    return _get_magnitude(vx_da, vy_da, vz_da)
+end
 
-    @inbounds @simd for i in eachindex(v)
-        v[i] = √(vx[i]^2 + vy[i]^2 + vz[i]^2)
+function _get_magnitude(vx_da::AbstractArray{T}, vy_da, vz_da) where {T}
+    vx, vy, vz = parent(vx_da), parent(vy_da), parent(vz_da)
+    v_raw = similar(vx)
+
+    @inbounds @simd for i in eachindex(v_raw)
+        v_raw[i] = √(vx[i]^2 + vy[i]^2 + vz[i]^2)
     end
 
-    return v
+    return rebuild(vx_da, v_raw)
 end
 
 """
@@ -279,18 +289,18 @@ end
 Return a tuple of vectors of `var`. `var` can be `:B`, `:E`, `:U`, or any `:U` followed by an index (e.g. `:U0` for species 0, `:U1` for species 1, etc.).
 """
 function get_vectors(bd::BatsrusIDL, var)
-    str = string(var)
-    if str == "B"
-        vx, vy, vz = bd["bx"], bd["by"], bd["bz"]
-    elseif str == "E"
-        vx, vy, vz = bd["ex"], bd["ey"], bd["ez"]
-    elseif str == "U"
-        vx, vy, vz = bd["ux"], bd["uy"], bd["uz"]
+    if var === :B
+        vx, vy, vz = bd[:bx], bd[:by], bd[:bz]
+    elseif var === :E
+        vx, vy, vz = bd[:ex], bd[:ey], bd[:ez]
+    elseif var === :U
+        vx, vy, vz = bd[:ux], bd[:uy], bd[:uz]
     else
+        str = string(var)
         m = match(r"^U(\d+)$", str)
         if !isnothing(m)
             suffix = m[1]
-            vx, vy, vz = bd["uxs" * suffix], bd["uys" * suffix], bd["uzs" * suffix]
+            vx, vy, vz = bd[Symbol("uxs", suffix)], bd[Symbol("uys", suffix)], bd[Symbol("uzs", suffix)]
         else
             throw(ArgumentError("Vector variable $var not supported"))
         end
@@ -307,32 +317,33 @@ based on the fact that the trace of the pressure tensor is a constant. The `rota
 method is based on rotating the tensor.
 """
 function get_anisotropy(bd::BatsrusIDL{2, TV}, species = 0; method = :simple) where {TV}
-    Bx, By, Bz = bd["bx"], bd["by"], bd["bz"]
+    Bx_da, By_da, Bz_da = bd[:bx], bd[:by], bd[:bz]
     # Rotate the pressure tensor to align the 3rd direction with B
     if species == 0
-        Pxx = bd["pxxs0"]
-        Pyy = bd["pyys0"]
-        Pzz = bd["pzzs0"]
-        Pxy = bd["pxys0"]
-        Pxz = bd["pxzs0"]
-        Pyz = bd["pyzs0"]
+        Pxx_da, Pyy_da, Pzz_da = bd[:pxxs0], bd[:pyys0], bd[:pzzs0]
+        Pxy_da, Pxz_da, Pyz_da = bd[:pxys0], bd[:pxzs0], bd[:pyzs0]
     elseif species == 1
-        Pxx = bd["pxxs1"]
-        Pyy = bd["pyys1"]
-        Pzz = bd["pzzs1"]
-        Pxy = bd["pxys1"]
-        Pxz = bd["pxzs1"]
-        Pyz = bd["pyzs1"]
+        Pxx_da, Pyy_da, Pzz_da = bd[:pxxs1], bd[:pyys1], bd[:pzzs1]
+        Pxy_da, Pxz_da, Pyz_da = bd[:pxys1], bd[:pxzs1], bd[:pyzs1]
     else
         pop = string(species)
-        Pxx = bd["pxxs" * pop]
-        Pyy = bd["pyys" * pop]
-        Pzz = bd["pzzs" * pop]
-        Pxy = bd["pxys" * pop]
-        Pxz = bd["pxzs" * pop]
-        Pyz = bd["pyzs" * pop]
+        Pxx_da = bd[Symbol("pxxs", pop)]
+        Pyy_da = bd[Symbol("pyys", pop)]
+        Pzz_da = bd[Symbol("pzzs", pop)]
+        Pxy_da = bd[Symbol("pxys", pop)]
+        Pxz_da = bd[Symbol("pxzs", pop)]
+        Pyz_da = bd[Symbol("pyzs", pop)]
     end
-    Paniso = similar(Pxx)
+
+    return _get_anisotropy(Bx_da, By_da, Bz_da, Pxx_da, Pyy_da, Pzz_da, Pxy_da, Pxz_da, Pyz_da, method)
+end
+
+function _get_anisotropy(Bx_da::AbstractArray{T}, By_da, Bz_da, Pxx_da, Pyy_da, Pzz_da, Pxy_da, Pxz_da, Pyz_da, method) where {T}
+    Bx, By, Bz = parent(Bx_da), parent(By_da), parent(Bz_da)
+    Pxx, Pyy, Pzz = parent(Pxx_da), parent(Pyy_da), parent(Pzz_da)
+    Pxy, Pxz, Pyz = parent(Pxy_da), parent(Pxz_da), parent(Pyz_da)
+
+    Paniso_raw = similar(Pxx)
 
     @inbounds for j in axes(Pxx, 2), i in axes(Pxx, 1)
         b̂ = normalize(SA[Bx[i, j], By[i, j], Bz[i, j]])
@@ -345,16 +356,16 @@ function get_anisotropy(bd::BatsrusIDL{2, TV}, species = 0; method = :simple) wh
         if method == :simple
             p_parallel = b̂' * P * b̂
             p_perp = (tr(P) - p_parallel) / 2
-            Paniso[i, j] = p_perp / p_parallel
+            Paniso_raw[i, j] = p_perp / p_parallel
         elseif method == :rotation
             Prot = rotateTensorToVectorZ(P, b̂)
-            Paniso[i, j] = (Prot[1, 1] + Prot[2, 2]) / (2 * Prot[3, 3])
+            Paniso_raw[i, j] = (Prot[1, 1] + Prot[2, 2]) / (2 * Prot[3, 3])
         else
             error("Unknown method for get_anisotropy: $method. Use :simple or :rotation.")
         end
     end
 
-    return Paniso
+    return rebuild(Pxx_da, Paniso_raw)
 end
 
 """
@@ -419,26 +430,26 @@ function get_timeseries(files::AbstractArray, loc; tstep = 1.0)
 
     @showprogress dt = 1 desc = "Extracting..." for it in eachindex(files)
         bd = files[it] |> Batsrus.load
-        v[1, it] = bd["rhos0"][x_, y_]
-        v[2, it] = bd["rhos1"][x_, y_]
-        v[3, it] = bd["uxs0"][x_, y_]
-        v[4, it] = bd["uys0"][x_, y_]
-        v[5, it] = bd["uzs0"][x_, y_]
-        v[6, it] = bd["uxs1"][x_, y_]
-        v[7, it] = bd["uys1"][x_, y_]
-        v[8, it] = bd["uzs1"][x_, y_]
-        v[9, it] = bd["pxxs0"][x_, y_]
-        v[10, it] = bd["pyys0"][x_, y_]
-        v[11, it] = bd["pzzs0"][x_, y_]
-        v[12, it] = bd["pxxs1"][x_, y_]
-        v[13, it] = bd["pyys1"][x_, y_]
-        v[14, it] = bd["pzzs1"][x_, y_]
-        v[15, it] = bd["bx"][x_, y_]
-        v[16, it] = bd["by"][x_, y_]
-        v[17, it] = bd["bz"][x_, y_]
-        v[18, it] = bd["ex"][x_, y_]
-        v[19, it] = bd["ey"][x_, y_]
-        v[20, it] = bd["ez"][x_, y_]
+        v[1, it] = bd[:rhos0][x_, y_]
+        v[2, it] = bd[:rhos1][x_, y_]
+        v[3, it] = bd[:uxs0][x_, y_]
+        v[4, it] = bd[:uys0][x_, y_]
+        v[5, it] = bd[:uzs0][x_, y_]
+        v[6, it] = bd[:uxs1][x_, y_]
+        v[7, it] = bd[:uys1][x_, y_]
+        v[8, it] = bd[:uzs1][x_, y_]
+        v[9, it] = bd[:pxxs0][x_, y_]
+        v[10, it] = bd[:pyys0][x_, y_]
+        v[11, it] = bd[:pzzs0][x_, y_]
+        v[12, it] = bd[:pxxs1][x_, y_]
+        v[13, it] = bd[:pyys1][x_, y_]
+        v[14, it] = bd[:pzzs1][x_, y_]
+        v[15, it] = bd[:bx][x_, y_]
+        v[16, it] = bd[:by][x_, y_]
+        v[17, it] = bd[:bz][x_, y_]
+        v[18, it] = bd[:ex][x_, y_]
+        v[19, it] = bd[:ey][x_, y_]
+        v[20, it] = bd[:ez][x_, y_]
     end
 
     return trange, v

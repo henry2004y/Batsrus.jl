@@ -247,6 +247,8 @@ Obtain file type.
 function getfiletype(file::AbstractString)
     fileID = open(file, "r")
     bytes = filesize(file)
+    lenhead = Int32(0)
+    pictsize = 0
 
     # Check the appendix of file names
     if occursin(r"^.*\.(log)$", file)
