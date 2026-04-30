@@ -679,9 +679,23 @@ function PyPlot.quiver(
 end
 
 """
-Set colorbar norm and ticks.
+    set_colorbar(colorscale::Symbol, vmin, vmax, data = [1.0]; vcenter = 0.0)
+
+Return a `matplotlib.colors.Normalize` instance based on the requested `colorscale`.
+
+# Arguments
+- `colorscale::Symbol`: The requested color scale. Supported options are `:linear`, `:log`, `:symlog`, and `:twoslope`.
+- `vmin`: The minimum data value for the color scale. If `Inf` or `-Inf`, it will be calculated from `data`.
+- `vmax`: The maximum data value for the color scale. If `Inf` or `-Inf`, it will be calculated from `data`.
+- `data`: The underlying data array, used to determine automatic `vmin`/`vmax` limits or detect nonpositive values for logarithmic scales. Default is `[1.0]`.
+
+# Keyword Arguments
+- `vcenter`: The center value for the `:twoslope` scale. Default is `0.0`.
+
+# Returns
+- `cnorm`: A `matplotlib.colors.Normalize` (or its subclass like `LogNorm`, `SymLogNorm`, `TwoSlopeNorm`) instance for the colorbar.
 """
-function set_colorbar(colorscale, vmin, vmax, data = [1.0]; vcenter = 0.0)
+function set_colorbar(colorscale::Symbol, vmin, vmax, data = [1.0]; vcenter = 0.0)
     if colorscale != :log
         vmin = isinf(vmin) ? minimum(x -> isnan(x) ? +Inf : x, data) : vmin
         vmax = isinf(vmax) ? maximum(x -> isnan(x) ? -Inf : x, data) : vmax
@@ -700,6 +714,16 @@ function set_colorbar(colorscale, vmin, vmax, data = [1.0]; vcenter = 0.0)
             vmin = isinf(vmin) ? minimum(x -> isnan(x) ? +Inf : x, data) : vmin
             vmax = isinf(vmax) ? maximum(x -> isnan(x) ? -Inf : x, data) : vmax
         end
+        cnorm = PyPlot.matplotlib.colors.Normalize(vmin, vmax)
+    elseif colorscale == :symlog
+        cnorm = PyPlot.matplotlib.colors.SymLogNorm(
+            linthresh = 0.03, linscale = 0.75; vmin, vmax
+        )
+    else # logarithmic
+        datapositive = data[data .> 0.0]
+        vmin = isinf(vmin) ? minimum(datapositive) : vmin
+        vmax = isinf(vmax) ? maximum(x -> isnan(x) ? -Inf : x, data) : vmax
+        cnorm = PyPlot.matplotlib.colors.LogNorm(vmin, vmax)
     end
 
     return cnorm

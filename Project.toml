@@ -64,19 +64,5 @@ Unitful = "1.7"
 WriteVTK = "1.9"
 julia = "1.10"
 
-[extras]
-CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
-GaussianMixtures = "cc18c42c-b769-54ff-9e2a-b28141a64aae"
-Glob = "c27321d9-0574-5035-807b-f59d2c89b15c"
-HDF5 = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
-LazyArtifacts = "4af54fe1-eca0-43a8-85a7-787d91b784e3"
-LightXML = "9c8b4983-aa76-5018-a973-4c85ecc9e179"
-PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
-SHA = "ea8e919c-243c-51af-8825-aaa63cd721ce"
-Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-UniformStreamlines = "d45a1faf-ed48-5bcd-af90-6f9b3352014e"
-WriteVTK = "64499a7a-5c06-52f2-abe2-ccb03c286192"
-
-[targets]
-test = ["CairoMakie", "GaussianMixtures", "Glob", "HDF5", "LazyArtifacts", "LightXML", "PyPlot", "SHA", "Suppressor", "Test", "UniformStreamlines", "WriteVTK"]
+[workspace]
+projects = ["test"]
