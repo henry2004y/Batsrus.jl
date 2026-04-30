@@ -222,7 +222,8 @@ and returns a concretely typed array with no runtime branching inside the loop.
 @inline function _getvar(
         bd::BatsrusIDL{ndim, TV}, ::Val{V}
     ) where {ndim, TV, V}
-    return @view bd.w[var = At(string(V))]
+    varIndex_ = findindex(bd, string(V))
+    return @view bd.w[var = varIndex_]
 end
 
 @inline Base.@propagate_inbounds Base.getindex(bd::BatsrusIDL, var) =

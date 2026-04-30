@@ -94,7 +94,7 @@ function _interp2d_structured(
     xi, yi, Wi = if all(isinf.(plotrange))
         xi_ = xrange
         yi_ = yrange
-        Wi_ = collect(W_raw)' # Matplotlib does not accept view!
+        Wi_ = (W_raw isa Array ? W_raw : collect(W_raw))' # Matplotlib does not accept view!
         xi_, yi_, Wi_
     else
         adjust_plotrange!(plotrange, (xrange[1], xrange[end]), (yrange[1], yrange[end]))
@@ -109,7 +109,8 @@ function _interp2d_structured(
         else
             range(plotrange[3], stop = plotrange[4], step = plotinterval)
         end
-        itp = scale(interpolate(collect(W_raw), BSpline(Linear())), (xrange, yrange))
+        W_raw = W_raw isa Array ? W_raw : collect(W_raw)
+        itp = scale(interpolate(W_raw, BSpline(Linear())), (xrange, yrange))
         Wi_ = [itp(i, j) for j in yi_, i in xi_]
         xi_, yi_, Wi_
     end
@@ -261,7 +262,8 @@ function _interp1d_point(
         v::AbstractArray, loc::AbstractVector{<:AbstractFloat}
     ) where {TV, TX, TW}
     xrange, yrange = get_range(bd)
-    itp = scale(interpolate(collect(v), BSpline(Linear())), (xrange, yrange))
+    v = v isa Array ? v : collect(v)
+    itp = scale(interpolate(v, BSpline(Linear())), (xrange, yrange))
 
     return itp(loc...)
 end
@@ -289,7 +291,8 @@ function _interp1d_line(
         point2::Vector
     ) where {TV, TX, TW}
     xrange, yrange = get_range(bd)
-    itp = scale(interpolate(collect(v), BSpline(Linear())), (xrange, yrange))
+    v = v isa Array ? v : collect(v)
+    itp = scale(interpolate(v, BSpline(Linear())), (xrange, yrange))
     lx = point2[1] - point1[1]
     ly = point2[2] - point1[2]
     nx = lx ÷ xrange.step |> Int
