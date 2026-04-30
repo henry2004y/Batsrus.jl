@@ -180,21 +180,53 @@ end
 Return variable data from string `var`. This is also supported via direct indexing.
 Note that the query variable `var` must be in lowercase!
 
+For derived/computed quantities, you can also pass a `Symbol` for a fully
+type-stable result:
+
+  - `:b`            — magnetic field magnitude
+  - `:b2`           — magnetic field magnitude squared
+  - `:e`            — electric field magnitude
+  - `:u`            — bulk velocity magnitude
+  - `:anisotropy`   — pressure anisotropy (2D only, species 0)
+  - `:anisotropy1`  — pressure anisotropy (2D only, species 1)
+
 # Examples
 
-```
-bd["rho"]
+```julia
+bd["rho"]        # direct file variable (string)
+bd[:b]           # derived magnitude (symbol, type-stable)
 ```
 """
 function getvar(
         bd::BatsrusIDL{ndim, TV}, var::AbstractString
     ) where {ndim, TV}
-    return w = @view bd.w[var = At(var)]
+    varIndex_ = findindex(bd, var)
+    return @view bd.w[var = varIndex_]
 end
 
-@inline Base.@propagate_inbounds Base.getindex(bd::BatsrusIDL, var::AbstractString) = getvar(
-    bd, var
-)
+"""
+Type-stable getvar dispatch via `Val`. The compiler specialises on the symbol
+and returns a concretely typed array with no runtime branching inside the loop.
+"""
+@inline getvar(bd::BatsrusIDL, var::Symbol) = _getvar(bd, Val(var))
+
+# --- Derived scalar quantities ---
+@inline _getvar(bd::BatsrusIDL, ::Val{:b}) = get_magnitude(bd, :B)
+@inline _getvar(bd::BatsrusIDL, ::Val{:b2}) = get_magnitude2(bd, :B)
+@inline _getvar(bd::BatsrusIDL, ::Val{:e}) = get_magnitude(bd, :E)
+@inline _getvar(bd::BatsrusIDL, ::Val{:u}) = get_magnitude(bd, :U)
+@inline _getvar(bd::BatsrusIDL{2}, ::Val{:anisotropy}) = get_anisotropy(bd, 0)
+@inline _getvar(bd::BatsrusIDL{2}, ::Val{:anisotropy1}) = get_anisotropy(bd, 1)
+
+# Fallback: treat the symbol as a lowercase string variable name
+@inline function _getvar(
+        bd::BatsrusIDL{ndim, TV}, ::Val{V}
+    ) where {ndim, TV, V}
+    return @view bd.w[var = At(string(V))]
+end
+
+@inline Base.@propagate_inbounds Base.getindex(bd::BatsrusIDL, var) =
+    getvar(bd, var)
 
 """
     fill_vector_from_scalars(bd::BatsrusIDL, var)
