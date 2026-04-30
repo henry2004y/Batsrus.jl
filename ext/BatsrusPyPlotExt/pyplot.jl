@@ -442,6 +442,9 @@ end
 
   - `rbody=nothing`: inner body radius. If not set, it will be read from the header.
   - `colorscale::Symbol`: colormap scale from [`:linear`, `:log`, `:symlog`, `:twoslope`].
+  - `vmin`: minimum value of colorbar.
+  - `vmax`: maximum value of colorbar.
+  - `vcenter`: center value for `:twoslope` scale.
   - `add_colorbar=true`: turn on colorbar.
 
 Wrapper over `pcolormesh` in matplotlib.
@@ -538,9 +541,10 @@ end
 # Keywords
 
   - `rbody=nothing`: inner body radius. If not set, it will be read from the header.
-  - `colorscale::Symbol`: colormap scale from [`:linear`, `:log`, `:twoslope`].
+  - `colorscale::Symbol`: colormap scale from [`:linear`, `:log`, `:symlog`, `:twoslope`].
   - `vmin`: minimum value of colorbar.
   - `vmax`: maximum value of colorbar.
+  - `vcenter`: center value for `:twoslope` scale.
   - `add_colorbar=true`: turn on colorbar.
 
 Wrapper over `imshow` in matplotlib. For large matrices, this is faster than `pcolormesh`.
@@ -678,27 +682,24 @@ end
 Set colorbar norm and ticks.
 """
 function set_colorbar(colorscale, vmin, vmax, data = [1.0]; vcenter = 0.0)
+    if colorscale != :log
+        vmin = isinf(vmin) ? minimum(x -> isnan(x) ? +Inf : x, data) : vmin
+        vmax = isinf(vmax) ? maximum(x -> isnan(x) ? -Inf : x, data) : vmax
+    end
+
     if colorscale == :twoslope
-        vmin = isinf(vmin) ? minimum(x -> isnan(x) ? +Inf : x, data) : vmin
-        vmax = isinf(vmax) ? maximum(x -> isnan(x) ? -Inf : x, data) : vmax
-        cnorm = PyPlot.matplotlib.colors.TwoSlopeNorm(
-            vcenter = vcenter, vmin = vmin,
-            vmax = vmax
-        )
-    elseif colorscale == :linear || any(<(0), data)
-        colorscale == :log && @warn "Nonpositive data detected: use linear scale instead!"
-        vmin = isinf(vmin) ? minimum(x -> isnan(x) ? +Inf : x, data) : vmin
-        vmax = isinf(vmax) ? maximum(x -> isnan(x) ? -Inf : x, data) : vmax
-        cnorm = PyPlot.matplotlib.colors.Normalize(vmin, vmax)
-    elseif colorscale == :symlog
-        cnorm = PyPlot.matplotlib.colors.SymLogNorm(
-            linthresh = 0.03, linscale = 0.75; vmin, vmax
-        )
-    else # logarithmic
-        datapositive = data[data .> 0.0]
-        vmin = isinf(vmin) ? minimum(datapositive) : vmin
-        vmax = isinf(vmax) ? maximum(x -> isnan(x) ? -Inf : x, data) : vmax
-        cnorm = PyPlot.matplotlib.colors.LogNorm(vmin, vmax)
+        if !(vmin < vcenter < vmax)
+            @warn "vcenter ($vcenter) must be between vmin ($vmin) and vmax ($vmax) for twoslope norm. Falling back to linear scale."
+            cnorm = PyPlot.matplotlib.colors.Normalize(vmin, vmax)
+        else
+            cnorm = PyPlot.matplotlib.colors.TwoSlopeNorm(; vcenter, vmin, vmax)
+        end
+    elseif colorscale == :linear || (colorscale == :log && any(<(0), data))
+        if colorscale == :log
+            @warn "Nonpositive data detected: use linear scale instead!"
+            vmin = isinf(vmin) ? minimum(x -> isnan(x) ? +Inf : x, data) : vmin
+            vmax = isinf(vmax) ? maximum(x -> isnan(x) ? -Inf : x, data) : vmax
+        end
     end
 
     return cnorm
