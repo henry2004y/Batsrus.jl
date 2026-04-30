@@ -196,12 +196,11 @@ end
 Find variable index in the BATSRUS data.
 """
 function findindex(bd::BatsrusIDL, var::AbstractString)
-    vlow = lowercase(var)
     for (i, name) in enumerate(bd.head.wname)
-        if length(name) == length(vlow)
+        if length(name) == length(var)
             match = true
-            for (c1, c2) in zip(name, vlow)
-                if lowercase(c1) != c2
+            for (c1, c2) in zip(name, var)
+                if lowercase(c1) != lowercase(c2)
                     match = false
                     break
                 end

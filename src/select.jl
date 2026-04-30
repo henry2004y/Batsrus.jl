@@ -247,19 +247,15 @@ end
 Calculate the magnitude square of vector `var`. See [`get_vectors`](@ref) for the options.
 """
 function get_magnitude2(bd::BatsrusIDL, var = :B)
-    vx_da, vy_da, vz_da = get_vectors(bd, var)
-    return _get_magnitude2(vx_da, vy_da, vz_da)
-end
+    ivx, ivy, ivz = get_vectors_indices(bd, var)
+    w = parent(bd.w)
+    v_raw = similar(w, size(w, 1), size(w, 2))
 
-function _get_magnitude2(vx_da::AbstractArray{T}, vy_da, vz_da) where {T}
-    vx, vy, vz = parent(vx_da), parent(vy_da), parent(vz_da)
-    v_raw = similar(vx)
-
-    @inbounds @simd for i in eachindex(v_raw)
-        v_raw[i] = vx[i]^2 + vy[i]^2 + vz[i]^2
+    @inbounds @simd for i in CartesianIndices(v_raw)
+        v_raw[i] = w[i, ivx]^2 + w[i, ivy]^2 + w[i, ivz]^2
     end
 
-    return rebuild(vx_da, v_raw)
+    return v_raw
 end
 
 """
@@ -268,19 +264,40 @@ end
 Calculate the magnitude of vector `var`. See [`get_vectors`](@ref) for the options.
 """
 function get_magnitude(bd::BatsrusIDL, var = :B)
-    vx_da, vy_da, vz_da = get_vectors(bd, var)
-    return _get_magnitude(vx_da, vy_da, vz_da)
-end
+    ivx, ivy, ivz = get_vectors_indices(bd, var)
+    w = parent(bd.w)
+    v_raw = similar(w, size(w, 1), size(w, 2))
 
-function _get_magnitude(vx_da::AbstractArray{T}, vy_da, vz_da) where {T}
-    vx, vy, vz = parent(vx_da), parent(vy_da), parent(vz_da)
-    v_raw = similar(vx)
-
-    @inbounds @simd for i in eachindex(v_raw)
-        v_raw[i] = √(vx[i]^2 + vy[i]^2 + vz[i]^2)
+    @inbounds @simd for i in CartesianIndices(v_raw)
+        v_raw[i] = √(w[i, ivx]^2 + w[i, ivy]^2 + w[i, ivz]^2)
     end
 
-    return rebuild(vx_da, v_raw)
+    return v_raw
+end
+
+"""
+    get_vectors(bd::BatsrusIDL, var)
+
+Return a tuple of vectors of `var`. `var` can be `:B`, `:E`, `:U`, or any `:U` followed by an index (e.g. `:U0` for species 0, `:U1` for species 1, etc.).
+"""
+function get_vectors_indices(bd::BatsrusIDL, var)
+    if var === :B
+        return findindex(bd, "bx"), findindex(bd, "by"), findindex(bd, "bz")
+    elseif var === :E
+        return findindex(bd, "ex"), findindex(bd, "ey"), findindex(bd, "ez")
+    elseif var === :U
+        return findindex(bd, "ux"), findindex(bd, "uy"), findindex(bd, "uz")
+    else
+        str = string(var)
+        m = match(r"^U(\d+)$", str)
+        if !isnothing(m)
+            suffix = m[1]
+            return findindex(bd, "uxs" * suffix), findindex(bd, "uys" * suffix),
+                findindex(bd, "uzs" * suffix)
+        else
+            throw(ArgumentError("Vector variable $var not supported"))
+        end
+    end
 end
 
 """
@@ -289,24 +306,9 @@ end
 Return a tuple of vectors of `var`. `var` can be `:B`, `:E`, `:U`, or any `:U` followed by an index (e.g. `:U0` for species 0, `:U1` for species 1, etc.).
 """
 function get_vectors(bd::BatsrusIDL, var)
-    if var === :B
-        vx, vy, vz = bd[:bx], bd[:by], bd[:bz]
-    elseif var === :E
-        vx, vy, vz = bd[:ex], bd[:ey], bd[:ez]
-    elseif var === :U
-        vx, vy, vz = bd[:ux], bd[:uy], bd[:uz]
-    else
-        str = string(var)
-        m = match(r"^U(\d+)$", str)
-        if !isnothing(m)
-            suffix = m[1]
-            vx, vy, vz = bd[Symbol("uxs", suffix)], bd[Symbol("uys", suffix)], bd[Symbol("uzs", suffix)]
-        else
-            throw(ArgumentError("Vector variable $var not supported"))
-        end
-    end
-
-    return vx, vy, vz
+    ivx, ivy, ivz = get_vectors_indices(bd, var)
+    return selectdim(bd.w, ndims(bd.w), ivx), selectdim(bd.w, ndims(bd.w), ivy),
+        selectdim(bd.w, ndims(bd.w), ivz)
 end
 
 """
@@ -317,40 +319,32 @@ based on the fact that the trace of the pressure tensor is a constant. The `rota
 method is based on rotating the tensor.
 """
 function get_anisotropy(bd::BatsrusIDL{2, TV}, species = 0; method = :simple) where {TV}
-    Bx_da, By_da, Bz_da = bd[:bx], bd[:by], bd[:bz]
-    # Rotate the pressure tensor to align the 3rd direction with B
+    ibx, iby, ibz = findindex(bd, "bx"), findindex(bd, "by"), findindex(bd, "bz")
     if species == 0
-        Pxx_da, Pyy_da, Pzz_da = bd[:pxxs0], bd[:pyys0], bd[:pzzs0]
-        Pxy_da, Pxz_da, Pyz_da = bd[:pxys0], bd[:pxzs0], bd[:pyzs0]
+        ipxx, ipyy, ipzz = findindex(bd, "pxxs0"), findindex(bd, "pyys0"), findindex(bd, "pzzs0")
+        ipxy, ipxz, ipyz = findindex(bd, "pxys0"), findindex(bd, "pxzs0"), findindex(bd, "pyzs0")
     elseif species == 1
-        Pxx_da, Pyy_da, Pzz_da = bd[:pxxs1], bd[:pyys1], bd[:pzzs1]
-        Pxy_da, Pxz_da, Pyz_da = bd[:pxys1], bd[:pxzs1], bd[:pyzs1]
+        ipxx, ipyy, ipzz = findindex(bd, "pxxs1"), findindex(bd, "pyys1"), findindex(bd, "pzzs1")
+        ipxy, ipxz, ipyz = findindex(bd, "pxys1"), findindex(bd, "pxzs1"), findindex(bd, "pyzs1")
     else
         pop = string(species)
-        Pxx_da = bd[Symbol("pxxs", pop)]
-        Pyy_da = bd[Symbol("pyys", pop)]
-        Pzz_da = bd[Symbol("pzzs", pop)]
-        Pxy_da = bd[Symbol("pxys", pop)]
-        Pxz_da = bd[Symbol("pxzs", pop)]
-        Pyz_da = bd[Symbol("pyzs", pop)]
+        ipxx = findindex(bd, "pxxs" * pop)
+        ipyy = findindex(bd, "pyys" * pop)
+        ipzz = findindex(bd, "pzzs" * pop)
+        ipxy = findindex(bd, "pxys" * pop)
+        ipxz = findindex(bd, "pxzs" * pop)
+        ipyz = findindex(bd, "pyzs" * pop)
     end
 
-    return _get_anisotropy(Bx_da, By_da, Bz_da, Pxx_da, Pyy_da, Pzz_da, Pxy_da, Pxz_da, Pyz_da, method)
-end
+    w = parent(bd.w)
+    Paniso_raw = similar(w, size(w, 1), size(w, 2))
 
-function _get_anisotropy(Bx_da::AbstractArray{T}, By_da, Bz_da, Pxx_da, Pyy_da, Pzz_da, Pxy_da, Pxz_da, Pyz_da, method) where {T}
-    Bx, By, Bz = parent(Bx_da), parent(By_da), parent(Bz_da)
-    Pxx, Pyy, Pzz = parent(Pxx_da), parent(Pyy_da), parent(Pzz_da)
-    Pxy, Pxz, Pyz = parent(Pxy_da), parent(Pxz_da), parent(Pyz_da)
-
-    Paniso_raw = similar(Pxx)
-
-    @inbounds for j in axes(Pxx, 2), i in axes(Pxx, 1)
-        b̂ = normalize(SA[Bx[i, j], By[i, j], Bz[i, j]])
+    @inbounds for j in axes(w, 2), i in axes(w, 1)
+        b̂ = normalize(SA[w[i, j, ibx], w[i, j, iby], w[i, j, ibz]])
         P = @SMatrix [
-            Pxx[i, j] Pxy[i, j] Pxz[i, j];
-            Pxy[i, j] Pyy[i, j] Pyz[i, j];
-            Pxz[i, j] Pyz[i, j] Pzz[i, j]
+            w[i, j, ipxx] w[i, j, ipxy] w[i, j, ipxz];
+            w[i, j, ipxy] w[i, j, ipyy] w[i, j, ipyz];
+            w[i, j, ipxz] w[i, j, ipyz] w[i, j, ipzz]
         ]
 
         if method == :simple
@@ -365,7 +359,7 @@ function _get_anisotropy(Bx_da::AbstractArray{T}, By_da, Bz_da, Pxx_da, Pyy_da, 
         end
     end
 
-    return rebuild(Pxx_da, Paniso_raw)
+    return Paniso_raw
 end
 
 """
