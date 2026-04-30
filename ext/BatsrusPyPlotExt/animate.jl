@@ -12,7 +12,8 @@ Uses DimensionalData selectors or interpolation for data extraction.
 - `var::String`: variable to plot with pcolormesh.
 - `vmin::Real`: minimum plotting value.
 - `vmax::Real`: maximum plotting value.
-- `vcenter::Real`: center value of the color scale for TwoSlopeNorm.
+- `colorscale::Symbol`: color scale for the plot (`:linear`, `:log`, `:symlog`, `:twoslope`).
+- `vcenter::Real`: center value of the color scale for `:twoslope`.
 - `plotrange`: 2D plotting spatial range `[xmin, xmax, ymin, ymax]`.
 - `plotinterval`: spatial sampling interval.
 - `innermask::Bool`: if true, mask the inner boundary (useful for generalized coordinates).
@@ -80,7 +81,7 @@ function Batsrus.animate(
         vmax = isinf(vmax) ? maximum(data) : vmax
     end
 
-    norm = set_colorbar(colorscale, vmin, vmax; vcenter)
+    norm = set_colorbar(colorscale, vmin, vmax, data; vcenter)
 
     fig = figure(; fig_kwargs...)
     ax = plt.axes()
@@ -97,6 +98,7 @@ function Batsrus.animate(
 
         if !overwrite && isfile(outname)
             @info "Skipping existing file: $outname"
+            next!(p)
             continue
         end
 

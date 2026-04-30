@@ -107,6 +107,7 @@ function Batsrus.animate(
 
         if !overwrite && isfile(outname)
             @info "Skipping existing file: $outname"
+            next!(p)
             continue
         end
 
