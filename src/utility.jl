@@ -84,7 +84,7 @@ function interp2d(
 end
 
 function _interp2d_structured(
-        bd::BatsrusIDLStructured{2, TV, TX, TW}, W_raw::AbstractArray,
+        bd::BatsrusIDLStructured{2, TV, TX, TW}, W_raw,
         plotrange::Vector, plotinterval::Real;
         innermask::Bool, rbody::Union{Nothing, Real}
     ) where {TV, TX, TW}
@@ -92,7 +92,7 @@ function _interp2d_structured(
     xi, yi, Wi = if all(isinf.(plotrange))
         xi_ = xrange
         yi_ = yrange
-        Wi_ = (W_raw isa Array ? W_raw : collect(W_raw))' # Matplotlib does not accept view!
+        Wi_ = collect(W_raw)'
         xi_, yi_, Wi_
     else
         adjust_plotrange!(plotrange, (xrange[1], xrange[end]), (yrange[1], yrange[end]))
@@ -107,8 +107,7 @@ function _interp2d_structured(
         else
             range(plotrange[3], stop = plotrange[4], step = plotinterval)
         end
-        W_raw = W_raw isa Array ? W_raw : collect(W_raw)
-        itp = scale(interpolate(W_raw, BSpline(Linear())), (xrange, yrange))
+        itp = scale(interpolate(parent(W_raw), BSpline(Linear())), (xrange, yrange))
         Wi_ = [itp(i, j) for j in yi_, i in xi_]
         xi_, yi_, Wi_
     end
@@ -266,11 +265,10 @@ end
 
 function _interp1d_point(
         bd::BatsrusIDLStructured{2, TV, TX, TW},
-        v::AbstractArray, loc::AbstractVector{<:AbstractFloat}
+        v, loc::AbstractVector{<:AbstractFloat}
     ) where {TV, TX, TW}
     xrange, yrange = get_range(bd)
-    v = v isa Array ? v : collect(v)
-    itp = scale(interpolate(v, BSpline(Linear())), (xrange, yrange))
+    itp = scale(interpolate(parent(v), BSpline(Linear())), (xrange, yrange))
 
     return itp(loc...)
 end
@@ -283,23 +281,15 @@ Interpolate `var` along a line from `point1` to `point2` in `bd`. `var` can be a
 """
 function interp1d(
         bd::BatsrusIDLStructured{2, TV, TX, TW},
-        var::Union{AbstractString, Symbol},
-        point1::Vector,
-        point2::Vector
+        var::Union{AbstractString, Symbol}, point1, point2
     ) where {TV, TX, TW}
     v = getvar(bd, var)
     return _interp1d_line(bd, v, point1, point2)
 end
 
-function _interp1d_line(
-        bd::BatsrusIDLStructured{2, TV, TX, TW},
-        v::AbstractArray,
-        point1::Vector,
-        point2::Vector
-    ) where {TV, TX, TW}
+function _interp1d_line(bd::BatsrusIDLStructured{2, TV, TX, TW}, v, point1, point2) where {TV, TX, TW}
     xrange, yrange = get_range(bd)
-    v = v isa Array ? v : collect(v)
-    itp = scale(interpolate(v, BSpline(Linear())), (xrange, yrange))
+    itp = scale(interpolate(parent(v), BSpline(Linear())), (xrange, yrange))
     lx = point2[1] - point1[1]
     ly = point2[2] - point1[2]
     nx = lx ÷ xrange.step |> Int
@@ -325,16 +315,12 @@ slice1d(bd, var::Union{AbstractString, Symbol}, icut::Int = 1, dir::Int = 2) =
 """
 Return view of variable `var` in `bd`.
 """
-function getview(bd::BatsrusIDL{1, TV}, var) where {TV}
-    varIndex_ = findindex(bd, var)
-
-    return v = @view bd.w[:, varIndex_]
-end
-
-function getview(bd::BatsrusIDL{2, TV}, var) where {TV}
-    varIndex_ = findindex(bd, var)
-
-    return v = @view bd.w[:, :, varIndex_]
+@generated function getview(bd::BatsrusIDL{ndim}, var) where {ndim}
+    colons = fill(:(:), ndim)
+    return quote
+        varIndex_ = findindex(bd, var)
+        return @view bd.w[$(colons...), varIndex_]
+    end
 end
 
 """
@@ -346,21 +332,8 @@ get_var_range(bd::BatsrusIDL, var::Union{AbstractString, Symbol}) =
 """
 Return mesh range of `bd`.
 """
-function get_range(bd::BatsrusIDLStructured{2, TV, TX, TW}) where {TV, TX, TW}
-    x = bd.x
-    xrange = range(x[1, 1, 1], x[end, 1, 1], length = size(x, 1))
-    yrange = range(x[1, 1, 2], x[1, end, 2], length = size(x, 2))
-
-    return xrange, yrange
-end
-
-function get_range(bd::BatsrusIDLStructured{3, TV, TX, TW}) where {TV, TX, TW}
-    x = bd.x
-    xrange = range(x[1, 1, 1, 1], x[end, 1, 1, 1], length = size(x, 1))
-    yrange = range(x[1, 1, 1, 2], x[1, end, 1, 2], length = size(x, 2))
-    zrange = range(x[1, 1, 1, 3], x[1, 1, end, 3], length = size(x, 3))
-
-    return xrange, yrange, zrange
+@generated function get_range(bd::BatsrusIDLStructured{ndim}) where {ndim}
+    return Expr(:tuple, [:(parent(val(dims(bd.x, $i)))) for i in 1:ndim]...)
 end
 
 """
@@ -541,7 +514,7 @@ where \$\\hat{\\mathbf{d}} \\propto \\mathbf{B} \\times \\mathbf{E}\$ and \$\\ha
 
 The returned function takes `(data, names)` and returns `(new_data, new_names)`.
 """
-function get_particle_field_aligned_transform(b_field::AbstractVector, e_field = nothing)
+function get_particle_field_aligned_transform(b_field, e_field = nothing)
     bhat = SVector{3}(normalize(b_field))
 
     if isnothing(e_field)
