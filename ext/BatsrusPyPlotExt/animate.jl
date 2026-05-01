@@ -97,7 +97,6 @@ function Batsrus.animate(
         outname = joinpath(outdir, base * ".png")
 
         if !overwrite && isfile(outname)
-            @info "Skipping existing file: $outname"
             next!(p)
             continue
         end
