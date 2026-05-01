@@ -32,25 +32,26 @@ ylabel("Y [Re]", fontsize = 14)
 
 cb = colorbar(c; ax, ticks = cticks)
 cb_title = cb.ax.set_ylabel("Density, [amu/cc]", fontsize = 14)
-plt.savefig("out/"*lpad(1, 4, '0')*".png", bbox_inches = "tight")
+plt.savefig("out/" * lpad(1, 4, '0') * ".png", bbox_inches = "tight")
 plt.cla()
 
 if nfiles > 1
-   for i in 2:nfiles
-      f = filenames[i]
-      @info "$i / $nfiles, $f"
-      local data = load(f)
+    for i in 2:nfiles
+        f = filenames[i]
+        @info "$i / $nfiles, $f"
+        local data = load(f)
 
-      contourf(
-         data, var, levels; ax, plotrange, plotinterval, innermask = true, norm = cnorm)
+        contourf(
+            data, var, levels; ax, plotrange, plotinterval, innermask = true, norm = cnorm
+        )
 
-      title("2D Magnetosphere, MHD, t=$(round(data.head.time, digits=1))s")
-      xlabel("X [Re]", fontsize = 14)
-      ylabel("Y [Re]", fontsize = 14)
+        title("2D Magnetosphere, MHD, t=$(round(data.head.time, digits = 1))s")
+        xlabel("X [Re]", fontsize = 14)
+        ylabel("Y [Re]", fontsize = 14)
 
-      plt.savefig("out/"*lpad(i, 4, '0')*".png", bbox_inches = "tight")
-      plt.cla()
-   end
+        plt.savefig("out/" * lpad(i, 4, '0') * ".png", bbox_inches = "tight")
+        plt.cla()
+    end
 end
 
 plt.close()

@@ -68,7 +68,7 @@ const ChildLast_ = Child0_ + nChild
 filetag = "3d__ful_2_t00000141_n00000142"
 
 ## Loading AMR tree
-f = FortranFile(filetag*".tree")
+f = FortranFile(filetag * ".tree")
 
 nDim, nInfo, nNode = read(f, Int32, Int32, Int32)
 iRatio_D = read(f, (Int32, nDim)) # Array of refinement ratios
@@ -81,19 +81,19 @@ close(f)
 blockused_ = [iNode for iNode in 1:nNode if iTree_IA[Status_, iNode] == 1]
 
 ## If you know how blocks are organized, you can get VTK!
-data = load(filetag*".out")
+data = load(filetag * ".out")
 
 # vtkMultiBlockDataSet
 vtmfile = vtk_multiblock("vtm/my_vtm_file")
 
 for (i, iblock) in enumerate(blockused_)
-   x = data.x[(64 * (i - 1) + 1):(64 * (i - 1) + 4), :, :, 1][:]
-   y = data.x[(64 * (i - 1) + 1):4:(64 * (i - 1) + 13), :, :, 2][:]
-   z = data.x[(64 * (i - 1) + 1):16:(64 * (i - 1) + 49), :, :, 3][:]
-   p = data.w[(64 * (i - 1) + 1):(64 * (i - 1) + 64), :, :, 8][:]
+    x = data.x[(64 * (i - 1) + 1):(64 * (i - 1) + 4), :, :, 1][:]
+    y = data.x[(64 * (i - 1) + 1):4:(64 * (i - 1) + 13), :, :, 2][:]
+    z = data.x[(64 * (i - 1) + 1):16:(64 * (i - 1) + 49), :, :, 3][:]
+    p = data.w[(64 * (i - 1) + 1):(64 * (i - 1) + 64), :, :, 8][:]
 
-   vtkfile = vtk_grid(vtmfile, x, y, z)
-   vtkfile["Pressure", VTKPointData()] = p
+    vtkfile = vtk_grid(vtmfile, x, y, z)
+    vtkfile["Pressure", VTKPointData()] = p
 end
 
 outfiles = vtk_save(vtmfile)

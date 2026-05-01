@@ -23,12 +23,12 @@ qi = data.head.eqpar[4]
 const kB = 1.38064852e-23 # [m^2 kg s^-2 K^-1]
 const q = 1.6021765e-19 # [C]
 const vAlfven = 253.0 # reference Alfven velocity, [km/s]
-const B₀ = √((-10.0)^2+(-6.0)^2+(-86.0)^2)
-const E₀ = vAlfven*B₀ # [μV/m]
+const B₀ = √((-10.0)^2 + (-6.0)^2 + (-86.0)^2)
+const E₀ = vAlfven * B₀ # [μV/m]
 const ρ₀ = 56.0     # [amu/cc]
-const J₀ = 4.0*vAlfven # Actual normalization unit: q*4.0*vAlfven
+const J₀ = 4.0 * vAlfven # Actual normalization unit: q*4.0*vAlfven
 #const T₀ = vAlfven^2
-const T₀ = 0.2/4 # Pe/n₀
+const T₀ = 0.2 / 4 # Pe/n₀
 
 plotrange = [-2.05, -1.75, -0.5, 0.5]
 #plotrange=[-Inf, Inf, -Inf, Inf]
@@ -82,25 +82,27 @@ z = Z[1, :]
 #Jx = @. (qi*ρi/mi*Uxi+qe*ρe/me*Uxe)*1e9*q
 #Jy = @. (qi*ρi/mi*Uyi+qe*ρe/me*Uye)*1e9*q
 #Jz = @. (qi*ρi/mi*Uzi+qe*ρe/me*Uze)*1e9*q
-Jx = @. qi*ρi/mi*Uxi+qe*ρe/me*Uxe
-Jy = @. qi*ρi/mi*Uyi+qe*ρe/me*Uye
-Jz = @. qi*ρi/mi*Uzi+qe*ρe/me*Uze
+Jx = @. qi * ρi / mi * Uxi + qe * ρe / me * Uxe
+Jy = @. qi * ρi / mi * Uyi + qe * ρe / me * Uye
+Jz = @. qi * ρi / mi * Uzi + qe * ρe / me * Uze
 
 # Normalized quantities
-fig, ax = plt.subplots(10, 2, figsize = (8.00, 9.00))
+fig, ax = plt.subplots(10, 2, figsize = (8.0, 9.0))
 c = Vector{PyObject}(undef, length(ax))
 axin = Vector{PyObject}(undef, length(ax))
 for i in eachindex(ax)
-   axin[i] = inset_axes(ax[i],
-      width = "5%",  # width = 5% of parent_bbox width
-      height = "100%",  # height : 50%
-      loc = "lower left",
-      bbox_to_anchor = (1.02, 0.0, 1.0, 1.0),
-      bbox_transform = ax[i].transAxes,
-      borderpad = 0)
-   axin[i].tick_params(axis = "y", direction = "in")
+    axin[i] = inset_axes(
+        ax[i],
+        width = "5%",  # width = 5% of parent_bbox width
+        height = "100%",  # height : 50%
+        loc = "lower left",
+        bbox_to_anchor = (1.02, 0.0, 1.0, 1.0),
+        bbox_transform = ax[i].transAxes,
+        borderpad = 0
+    )
+    axin[i].tick_params(axis = "y", direction = "in")
 
-   ax[i].tick_params(which = "both", direction = "in")
+    ax[i].tick_params(which = "both", direction = "in")
 end
 
 # Set plotting parameters
@@ -111,10 +113,12 @@ vPos, vPos2 = (0.4, 0.76), (0.28, 0.78)
 lPos = (-0.12, 0.94)
 yPos = (-0.24, 0.33)
 
-labels = [L"B_z", L"B_y", L"E_x", L"v_{iy}", L"v_{iz}", L"v_{ex}", L"v_{ey}",
-   L"v_{ez}", L"\rho_i", L"J_x", L"J_y", L"J_z", L"(E+v_i\times B)_x",
-   L"(E+v_e \times B)_x", L"(E+v_i\times B)_y", L"(E+v_e\times B)_y",
-   L"A\o", L"D_{ng}", L"\sqrt{Q}", L"D_e"]
+labels = [
+    L"B_z", L"B_y", L"E_x", L"v_{iy}", L"v_{iz}", L"v_{ex}", L"v_{ey}",
+    L"v_{ez}", L"\rho_i", L"J_x", L"J_y", L"J_z", L"(E+v_i\times B)_x",
+    L"(E+v_e \times B)_x", L"(E+v_i\times B)_y", L"(E+v_e\times B)_y",
+    L"A\o", L"D_{ng}", L"\sqrt{Q}", L"D_e",
+]
 
 vm = ones(20)
 const ϵ = 0.05 # allow room for extreme colors
@@ -143,10 +147,12 @@ append!(zstart, [-0.4, -0.5, -0.4, 0.3, 0.4, 0.2, 0.05, -0.1, -0.2])
 xl = [Vector{Float32}(undef, 0) for _ in eachindex(xstart)]
 zl = [Vector{Float32}(undef, 0) for _ in eachindex(xstart)]
 for i in eachindex(xstart)
-   xs, zs = xstart[i], zstart[i]
-   xl[i],
-   zl[i] = trace2d_rk4(Bx, Bz, xs, zs, x, z, ds = 0.03, maxstep = 10000,
-      gridType = "ndgrid")
+    xs, zs = xstart[i], zstart[i]
+    xl[i],
+        zl[i] = trace2d_rk4(
+        Bx, Bz, xs, zs, x, z, ds = 0.03, maxstep = 10000,
+        gridType = "ndgrid"
+    )
 end
 
 # Bz
@@ -160,7 +166,8 @@ c[3] = ax[3].contourf(Z, X, Ex ./ E₀, levels, norm = DN(0), vmin = -vm[3], vma
 
 # Uyi
 c[4] = ax[4].contourf(
-   Z, X, Uyi ./ vAlfven, levels, norm = DN(0), vmin = -vm[4], vmax = vm[4])
+    Z, X, Uyi ./ vAlfven, levels, norm = DN(0), vmin = -vm[4], vmax = vm[4]
+)
 
 # Uzi
 c[5] = ax[5].contourf(Z, X, Uzi ./ vAlfven, levels, norm = DN(0))
@@ -168,15 +175,18 @@ c[5] = ax[5].contourf(Z, X, Uzi ./ vAlfven, levels, norm = DN(0))
 # Uxe
 #c[6] = ax[6].contourf(Z,X,Uxe./vAlfven,levels, norm=DN(0), vmin=-vm[6], vmax=vm[6])
 c[6] = ax[6].contourf(
-   Z, X, Uxe ./ vAlfven, levels, norm = DN(0, vmin = -vm[6], vmax = vm[6]))
+    Z, X, Uxe ./ vAlfven, levels, norm = DN(0, vmin = -vm[6], vmax = vm[6])
+)
 
 # Uye
 c[7] = ax[7].contourf(
-   Z, X, Uye ./ vAlfven, levels, norm = DN(0), vmin = -vm[7], vmax = vm[7])
+    Z, X, Uye ./ vAlfven, levels, norm = DN(0), vmin = -vm[7], vmax = vm[7]
+)
 
 # Uze
 c[8] = ax[8].contourf(
-   Z, X, Uze ./ vAlfven, levels, norm = DN(0), vmin = -vm[8], vmax = vm[8])
+    Z, X, Uze ./ vAlfven, levels, norm = DN(0), vmin = -vm[8], vmax = vm[8]
+)
 
 # ρi
 c[9] = ax[9].contourf(Z, X, ρi ./ ρ₀, levels, cmap = "inferno")
@@ -191,85 +201,99 @@ c[11] = ax[11].contourf(Z, X, Jy ./ J₀, levels, norm = DN(0), vmin = -vm[11], 
 c[12] = ax[12].contourf(Z, X, Jz ./ J₀, levels, norm = DN(0), vmin = -vm[12], vmax = vm[12])
 
 # Deviation from ideal MHD
-c[13] = ax[13].contourf(Z, X, (Ex .+ Uyi .* Bz .- Uzi .* By) ./ E₀, levels, norm = DN(0),
-   vmin = -vm[13], vmax = vm[13])
+c[13] = ax[13].contourf(
+    Z, X, (Ex .+ Uyi .* Bz .- Uzi .* By) ./ E₀, levels, norm = DN(0),
+    vmin = -vm[13], vmax = vm[13]
+)
 
 # Deviation from Hall MHD
-c[14] = ax[14].contourf(Z, X, (Ex .+ Uye .* Bz .- Uze .* By) ./ E₀, levels, norm = DN(0),
-   vmin = -vm[14], vmax = vm[14])
+c[14] = ax[14].contourf(
+    Z, X, (Ex .+ Uye .* Bz .- Uze .* By) ./ E₀, levels, norm = DN(0),
+    vmin = -vm[14], vmax = vm[14]
+)
 
 # Deviation from ideal MHD
-c[15] = ax[15].contourf(Z, X, (Ey .+ Uzi .* Bx .- Uxi .* Bz) ./ E₀, levels, norm = DN(0),
-   vmin = -vm[15], vmax = vm[15])
+c[15] = ax[15].contourf(
+    Z, X, (Ey .+ Uzi .* Bx .- Uxi .* Bz) ./ E₀, levels, norm = DN(0),
+    vmin = -vm[15], vmax = vm[15]
+)
 
 # Deviation from Hall MHD
-c[16] = ax[16].contourf(Z, X, (Ey .+ Uze .* Bx .- Uxe .* Bz) ./ E₀, levels, norm = DN(0),
-   vmin = -vm[16], vmax = vm[16])
+c[16] = ax[16].contourf(
+    Z, X, (Ey .+ Uze .* Bx .- Uxe .* Bz) ./ E₀, levels, norm = DN(0),
+    vmin = -vm[16], vmax = vm[16]
+)
 
 # agyrotropy measure A 8[Scudder 2008]
-B² = @. Bx*Bx + By*By + Bz*Bz
-Nxx = @. (By*By*Pzze - 2*By*Bz*Pyze + Bz*Bz*Pyye)/B²
-Nxy = @. (-By*Bx*Pzze + By*Bz*Pxze + Bz*Bx*Pyze - Bz*Bz*Pxye)/B²
-Nxz = @. (By*Bx*Pyze - By*By*Pxze - Bz*Bx*Pyye + Bz*By*Pxye)/B²
-Nyy = @. (Bx*Bx*Pzze - 2*Bx*Bz*Pxze + Bz*Bz*Pxxe)/B²
-Nyz = @. (-Bx*Bx*Pyze + Bx*By*Pxze + Bz*Bx*Pxye - Bz*By*Pxxe)/B²
-Nzz = @. (Bx*Bx*Pyye - 2*Bx*By*Pxye + By*By*Pxxe)/B²
+B² = @. Bx * Bx + By * By + Bz * Bz
+Nxx = @. (By * By * Pzze - 2 * By * Bz * Pyze + Bz * Bz * Pyye) / B²
+Nxy = @. (-By * Bx * Pzze + By * Bz * Pxze + Bz * Bx * Pyze - Bz * Bz * Pxye) / B²
+Nxz = @. (By * Bx * Pyze - By * By * Pxze - Bz * Bx * Pyye + Bz * By * Pxye) / B²
+Nyy = @. (Bx * Bx * Pzze - 2 * Bx * Bz * Pxze + Bz * Bz * Pxxe) / B²
+Nyz = @. (-Bx * Bx * Pyze + Bx * By * Pxze + Bz * Bx * Pxye - Bz * By * Pxxe) / B²
+Nzz = @. (Bx * Bx * Pyye - 2 * Bx * By * Pxye + By * By * Pxxe) / B²
 α = @. Nxx + Nyy + Nzz
-β = @. -(Nxy*Nxy + Nxz*Nxz + Nyz*Nyz - Nxx*Nyy - Nxx*Nzz - Nyy*Nzz)
-A = @. 2*√(α*α - 4β)/α
+β = @. -(Nxy * Nxy + Nxz * Nxz + Nyz * Nyz - Nxx * Nyy - Nxx * Nzz - Nyy * Nzz)
+A = @. 2 * √(α * α - 4β) / α
 
 c[17] = ax[17].contourf(Z, X, A, levels, cmap = "inferno")
 
 # non-gyrotropy measure Dng (for electron, not for electron+ion!) [Aunai 2013]
-Dng = @. 2*√(Pxye*Pxye + Pxze*Pxze + Pyze*Pyze) / (Pxxe + Pyye + Pzze)
+Dng = @. 2 * √(Pxye * Pxye + Pxze * Pxze + Pyze * Pyze) / (Pxxe + Pyye + Pzze)
 c[18] = ax[18].contourf(Z, X, Dng, levels, cmap = "inferno")
 
 # non-gyrotropy measure Q [Swisdak 2016]
 I₁ = @. Pxxe + Pyye + Pzze
-I₂ = @. Pxxe*Pyye + Pxxe*Pzze + Pyye*Pzze - Pxye*Pxye - Pyze*Pyze - Pxze*Pxze
+I₂ = @. Pxxe * Pyye + Pxxe * Pzze + Pyye * Pzze - Pxye * Pxye - Pyze * Pyze - Pxze * Pxze
 
-Ppar = @. (Bx*Bx*Pxxe + By*By*Pyye + Bz*Bz*Pzze +
-           2*(Bx*By*Pxye + Bx*Bz*Pxze + By*Bz*Pyze))/B²
-Qsqr = @. √(1 - 4I₂/((I₁ - Ppar)*(I₁ + 3Ppar)))
+Ppar = @. (
+    Bx * Bx * Pxxe + By * By * Pyye + Bz * Bz * Pzze +
+        2 * (Bx * By * Pxye + Bx * Bz * Pxze + By * Bz * Pyze)
+) / B²
+Qsqr = @. √(1 - 4I₂ / ((I₁ - Ppar) * (I₁ + 3Ppar)))
 
 c[19] = ax[19].contourf(Z, X, Qsqr, levels, cmap = "inferno")
 
 # Dissipation measure De
-Dₑ = @. (Jx*(Ex + Uye*Bz - Uze*By) +
-         Jy*(Ey + Uze*Bx - Uxe*Bz) +
-         Jz*(Ez + Uxe*By - Uye*Bx) -
-         (ρi/mi - ρe/me)*(Uxe*Ex + Uye*Ey + Uze*Ez)) / (J₀*B₀*vAlfven)
+Dₑ = @. (
+    Jx * (Ex + Uye * Bz - Uze * By) +
+        Jy * (Ey + Uze * Bx - Uxe * Bz) +
+        Jz * (Ez + Uxe * By - Uye * Bx) -
+        (ρi / mi - ρe / me) * (Uxe * Ex + Uye * Ey + Uze * Ez)
+) / (J₀ * B₀ * vAlfven)
 
 vm[20] = max(abs.(Dₑ)...) + ϵ
 
 c[20] = ax[20].contourf(Z, X, Dₑ, levels, norm = DN(0), vmin = -vm[20], vmax = vm[20])
 
 for i in eachindex(ax)
-   #.ax.locator_params(nbins=5) does not work together with norm(0)!
-   cb = colorbar(c[i], cax = axin[i])
-   cb.ax.tick_params(labelsize = 5)
-   #cb.ax.locator_params(nbins=5)
-   if i in (1, 9, 17, 18, 19) #(1,9,17,18,19)
-      ax[i].annotate(labels[i], xy = vPos, xycoords = "axes fraction", color = "w",
-         weight = "bold")
-   elseif i in (13, 14, 15, 16)
-      ax[i].annotate(labels[i], xy = vPos2, xycoords = "axes fraction")
-   else
-      ax[i].annotate(labels[i], xy = vPos, xycoords = "axes fraction")
-   end
-   ax[i].annotate("($('a'+i-1))", xy = lPos, xycoords = "axes fraction")
-   i ≤ length(ax)/2 &&
-      ax[i].annotate(L"x [R_G]", xy = yPos, xycoords = "axes fraction", rotation = 90)
-   i % (length(ax)/2) == 0 && ax[i].set_xlabel(L"z [R_G]")
-   if i < length(ax)-3
-      [ax[i].plot(zl[j], xl[j], "-", color = "k", lw = 0.4) for j in 1:length(xstart)]
-   end
-   ax[i].contour(Z, X, Bz, [0.0], colors = "k", linestyles = "dotted", linewidths = 1.0)
-   ax[i].set_aspect("equal", "box")
-   ax[i].invert_yaxis()
-   i % (length(ax)/2) != 0 && ax[i].axes.xaxis.set_ticklabels([])
-   ax[i].tick_params(which = "both", top = true, right = true)
-   ax[i].minorticks_on()
+    #.ax.locator_params(nbins=5) does not work together with norm(0)!
+    cb = colorbar(c[i], cax = axin[i])
+    cb.ax.tick_params(labelsize = 5)
+    #cb.ax.locator_params(nbins=5)
+    if i in (1, 9, 17, 18, 19) #(1,9,17,18,19)
+        ax[i].annotate(
+            labels[i], xy = vPos, xycoords = "axes fraction", color = "w",
+            weight = "bold"
+        )
+    elseif i in (13, 14, 15, 16)
+        ax[i].annotate(labels[i], xy = vPos2, xycoords = "axes fraction")
+    else
+        ax[i].annotate(labels[i], xy = vPos, xycoords = "axes fraction")
+    end
+    ax[i].annotate("($('a' + i - 1))", xy = lPos, xycoords = "axes fraction")
+    i ≤ length(ax) / 2 &&
+        ax[i].annotate(L"x [R_G]", xy = yPos, xycoords = "axes fraction", rotation = 90)
+    i % (length(ax) / 2) == 0 && ax[i].set_xlabel(L"z [R_G]")
+    if i < length(ax) - 3
+        [ax[i].plot(zl[j], xl[j], "-", color = "k", lw = 0.4) for j in 1:length(xstart)]
+    end
+    ax[i].contour(Z, X, Bz, [0.0], colors = "k", linestyles = "dotted", linewidths = 1.0)
+    ax[i].set_aspect("equal", "box")
+    ax[i].invert_yaxis()
+    i % (length(ax) / 2) != 0 && ax[i].axes.xaxis.set_ticklabels([])
+    ax[i].tick_params(which = "both", top = true, right = true)
+    ax[i].minorticks_on()
 end
 
 fig.subplots_adjust(wspace = 0.02, hspace = 0.07)
