@@ -303,10 +303,10 @@ function Batsrus.create_pvd(filepattern::String, debug::Bool = false)
 end
 
 @setup_workload begin
-    # Mock data for precompilation
-    file = joinpath(@__DIR__, "../test/precompile.out")
     @compile_workload begin
         mktempdir() do tmpdir
+            # Mock data for precompilation
+            file = joinpath(@__DIR__, "../test/precompile.out")
             outname = joinpath(tmpdir, "out")
             convertIDLtoVTK(file; outname)
         end

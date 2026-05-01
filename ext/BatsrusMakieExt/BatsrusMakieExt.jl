@@ -15,10 +15,10 @@ include("typerecipe.jl")
 include("makie_amrex.jl")
 
 @setup_workload begin
-    # Mock data for precompilation
-    file = joinpath(@__DIR__, "../../test/precompile.out")
-    bd = file |> load
     @compile_workload begin
+        # Mock data for precompilation
+        file = joinpath(@__DIR__, "../../test/precompile.out")
+        bd = file |> load
         # Precompile common plotting functions
         Makie.heatmap(bd, "rho")
     end

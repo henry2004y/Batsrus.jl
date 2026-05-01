@@ -16,10 +16,9 @@ include("animate.jl")
 @setup_workload begin
     # Mock data for precompilation
     file = joinpath(@__DIR__, "../../test/precompile.out")
-    bd = file |> load
     @compile_workload begin
         # Precompile common plotting functions
-        animate(bd, "rho"; showplot = false, save_as = "")
+        animate([file], "rho"; showplot = false, save_as = "")
     end
 end
 
