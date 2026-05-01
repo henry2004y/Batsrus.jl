@@ -9,7 +9,18 @@ using Makie: @L_str, heatmap!, poly!, Circle, Point2f, Figure, Axis, Colorbar,
 using DimensionalData: dims, val
 using UniformStreamlines: streamlines!, evenstream
 using ProgressMeter
+using PrecompileTools: @setup_workload, @compile_workload
 
 include("animate.jl")
+
+@setup_workload begin
+    # Mock data for precompilation
+    file = joinpath(@__DIR__, "../../test/precompile.out")
+    bd = file |> load
+    @compile_workload begin
+        # Precompile common plotting functions
+        animate(bd, "rho"; showplot = false, save_as = "")
+    end
+end
 
 end

@@ -1,6 +1,7 @@
 module BatsrusWriteVTKExt
 
 using Batsrus, WriteVTK, Glob, LightXML
+using PrecompileTools: @setup_workload, @compile_workload
 using Batsrus: readtecdata, load, Batl, getConnectivity, get_range
 
 """
@@ -299,6 +300,17 @@ function Batsrus.create_pvd(filepattern::String, debug::Bool = false)
     save_file(xdoc, filenames[1][1:name_index] * ".pvd")
 
     return
+end
+
+@setup_workload begin
+    # Mock data for precompilation
+    file = joinpath(@__DIR__, "../test/precompile.out")
+    @compile_workload begin
+        mktempdir() do tmpdir
+            outname = joinpath(tmpdir, "out")
+            convertIDLtoVTK(file; outname)
+        end
+    end
 end
 
 end
