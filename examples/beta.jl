@@ -38,9 +38,11 @@ ylabel("z")
 
 dim = [0.125, 0.013, 0.2, 0.045]
 str = @sprintf "it=%d, time=%4.2f" data.head[:it] data.head[:time]
-at = matplotlib.offsetbox.AnchoredText(str,
-   loc = "lower left", prop = Dict("size"=>8), frameon = true,
-   bbox_to_anchor = (0.0, 1.0),
-   bbox_transform = ax.transAxes)
+at = matplotlib.offsetbox.AnchoredText(
+    str,
+    loc = "lower left", prop = Dict("size" => 8), frameon = true,
+    bbox_to_anchor = (0.0, 1.0),
+    bbox_transform = ax.transAxes
+)
 at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
 ax.add_artist(at)

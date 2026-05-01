@@ -1,3 +1,5 @@
+using FortranFiles
+
 @testset "Reading 1D ascii" begin
     file = "1d__raw_2_t25.60000_n00000258.out"
     bd = @suppress_err begin
@@ -226,5 +228,89 @@ end
 
         @test sum(h3.bincounts) * bin_vol_3 * vol_spatial_3d ≈ 20.0
         @test ndims(h3.bincounts) == 3
+    end
+end
+
+@testset "Issue 103: readtree with header/ASCII" begin
+    mktempdir() do tmpdir
+        filetag = joinpath(tmpdir, "test")
+
+        @testset "ASCII with header" begin
+            open(filetag * ".tree", "w") do f
+                println(f, "BATL tree information")
+                println(f, "#START")
+                println(f, "          3          18           2")
+                println(f, "          2           2           2")
+                println(f, "          1           1           1")
+                for i in 1:36
+                    print(f, i, " ")
+                    if i % 18 == 0
+                        println(f)
+                    end
+                end
+            end
+            iTree_IA, iRatio_D, nDim = readtree(filetag)
+            @test nDim == 3
+            @test size(iTree_IA) == (18, 2)
+            @test iTree_IA[1, 1] == 1
+            @test iTree_IA[18, 2] == 36
+        end
+
+        @testset "Regular binary" begin
+            f = FortranFile(filetag * ".tree", "w")
+            write(f, Int32(3), Int32(18), Int32(1))
+            write(f, Int32[2, 2, 2])
+            write(f, Int32[1, 1, 1])
+            write(f, fill(Int32(7), (18, 1)))
+            close(f)
+            iTree_IA, iRatio_D, nDim = readtree(filetag)
+            @test nDim == 3
+            @test size(iTree_IA) == (18, 1)
+            @test iTree_IA[1, 1] == 7
+        end
+
+        @testset "Binary with header" begin
+            open(filetag * ".tree", "w") do io
+                println(io, "Custom Header line 1")
+                println(io, "Custom Header line 2")
+                println(io, "#START")
+                # Manually write Fortran records
+                # Record 1: nDim, nInfo, nNode (3 * 4 = 12 bytes)
+                write(io, Int32(12))
+                write(io, Int32(3), Int32(18), Int32(1))
+                write(io, Int32(12))
+                # Record 2: iRatio_D (3 * 4 = 12 bytes)
+                write(io, Int32(12))
+                write(io, Int32[2, 2, 2])
+                write(io, Int32(12))
+                # Record 3: nRoot_D (3 * 4 = 12 bytes)
+                write(io, Int32(12))
+                write(io, Int32[1, 1, 1])
+                write(io, Int32(12))
+                # Record 4: iTree_IA (18 * 1 * 4 = 72 bytes)
+                write(io, Int32(72))
+                write(io, fill(Int32(9), (18, 1)))
+                write(io, Int32(72))
+            end
+            iTree_IA, iRatio_D, nDim = readtree(filetag)
+            @test nDim == 3
+            @test iTree_IA[1, 1] == 9
+        end
+
+        @testset "ASCII without header" begin
+            open(filetag * ".tree", "w") do f
+                println(f, "          3          18           1")
+                println(f, "          2           2           2")
+                println(f, "          1           1           1")
+                for i in 1:18
+                    print(f, i, " ")
+                end
+                println(f)
+            end
+            iTree_IA, iRatio_D, nDim = readtree(filetag)
+            @test nDim == 3
+            @test iTree_IA[1, 1] == 1
+            @test iTree_IA[18, 1] == 18
+        end
     end
 end
