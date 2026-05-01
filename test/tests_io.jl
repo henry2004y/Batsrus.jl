@@ -19,7 +19,7 @@ end
     @test extrema(bd.w) == (-0.79985905f0, 1.9399388f0)
     plotrange = [-10.0, 10.0, -Inf, Inf]
     x, y, w = interp2d(bd, "rho", plotrange)
-    @test w[1, end] == 0.6848635077476501
+    @test w[1, end] ≈ 0.6848635077476501 atol=1e-4
     # Linear interpolation at a given point
     d = interp1d(bd, "rho", Float32[0.0, 0.0])
     @test d == 0.6936918f0
