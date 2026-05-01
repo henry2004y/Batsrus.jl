@@ -64,12 +64,14 @@ function _interp2d_unstructured(
     xi = range(plotrange[1], stop = plotrange[2], step = plotinterval)
     yi = range(plotrange[3], stop = plotrange[4], step = plotinterval)
 
-    Wis = [if useMatplotlib
-        _triangulate_matplotlib(X, Y, W, xi, yi)
-    else
-        _, _, Wi_ = interpolate2d_generalized_coords(X, Y, W, plotrange, plotinterval)
-        Wi_
-    end for W in Ws]
+    Wis = [
+        if useMatplotlib
+                _triangulate_matplotlib(X, Y, W, xi, yi)
+        else
+                _, _, Wi_ = interpolate2d_generalized_coords(X, Y, W, plotrange, plotinterval)
+                Wi_
+        end for W in Ws
+    ]
 
     for Wi in Wis
         _mask_inner_boundary!(Wi, xi, yi, bd, innermask, rbody)
@@ -127,14 +129,16 @@ function _interp2d_structured(
         else
             range(plotrange[3], stop = plotrange[4], step = plotinterval)
         end
-        Xf = repeat(TV.(xi_), inner=length(yi_))
-        Yf = repeat(TV.(yi_), outer=length(xi_))
-        Wis_ = [begin
-            itp = cubic_interp((xrange, yrange), parent(W))
-            Wif = Vector{TV}(undef, length(Xf))
-            itp(Wif, (Xf, Yf))
-            reshape(Wif, length(yi_), length(xi_))
-        end for W in Ws_raw]
+        Xf = repeat(TV.(xi_), inner = length(yi_))
+        Yf = repeat(TV.(yi_), outer = length(xi_))
+        Wis_ = [
+            begin
+                    itp = cubic_interp((xrange, yrange), parent(W))
+                    Wif = Vector{TV}(undef, length(Xf))
+                    itp(Wif, (Xf, Yf))
+                    reshape(Wif, length(yi_), length(xi_))
+                end for W in Ws_raw
+        ]
         xi_, yi_, Wis_
     end
 
@@ -170,8 +174,8 @@ function _interp2d_structured(
             range(plotrange[3], stop = plotrange[4], step = plotinterval)
         end
         itp = cubic_interp((xrange, yrange), parent(W_raw))
-        Xf = repeat(TV.(xi_), inner=length(yi_))
-        Yf = repeat(TV.(yi_), outer=length(xi_))
+        Xf = repeat(TV.(xi_), inner = length(yi_))
+        Yf = repeat(TV.(yi_), outer = length(xi_))
         Wif = Vector{TV}(undef, length(Xf))
         itp(Wif, (Xf, Yf))
         Wi_ = reshape(Wif, length(yi_), length(xi_))
