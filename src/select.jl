@@ -238,7 +238,7 @@ Construct vector of `var` from its scalar components. Alternatively, check
 function fill_vector_from_scalars(bd::BatsrusIDL, var)
     vt = get_vectors(bd, var)
     Rpost = CartesianIndices(size(bd.x)[1:(end - 1)])
-    return v = [vt[iv][i] for iv in 1:3, i in Rpost]
+    return v = @inbounds [vt[iv][i] for iv in 1:3, i in Rpost]
 end
 
 """

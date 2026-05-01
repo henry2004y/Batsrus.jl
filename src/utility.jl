@@ -1,8 +1,8 @@
 # Utility functions for plotting and analyzing.
 
 """
-     interp2d(bd::BatsrusIDL, var, plotrange=[-Inf, Inf, -Inf, Inf],
-     	 plotinterval=Inf; kwargs...)
+    interp2d(bd::BatsrusIDL, var, plotrange=[-Inf, Inf, -Inf, Inf],
+     	plotinterval=Inf; kwargs...)
 
 Return 2D interpolated slices of data `var` from `bd`. If `plotrange` is not set, output
 data resolution is the same as the original.
@@ -252,7 +252,7 @@ function interpolate2d_generalized_coords(
 end
 
 """
-     interp1d(bd::BatsrusIDLStructured, var, loc::AbstractVector{<:AbstractFloat})
+    interp1d(bd::BatsrusIDLStructured, var, loc::AbstractVector{<:AbstractFloat})
 
 Interpolate `var` at spatial point `loc` in `bd`. `var` can be an `AbstractString` or
 a `Symbol` for derived quantities.
@@ -278,7 +278,7 @@ function _interp1d_point(
 end
 
 """
-     interp1d(bd::BatsrusIDLStructured, var, point1::Vector, point2::Vector)
+    interp1d(bd::BatsrusIDLStructured, var, point1::Vector, point2::Vector)
 
 Interpolate `var` along a line from `point1` to `point2` in `bd`. `var` can be an
 `AbstractString` or a `Symbol` for derived quantities.
@@ -315,7 +315,7 @@ function _interp1d_line(
 end
 
 """
-     slice1d(bd, var, icut::Int=1, dir::Int=2)
+    slice1d(bd, var, icut::Int=1, dir::Int=2)
 
 Return view of variable `var` in `bd` along 1D slice. `icut` is the index along axis `dir`.
 `dir == 1` means align with the 2nd (y) axis, `dir == 2` means align with the 1st (x) axis.
@@ -375,7 +375,7 @@ function squeeze(A::AbstractArray)
 end
 
 """
-     rotateTensorToVectorZ(tensor::AbstractMatrix, v::AbstractVector) -> SMatrix{3,3}
+    rotateTensorToVectorZ(tensor::AbstractMatrix, v::AbstractVector) -> SMatrix{3,3}
 
 Rotate `tensor` with a rotation matrix that aligns the 3rd direction with `vector`, which is equivalent to change the basis from (i,j,k) to (i′,j′,k′) where k′ ∥ vector.
 Reference: [Tensor rotation](https://math.stackexchange.com/questions/2303869/tensor-rotation)
@@ -393,7 +393,7 @@ function rotateTensorToVectorZ(tensor::AbstractMatrix{T}, v) where {T}
 end
 
 """
-     getRotationMatrix(axis::AbstractVector, angle::Real) --> SMatrix{3,3}
+    getRotationMatrix(axis::AbstractVector, angle::Real) --> SMatrix{3,3}
 
 Create a rotation matrix for rotating a 3D vector around a unit `axis` by an `angle` in radians.
 Reference: [Rotation matrix from axis and angle](https://en.wikipedia.org/wiki/Rotation_matrix#Rotation_matrix_from_axis_and_angle)
@@ -419,7 +419,7 @@ function getRotationMatrix(v::AbstractVector{<:AbstractFloat}, θ::Real)
 end
 
 """
-     generate_mock_amrex_data(output_dir::String; num_particles::Int=10, 
+    generate_mock_amrex_data(output_dir::String; num_particles::Int=10, 
         real_component_names::Vector{String}=["u", "v"],
         particle_gen::Function)
 
