@@ -28,20 +28,34 @@ function interp2d(
         useMatplotlib::Bool = true
     ) where {TV, TX, TW}
     W_raw = getvar(bd, var)
+    xi, yi, Wis = _interp2d_unstructured(
+        bd, [W_raw], plotrangeIn, plotinterval; innermask, rbody, useMatplotlib
+    )
+    return xi, yi, Wis[1]
+end
+
+function interp2d(
+        bd::BatsrusIDLUnstructured{2, TV, TX, TW},
+        vars::AbstractVector{<:Union{AbstractString, Symbol}},
+        plotrangeIn::Vector = [-Inf32, Inf32, -Inf32, Inf32], plotinterval::Real = Inf32;
+        innermask::Bool = false, rbody::Union{Nothing, Real} = nothing,
+        useMatplotlib::Bool = true
+    ) where {TV, TX, TW}
+    Ws_raw = [getvar(bd, v) for v in vars]
     return _interp2d_unstructured(
-        bd, W_raw, TV.(plotrangeIn), plotinterval; innermask, rbody, useMatplotlib
+        bd, Ws_raw, plotrangeIn, plotinterval; innermask, rbody, useMatplotlib
     )
 end
 
 function _interp2d_unstructured(
-        bd::BatsrusIDLUnstructured{2, TV, TX, TW}, W_raw,
+        bd::BatsrusIDLUnstructured{2, TV, TX, TW}, Ws_raw::AbstractVector,
         plotrange::Vector, plotinterval::Real;
         innermask::Bool, rbody::Union{Nothing, Real}, useMatplotlib::Bool
     ) where {TV, TX, TW}
     x = bd.x
     X, Y = eachslice(x, dims = 3)
     X, Y = vec(X), vec(Y)
-    W = vec(W_raw)
+    Ws = [vec(W_raw) for W_raw in Ws_raw]
 
     adjust_plotrange!(plotrange, extrema(X), extrema(Y))
     if isinf(plotinterval)
@@ -50,24 +64,20 @@ function _interp2d_unstructured(
     xi = range(plotrange[1], stop = plotrange[2], step = plotinterval)
     yi = range(plotrange[3], stop = plotrange[4], step = plotinterval)
 
-    Wi = if useMatplotlib
-        try
-            _triangulate_matplotlib(X, Y, W, xi, yi)
-        catch e
-            if e isa MethodError
-                error("Matplotlib interpolation requires PyPlot to be loaded.")
-            else
-                rethrow(e)
-            end
-        end
-    else
-        _, _, Wi_ = interpolate2d_generalized_coords(X, Y, W, plotrange, plotinterval)
-        Wi_
+    Wis = [
+        if useMatplotlib
+                _triangulate_matplotlib(X, Y, W, xi, yi)
+        else
+                _, _, Wi_ = interpolate2d_generalized_coords(X, Y, W, plotrange, plotinterval)
+                Wi_
+        end for W in Ws
+    ]
+
+    for Wi in Wis
+        _mask_inner_boundary!(Wi, xi, yi, bd, innermask, rbody)
     end
 
-    _mask_inner_boundary!(Wi, xi, yi, bd, innermask, rbody)
-
-    return xi, yi, Wi
+    return xi, yi, Wis
 end
 
 function interp2d(
@@ -79,8 +89,64 @@ function interp2d(
     ) where {TV, TX, TW}
     W_raw = getvar(bd, var)
     return _interp2d_structured(
-        bd, W_raw, TV.(plotrangeIn), plotinterval; innermask, rbody
+        bd, W_raw, plotrangeIn, plotinterval; innermask, rbody
     )
+end
+
+function interp2d(
+        bd::BatsrusIDLStructured{2, TV, TX, TW},
+        vars::AbstractVector{<:Union{AbstractString, Symbol}},
+        plotrangeIn::Vector = [-Inf32, Inf32, -Inf32, Inf32], plotinterval::Real = Inf32;
+        innermask::Bool = false, rbody::Union{Nothing, Real} = nothing
+    ) where {TV, TX, TW}
+    Ws_raw = [getvar(bd, v) for v in vars]
+    return _interp2d_structured(
+        bd, Ws_raw, plotrangeIn, plotinterval; innermask, rbody
+    )
+end
+
+function _interp2d_structured(
+        bd::BatsrusIDLStructured{2, TV, TX, TW}, Ws_raw::AbstractVector,
+        plotrange::Vector, plotinterval::Real;
+        innermask::Bool, rbody::Union{Nothing, Real}
+    ) where {TV, TX, TW}
+    xrange, yrange = get_range(bd)
+    xi, yi, Wis = if all(isinf.(plotrange))
+        xi_ = xrange
+        yi_ = yrange
+        Wis_ = [collect(W_raw)' for W_raw in Ws_raw]
+        xi_, yi_, Wis_
+    else
+        adjust_plotrange!(plotrange, (xrange[1], xrange[end]), (yrange[1], yrange[end]))
+
+        xi_ = if isinf(plotinterval)
+            range(plotrange[1], stop = plotrange[2], length = length(xrange))
+        else
+            range(plotrange[1], stop = plotrange[2], step = plotinterval)
+        end
+        yi_ = if isinf(plotinterval)
+            range(plotrange[3], stop = plotrange[4], length = length(yrange))
+        else
+            range(plotrange[3], stop = plotrange[4], step = plotinterval)
+        end
+        Xf = repeat(TV.(xi_), inner = length(yi_))
+        Yf = repeat(TV.(yi_), outer = length(xi_))
+        Wis_ = [
+            begin
+                    itp = cubic_interp((xrange, yrange), parent(W))
+                    Wif = Vector{TV}(undef, length(Xf))
+                    itp(Wif, (Xf, Yf))
+                    reshape(Wif, length(yi_), length(xi_))
+                end for W in Ws_raw
+        ]
+        xi_, yi_, Wis_
+    end
+
+    for Wi in Wis
+        _mask_inner_boundary!(Wi, xi, yi, bd, innermask, rbody)
+    end
+
+    return xi, yi, Wis
 end
 
 function _interp2d_structured(
@@ -98,17 +164,21 @@ function _interp2d_structured(
         adjust_plotrange!(plotrange, (xrange[1], xrange[end]), (yrange[1], yrange[end]))
 
         xi_ = if isinf(plotinterval)
-            range(plotrange[1], stop = plotrange[2], step = xrange[2] - xrange[1])
+            range(plotrange[1], stop = plotrange[2], length = length(xrange))
         else
             range(plotrange[1], stop = plotrange[2], step = plotinterval)
         end
         yi_ = if isinf(plotinterval)
-            range(plotrange[3], stop = plotrange[4], step = yrange[2] - yrange[1])
+            range(plotrange[3], stop = plotrange[4], length = length(yrange))
         else
             range(plotrange[3], stop = plotrange[4], step = plotinterval)
         end
-        itp = scale(interpolate(parent(W_raw), BSpline(Linear())), (xrange, yrange))
-        Wi_ = [itp(i, j) for j in yi_, i in xi_]
+        itp = cubic_interp((xrange, yrange), parent(W_raw))
+        Xf = repeat(TV.(xi_), inner = length(yi_))
+        Yf = repeat(TV.(yi_), outer = length(xi_))
+        Wif = Vector{TV}(undef, length(Xf))
+        itp(Wif, (Xf, Yf))
+        Wi_ = reshape(Wif, length(yi_), length(xi_))
         xi_, yi_, Wi_
     end
 
@@ -178,8 +248,8 @@ function meshgrid(
         adjust_plotrange!(plotrange, (xrange[1], xrange[end]), (yrange[1], yrange[end]))
 
         if isinf(plotinterval)
-            xi = range(plotrange[1], stop = plotrange[2], step = xrange[2] - xrange[1])
-            yi = range(plotrange[3], stop = plotrange[4], step = yrange[2] - yrange[1])
+            xi = range(plotrange[1], stop = plotrange[2], step = step(xrange))
+            yi = range(plotrange[3], stop = plotrange[4], step = step(yrange))
         else
             xi = range(plotrange[1], stop = plotrange[2], step = plotinterval)
             yi = range(plotrange[3], stop = plotrange[4], step = plotinterval)
@@ -268,9 +338,9 @@ function _interp1d_point(
         v, loc::AbstractVector{<:AbstractFloat}
     ) where {TV, TX, TW}
     xrange, yrange = get_range(bd)
-    itp = scale(interpolate(parent(v), BSpline(Linear())), (xrange, yrange))
+    itp = linear_interp((xrange, yrange), parent(v))
 
-    return itp(loc...)
+    return itp(Tuple(loc))
 end
 
 """
@@ -289,17 +359,20 @@ end
 
 function _interp1d_line(bd::BatsrusIDLStructured{2, TV, TX, TW}, v, point1, point2) where {TV, TX, TW}
     xrange, yrange = get_range(bd)
-    itp = scale(interpolate(parent(v), BSpline(Linear())), (xrange, yrange))
+    itp = linear_interp((xrange, yrange), parent(v))
     lx = point2[1] - point1[1]
     ly = point2[2] - point1[2]
-    nx = lx ÷ xrange.step |> Int
-    ny = ly ÷ yrange.step |> Int
+    nx = lx ÷ step(xrange) |> Int
+    ny = ly ÷ step(yrange) |> Int
     ns = floor(Int, √(nx^2 + ny^2))
     dx = lx / ns
     dy = ly / ns
-    points = [(point1[1] + i * dx, point1[2] + i * dy) for i in 0:ns]
+    XQ = [point1[1] + i * dx for i in 0:ns]
+    YQ = [point1[2] + i * dy for i in 0:ns]
+    out = similar(XQ)
+    itp(out, (XQ, YQ))
 
-    return [itp(loc...) for loc in points]
+    return out
 end
 
 """

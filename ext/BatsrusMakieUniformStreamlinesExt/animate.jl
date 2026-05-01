@@ -173,12 +173,8 @@ function Batsrus.animate(
             vars = split(streamvars, ";")
             if length(vars) == 2
                 if bd.head.gencoord
-                    _, _, v1 = interp2d(
-                        bd, String(vars[1]), range, plotinterval;
-                        innermask, rbody, useMatplotlib = false
-                    )
-                    _, _, v2 = interp2d(
-                        bd, String(vars[2]), range, plotinterval;
+                    _, _, (v1, v2) = interp2d(
+                        bd, [String(vars[1]), String(vars[2])], range, plotinterval;
                         innermask, rbody, useMatplotlib = false
                     )
                 else

@@ -181,10 +181,10 @@ function Batsrus.animate(
             if length(vars) == 2
                 if bd.head.gencoord
                     range = isnothing(plotrange) ? [-Inf, Inf, -Inf, Inf] : plotrange
-                    xi, yi, v1 =
-                        interp2d(bd, String(vars[1]), range, plotinterval; innermask, rbody)
-                    _, _, v2 =
-                        interp2d(bd, String(vars[2]), range, plotinterval; innermask, rbody)
+                    xi, yi, (v1, v2) = interp2d(
+                        bd, [String(vars[1]), String(vars[2])], range, plotinterval;
+                        innermask, rbody
+                    )
                 else
                     v1 = bd[vars[1]]
                     v2 = bd[vars[2]]

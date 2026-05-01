@@ -6,7 +6,7 @@ module Batsrus
 using LinearAlgebra: normalize, ×, ⋅, Adjoint, norm, diag, diagm, tr, dot
 using Printf, Reexport
 using Parsers
-using Interpolations: cubic_spline_interpolation, BSpline, Linear, scale, interpolate
+using FastInterpolations: linear_interp, cubic_interp, Extrap, Series
 import NaturalNeighbours as NN
 using StaticArrays: SVector, @SMatrix, SA, MVector
 using DimensionalData
