@@ -33,9 +33,8 @@ function interp2d(
     )
 end
 
-# Function barrier: W has a concrete type here, enabling full compiler specialisation.
 function _interp2d_unstructured(
-        bd::BatsrusIDLUnstructured{2, TV, TX, TW}, W_raw::AbstractArray,
+        bd::BatsrusIDLUnstructured{2, TV, TX, TW}, W_raw,
         plotrange::Vector, plotinterval::Real;
         innermask::Bool, rbody::Union{Nothing, Real}, useMatplotlib::Bool
     ) where {TV, TX, TW}
@@ -84,7 +83,6 @@ function interp2d(
     )
 end
 
-# Function barrier: W has a concrete type here, enabling full compiler specialisation.
 function _interp2d_structured(
         bd::BatsrusIDLStructured{2, TV, TX, TW}, W_raw::AbstractArray,
         plotrange::Vector, plotinterval::Real;
