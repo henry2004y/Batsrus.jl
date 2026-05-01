@@ -76,4 +76,37 @@
     @testset "Fallback behavior" begin
         @test bd_struct[:rho] == bd_struct["rho"]
     end
+
+    @testset "Multi-species Anisotropy (>1 species)" begin
+        # Create a mock 2D BATS object with 3 species
+        nx, ny = 2, 2
+        names = [
+            "bx", "by", "bz",
+            "pxxs0", "pyys0", "pzzs0", "pxys0", "pxzs0", "pyzs0",
+            "pxxs1", "pyys1", "pzzs1", "pxys1", "pxzs1", "pyzs1",
+            "pxxs2", "pyys2", "pzzs2", "pxys2", "pxzs2", "pyzs2",
+        ]
+        nw = length(names)
+        w_data = zeros(Float32, nx, ny, nw)
+        # B field: [1, 0, 0]
+        w_data[:, :, 1] .= 1.0f0
+        # Species 2: set pressure such that anisotropy is 2.0
+        # p_parallel = 1.0 (pxxs2), p_perp = (pyys2 + pzzs2)/2 = (2.0 + 2.0)/2 = 2.0
+        # Paniso = p_perp / p_parallel = 2.0 / 1.0 = 2.0
+        w_data[:, :, 16] .= 1.0f0 # pxxs2
+        w_data[:, :, 17] .= 2.0f0 # pyys2
+        w_data[:, :, 18] .= 2.0f0 # pzzs2
+
+        head = Batsrus.BatsHead(
+            2, "Mock", 0, 0.0, false, 0, nw, [nx, ny], Float32[],
+            ["x", "y"], names, String[]
+        )
+        x_data = zeros(Float32, nx, ny, 2)
+        list = Batsrus.FileList("mock.out", Batsrus.Real4Bat, ".", 0, 1, 0)
+        bd_mock = BATS(head, list, x_data, w_data)
+
+        # Test species 2
+        a2 = get_anisotropy(bd_mock, 2)
+        @test all(a2 .== 2.0f0)
+    end
 end
