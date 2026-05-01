@@ -18,7 +18,7 @@ include("animate.jl")
         mktempdir() do tmpdir
             # Mock data for precompilation
             file = joinpath(@__DIR__, "../../test/precompile.out")
-            animate([file]; var = :rho)
+            animate([file]; var = "rho", streamvars = "bx;by")
         end
     end
 end
