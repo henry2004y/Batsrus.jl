@@ -282,22 +282,21 @@ Return a tuple of vectors of `var`. `var` can be `:B`, `:E`, `:U`, or any `:U` f
 """
 function get_vectors_indices(bd::BatsrusIDL, var)
     if var === :B
-        return findindex(bd, "bx"), findindex(bd, "by"), findindex(bd, "bz")
+        idx = findindex(bd, "bx")
     elseif var === :E
-        return findindex(bd, "ex"), findindex(bd, "ey"), findindex(bd, "ez")
+        idx = findindex(bd, "ex")
     elseif var === :U
-        return findindex(bd, "ux"), findindex(bd, "uy"), findindex(bd, "uz")
+        idx = findindex(bd, "ux")
     else
         str = string(var)
         m = match(r"^U(\d+)$", str)
         if !isnothing(m)
-            suffix = m[1]
-            return findindex(bd, "uxs" * suffix), findindex(bd, "uys" * suffix),
-                findindex(bd, "uzs" * suffix)
+            idx = findindex(bd, "uxs" * m[1])
         else
             throw(ArgumentError("Vector variable $var not supported"))
         end
     end
+    return idx, idx + 1, idx + 2
 end
 
 """
