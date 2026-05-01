@@ -176,73 +176,72 @@ function readtree(filetag)
     iRatio_D = Int32[1, 1, 1]
     nRoot_D = Int32[1, 1, 1]
     filename = filetag * ".tree"
-
-    io = open(filename, "r")
-
-    # 1. Skip potential text header
-    pos = position(io)
-    if !eof(io)
-        first_byte = read(io, UInt8)
-        seek(io, 0)
-        # Check if it starts with '#' or a printable character (likely text header)
-        if first_byte == UInt8('#') || (0x20 < first_byte < 0x7E)
-            while !eof(io)
-                line = readline(io)
-                if startswith(line, "#START")
-                    break
+    return open(filename, "r") do io
+        # 1. Skip potential text header
+        pos = position(io)
+        if !eof(io)
+            first_byte = read(io, UInt8)
+            seek(io, 0)
+            # Check if it starts with '#' or a printable character (likely text header)
+            if first_byte == UInt8('#') || (0x20 < first_byte < 0x7E)
+                while !eof(io)
+                    last_pos = position(io)
+                    line = readline(io)
+                    if startswith(line, "#START")
+                        break
+                    end
+                    # If the line looks like numeric data (3 integers), we might have no header
+                    parts = split(line)
+                    if length(parts) == 3 && all(p -> tryparse(Int, p) !== nothing, parts)
+                        seek(io, last_pos)
+                        break
+                    end
                 end
-                # If the line looks like numeric data (3 integers), we might have no header
-                parts = split(line)
-                if length(parts) == 3 && all(p -> all(isdigit, p), parts)
-                    seek(io, position(io) - length(line) - 2) # Rewind (considering \r\n)
-                    break
-                end
+            else
+                seek(io, pos)
             end
+        end
+
+        # 2. Detect Binary or ASCII
+        data_pos = position(io)
+        record_len_bytes = read(io, 4)
+        if length(record_len_bytes) == 4 && reinterpret(Int32, record_len_bytes)[1] == 12
+            # Binary
+            seek(io, data_pos)
+            f = FortranFile(io)
+            nDim, nInfo, nNode = read(f, Int32, Int32, Int32)
+            iRatio_D[1:nDim] = read(f, (Int32, nDim))
+            nRoot_D[1:nDim] = read(f, (Int32, nDim))
+            iTree_IA = read(f, (Int32, (nInfo, nNode)))
         else
-            seek(io, pos)
-        end
-    end
-
-    # 2. Detect Binary or ASCII
-    data_pos = position(io)
-    record_len_bytes = read(io, 4)
-    if length(record_len_bytes) == 4 && reinterpret(Int32, record_len_bytes)[1] == 12
-        # Binary
-        seek(io, data_pos)
-        f = FortranFile(io)
-        nDim, nInfo, nNode = read(f, Int32, Int32, Int32)
-        iRatio_D[1:nDim] = read(f, (Int32, nDim))
-        nRoot_D[1:nDim] = read(f, (Int32, nDim))
-        iTree_IA = read(f, (Int32, (nInfo, nNode)))
-    else
-        # ASCII
-        seek(io, data_pos)
-        line = readline(io)
-        nums = parse.(Int32, split(line))
-        nDim, nInfo, nNode = nums[1:3]
-
-        line = readline(io)
-        iRatio_D[1:nDim] = parse.(Int32, split(line))
-
-        line = readline(io)
-        nRoot_D[1:nDim] = parse.(Int32, split(line))
-
-        iTree_IA = zeros(Int32, nInfo, nNode)
-        count = 0
-        while count < nInfo * nNode && !eof(io)
+            # ASCII
+            seek(io, data_pos)
             line = readline(io)
-            for s in split(line)
-                count += 1
-                iTree_IA[count] = parse(Int32, s)
-                if count == nInfo * nNode
-                    break
+            nums = parse.(Int32, split(line))
+            nDim, nInfo, nNode = nums[1:3]
+
+            line = readline(io)
+            iRatio_D[1:nDim] = parse.(Int32, split(line))
+
+            line = readline(io)
+            nRoot_D[1:nDim] = parse.(Int32, split(line))
+
+            iTree_IA = zeros(Int32, nInfo, nNode)
+            count = 0
+            while count < nInfo * nNode && !eof(io)
+                line = readline(io)
+                for s in split(line)
+                    count += 1
+                    iTree_IA[count] = parse(Int32, s)
+                    if count == nInfo * nNode
+                        break
+                    end
                 end
             end
         end
-    end
-    close(io)
 
-    return iTree_IA, iRatio_D, nDim
+        iTree_IA, iRatio_D, nDim
+    end
 end
 
 """
