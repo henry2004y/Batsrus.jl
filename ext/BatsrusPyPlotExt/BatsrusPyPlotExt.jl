@@ -23,7 +23,8 @@ function __init__()
     PyPlot.matplotlib.rc("xtick", labelsize = 10)
     PyPlot.matplotlib.rc("ytick", labelsize = 10)
     PyPlot.matplotlib.rc("xtick.minor", visible = true)
-    return PyPlot.matplotlib.rc("ytick.minor", visible = true)
+    PyPlot.matplotlib.rc("ytick.minor", visible = true)
+    return
 end
 
 function Batsrus._triangulate_matplotlib(X, Y, W, xi, yi)

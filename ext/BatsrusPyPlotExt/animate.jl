@@ -9,7 +9,7 @@ Save figures of colored contour from SWMF output files.
 Uses DimensionalData selectors or interpolation for data extraction.
 
 # Keywords
-- `var::String`: variable to plot with pcolormesh.
+- `var`: variable to plot with pcolormesh.
 - `vmin::Real`: minimum plotting value.
 - `vmax::Real`: maximum plotting value.
 - `colorscale::Symbol`: color scale for the plot (`:linear`, `:log`, `:symlog`, `:twoslope`).

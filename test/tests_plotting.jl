@@ -217,9 +217,10 @@
             plt.close()
 
             mktempdir() do tmpdir
-                # 2D structured binary with streamlines
+                # 2D structured binary with streamlines and derived variable
                 animate(
                     [joinpath(datapath, file)], outdir = tmpdir,
+                    var = :b,
                     streamvars = "bx;by",
                     stream_kwargs = (; color = "red"),
                     plot_kwargs = (; cmap = "viridis"),

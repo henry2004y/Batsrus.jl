@@ -246,16 +246,16 @@ end
 
 Calculate the magnitude square of vector `var`. See [`get_vectors`](@ref) for the options.
 """
-function get_magnitude2(bd::BatsrusIDL, var = :B)
+function get_magnitude2(bd::BatsrusIDL{ndim}, var = :B) where {ndim}
     ivx, ivy, ivz = get_vectors_indices(bd, var)
-    w = parent(bd.w)
-    v_raw = similar(w, size(w, 1), size(w, 2))
+    v = similar(bd.w, dims(bd.w)[1:ndim])
+    w, v_raw = parent(bd.w), parent(v)
 
     @inbounds @simd for i in CartesianIndices(v_raw)
         v_raw[i] = w[i, ivx]^2 + w[i, ivy]^2 + w[i, ivz]^2
     end
 
-    return v_raw
+    return v
 end
 
 """
@@ -263,22 +263,20 @@ end
 
 Calculate the magnitude of vector `var`. See [`get_vectors`](@ref) for the options.
 """
-function get_magnitude(bd::BatsrusIDL, var = :B)
+function get_magnitude(bd::BatsrusIDL{ndim}, var = :B) where {ndim}
     ivx, ivy, ivz = get_vectors_indices(bd, var)
-    w = parent(bd.w)
-    v_raw = similar(w, size(w, 1), size(w, 2))
+    v = similar(bd.w, dims(bd.w)[1:ndim])
+    w, v_raw = parent(bd.w), parent(v)
 
     @inbounds @simd for i in CartesianIndices(v_raw)
         v_raw[i] = √(w[i, ivx]^2 + w[i, ivy]^2 + w[i, ivz]^2)
     end
 
-    return v_raw
+    return v
 end
 
 """
-    get_vectors(bd::BatsrusIDL, var)
-
-Return a tuple of vectors of `var`. `var` can be `:B`, `:E`, `:U`, or any `:U` followed by an index (e.g. `:U0` for species 0, `:U1` for species 1, etc.).
+Return a tuple of indices for the vector of `var`. `var` can be `:B`, `:E`, `:U`, or any `:U` followed by an index (e.g. `:U0` for species 0, `:U1` for species 1, etc.).
 """
 function get_vectors_indices(bd::BatsrusIDL, var)
     if var === :B
@@ -329,8 +327,8 @@ function get_anisotropy(bd::BatsrusIDL{2, TV}, species = 0; method = :simple) wh
     ipyy, ipzz = ipxx + 1, ipxx + 2
     ipxy, ipxz, ipyz = ipxx + 3, ipxx + 4, ipxx + 5
 
-    w = parent(bd.w)
-    Paniso_raw = similar(w, size(w, 1), size(w, 2))
+    Paniso = similar(bd.w, dims(bd.w)[1:2])
+    w, Paniso_raw = parent(bd.w), parent(Paniso)
 
     @inbounds for j in axes(w, 2), i in axes(w, 1)
         b̂ = normalize(SA[w[i, j, ibx], w[i, j, iby], w[i, j, ibz]])
@@ -352,7 +350,7 @@ function get_anisotropy(bd::BatsrusIDL{2, TV}, species = 0; method = :simple) wh
         end
     end
 
-    return Paniso_raw
+    return Paniso
 end
 
 """
