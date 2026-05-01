@@ -321,20 +321,14 @@ method is based on rotating the tensor.
 function get_anisotropy(bd::BatsrusIDL{2, TV}, species = 0; method = :simple) where {TV}
     ibx, iby, ibz = findindex(bd, "bx"), findindex(bd, "by"), findindex(bd, "bz")
     if species == 0
-        ipxx, ipyy, ipzz = findindex(bd, "pxxs0"), findindex(bd, "pyys0"), findindex(bd, "pzzs0")
-        ipxy, ipxz, ipyz = findindex(bd, "pxys0"), findindex(bd, "pxzs0"), findindex(bd, "pyzs0")
+        ipxx = findindex(bd, "pxxs0")
     elseif species == 1
-        ipxx, ipyy, ipzz = findindex(bd, "pxxs1"), findindex(bd, "pyys1"), findindex(bd, "pzzs1")
-        ipxy, ipxz, ipyz = findindex(bd, "pxys1"), findindex(bd, "pxzs1"), findindex(bd, "pyzs1")
+        ipxx = findindex(bd, "pxxs1")
     else
-        pop = string(species)
-        ipxx = findindex(bd, "pxxs" * pop)
-        ipyy = findindex(bd, "pyys" * pop)
-        ipzz = findindex(bd, "pzzs" * pop)
-        ipxy = findindex(bd, "pxys" * pop)
-        ipxz = findindex(bd, "pxzs" * pop)
-        ipyz = findindex(bd, "pyzs" * pop)
+        ipxx = findindex(bd, "pxxs" * string(species))
     end
+    ipyy, ipzz = ipxx + 1, ipxx + 2
+    ipxy, ipxz, ipyz = ipxx + 3, ipxx + 4, ipxx + 5
 
     w = parent(bd.w)
     Paniso_raw = similar(w, size(w, 1), size(w, 2))
