@@ -1,11 +1,15 @@
 # Utility functions for plotting and analyzing.
 
 """
-     interp2d(bd::BatsrusIDL, var::AbstractString, plotrange=[-Inf, Inf, -Inf, Inf],
-    	 plotinterval=Inf; kwargs...)
+    interp2d(bd::BatsrusIDL, var, plotrange=[-Inf, Inf, -Inf, Inf],
+     	plotinterval=Inf; kwargs...)
 
 Return 2D interpolated slices of data `var` from `bd`. If `plotrange` is not set, output
 data resolution is the same as the original.
+
+`var` can be an `AbstractString` for file variables or a `Symbol` for derived quantities
+(e.g. `:b`, `:anisotropy`). Using a `Symbol` is recommended for performance-critical
+calls because the returned array type is fully resolved at compile time.
 
 # Keyword Arguments
 
@@ -17,30 +21,38 @@ data resolution is the same as the original.
 function interp2d end
 
 function interp2d(
-        bd::BatsrusIDLUnstructured{2, TV, TX, TW}, var::AbstractString,
+        bd::BatsrusIDLUnstructured{2, TV, TX, TW},
+        var::Union{AbstractString, Symbol},
         plotrangeIn::Vector = [-Inf32, Inf32, -Inf32, Inf32], plotinterval::Real = Inf32;
         innermask::Bool = false, rbody::Union{Nothing, Real} = nothing,
         useMatplotlib::Bool = true
     ) where {TV, TX, TW}
-    x, w = bd.x, bd.w
-    varIndex_ = findindex(bd, var)
-    plotrange = TV.(plotrangeIn)
+    W_raw = getvar(bd, var)
+    return _interp2d_unstructured(
+        bd, W_raw, TV.(plotrangeIn), plotinterval; innermask, rbody, useMatplotlib
+    )
+end
 
+function _interp2d_unstructured(
+        bd::BatsrusIDLUnstructured{2, TV, TX, TW}, W_raw,
+        plotrange::Vector, plotinterval::Real;
+        innermask::Bool, rbody::Union{Nothing, Real}, useMatplotlib::Bool
+    ) where {TV, TX, TW}
+    x = bd.x
     X, Y = eachslice(x, dims = 3)
     X, Y = vec(X), vec(Y)
-    W = @views w[:, :, varIndex_] |> vec
+    W = vec(W_raw)
 
     adjust_plotrange!(plotrange, extrema(X), extrema(Y))
-    # Set a heuristic value if not set
     if isinf(plotinterval)
         plotinterval = (plotrange[2] - plotrange[1]) / size(X, 1)
     end
     xi = range(plotrange[1], stop = plotrange[2], step = plotinterval)
     yi = range(plotrange[3], stop = plotrange[4], step = plotinterval)
 
-    if useMatplotlib
+    Wi = if useMatplotlib
         try
-            Wi = _triangulate_matplotlib(X, Y, W, xi, yi)
+            _triangulate_matplotlib(X, Y, W, xi, yi)
         catch e
             if e isa MethodError
                 error("Matplotlib interpolation requires PyPlot to be loaded.")
@@ -49,7 +61,8 @@ function interp2d(
             end
         end
     else
-        xi, yi, Wi = interpolate2d_generalized_coords(X, Y, W, plotrange, plotinterval)
+        _, _, Wi_ = interpolate2d_generalized_coords(X, Y, W, plotrange, plotinterval)
+        Wi_
     end
 
     _mask_inner_boundary!(Wi, xi, yi, bd, innermask, rbody)
@@ -58,34 +71,46 @@ function interp2d(
 end
 
 function interp2d(
-        bd::BatsrusIDLStructured{2, TV, TX, TW}, var::AbstractString,
+        bd::BatsrusIDLStructured{2, TV, TX, TW},
+        var::Union{AbstractString, Symbol},
         plotrangeIn::Vector = [-Inf32, Inf32, -Inf32, Inf32], plotinterval::Real = Inf32;
         innermask::Bool = false, rbody::Union{Nothing, Real} = nothing,
         useMatplotlib::Bool = true
     ) where {TV, TX, TW}
-    x, w = bd.x, bd.w
-    varIndex_ = findindex(bd, var)
-    plotrange = TV.(plotrangeIn)
+    W_raw = getvar(bd, var)
+    return _interp2d_structured(
+        bd, W_raw, TV.(plotrangeIn), plotinterval; innermask, rbody
+    )
+end
 
+function _interp2d_structured(
+        bd::BatsrusIDLStructured{2, TV, TX, TW}, W_raw::AbstractArray,
+        plotrange::Vector, plotinterval::Real;
+        innermask::Bool, rbody::Union{Nothing, Real}
+    ) where {TV, TX, TW}
     xrange, yrange = get_range(bd)
-    if all(isinf.(plotrange))
-        xi, yi = xrange, yrange
-        Wi = w[:, :, varIndex_].data' # Matplotlib does not accept view!
+    xi, yi, Wi = if all(isinf.(plotrange))
+        xi_ = xrange
+        yi_ = yrange
+        Wi_ = (W_raw isa Array ? W_raw : collect(W_raw))' # Matplotlib does not accept view!
+        xi_, yi_, Wi_
     else
         adjust_plotrange!(plotrange, (xrange[1], xrange[end]), (yrange[1], yrange[end]))
 
-        if isinf(plotinterval)
-            xi = range(plotrange[1], stop = plotrange[2], step = xrange[2] - xrange[1])
-            yi = range(plotrange[3], stop = plotrange[4], step = yrange[2] - yrange[1])
+        xi_ = if isinf(plotinterval)
+            range(plotrange[1], stop = plotrange[2], step = xrange[2] - xrange[1])
         else
-            xi = range(plotrange[1], stop = plotrange[2], step = plotinterval)
-            yi = range(plotrange[3], stop = plotrange[4], step = plotinterval)
+            range(plotrange[1], stop = plotrange[2], step = plotinterval)
         end
-        itp = @views scale(
-            interpolate(w[:, :, varIndex_], BSpline(Linear())),
-            (xrange, yrange)
-        )
-        Wi = [itp(i, j) for j in yi, i in xi]
+        yi_ = if isinf(plotinterval)
+            range(plotrange[3], stop = plotrange[4], step = yrange[2] - yrange[1])
+        else
+            range(plotrange[3], stop = plotrange[4], step = plotinterval)
+        end
+        W_raw = W_raw isa Array ? W_raw : collect(W_raw)
+        itp = scale(interpolate(W_raw, BSpline(Linear())), (xrange, yrange))
+        Wi_ = [itp(i, j) for j in yi_, i in xi_]
+        xi_, yi_, Wi_
     end
 
     _mask_inner_boundary!(Wi, xi, yi, bd, innermask, rbody)
@@ -114,6 +139,8 @@ function _mask_inner_boundary!(
             Wi[i] = NaN
         end
     end
+
+    return
 end
 
 """
@@ -167,10 +194,19 @@ end
 Find variable index in the BATSRUS data.
 """
 function findindex(bd::BatsrusIDL, var::AbstractString)
-    varIndex_ = findfirst(x -> lowercase(x) == lowercase(var), bd.head.wname)
-    isnothing(varIndex_) && error("$(var) not found in file header variables!")
-
-    return varIndex_
+    for (i, name) in enumerate(bd.head.wname)
+        if length(name) == length(var)
+            match = true
+            for (c1, c2) in zip(name, var)
+                if lowercase(c1) != lowercase(c2)
+                    match = false
+                    break
+                end
+            end
+            match && return i
+        end
+    end
+    error("$(var) not found in file header variables!")
 end
 
 """
@@ -214,35 +250,55 @@ function interpolate2d_generalized_coords(
 end
 
 """
-     interp1d(bd::BatsrusIDLStructured, var::AbstractString, loc::AbstractVector{<:AbstractFloat})
+    interp1d(bd::BatsrusIDLStructured, var, loc::AbstractVector{<:AbstractFloat})
 
-Interpolate `var` at spatial point `loc` in `bd`.
+Interpolate `var` at spatial point `loc` in `bd`. `var` can be an `AbstractString` or
+a `Symbol` for derived quantities.
 """
 function interp1d(
         bd::BatsrusIDLStructured{2, TV, TX, TW},
-        var::AbstractString,
+        var::Union{AbstractString, Symbol},
         loc::AbstractVector{<:AbstractFloat}
     ) where {TV, TX, TW}
-    v = getview(bd, var)
+    v = getvar(bd, var)
+    return _interp1d_point(bd, v, loc)
+end
+
+function _interp1d_point(
+        bd::BatsrusIDLStructured{2, TV, TX, TW},
+        v::AbstractArray, loc::AbstractVector{<:AbstractFloat}
+    ) where {TV, TX, TW}
     xrange, yrange = get_range(bd)
+    v = v isa Array ? v : collect(v)
     itp = scale(interpolate(v, BSpline(Linear())), (xrange, yrange))
 
-    return Wi = itp(loc...)
+    return itp(loc...)
 end
 
 """
-     interp1d(bd::BatsrusIDLStructured, var::AbstractString, point1::Vector, point2::Vector)
+    interp1d(bd::BatsrusIDLStructured, var, point1::Vector, point2::Vector)
 
-Interpolate `var` along a line from `point1` to `point2` in `bd`.
+Interpolate `var` along a line from `point1` to `point2` in `bd`. `var` can be an
+`AbstractString` or a `Symbol` for derived quantities.
 """
 function interp1d(
         bd::BatsrusIDLStructured{2, TV, TX, TW},
-        var::AbstractString,
+        var::Union{AbstractString, Symbol},
         point1::Vector,
         point2::Vector
     ) where {TV, TX, TW}
-    v = getview(bd, var)
+    v = getvar(bd, var)
+    return _interp1d_line(bd, v, point1, point2)
+end
+
+function _interp1d_line(
+        bd::BatsrusIDLStructured{2, TV, TX, TW},
+        v::AbstractArray,
+        point1::Vector,
+        point2::Vector
+    ) where {TV, TX, TW}
     xrange, yrange = get_range(bd)
+    v = v isa Array ? v : collect(v)
     itp = scale(interpolate(v, BSpline(Linear())), (xrange, yrange))
     lx = point2[1] - point1[1]
     ly = point2[2] - point1[2]
@@ -253,16 +309,18 @@ function interp1d(
     dy = ly / ns
     points = [(point1[1] + i * dx, point1[2] + i * dy) for i in 0:ns]
 
-    return Wi = [itp(loc...) for loc in points]
+    return [itp(loc...) for loc in points]
 end
 
 """
-     slice1d(bd, var, icut::Int=1, dir::Int=2)
+    slice1d(bd, var, icut::Int=1, dir::Int=2)
 
 Return view of variable `var` in `bd` along 1D slice. `icut` is the index along axis `dir`.
 `dir == 1` means align with the 2nd (y) axis, `dir == 2` means align with the 1st (x) axis.
+`var` can be an `AbstractString` or a `Symbol` for derived quantities.
 """
-slice1d(bd, var, icut::Int = 1, dir::Int = 2) = selectdim(bd[var], dir, icut)
+slice1d(bd, var::Union{AbstractString, Symbol}, icut::Int = 1, dir::Int = 2) =
+    selectdim(getvar(bd, var), dir, icut)
 
 """
 Return view of variable `var` in `bd`.
@@ -280,9 +338,10 @@ function getview(bd::BatsrusIDL{2, TV}, var) where {TV}
 end
 
 """
-Return value range of `var` in `bd`.
+Return value range of `var` in `bd`. `var` can be an `AbstractString` or a `Symbol`.
 """
-get_var_range(bd::BatsrusIDL, var) = getview(bd, var) |> extrema
+get_var_range(bd::BatsrusIDL, var::Union{AbstractString, Symbol}) =
+    getvar(bd, var) |> extrema
 
 """
 Return mesh range of `bd`.
@@ -314,7 +373,7 @@ function squeeze(A::AbstractArray)
 end
 
 """
-     rotateTensorToVectorZ(tensor::AbstractMatrix, v::AbstractVector) -> SMatrix{3,3}
+    rotateTensorToVectorZ(tensor::AbstractMatrix, v::AbstractVector) -> SMatrix{3,3}
 
 Rotate `tensor` with a rotation matrix that aligns the 3rd direction with `vector`, which is equivalent to change the basis from (i,j,k) to (i′,j′,k′) where k′ ∥ vector.
 Reference: [Tensor rotation](https://math.stackexchange.com/questions/2303869/tensor-rotation)
@@ -332,7 +391,7 @@ function rotateTensorToVectorZ(tensor::AbstractMatrix{T}, v) where {T}
 end
 
 """
-     getRotationMatrix(axis::AbstractVector, angle::Real) --> SMatrix{3,3}
+    getRotationMatrix(axis::AbstractVector, angle::Real) --> SMatrix{3,3}
 
 Create a rotation matrix for rotating a 3D vector around a unit `axis` by an `angle` in radians.
 Reference: [Rotation matrix from axis and angle](https://en.wikipedia.org/wiki/Rotation_matrix#Rotation_matrix_from_axis_and_angle)
@@ -358,7 +417,7 @@ function getRotationMatrix(v::AbstractVector{<:AbstractFloat}, θ::Real)
 end
 
 """
-     generate_mock_amrex_data(output_dir::String; num_particles::Int=10, 
+    generate_mock_amrex_data(output_dir::String; num_particles::Int=10, 
         real_component_names::Vector{String}=["u", "v"],
         particle_gen::Function)
 
@@ -451,7 +510,7 @@ function generate_mock_amrex_data(
 
     # Create Main Header (for domain info)
     main_header_path = joinpath(output_dir, "Header")
-    return open(main_header_path, "w") do f
+    open(main_header_path, "w") do f
         println(f, "HyperCLaw-V1.1")
         println(f, "0") # num_fields
         println(f, "3") # dim
@@ -467,6 +526,8 @@ function generate_mock_amrex_data(
         hi_str = join([d - 1 for d in dims], ",")
         println(f, "(($lo_str) ($hi_str) (0,0,0))") # domain size
     end
+
+    return
 end
 
 """
@@ -549,7 +610,7 @@ function get_particle_field_aligned_transform(b_field::AbstractVector, e_field =
         # Direction of E_perp (which is (B x E) x B)
         eperp_hat = normalize(exb_hat × bhat)
 
-        return (data, names) -> begin
+        (data, names) -> begin
             local idx_vx::Union{Nothing, Int}
             local idx_vy::Union{Nothing, Int}
             local idx_vz::Union{Nothing, Int}

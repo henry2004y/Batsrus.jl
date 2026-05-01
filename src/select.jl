@@ -175,26 +175,59 @@ function subvolume(x, y, z, u, v, w, limits)
 end
 
 """
-     getvar(bd::BATS, var::AbstractString) -> Array
+    getvar(bd::BATS, var::AbstractString) -> Array
 
 Return variable data from string `var`. This is also supported via direct indexing.
 Note that the query variable `var` must be in lowercase!
 
+For derived/computed quantities, you can also pass a `Symbol` for a fully
+type-stable result:
+
+  - `:b`            — magnetic field magnitude
+  - `:b2`           — magnetic field magnitude squared
+  - `:e`            — electric field magnitude
+  - `:u`            — bulk velocity magnitude
+  - `:anisotropy0`  — pressure anisotropy (2D only, species 0)
+  - `:anisotropy1`  — pressure anisotropy (2D only, species 1)
+
 # Examples
 
-```
-bd["rho"]
+```julia
+bd["rho"]        # direct file variable (string)
+bd[:b]           # derived magnitude (symbol, type-stable)
 ```
 """
 function getvar(
         bd::BatsrusIDL{ndim, TV}, var::AbstractString
     ) where {ndim, TV}
-    return w = @view bd.w[var = At(var)]
+    varIndex_ = findindex(bd, var)
+    return selectdim(bd.w, ndims(bd.w), varIndex_)
 end
 
-@inline Base.@propagate_inbounds Base.getindex(bd::BatsrusIDL, var::AbstractString) = getvar(
-    bd, var
-)
+"""
+Type-stable getvar dispatch via `Val`. The compiler specialises on the symbol
+and returns a concretely typed array with no runtime branching inside the loop.
+"""
+@inline getvar(bd::BatsrusIDL, var::Symbol) = _getvar(bd, Val(var))
+
+# --- Derived scalar quantities ---
+@inline _getvar(bd::BatsrusIDL, ::Val{:b}) = get_magnitude(bd, :B)
+@inline _getvar(bd::BatsrusIDL, ::Val{:b2}) = get_magnitude2(bd, :B)
+@inline _getvar(bd::BatsrusIDL, ::Val{:e}) = get_magnitude(bd, :E)
+@inline _getvar(bd::BatsrusIDL, ::Val{:u}) = get_magnitude(bd, :U)
+@inline _getvar(bd::BatsrusIDL{2}, ::Val{:anisotropy0}) = get_anisotropy(bd, 0)
+@inline _getvar(bd::BatsrusIDL{2}, ::Val{:anisotropy1}) = get_anisotropy(bd, 1)
+
+# Fallback: treat the symbol as a lowercase string variable name
+@inline function _getvar(
+        bd::BatsrusIDL{ndim, TV}, ::Val{V}
+    ) where {ndim, TV, V}
+    varIndex_ = findindex(bd, string(V))
+    return selectdim(bd.w, ndims(bd.w), varIndex_)
+end
+
+@inline Base.@propagate_inbounds Base.getindex(bd::BatsrusIDL, var) =
+    getvar(bd, var)
 
 """
     fill_vector_from_scalars(bd::BatsrusIDL, var)
@@ -205,7 +238,7 @@ Construct vector of `var` from its scalar components. Alternatively, check
 function fill_vector_from_scalars(bd::BatsrusIDL, var)
     vt = get_vectors(bd, var)
     Rpost = CartesianIndices(size(bd.x)[1:(end - 1)])
-    return v = [vt[iv][i] for iv in 1:3, i in Rpost]
+    return v = @inbounds [vt[iv][i] for iv in 1:3, i in Rpost]
 end
 
 """
@@ -214,14 +247,15 @@ end
 Calculate the magnitude square of vector `var`. See [`get_vectors`](@ref) for the options.
 """
 function get_magnitude2(bd::BatsrusIDL, var = :B)
-    vx, vy, vz = get_vectors(bd, var)
-    v = similar(vx)
+    ivx, ivy, ivz = get_vectors_indices(bd, var)
+    w = parent(bd.w)
+    v_raw = similar(w, size(w, 1), size(w, 2))
 
-    @inbounds @simd for i in eachindex(v)
-        v[i] = vx[i]^2 + vy[i]^2 + vz[i]^2
+    @inbounds @simd for i in CartesianIndices(v_raw)
+        v_raw[i] = w[i, ivx]^2 + w[i, ivy]^2 + w[i, ivz]^2
     end
 
-    return v
+    return v_raw
 end
 
 """
@@ -230,14 +264,39 @@ end
 Calculate the magnitude of vector `var`. See [`get_vectors`](@ref) for the options.
 """
 function get_magnitude(bd::BatsrusIDL, var = :B)
-    vx, vy, vz = get_vectors(bd, var)
-    v = similar(vx)
+    ivx, ivy, ivz = get_vectors_indices(bd, var)
+    w = parent(bd.w)
+    v_raw = similar(w, size(w, 1), size(w, 2))
 
-    @inbounds @simd for i in eachindex(v)
-        v[i] = √(vx[i]^2 + vy[i]^2 + vz[i]^2)
+    @inbounds @simd for i in CartesianIndices(v_raw)
+        v_raw[i] = √(w[i, ivx]^2 + w[i, ivy]^2 + w[i, ivz]^2)
     end
 
-    return v
+    return v_raw
+end
+
+"""
+    get_vectors(bd::BatsrusIDL, var)
+
+Return a tuple of vectors of `var`. `var` can be `:B`, `:E`, `:U`, or any `:U` followed by an index (e.g. `:U0` for species 0, `:U1` for species 1, etc.).
+"""
+function get_vectors_indices(bd::BatsrusIDL, var)
+    if var === :B
+        idx = findindex(bd, "bx")
+    elseif var === :E
+        idx = findindex(bd, "ex")
+    elseif var === :U
+        idx = findindex(bd, "ux")
+    else
+        str = string(var)
+        m = match(r"^U(\d+)$", str)
+        if !isnothing(m)
+            idx = findindex(bd, "uxs" * m[1])
+        else
+            throw(ArgumentError("Vector variable $var not supported"))
+        end
+    end
+    return idx, idx + 1, idx + 2
 end
 
 """
@@ -246,24 +305,9 @@ end
 Return a tuple of vectors of `var`. `var` can be `:B`, `:E`, `:U`, or any `:U` followed by an index (e.g. `:U0` for species 0, `:U1` for species 1, etc.).
 """
 function get_vectors(bd::BatsrusIDL, var)
-    str = string(var)
-    if str == "B"
-        vx, vy, vz = bd["bx"], bd["by"], bd["bz"]
-    elseif str == "E"
-        vx, vy, vz = bd["ex"], bd["ey"], bd["ez"]
-    elseif str == "U"
-        vx, vy, vz = bd["ux"], bd["uy"], bd["uz"]
-    else
-        m = match(r"^U(\d+)$", str)
-        if !isnothing(m)
-            suffix = m[1]
-            vx, vy, vz = bd["uxs" * suffix], bd["uys" * suffix], bd["uzs" * suffix]
-        else
-            throw(ArgumentError("Vector variable $var not supported"))
-        end
-    end
-
-    return vx, vy, vz
+    ivx, ivy, ivz = get_vectors_indices(bd, var)
+    return selectdim(bd.w, ndims(bd.w), ivx), selectdim(bd.w, ndims(bd.w), ivy),
+        selectdim(bd.w, ndims(bd.w), ivz)
 end
 
 """
@@ -274,54 +318,41 @@ based on the fact that the trace of the pressure tensor is a constant. The `rota
 method is based on rotating the tensor.
 """
 function get_anisotropy(bd::BatsrusIDL{2, TV}, species = 0; method = :simple) where {TV}
-    Bx, By, Bz = bd["bx"], bd["by"], bd["bz"]
-    # Rotate the pressure tensor to align the 3rd direction with B
+    ibx, iby, ibz = findindex(bd, "bx"), findindex(bd, "by"), findindex(bd, "bz")
     if species == 0
-        Pxx = bd["pxxs0"]
-        Pyy = bd["pyys0"]
-        Pzz = bd["pzzs0"]
-        Pxy = bd["pxys0"]
-        Pxz = bd["pxzs0"]
-        Pyz = bd["pyzs0"]
+        ipxx = findindex(bd, "pxxs0")
     elseif species == 1
-        Pxx = bd["pxxs1"]
-        Pyy = bd["pyys1"]
-        Pzz = bd["pzzs1"]
-        Pxy = bd["pxys1"]
-        Pxz = bd["pxzs1"]
-        Pyz = bd["pyzs1"]
+        ipxx = findindex(bd, "pxxs1")
     else
-        pop = string(species)
-        Pxx = bd["pxxs" * pop]
-        Pyy = bd["pyys" * pop]
-        Pzz = bd["pzzs" * pop]
-        Pxy = bd["pxys" * pop]
-        Pxz = bd["pxzs" * pop]
-        Pyz = bd["pyzs" * pop]
+        ipxx = findindex(bd, "pxxs" * string(species))
     end
-    Paniso = similar(Pxx)
+    ipyy, ipzz = ipxx + 1, ipxx + 2
+    ipxy, ipxz, ipyz = ipxx + 3, ipxx + 4, ipxx + 5
 
-    @inbounds for j in axes(Pxx, 2), i in axes(Pxx, 1)
-        b̂ = normalize(SA[Bx[i, j], By[i, j], Bz[i, j]])
+    w = parent(bd.w)
+    Paniso_raw = similar(w, size(w, 1), size(w, 2))
+
+    @inbounds for j in axes(w, 2), i in axes(w, 1)
+        b̂ = normalize(SA[w[i, j, ibx], w[i, j, iby], w[i, j, ibz]])
         P = @SMatrix [
-            Pxx[i, j] Pxy[i, j] Pxz[i, j];
-            Pxy[i, j] Pyy[i, j] Pyz[i, j];
-            Pxz[i, j] Pyz[i, j] Pzz[i, j]
+            w[i, j, ipxx] w[i, j, ipxy] w[i, j, ipxz];
+            w[i, j, ipxy] w[i, j, ipyy] w[i, j, ipyz];
+            w[i, j, ipxz] w[i, j, ipyz] w[i, j, ipzz]
         ]
 
         if method == :simple
             p_parallel = b̂' * P * b̂
             p_perp = (tr(P) - p_parallel) / 2
-            Paniso[i, j] = p_perp / p_parallel
+            Paniso_raw[i, j] = p_perp / p_parallel
         elseif method == :rotation
             Prot = rotateTensorToVectorZ(P, b̂)
-            Paniso[i, j] = (Prot[1, 1] + Prot[2, 2]) / (2 * Prot[3, 3])
+            Paniso_raw[i, j] = (Prot[1, 1] + Prot[2, 2]) / (2 * Prot[3, 3])
         else
             error("Unknown method for get_anisotropy: $method. Use :simple or :rotation.")
         end
     end
 
-    return Paniso
+    return Paniso_raw
 end
 
 """
@@ -386,26 +417,26 @@ function get_timeseries(files::AbstractArray, loc; tstep = 1.0)
 
     @showprogress dt = 1 desc = "Extracting..." for it in eachindex(files)
         bd = files[it] |> Batsrus.load
-        v[1, it] = bd["rhos0"][x_, y_]
-        v[2, it] = bd["rhos1"][x_, y_]
-        v[3, it] = bd["uxs0"][x_, y_]
-        v[4, it] = bd["uys0"][x_, y_]
-        v[5, it] = bd["uzs0"][x_, y_]
-        v[6, it] = bd["uxs1"][x_, y_]
-        v[7, it] = bd["uys1"][x_, y_]
-        v[8, it] = bd["uzs1"][x_, y_]
-        v[9, it] = bd["pxxs0"][x_, y_]
-        v[10, it] = bd["pyys0"][x_, y_]
-        v[11, it] = bd["pzzs0"][x_, y_]
-        v[12, it] = bd["pxxs1"][x_, y_]
-        v[13, it] = bd["pyys1"][x_, y_]
-        v[14, it] = bd["pzzs1"][x_, y_]
-        v[15, it] = bd["bx"][x_, y_]
-        v[16, it] = bd["by"][x_, y_]
-        v[17, it] = bd["bz"][x_, y_]
-        v[18, it] = bd["ex"][x_, y_]
-        v[19, it] = bd["ey"][x_, y_]
-        v[20, it] = bd["ez"][x_, y_]
+        v[1, it] = bd[:rhos0][x_, y_]
+        v[2, it] = bd[:rhos1][x_, y_]
+        v[3, it] = bd[:uxs0][x_, y_]
+        v[4, it] = bd[:uys0][x_, y_]
+        v[5, it] = bd[:uzs0][x_, y_]
+        v[6, it] = bd[:uxs1][x_, y_]
+        v[7, it] = bd[:uys1][x_, y_]
+        v[8, it] = bd[:uzs1][x_, y_]
+        v[9, it] = bd[:pxxs0][x_, y_]
+        v[10, it] = bd[:pyys0][x_, y_]
+        v[11, it] = bd[:pzzs0][x_, y_]
+        v[12, it] = bd[:pxxs1][x_, y_]
+        v[13, it] = bd[:pyys1][x_, y_]
+        v[14, it] = bd[:pzzs1][x_, y_]
+        v[15, it] = bd[:bx][x_, y_]
+        v[16, it] = bd[:by][x_, y_]
+        v[17, it] = bd[:bz][x_, y_]
+        v[18, it] = bd[:ex][x_, y_]
+        v[19, it] = bd[:ey][x_, y_]
+        v[20, it] = bd[:ez][x_, y_]
     end
 
     return trange, v

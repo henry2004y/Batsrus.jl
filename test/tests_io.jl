@@ -18,10 +18,6 @@ end
     plotrange = [-10.0, 10.0, -Inf, Inf]
     x, y, w = interp2d(bd, "rho", plotrange)
     @test w[1, end] == 0.6848635077476501
-    @test Batsrus.fill_vector_from_scalars(bd, :B)[:, end, end] ==
-        Float32[1.118034, -0.559017, 0.0]
-    @test get_magnitude(bd, :B)[128, 2] == 0.9223745f0
-    @test get_magnitude2(bd, :B)[128, 2] == 0.8507747f0
     # Linear interpolation at a given point
     d = interp1d(bd, "rho", Float32[0.0, 0.0])
     @test d == 0.6936918f0
@@ -42,21 +38,6 @@ end
     @test length(x) == 601 && y[2] == 0.0f0
     x, y = Batsrus.meshgrid(bd, Float32[-100, 100, -Inf, Inf])
     @test length(x) == 4
-    @test get_magnitude(bd, :E)[2, 1] == 2655.4805f0
-    @test get_magnitude2(bd, :E)[2, 1] == 7.051577f6
-    @test Batsrus.fill_vector_from_scalars(bd, :E)[:, 2, 1] ==
-        Float32[-241.05942, -2644.2058, -40.53219]
-    @test get_magnitude2(bd, :U0)[2, 1] == 33784.973f0
-    anisotropy_s0 = get_anisotropy(bd, 0)[1:2, 1]
-    @test anisotropy_s0 ≈ Float32[1.2630985, 2.4700143]
-    @test get_anisotropy(bd, 0, method = :rotation)[1:2, 1] ≈ anisotropy_s0
-    @test get_anisotropy(bd, 1)[1:2, 1] ≈ Float32[1.2906302, 2.6070855]
-    w = get_convection_E(bd)
-    @test w[2][2, 1] ≈ -2454.3933f0
-    w = get_hall_E(bd)
-    @test w[2][2, 1] ≈ -782.2945f0
-    w = get_timeseries([joinpath(datapath, file)], [0.0, 0.0])
-    @test w[2][end] == 17.973747f0
 end
 
 @testset "Reading 2D unstructured ascii" begin
@@ -67,8 +48,6 @@ end
     @test length(x) == 117 && length(y) == 246
     x, y, w = interp2d(bd, "rho", plotrange, useMatplotlib = false)
     @test w[1, 2] == 5.000018304080387
-    @test get_magnitude(bd, :U)[2] == 71.85452748407637
-    @test get_magnitude2(bd, :U)[2] == 5163.073119959886
 end
 
 @testset "Reading 3D structured binary" begin

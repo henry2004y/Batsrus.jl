@@ -20,7 +20,13 @@ makedocs(;
     ),
     pages = [
         "Home" => "index.md",
-        "Manual" => "man/manual.md",
+        "Guides" => [
+            "Loading" => "man/loading.md",
+            "Analysis" => "man/analysis.md",
+            "Plotting" => "man/plotting.md",
+            "Particles" => "man/particles.md",
+            "Conversion" => "man/conversion.md",
+        ],
         "Examples" => demos,
         "Internal" => "man/internal.md",
         "Log" => "man/log.md",
