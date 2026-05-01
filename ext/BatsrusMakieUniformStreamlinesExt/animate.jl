@@ -9,7 +9,7 @@ Save figures of colored contour from SWMF output files using Makie.
 Uses DimensionalData selectors or interpolation for data extraction.
 
 # Keywords
-- `var::String`: variable to plot with heatmap.
+- `var`: variable to plot with heatmap.
 - `vmin::Real`: minimum plotting value.
 - `vmax::Real`: maximum plotting value.
 - `plotrange`: 2D plotting spatial range `[xmin, xmax, ymin, ymax]`.

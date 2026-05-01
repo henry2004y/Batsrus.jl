@@ -14,11 +14,12 @@ using PrecompileTools: @setup_workload, @compile_workload
 include("animate.jl")
 
 @setup_workload begin
-    # Mock data for precompilation
-    file = joinpath(@__DIR__, "../../test/precompile.out")
     @compile_workload begin
-        # Precompile common plotting functions
-        animate([file], "rho"; showplot = false, save_as = "")
+        mktempdir() do tmpdir
+            # Mock data for precompilation
+            file = joinpath(@__DIR__, "../../test/precompile.out")
+            animate([file]; var = :rho)
+        end
     end
 end
 
