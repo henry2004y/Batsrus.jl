@@ -98,17 +98,21 @@ function _interp2d_structured(
         adjust_plotrange!(plotrange, (xrange[1], xrange[end]), (yrange[1], yrange[end]))
 
         xi_ = if isinf(plotinterval)
-            range(plotrange[1], stop = plotrange[2], step = xrange[2] - xrange[1])
+            range(plotrange[1], stop = plotrange[2], step = step(xrange))
         else
             range(plotrange[1], stop = plotrange[2], step = plotinterval)
         end
         yi_ = if isinf(plotinterval)
-            range(plotrange[3], stop = plotrange[4], step = yrange[2] - yrange[1])
+            range(plotrange[3], stop = plotrange[4], step = step(yrange))
         else
             range(plotrange[3], stop = plotrange[4], step = plotinterval)
         end
-        itp = scale(interpolate(parent(W_raw), BSpline(Linear())), (xrange, yrange))
-        Wi_ = [itp(i, j) for j in yi_, i in xi_]
+        itp = linear_interp((xrange, yrange), parent(W_raw))
+        Xf = [x for _ in yi_, x in xi_] |> vec
+        Yf = [y for y in yi_, _ in xi_] |> vec
+        Wif = similar(Xf)
+        itp(Wif, (Xf, Yf))
+        Wi_ = reshape(Wif, length(yi_), length(xi_))
         xi_, yi_, Wi_
     end
 
@@ -178,8 +182,8 @@ function meshgrid(
         adjust_plotrange!(plotrange, (xrange[1], xrange[end]), (yrange[1], yrange[end]))
 
         if isinf(plotinterval)
-            xi = range(plotrange[1], stop = plotrange[2], step = xrange[2] - xrange[1])
-            yi = range(plotrange[3], stop = plotrange[4], step = yrange[2] - yrange[1])
+            xi = range(plotrange[1], stop = plotrange[2], step = step(xrange))
+            yi = range(plotrange[3], stop = plotrange[4], step = step(yrange))
         else
             xi = range(plotrange[1], stop = plotrange[2], step = plotinterval)
             yi = range(plotrange[3], stop = plotrange[4], step = plotinterval)
@@ -268,9 +272,9 @@ function _interp1d_point(
         v, loc::AbstractVector{<:AbstractFloat}
     ) where {TV, TX, TW}
     xrange, yrange = get_range(bd)
-    itp = scale(interpolate(parent(v), BSpline(Linear())), (xrange, yrange))
+    itp = linear_interp((xrange, yrange), parent(v))
 
-    return itp(loc...)
+    return itp(Tuple(loc))
 end
 
 """
@@ -289,17 +293,20 @@ end
 
 function _interp1d_line(bd::BatsrusIDLStructured{2, TV, TX, TW}, v, point1, point2) where {TV, TX, TW}
     xrange, yrange = get_range(bd)
-    itp = scale(interpolate(parent(v), BSpline(Linear())), (xrange, yrange))
+    itp = linear_interp((xrange, yrange), parent(v))
     lx = point2[1] - point1[1]
     ly = point2[2] - point1[2]
-    nx = lx ÷ xrange.step |> Int
-    ny = ly ÷ yrange.step |> Int
+    nx = lx ÷ step(xrange) |> Int
+    ny = ly ÷ step(yrange) |> Int
     ns = floor(Int, √(nx^2 + ny^2))
     dx = lx / ns
     dy = ly / ns
-    points = [(point1[1] + i * dx, point1[2] + i * dy) for i in 0:ns]
+    XQ = [point1[1] + i * dx for i in 0:ns]
+    YQ = [point1[2] + i * dy for i in 0:ns]
+    out = similar(XQ)
+    itp(out, (XQ, YQ))
 
-    return [itp(loc...) for loc in points]
+    return out
 end
 
 """

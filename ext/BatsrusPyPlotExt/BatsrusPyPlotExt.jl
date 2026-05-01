@@ -3,7 +3,7 @@ module BatsrusPyPlotExt
 using Batsrus
 using PyPlot
 using Printf
-using Interpolations
+using FastInterpolations
 using ProgressMeter
 
 import Batsrus: meshgrid, findindex, adjust_plotrange!, _resolve_alias

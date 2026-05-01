@@ -639,11 +639,13 @@ function _getvector(
             xi = range(plotrange[1], stop = plotrange[2], step = plotinterval)
             yi = range(plotrange[3], stop = plotrange[4], step = plotinterval)
             xyrange = (xrange, yrange)
-            interp1 = cubic_spline_interpolation(xyrange, w1)
-            v1 = [interp1(i, j) for j in yi, i in xi]
-
-            interp2 = cubic_spline_interpolation(xyrange, w2)
-            v2 = [interp2(i, j) for j in yi, i in xi]
+            sitp = cubic_interp(xyrange, Series(w1, w2))
+            Xf = [x for _ in yi, x in xi] |> vec
+            Yf = [y for y in yi, _ in xi] |> vec
+            v1f, v2f = similar(Xf), similar(Yf)
+            sitp([v1f, v2f], (Xf, Yf))
+            v1 = reshape(v1f, length(yi), length(xi))
+            v2 = reshape(v2f, length(yi), length(xi))
         end
     end
 
