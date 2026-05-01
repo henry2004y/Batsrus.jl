@@ -175,7 +175,7 @@ function subvolume(x, y, z, u, v, w, limits)
 end
 
 """
-     getvar(bd::BATS, var::AbstractString) -> Array
+    getvar(bd::BATS, var::AbstractString) -> Array
 
 Return variable data from string `var`. This is also supported via direct indexing.
 Note that the query variable `var` must be in lowercase!
@@ -187,7 +187,7 @@ type-stable result:
   - `:b2`           — magnetic field magnitude squared
   - `:e`            — electric field magnitude
   - `:u`            — bulk velocity magnitude
-  - `:anisotropy`   — pressure anisotropy (2D only, species 0)
+  - `:anisotropy0`  — pressure anisotropy (2D only, species 0)
   - `:anisotropy1`  — pressure anisotropy (2D only, species 1)
 
 # Examples
@@ -215,7 +215,7 @@ and returns a concretely typed array with no runtime branching inside the loop.
 @inline _getvar(bd::BatsrusIDL, ::Val{:b2}) = get_magnitude2(bd, :B)
 @inline _getvar(bd::BatsrusIDL, ::Val{:e}) = get_magnitude(bd, :E)
 @inline _getvar(bd::BatsrusIDL, ::Val{:u}) = get_magnitude(bd, :U)
-@inline _getvar(bd::BatsrusIDL{2}, ::Val{:anisotropy}) = get_anisotropy(bd, 0)
+@inline _getvar(bd::BatsrusIDL{2}, ::Val{:anisotropy0}) = get_anisotropy(bd, 0)
 @inline _getvar(bd::BatsrusIDL{2}, ::Val{:anisotropy1}) = get_anisotropy(bd, 1)
 
 # Fallback: treat the symbol as a lowercase string variable name
