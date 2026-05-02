@@ -604,16 +604,15 @@ function _getvector(
     varstream = split(var, ";")
     var1_ = findfirst(x -> lowercase(x) == lowercase(varstream[1]), bd.head.wname)
     var2_ = findfirst(x -> lowercase(x) == lowercase(varstream[2]), bd.head.wname)
-    if isinf(plotinterval)
-        plotinterval = (x[end, 1, 1] - x[1, 1, 1]) / size(x, 1)
-    end
+    plot_step = isinf(plotinterval) ? (x[end, 1, 1] - x[1, 1, 1]) / size(x, 1) :
+        plotinterval
     if bd.head.gencoord # generalized coordinates
         X, Y = vec(x[:, :, 1]), vec(x[:, :, 2])
         adjust_plotrange!(plotrange, extrema(X), extrema(Y))
 
         # Create grid values first.
-        xi = range(Float64(plotrange[1]), stop = Float64(plotrange[2]), step = plotinterval)
-        yi = range(Float64(plotrange[3]), stop = Float64(plotrange[4]), step = plotinterval)
+        xi = range(Float64(plotrange[1]), stop = Float64(plotrange[2]), step = plot_step)
+        yi = range(Float64(plotrange[3]), stop = Float64(plotrange[4]), step = plot_step)
 
         # Is there a triangulation method in Julia?
         tr = PyPlot.matplotlib.tri.Triangulation(X, Y)
