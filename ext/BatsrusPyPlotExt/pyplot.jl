@@ -171,12 +171,12 @@ function streamslice(
     end
 
     xi = range(
-        cut1[1, 1], stop = cut1[end, 1],
-        step = (cut1[end, 1] - cut1[1, 1]) / (size(cut1, 1) - 1)
+        Float64(cut1[1, 1]), stop = Float64(cut1[end, 1]),
+        length = size(cut1, 1)
     )
     yi = range(
-        cut2[1, 1], stop = cut2[1, end],
-        step = (cut2[1, end] - cut2[1, 1]) / (size(cut2, 2) - 1)
+        Float64(cut2[1, 1]), stop = Float64(cut2[1, end]),
+        length = size(cut2, 2)
     )
 
     if isnothing(ax)
@@ -604,16 +604,15 @@ function _getvector(
     varstream = split(var, ";")
     var1_ = findfirst(x -> lowercase(x) == lowercase(varstream[1]), bd.head.wname)
     var2_ = findfirst(x -> lowercase(x) == lowercase(varstream[2]), bd.head.wname)
-    if isinf(plotinterval)
-        plotinterval = (x[end, 1, 1] - x[1, 1, 1]) / size(x, 1)
-    end
+    plot_step = isinf(plotinterval) ? (x[end, 1, 1] - x[1, 1, 1]) / size(x, 1) :
+        plotinterval
     if bd.head.gencoord # generalized coordinates
         X, Y = vec(x[:, :, 1]), vec(x[:, :, 2])
         adjust_plotrange!(plotrange, extrema(X), extrema(Y))
 
         # Create grid values first.
-        xi = range(Float64(plotrange[1]), stop = Float64(plotrange[2]), step = plotinterval)
-        yi = range(Float64(plotrange[3]), stop = Float64(plotrange[4]), step = plotinterval)
+        xi = range(Float64(plotrange[1]), stop = Float64(plotrange[2]), step = plot_step)
+        yi = range(Float64(plotrange[3]), stop = Float64(plotrange[4]), step = plot_step)
 
         # Is there a triangulation method in Julia?
         tr = PyPlot.matplotlib.tri.Triangulation(X, Y)
@@ -625,19 +624,44 @@ function _getvector(
         interpolator = PyPlot.matplotlib.tri.LinearTriInterpolator(tr, w[:, 1, var2_])
         v2 = interpolator(Xi, Yi)
     else # Cartesian coordinates
-        # Convert to Float64 to satisfy the equal space checking in streamplot.py
         xrange, yrange = get_range(bd)
-        if all(isinf.(plotrange))
-            xi = xrange
-            yi = yrange
+        if all(isinf.(plotrange)) && xrange isa AbstractRange && yrange isa AbstractRange
+            xi = range(
+                Float64(xrange[1]), stop = Float64(xrange[end]),
+                length = length(xrange)
+            )
+            yi = range(
+                Float64(yrange[1]), stop = Float64(yrange[end]),
+                length = length(yrange)
+            )
             v1 = w[:, :, var1_].data'
             v2 = w[:, :, var2_].data'
         else
+            if all(isinf.(plotrange))
+                plotrange = [xrange[1], xrange[end], yrange[1], yrange[end]]
+            end
             adjust_plotrange!(plotrange, (xrange[1], xrange[end]), (yrange[1], yrange[end]))
 
             w1, w2 = @views w[:, :, var1_], w[:, :, var2_]
-            xi = range(plotrange[1], stop = plotrange[2], step = plotinterval)
-            yi = range(plotrange[3], stop = plotrange[4], step = plotinterval)
+            if isinf(plotinterval)
+                xi = range(
+                    Float64(plotrange[1]), stop = Float64(plotrange[2]),
+                    length = length(xrange)
+                )
+                yi = range(
+                    Float64(plotrange[3]), stop = Float64(plotrange[4]),
+                    length = length(yrange)
+                )
+            else
+                xi = range(
+                    Float64(plotrange[1]), stop = Float64(plotrange[2]),
+                    step = Float64(plotinterval)
+                )
+                yi = range(
+                    Float64(plotrange[3]), stop = Float64(plotrange[4]),
+                    step = Float64(plotinterval)
+                )
+            end
             xyrange = (xrange, yrange)
             itp1 = cubic_interp(xyrange, parent(w1))
             itp2 = cubic_interp(xyrange, parent(w2))

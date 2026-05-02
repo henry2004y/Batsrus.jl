@@ -209,6 +209,39 @@
                 @test norm_log.vmax == 10.0
             end
 
+            @testset "Streamplot Uniformity" begin
+                let bd = begin
+                        # Mock BatsHead
+                        head = Batsrus.BatsHead(
+                            2, "PLANETARY", 216, 3.0020797f0, false, 0, 2, [100, 100],
+                            [], ["x", "y"], ["uxs1", "uzs1"], []
+                        )
+
+                        # Mock FileList
+                        list = Batsrus.FileList(
+                            "mock.out", Batsrus.Real4Bat, ".",
+                            1000, 1, 0
+                        )
+
+                        # Large Float32 range that caused issues
+                        x = zeros(Float32, 100, 100, 2)
+                        w = rand(Float32, 100, 100, 2)
+
+                        x[1, 1, 1] = 6.0f6
+                        x[100, 1, 1] = 6.0f6 + 1.0f0
+                        x[1, 1, 2] = 0.0f0
+                        x[1, 100, 2] = 1.0f0
+
+                        Batsrus.BATS(head, list, x, w)
+                    end
+                    # This should not throw ValueError
+                    plt.figure()
+                    c = PyPlot.streamplot(bd, "uxs1;uzs1")
+                    @test c isa PyPlot.PyObject
+                    plt.close()
+                end
+            end
+
             plt.close()
             fig = plt.figure()
             ax = fig.add_subplot(111, projection = "3d")
