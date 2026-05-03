@@ -178,6 +178,8 @@ using StaticArrays
             @test c.get_array()[end] == 1.0
             c = PyPlot.tricontourf(bd, "rho")
             @test c.get_array()[end] == 0.9750000000000002
+            c = PyPlot.tricontour(bd, "rho")
+            @test c isa PyPlot.PyObject
             PyPlot.tripcolor(bd, "rho")
             @test isa(gca(), PyPlot.PyObject)
             p = PyPlot.pcolormesh(bd, "p").get_array()
@@ -246,8 +248,15 @@ using StaticArrays
             plt.close()
             fig = plt.figure()
             ax = fig.add_subplot(111, projection = "3d")
-            plot_surface(bd, "rho")
+            c = plot_surface(bd, "rho")
             @test isa(gca(), PyPlot.PyObject)
+            plt.close()
+
+            # plot_trisurf with explicit ax
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection = "3d")
+            c = plot_trisurf(bd, "rho", ax; cmap = "viridis")
+            @test c isa PyPlot.PyObject
             plt.close()
 
             mktempdir() do tmpdir
@@ -363,8 +372,14 @@ using StaticArrays
                     batl = Batl(head, iTree_IA, MVector{3, Int32}(2, 2, 2), Int8(3))
 
                     # This will create a 3D plot
-                    plotgrid(batl)
-                    @test true
+                    c = plotgrid(batl)
+                    @test (c isa PyPlot.PyObject) || (c isa Vector && c[1] isa PyPlot.PyObject)
+                    plt.close()
+
+                    # 3D slice
+                    plt.figure()
+                    c = plotgrid(batl; dir = "x", at = 0.0)
+                    @test c isa PyPlot.PyObject
                     plt.close()
                 end
 
