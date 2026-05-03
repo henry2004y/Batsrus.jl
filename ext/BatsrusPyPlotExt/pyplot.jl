@@ -456,7 +456,7 @@ end
 
 """
     contour(data, var, ax=nothing; levels=0, plotrange=[-Inf,Inf,-Inf,Inf],
-    	 plotinterval=0.1, innermask=false, kwargs...)
+    	plotinterval=0.1, innermask=false, kwargs...)
 
 Wrapper over `contour` in matplotlib.
 """

@@ -31,7 +31,7 @@ ax1.set_xlim(-20, 20)
 ax1.set_ylim(-3, 3)
 ```
 
-![Structured 2D Grid](../../src/images/mesh_structured.png)
+![Structured 2D Grid](../../images/mesh_structured.png)
 
 # 2. Unstructured Grid
 ```julia
@@ -44,7 +44,7 @@ plotgrid(bd_unstructured, ax2)
 ax2.set_title("Unstructured Grid")
 ```
 
-![Unstructured Grid](../../src/images/mesh_unstructured.png)
+![Unstructured Grid](../../images/mesh_unstructured.png)
 
 # 3. Block AMR Mesh (Batl)
 # This demonstrates visualizing the leaf blocks of an Adaptive Mesh Refinement grid.
@@ -67,6 +67,5 @@ plotgrid(batl, axes[3], dir="z", at=0.0)
 axes[3].set_title("z=0 slice")
 ```
 
-![3D AMR Mesh](../../src/images/mesh_amr_3d.png)
-![3D AMR Slices](../../src/images/mesh_amr_slices.png)
-
+![3D AMR Mesh](../../images/mesh_amr_3d.png)
+![3D AMR Slices](../../images/mesh_amr_slices.png)
