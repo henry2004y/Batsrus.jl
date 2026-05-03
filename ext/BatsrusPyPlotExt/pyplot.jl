@@ -56,7 +56,7 @@ function plotgrid(
         ax = plt.gca()
     end
 
-    if bd isa BatsrusIDLStructured || (size(bd.x, 1) > 1 && size(bd.x, 2) > 1)
+    if bd isa BatsrusIDLStructured || ndims(bd.x) == 3
         X, Y = eachslice(bd.x, dims = 3)
         # Use pcolormesh with transparent faces to show the grid
         c = ax.pcolormesh(
@@ -64,7 +64,7 @@ function plotgrid(
             facecolors = "none", linewidths = 0.5, kwargs...
         )
     else
-        X, Y = eachslice(bd.x, dims = 3)
+        X, Y = eachslice(bd.x, dims = 2)
         c = ax.scatter(X, Y, marker = ".", alpha = 0.6, kwargs...)
     end
 
@@ -106,6 +106,7 @@ function plotgrid(batl::Batl, ax = nothing; dir = nothing, at = 0.0, kwargs...)
     dx0 = (CoordMax .- CoordMin) ./ nRoot
 
     if batl.nDim == 2
+        patches = []
         for iNode in iNodeMorton_I
             if batl.iTree_IA[status_, iNode] == used_
                 level = batl.iTree_IA[level_, iNode]
@@ -115,20 +116,27 @@ function plotgrid(batl::Batl, ax = nothing; dir = nothing, at = 0.0, kwargs...)
                 x_min = CoordMin[1:2] .+ (iCoord .- 1) .* dx[1:2]
 
                 rect = PyPlot.matplotlib.patches.Rectangle(
-                    x_min, dx[1], dx[2], fill = false, edgecolor = "k",
-                    linewidth = 0.5, kwargs...
+                    x_min, dx[1], dx[2], fill = false
                 )
-                ax.add_patch(rect)
+                push!(patches, rect)
             end
         end
+
+        c = PyPlot.matplotlib.collections.PatchCollection(
+            patches; edgecolors = "k", facecolors = "none", linewidths = 0.5, kwargs...
+        )
+        ax.add_collection(c)
 
         ax.set_xlim(CoordMin[1], CoordMax[1])
         ax.set_ylim(CoordMin[2], CoordMax[2])
         ax.set_aspect("equal")
         xlabel("x")
         ylabel("y")
+
+        return c
     elseif batl.nDim == 3 && isnothing(dir)
         # For 3D, we plot the wireframe of each leaf block
+        xs, ys, zs = Float64[], Float64[], Float64[]
         for iNode in iNodeMorton_I
             if batl.iTree_IA[status_, iNode] == used_
                 level = batl.iTree_IA[level_, iNode]
@@ -142,30 +150,33 @@ function plotgrid(batl::Batl, ax = nothing; dir = nothing, at = 0.0, kwargs...)
                 xmin = CoordMin .+ (iCoord .- 1) .* dx
                 xmax = xmin .+ dx
 
-                # Plot 12 edges
+                # 12 edges
+                # Edge 1-4: parallel to z
                 for x in [xmin[1], xmax[1]], y in [xmin[2], xmax[2]]
-                    ax.plot(
-                        [x, x], [y, y], [xmin[3], xmax[3]], color = "k",
-                        linewidth = 0.5, kwargs...
-                    )
+                    append!(xs, [x, x, NaN])
+                    append!(ys, [y, y, NaN])
+                    append!(zs, [xmin[3], xmax[3], NaN])
                 end
+                # Edge 5-8: parallel to y
                 for x in [xmin[1], xmax[1]], z in [xmin[3], xmax[3]]
-                    ax.plot(
-                        [x, x], [xmin[2], xmax[2]], [z, z], color = "k",
-                        linewidth = 0.5, kwargs...
-                    )
+                    append!(xs, [x, x, NaN])
+                    append!(ys, [xmin[2], xmax[2], NaN])
+                    append!(zs, [z, z, NaN])
                 end
+                # Edge 9-12: parallel to x
                 for y in [xmin[2], xmax[2]], z in [xmin[3], xmax[3]]
-                    ax.plot(
-                        [xmin[1], xmax[1]], [y, y], [z, z], color = "k",
-                        linewidth = 0.5, kwargs...
-                    )
+                    append!(xs, [xmin[1], xmax[1], NaN])
+                    append!(ys, [y, y, NaN])
+                    append!(zs, [z, z, NaN])
                 end
             end
         end
+        c = ax.plot(xs, ys, zs; color = "k", linewidth = 0.5, kwargs...)
         xlabel("x")
         ylabel("y")
         ax.set_zlabel("z")
+
+        return c
     elseif batl.nDim == 3 && !isnothing(dir)
         # Slice view
         idir = if dir isa AbstractString
@@ -187,8 +198,8 @@ function plotgrid(batl::Batl, ax = nothing; dir = nothing, at = 0.0, kwargs...)
         # if idir = 2 (y), then plane is (x, z) = (1, 3)
         # if idir = 3 (z), then plane is (x, y) = (1, 2)
         idx = filter(i -> i != idir, 1:3)
-        c_idx = [coord1_, coord2_, coord3_]
 
+        patches = []
         for iNode in iNodeMorton_I
             if batl.iTree_IA[status_, iNode] == used_
                 level = batl.iTree_IA[level_, iNode]
@@ -205,13 +216,17 @@ function plotgrid(batl::Batl, ax = nothing; dir = nothing, at = 0.0, kwargs...)
                 if xmin[idir] <= at <= xmax[idir]
                     # Plot rectangle in the 2D plane
                     rect = PyPlot.matplotlib.patches.Rectangle(
-                        xmin[idx], dx[idx[1]], dx[idx[2]], fill = false,
-                        edgecolor = "k", linewidth = 0.5, kwargs...
+                        xmin[idx], dx[idx[1]], dx[idx[2]], fill = false
                     )
-                    ax.add_patch(rect)
+                    push!(patches, rect)
                 end
             end
         end
+
+        c = PyPlot.matplotlib.collections.PatchCollection(
+            patches; edgecolors = "k", facecolors = "none", linewidths = 0.5, kwargs...
+        )
+        ax.add_collection(c)
 
         ax.set_xlim(CoordMin[idx[1]], CoordMax[idx[1]])
         ax.set_ylim(CoordMin[idx[2]], CoordMax[idx[2]])
@@ -220,9 +235,9 @@ function plotgrid(batl::Batl, ax = nothing; dir = nothing, at = 0.0, kwargs...)
         coords = ["x", "y", "z"]
         xlabel(coords[idx[1]])
         ylabel(coords[idx[2]])
-    end
 
-    return
+        return c
+    end
 end
 
 """
@@ -258,7 +273,7 @@ function plotgrid(head, data, connectivity; ax = nothing, kwargs...)
     xlabel(head.variable[1])
     ylabel(head.variable[2])
 
-    return
+    return pc
 end
 
 
@@ -628,11 +643,10 @@ function PyPlot.plot_trisurf(
         W = W[xyIndex]
     end
     if isnothing(ax)
-        ax = plt.gca()
+        ax = plt.figure().add_subplot(projection = "3d")
     end
 
-    ax = plt.figure().add_subplot(projection = "3d")
-    c = ax.plot_trisurf(X, Y, W)
+    c = ax.plot_trisurf(X, Y, W; kwargs...)
 
     add_titles!(bd, var, ax)
 
