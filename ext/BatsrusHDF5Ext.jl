@@ -65,6 +65,8 @@ struct HDF5Common{TI <: Signed, TF <: AbstractFloat} <: BatsrusHDF5File
     end
 end
 
+Base.close(bf::HDF5Common) = close(bf.fid)
+
 """
 BATSRUS HDF5 file with uniform Cartesian mesh.
 """
@@ -100,6 +102,8 @@ struct BatsrusHDF5Uniform{TI, TF} <: BatsrusHDF5File
         return new{TI, TF}(bf, SVector{3}(nc), nb, dcoord, dblock)
     end
 end
+
+Base.close(file::BatsrusHDF5Uniform) = close(file.common)
 
 Batsrus.BatsrusHDF5Uniform(filename::AbstractString) = BatsrusHDF5Uniform(filename)
 
