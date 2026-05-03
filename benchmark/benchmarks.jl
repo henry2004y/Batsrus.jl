@@ -64,7 +64,7 @@ amrex_dir = joinpath(directory, "amrex_mock")
 mkpath(amrex_dir)
 Batsrus.generate_mock_amrex_data(
     amrex_dir,
-    num_particles = 1000,
+    num_particles = 100_000,
     real_component_names = ["u", "v", "w", "weight"],
     particle_gen = (i, n_reals) -> (
         Float64(i % 10), Float64(i % 10), Float64(i % 10), # x, y, z
