@@ -3,7 +3,8 @@
 using PyPlot
 
 export plotlogdata, plot, scatter, contour, contourf, plot_surface, tripcolor,
-    tricontourf, plot_trisurf, streamplot, streamslice, quiver, cutplot, pcolormesh
+    tricontour, tricontourf, plot_trisurf, streamplot, streamslice, quiver, cutplot, pcolormesh,
+    plotgrid, imshow
 
 """
     plotlogdata(data, head, func; plotmode="line")
@@ -41,13 +42,13 @@ function plotlogdata(data, head::NamedTuple, func::AbstractString; plotmode = "l
 end
 
 """
-    plotgrid(bd::BATS, var, ax=nothing; kwargs...)
+    plotgrid(bd::BatsrusIDL{2, TV}, ax=nothing; kwargs...)
 
-Plot 2D mesh.
+Plot 2D mesh. For structured data, it shows the grid lines; for unstructured data, it
+currently shows the cell centers.
 """
 function plotgrid(
         bd::BatsrusIDL{2, TV},
-        func::AbstractString,
         ax = nothing;
         kwargs...
     ) where {TV}
@@ -55,17 +56,226 @@ function plotgrid(
         ax = plt.gca()
     end
 
-    # This does not take subdomain plot into account!
-    X, Y = eachslice(bd.x, dims = 3)
-    scatter(X, Y, marker = ".", alpha = 0.6)
-    title("Grid illustration")
+    if bd isa BatsrusIDLStructured || ndims(bd.x) == 3
+        X, Y = eachslice(bd.x, dims = 3)
+        # Use pcolormesh with transparent faces to show the grid
+        c = ax.pcolormesh(
+            X, Y, zeros(size(X)...), edgecolors = "k",
+            facecolors = "none", linewidths = 0.5, kwargs...
+        )
+    else
+        X, Y = eachslice(bd.x, dims = 2)
+        c = ax.scatter(X, Y, marker = ".", alpha = 0.6, kwargs...)
+    end
 
-    xlabel(bd.head.wname[1])
-    ylabel(bd.head.wname[2])
+    xlabel(bd.head.coord[1])
+    ylabel(bd.head.coord[2])
     add_time_iteration!(bd, ax)
 
-    return
+    return c
 end
+
+"""
+    plotgrid(batl::Batl, ax=nothing; kwargs...)
+
+Plot 2D block AMR mesh.
+"""
+function plotgrid(batl::Batl, ax = nothing; dir = nothing, at = 0.0, kwargs...)
+    if isnothing(ax)
+        if batl.nDim == 2 || !isnothing(dir)
+            ax = plt.gca()
+        else
+            ax = plt.figure().add_subplot(projection = "3d")
+        end
+    end
+
+    nLevelMax, iNodeMorton_I = Batsrus.order_tree(batl)
+
+    # Status and coordinate indices
+    status_ = Batsrus.status_
+    level_ = Batsrus.level_
+    coord1_ = Batsrus.coord1_
+    coord2_ = Batsrus.coord2_
+    coord3_ = Batsrus.coord3_
+    used_ = Batsrus.used_
+
+    CoordMin = batl.head.CoordMin_D
+    CoordMax = batl.head.CoordMax_D
+    nRoot = batl.head.nRoot_D
+
+    dx0 = (CoordMax .- CoordMin) ./ nRoot
+
+    if batl.nDim == 2
+        patches = []
+        for iNode in iNodeMorton_I
+            if batl.iTree_IA[status_, iNode] == used_
+                level = batl.iTree_IA[level_, iNode]
+                iCoord = [batl.iTree_IA[coord1_, iNode], batl.iTree_IA[coord2_, iNode]]
+
+                dx = dx0 ./ 2^level
+                x_min = CoordMin[1:2] .+ (iCoord .- 1) .* dx[1:2]
+
+                rect = PyPlot.matplotlib.patches.Rectangle(
+                    x_min, dx[1], dx[2], fill = false
+                )
+                push!(patches, rect)
+            end
+        end
+
+        c = PyPlot.matplotlib.collections.PatchCollection(
+            patches; edgecolors = "k", facecolors = "none", linewidths = 0.5, kwargs...
+        )
+        ax.add_collection(c)
+
+        ax.set_xlim(CoordMin[1], CoordMax[1])
+        ax.set_ylim(CoordMin[2], CoordMax[2])
+        ax.set_aspect("equal")
+        xlabel("x")
+        ylabel("y")
+
+        return c
+    elseif batl.nDim == 3 && isnothing(dir)
+        # For 3D, we plot the wireframe of each leaf block
+        xs, ys, zs = Float64[], Float64[], Float64[]
+        for iNode in iNodeMorton_I
+            if batl.iTree_IA[status_, iNode] == used_
+                level = batl.iTree_IA[level_, iNode]
+                iCoord = [
+                    batl.iTree_IA[coord1_, iNode],
+                    batl.iTree_IA[coord2_, iNode],
+                    batl.iTree_IA[coord3_, iNode],
+                ]
+
+                dx = dx0 ./ 2^level
+                xmin = CoordMin .+ (iCoord .- 1) .* dx
+                xmax = xmin .+ dx
+
+                # 12 edges
+                # Edge 1-4: parallel to z
+                for x in [xmin[1], xmax[1]], y in [xmin[2], xmax[2]]
+                    append!(xs, [x, x, NaN])
+                    append!(ys, [y, y, NaN])
+                    append!(zs, [xmin[3], xmax[3], NaN])
+                end
+                # Edge 5-8: parallel to y
+                for x in [xmin[1], xmax[1]], z in [xmin[3], xmax[3]]
+                    append!(xs, [x, x, NaN])
+                    append!(ys, [xmin[2], xmax[2], NaN])
+                    append!(zs, [z, z, NaN])
+                end
+                # Edge 9-12: parallel to x
+                for y in [xmin[2], xmax[2]], z in [xmin[3], xmax[3]]
+                    append!(xs, [xmin[1], xmax[1], NaN])
+                    append!(ys, [y, y, NaN])
+                    append!(zs, [z, z, NaN])
+                end
+            end
+        end
+        c = ax.plot(xs, ys, zs; color = "k", linewidth = 0.5, kwargs...)
+        xlabel("x")
+        ylabel("y")
+        ax.set_zlabel("z")
+
+        return c
+    elseif batl.nDim == 3 && !isnothing(dir)
+        # Slice view
+        idir = if dir isa AbstractString
+            if dir == "x"
+                1
+            elseif dir == "y"
+                2
+            elseif dir == "z"
+                3
+            else
+                error("Invalid direction $dir")
+            end
+        else
+            dir
+        end
+
+        # Map idir to coordinates
+        # if idir = 1 (x), then plane is (y, z) = (2, 3)
+        # if idir = 2 (y), then plane is (x, z) = (1, 3)
+        # if idir = 3 (z), then plane is (x, y) = (1, 2)
+        idx = filter(i -> i != idir, 1:3)
+
+        patches = []
+        for iNode in iNodeMorton_I
+            if batl.iTree_IA[status_, iNode] == used_
+                level = batl.iTree_IA[level_, iNode]
+                iCoord = [
+                    batl.iTree_IA[coord1_, iNode],
+                    batl.iTree_IA[coord2_, iNode],
+                    batl.iTree_IA[coord3_, iNode],
+                ]
+
+                dx = dx0 ./ 2^level
+                xmin = CoordMin .+ (iCoord .- 1) .* dx
+                xmax = xmin .+ dx
+
+                if xmin[idir] <= at <= xmax[idir]
+                    # Plot rectangle in the 2D plane
+                    rect = PyPlot.matplotlib.patches.Rectangle(
+                        xmin[idx], dx[idx[1]], dx[idx[2]], fill = false
+                    )
+                    push!(patches, rect)
+                end
+            end
+        end
+
+        c = PyPlot.matplotlib.collections.PatchCollection(
+            patches; edgecolors = "k", facecolors = "none", linewidths = 0.5, kwargs...
+        )
+        ax.add_collection(c)
+
+        ax.set_xlim(CoordMin[idx[1]], CoordMax[idx[1]])
+        ax.set_ylim(CoordMin[idx[2]], CoordMax[idx[2]])
+        ax.set_aspect("equal")
+
+        coords = ["x", "y", "z"]
+        xlabel(coords[idx[1]])
+        ylabel(coords[idx[2]])
+
+        return c
+    end
+end
+
+"""
+    plotgrid(head, data, connectivity; ax=nothing, kwargs...)
+
+Plot 2D unstructured Tecplot mesh.
+"""
+function plotgrid(head, data, connectivity; ax = nothing, kwargs...)
+    if isnothing(ax)
+        ax = plt.gca()
+    end
+
+    if head.nDim == 2
+        # data[1:2, :] contains coordinates
+        points = data[1:2, :]'
+
+        # connectivity is [4, nCell]
+        # Matplotlib PolyCollection expects a list of polygons, each is [N, 2]
+        polys = [points[connectivity[:, i], :] for i in 1:head.nCell]
+
+        pc = PyPlot.matplotlib.collections.PolyCollection(
+            polys, edgecolors = "k", facecolors = "none", linewidths = 0.5, kwargs...
+        )
+        ax.add_collection(pc)
+
+        ax.set_xlim(minimum(points[:, 1]), maximum(points[:, 1]))
+        ax.set_ylim(minimum(points[:, 2]), maximum(points[:, 2]))
+    else
+        @error "3D unstructured grid plotting not implemented yet!"
+    end
+
+    ax.set_aspect("equal")
+    xlabel(head.variable[1])
+    ylabel(head.variable[2])
+
+    return pc
+end
+
 
 """
     cutplot(data, var, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf], dir="x", sequence=1)
@@ -246,7 +456,7 @@ end
 
 """
     contour(data, var, ax=nothing; levels=0, plotrange=[-Inf,Inf,-Inf,Inf],
-    	 plotinterval=0.1, innermask=false, kwargs...)
+    	plotinterval=0.1, innermask=false, kwargs...)
 
 Wrapper over `contour` in matplotlib.
 """
@@ -346,6 +556,45 @@ function PyPlot.tricontourf(
     return c
 end
 
+"""
+    tricontour(data, var, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf], kwargs...)
+
+Wrapper over `tricontour` in matplotlib.
+"""
+function PyPlot.tricontour(
+        bd::BatsrusIDL{2, TV}, var::AbstractString, ax = nothing;
+        plotrange = [-Inf, Inf, -Inf, Inf],
+        vmin = -Inf, vmax = Inf, vcenter = 0.0, colorscale = :linear,
+        add_colorbar = false, kwargs...
+    ) where {TV}
+    x, w = bd.x, bd.w
+    varIndex_ = findindex(bd, var)
+
+    X = vec(x[:, :, 1])
+    Y = vec(x[:, :, 2])
+    W = vec(w[:, :, varIndex_])
+
+    #TODO This needs improvement.
+    if !all(isinf.(plotrange))
+        xyIndex = X .> plotrange[1] .& X .< plotrange[2] .&
+            Y .> plotrange[3] .& Y .< plotrange[4]
+        X = X[xyIndex]
+        Y = Y[xyIndex]
+        W = W[xyIndex]
+    end
+    if isnothing(ax)
+        ax = plt.gca()
+    end
+
+    norm = set_colorbar(colorscale, vmin, vmax, W; vcenter)
+    c = ax.tricontour(X, Y, W; norm, kwargs...)
+    add_colorbar && colorbar(c; ax, fraction = 0.04, pad = 0.02)
+
+    add_titles!(bd, var, ax)
+
+    return c
+end
+
 function PyPlot.triplot(
         bd::BatsrusIDL{2, TV}, ax = nothing;
         plotrange = [-Inf, Inf, -Inf, Inf],
@@ -375,7 +624,7 @@ end
 Wrapper over `plot_trisurf` in matplotlib.
 """
 function PyPlot.plot_trisurf(
-        bd::BatsrusIDL{2, TV}, var::AbstractString;
+        bd::BatsrusIDL{2, TV}, var::AbstractString, ax = nothing;
         plotrange = [-Inf, Inf, -Inf, Inf], kwargs...
     ) where {TV}
     x, w = bd.x, bd.w
@@ -394,11 +643,10 @@ function PyPlot.plot_trisurf(
         W = W[xyIndex]
     end
     if isnothing(ax)
-        ax = plt.gca()
+        ax = plt.figure().add_subplot(projection = "3d")
     end
 
-    ax = plt.figure().add_subplot(projection = "3d")
-    c = ax.plot_trisurf(X, Y, W)
+    c = ax.plot_trisurf(X, Y, W; kwargs...)
 
     add_titles!(bd, var, ax)
 
