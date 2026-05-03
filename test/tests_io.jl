@@ -113,6 +113,11 @@ end
     # non-lazy
     var, _, _ = extract_var(bd, "bx")
     @test size(var) == (8, 8, 4) && eltype(var) == Float64
+
+    # Test close
+    @test isopen(bd.common.fid)
+    close(bd)
+    @test !isopen(bd.common.fid)
 end
 
 @testset "AMReX Loader" begin

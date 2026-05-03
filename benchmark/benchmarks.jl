@@ -55,7 +55,7 @@ SUITE["read"]["Cutdir subset"] = @benchmarkable cutdata(
 )
 
 file = joinpath(directory, files[5])
-SUITE["read"]["HDF5"] = @benchmarkable (bh = BatsrusHDF5Uniform($file); close(bh))
+SUITE["read"]["HDF5"] = @benchmarkable BatsrusHDF5Uniform($file)
 bd_hdf = BatsrusHDF5Uniform(file)
 SUITE["read"]["HDF5 extract"] = @benchmarkable extract_var($bd_hdf, "bx")
 
