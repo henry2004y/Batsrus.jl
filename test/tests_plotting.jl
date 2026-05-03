@@ -180,6 +180,8 @@ using StaticArrays
             @test c.get_array()[end] == 0.9750000000000002
             c = PyPlot.tricontour(bd, "rho")
             @test c isa PyPlot.PyObject
+            PyPlot.triplot(bd)
+            @test isa(gca(), PyPlot.PyObject)
             PyPlot.tripcolor(bd, "rho")
             @test isa(gca(), PyPlot.PyObject)
             p = PyPlot.pcolormesh(bd, "p").get_array()
