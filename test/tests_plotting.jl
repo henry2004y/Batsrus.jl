@@ -1,3 +1,4 @@
+using StaticArrays
 @testset "Plotting" begin
     @testset "Plots" begin
         RecipesBase.is_key_supported(k::Symbol) = true
@@ -279,6 +280,116 @@
             bd = load(joinpath(datapath, file))
             pcolormesh(bd, "P")
             @test isa(gca(), PyPlot.PyObject)
+
+            @testset "Grid Plotting" begin
+                # 1. Structured BatsrusIDL
+                @testset "Structured BatsrusIDL" begin
+                    head = Batsrus.BatsHead(
+                        2, "headline", 0, 0.0f0, false, 0, 1, [10, 10],
+                        Float32[], ["x", "y"], ["rho"], String[]
+                    )
+                    list = Batsrus.FileList("test", Batsrus.Real4Bat, ".", 0, 1, 0)
+                    x = zeros(Float32, 10, 10, 2)
+                    for j in 1:10, i in 1:10
+                        x[i, j, 1] = i
+                        x[i, j, 2] = j
+                    end
+                    w = ones(Float32, 10, 10, 1)
+                    bd = Batsrus.BATS(head, list, x, w)
+
+                    plt.figure()
+                    c = plotgrid(bd)
+                    @test c isa PyPlot.PyObject
+                    plt.close()
+                end
+
+                # 2. Batl (AMR)
+                @testset "Batl (AMR)" begin
+                    # Mock Head
+                    head = Batsrus.Head(
+                        Int32(8), Int32(8), Int32(1), # nI, nJ, nK
+                        Int32(2), # nG
+                        Int32(2), Int32(2), Int32(1), # iRatio, jRatio, kRatio
+                        Int32(2), # nDimAmr
+                        Int32(4), # nChild
+                        MVector{3, Int32}(1, 1, 1), # nRoot_D
+                        MVector{3, Float64}(-1.0, -1.0, -1.0), # CoordMin_D
+                        MVector{3, Float64}(1.0, 1.0, 1.0), # CoordMax_D
+                        Int32[1, 2], # iDimAmr_D
+                        MVector{3, Bool}(false, false, false), # isPeriodic_D
+                        MVector{3, Float64}(0.0, 0.0, 0.0) # dxPlot_D
+                    )
+
+                    # Mock iTree_IA
+                    # 1 node (root), status=used, level=0, coord1=1, coord2=1
+                    iTree_IA = zeros(Int32, 18, 1)
+                    iTree_IA[Batsrus.status_, 1] = Batsrus.used_
+                    iTree_IA[Batsrus.level_, 1] = 0
+                    iTree_IA[Batsrus.coord1_, 1] = 1
+                    iTree_IA[Batsrus.coord2_, 1] = 1
+
+                    batl = Batl(head, iTree_IA, MVector{3, Int32}(2, 2, 1), Int8(2))
+
+                    plt.figure()
+                    plotgrid(batl)
+                    @test true # Just check if it runs without error
+                    plt.close()
+                end
+
+                @testset "Batl 3D (AMR)" begin
+                    # Mock Head 3D
+                    head = Batsrus.Head(
+                        Int32(8), Int32(8), Int32(8), # nI, nJ, nK
+                        Int32(2), # nG
+                        Int32(2), Int32(2), Int32(2), # iRatio, jRatio, kRatio
+                        Int32(3), # nDimAmr
+                        Int32(8), # nChild
+                        MVector{3, Int32}(1, 1, 1), # nRoot_D
+                        MVector{3, Float64}(-1.0, -1.0, -1.0), # CoordMin_D
+                        MVector{3, Float64}(1.0, 1.0, 1.0), # CoordMax_D
+                        Int32[1, 2, 3], # iDimAmr_D
+                        MVector{3, Bool}(false, false, false), # isPeriodic_D
+                        MVector{3, Float64}(0.0, 0.0, 0.0) # dxPlot_D
+                    )
+
+                    # Mock iTree_IA
+                    iTree_IA = zeros(Int32, 18, 1)
+                    iTree_IA[Batsrus.status_, 1] = Batsrus.used_
+                    iTree_IA[Batsrus.level_, 1] = 0
+                    iTree_IA[Batsrus.coord1_, 1] = 1
+                    iTree_IA[Batsrus.coord2_, 1] = 1
+                    iTree_IA[Batsrus.coord3_, 1] = 1
+
+                    batl = Batl(head, iTree_IA, MVector{3, Int32}(2, 2, 2), Int8(3))
+
+                    # This will create a 3D plot
+                    plotgrid(batl)
+                    @test true
+                    plt.close()
+                end
+
+                # 3. Unstructured Tecplot
+                @testset "Unstructured Tecplot" begin
+                    head = (
+                        nDim = 2,
+                        nNode = 4,
+                        nCell = 1,
+                        variable = ["x", "y", "rho"],
+                        ET = "QUADRILATERAL",
+                    )
+                    data = Float32[
+                        0.0 1.0 1.0 0.0;
+                        0.0 0.0 1.0 1.0;
+                        1.0 1.0 1.0 1.0
+                    ]
+                    connectivity = Int32[1, 2, 3, 4][:, :]
+
+                    plt.figure()
+                    plotgrid(head, data, connectivity)
+                    @test true # Just check if it runs without error
+                    plt.close()
+                end
+            end
         end
     end
 end

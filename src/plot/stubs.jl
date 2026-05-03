@@ -1,4 +1,4 @@
-export plotlogdata, cutplot, streamslice, plot_phase, plot_phase!, animate
+export plotlogdata, plotgrid, cutplot, streamslice, plot_phase, plot_phase!, animate
 
 """
     plotlogdata(data, head::NamedTuple, func::AbstractString; plotmode = "line")
@@ -6,6 +6,15 @@ export plotlogdata, cutplot, streamslice, plot_phase, plot_phase!, animate
 Plot log data. Stub to be implemented by plotting extensions.
 """
 function plotlogdata end
+
+"""
+    plotgrid(bd::AbstractBatsrusData, ax=nothing; kwargs...)
+    plotgrid(batl::Batl, ax=nothing; kwargs...)
+    plotgrid(head, data, connectivity; ax=nothing, kwargs...)
+
+Plot simulation mesh. Stub to be implemented by plotting extensions.
+"""
+function plotgrid end
 
 """
     cutplot(data, var, cut; kwargs...)

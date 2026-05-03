@@ -49,3 +49,13 @@ Variables within a box region can be extracted as following:
 var, (xl_new, yl_new, zl_new), (xu_new, yu_new, zu_new) =
    extract_var(file, "bx"; xmin, xmax, ymin, ymax, zmin, zmax)
 ```
+
+## AMR Tree data
+
+To load the block-adaptive tree structure for AMR datasets:
+
+```julia
+filetag = "3d__mhd_1_t00000000_n00000000"
+batl = Batl(readhead(filetag * ".info"), readtree(filetag)...)
+```
+

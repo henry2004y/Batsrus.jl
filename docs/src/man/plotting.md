@@ -44,8 +44,8 @@ For 2D outputs, we can select the following functions:
 - `imshow`
 - `pcolormesh`
 - `plot_surface`
-- `plot_tricontour`
-- `plot_tricontourf`
+- `tricontour`
+- `tricontourf`
 - `plot_trisurf`
 - `tripcolor`
 
@@ -57,6 +57,8 @@ with either `quiver` or `streamplot`. By default the linear colorscale is applie
 contour(bd, "p")
 ```
 
+![contour](../images/plot_contour.png)
+
 - filled contour
 
 ```julia
@@ -64,11 +66,31 @@ contourf(bd, "p")
 contourf(bd, "p"; levels, plotrange=[-10,10,-Inf,Inf], plotinterval=0.1)
 ```
 
+![contourf](../images/plot_contourf.png)
+
+- imshow
+
+```julia
+imshow(bd, "p")
+```
+
+![imshow](../images/plot_imshow.png)
+
+- pcolormesh
+
+```julia
+pcolormesh(bd, "p")
+```
+
+![pcolormesh](../images/plot_pcolormesh.png)
+
 - surface plot
 
 ```julia
 plot_surface(bd, "p")
 ```
+
+![surface plot](../images/plot_surface.png)
 
 - triangle surface plot
 
@@ -76,24 +98,50 @@ plot_surface(bd, "p")
 plot_trisurf(bd, "p")
 ```
 
+![triangle surface plot](../images/plot_trisurf.png)
+
+- tricontour
+
+```julia
+tricontour(bd, "p")
+```
+
+![triangle contour plot](../images/plot_tricontour.png)
+
 - triangle filled contour plot
 
 ```julia
 tricontourf(bd, "p")
 ```
 
+![triangle filled contour plot](../images/plot_tricontourf.png)
+
+- tripcolor
+
+```julia
+tripcolor(bd, "p")
+```
+
+![triangle color plot](../images/plot_tripcolor.png)
+
 - streamline
 
 ```julia
 streamplot(bd, "bx;bz")
-streamplot(bd, "bx;bz"; density=2.0, color="k", plotinterval=1.0, plotrange=[-10,10,-Inf,Inf])
+streamplot(bd, "bx;bz"; density=2.0, color="k", plotinterval=1.0, plotrange=[-10,10,-Inf,Inf], broken_streamlines=false)
 ```
+
+![streamline](../images/plot_streamplot.png)
+
+By default Matplotlib may break streamlines at boundaries or where data is sparse. To ensure continuous lines, set `broken_streamlines=false`.
 
 - quiver (currently only for Cartesian grid)
 
 ```julia
 quiver(bd, "ux;uy"; stride=50)
 ```
+
+![quiver](../images/plot_quiver.png)
 
 - streamline + contourf
 
@@ -114,6 +162,45 @@ colorbar()
 axis("scaled")
 xlabel("x"); ylabel("y"); title("uxS0")
 ```
+
+## Mesh Plotting
+
+For visualizing the grid structure, we provide `plotgrid`.
+
+For structured or curvilinear 2D data (`BatsrusIDL{2, TV}`), it shows the individual cell boundaries.
+
+```julia
+plotgrid(bd)
+```
+
+![Structured 2D Grid](../images/mesh_structured.png)
+
+For block-adaptive tree (AMR) data (`Batl`), it visualizes the leaf block boundaries. It supports both 2D and 3D.
+
+```julia
+# 2D AMR mesh
+plotgrid(batl)
+
+# 3D AMR mesh
+plotgrid(batl)
+
+# 2D slices of 3D AMR mesh
+fig, axes = plt.subplots(1, 3)
+plotgrid(batl, axes[1], dir="x", at=0.0)
+plotgrid(batl, axes[2], dir="y", at=0.0)
+plotgrid(batl, axes[3], dir="z", at=0.0)
+```
+
+![3D AMR Mesh](../images/mesh_amr_3d.png)
+![3D AMR Slices](../images/mesh_amr_slices.png)
+
+For unstructured Tecplot data, it renders the cell connectivity.
+
+```julia
+plotgrid(head, data, connectivity)
+```
+
+![Unstructured 2D Grid](../images/mesh_unstructured.png)
 
 For 3D outputs, we may use `cutplot` for visualizing on a sliced plane, or `streamslice` to plot streamlines on a given slice.
 
