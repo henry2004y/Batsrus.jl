@@ -737,9 +737,8 @@ function PyPlot.tripcolor(
 
     X, Y = eachslice(x, dims = ndims(x))
     adjust_plotrange!(plotrange, extrema(X), extrema(Y))
-    W = vec(w[:, :, varIndex_])
+    W = vec(selectdim(w, ndims(w), varIndex_))
 
-    adjust_plotrange!(plotrange, extrema(X), extrema(Y))
     triang = PyPlot.matplotlib.tri.Triangulation(vec(X), vec(Y))
 
     # Mask off unwanted triangles at the inner boundary.
