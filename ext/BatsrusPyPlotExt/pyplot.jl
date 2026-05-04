@@ -848,26 +848,42 @@ function _getvector(
     ) where {TV}
     x, w = bd.x, bd.w
     varstream = split(var, ";")
-    var1_ = findfirst(x -> lowercase(x) == lowercase(varstream[1]), bd.head.wname)
-    var2_ = findfirst(x -> lowercase(x) == lowercase(varstream[2]), bd.head.wname)
-    plot_step = isinf(plotinterval) ? (x[end, 1, 1] - x[1, 1, 1]) / size(x, 1) :
-        plotinterval
+    var1_ = findindex(bd, varstream[1])
+    var2_ = findindex(bd, varstream[2])
+
     if bd.head.gencoord # generalized coordinates
         X, Y = vec(selectdim(x, ndims(x), 1)), vec(selectdim(x, ndims(x), 2))
         adjust_plotrange!(plotrange, extrema(X), extrema(Y))
 
-        # Create grid values first.
-        xi = range(Float64(plotrange[1]), stop = Float64(plotrange[2]), step = plot_step)
-        yi = range(Float64(plotrange[3]), stop = Float64(plotrange[4]), step = plot_step)
+        x1, x2 = Float64(plotrange[1]), Float64(plotrange[2])
+        y1, y2 = Float64(plotrange[3]), Float64(plotrange[4])
+
+        if isinf(plotinterval)
+            n = max(round(Int, sqrt(length(X))), 100)
+            xi = range(x1, stop = x2, length = n)
+            yi = range(y1, stop = y2, length = n)
+        else
+            xi = range(x1, stop = x2, step = plotinterval)
+            yi = range(y1, stop = y2, step = plotinterval)
+            if length(xi) < 2
+                xi = range(x1, stop = x2, length = 2)
+            end
+            if length(yi) < 2
+                yi = range(y1, stop = y2, length = 2)
+            end
+        end
 
         # Is there a triangulation method in Julia?
         tr = PyPlot.matplotlib.tri.Triangulation(X, Y)
         Xi, Yi = meshgrid(xi, yi)
 
-        interpolator = PyPlot.matplotlib.tri.LinearTriInterpolator(tr, w[:, 1, var1_])
+        w1 = vec(selectdim(w, ndims(w), var1_))
+        w2 = vec(selectdim(w, ndims(w), var2_))
+
+        interpolator = PyPlot.matplotlib.tri.LinearTriInterpolator(tr, w1)
         v1 = interpolator(Xi, Yi)
 
-        interpolator = PyPlot.matplotlib.tri.LinearTriInterpolator(tr, w[:, 1, var2_])
+        interpolator = PyPlot.matplotlib.tri.LinearTriInterpolator(tr, w2)
         v2 = interpolator(Xi, Yi)
     else # Cartesian coordinates
         xrange, yrange = get_range(bd)

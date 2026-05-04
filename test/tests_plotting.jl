@@ -321,6 +321,11 @@ using StaticArrays
                     c = plotgrid(bd)
                     @test c isa PyPlot.PyObject
                     plt.close()
+
+                    plt.figure()
+                    c = streamplot(bd, "bx;bz")
+                    @test c isa PyPlot.PyObject
+                    plt.close()
                 end
 
                 # 2. Batl (AMR)
