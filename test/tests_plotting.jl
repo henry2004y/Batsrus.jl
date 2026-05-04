@@ -314,6 +314,15 @@ using StaticArrays
                     plt.close()
                 end
 
+                @testset "Unstructured 2D cut" begin
+                    file = "bx0_mhd_6_t00000100_n00000352.out"
+                    bd = load(joinpath(datapath, file))
+                    plt.figure()
+                    c = plotgrid(bd)
+                    @test c isa PyPlot.PyObject
+                    plt.close()
+                end
+
                 # 2. Batl (AMR)
                 @testset "Batl (AMR)" begin
                     # Mock Head

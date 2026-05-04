@@ -56,15 +56,14 @@ function plotgrid(
         ax = plt.gca()
     end
 
-    if bd isa BatsrusIDLStructured || ndims(bd.x) == 3
-        X, Y = eachslice(bd.x, dims = 3)
-        # Use pcolormesh with transparent faces to show the grid
+    X, Y = eachslice(bd.x, dims = ndims(bd.x))
+
+    if X isa AbstractMatrix && size(X, 1) > 1 && size(X, 2) > 1
         c = ax.pcolormesh(
             X, Y, zeros(size(X)...), edgecolors = "k",
             facecolors = "none", linewidths = 0.5, kwargs...
         )
     else
-        X, Y = eachslice(bd.x, dims = 2)
         c = ax.scatter(X, Y, marker = ".", alpha = 0.6, kwargs...)
     end
 
@@ -531,9 +530,9 @@ function PyPlot.tricontourf(
     x, w = bd.x, bd.w
     varIndex_ = findindex(bd, var)
 
-    X = vec(x[:, :, 1])
-    Y = vec(x[:, :, 2])
-    W = vec(w[:, :, varIndex_])
+    X = vec(selectdim(x, ndims(x), 1))
+    Y = vec(selectdim(x, ndims(x), 2))
+    W = vec(selectdim(w, ndims(w), varIndex_))
 
     #TODO This needs improvement.
     if !all(isinf.(plotrange))
@@ -570,9 +569,9 @@ function PyPlot.tricontour(
     x, w = bd.x, bd.w
     varIndex_ = findindex(bd, var)
 
-    X = vec(x[:, :, 1])
-    Y = vec(x[:, :, 2])
-    W = vec(w[:, :, varIndex_])
+    X = vec(selectdim(x, ndims(x), 1))
+    Y = vec(selectdim(x, ndims(x), 2))
+    W = vec(selectdim(w, ndims(w), varIndex_))
 
     #TODO This needs improvement.
     if !all(isinf.(plotrange))
@@ -600,8 +599,8 @@ function PyPlot.triplot(
         plotrange = [-Inf, Inf, -Inf, Inf],
         kwargs...
     ) where {TV}
-    X = vec(bd.x[:, :, 1])
-    Y = vec(bd.x[:, :, 2])
+    X = vec(selectdim(bd.x, ndims(bd.x), 1))
+    Y = vec(selectdim(bd.x, ndims(bd.x), 2))
     triang = PyPlot.matplotlib.tri.Triangulation(X, Y)
     #TODO This needs improvement.
     if !all(isinf.(plotrange))
@@ -630,9 +629,9 @@ function PyPlot.plot_trisurf(
     x, w = bd.x, bd.w
     varIndex_ = findindex(bd, var)
 
-    X = vec(x[:, :, 1])
-    Y = vec(x[:, :, 2])
-    W = vec(w[:, :, varIndex_])
+    X = vec(selectdim(x, ndims(x), 1))
+    Y = vec(selectdim(x, ndims(x), 2))
+    W = vec(selectdim(w, ndims(w), varIndex_))
 
     #TODO This needs improvement.
     if !all(isinf.(plotrange))
@@ -736,7 +735,7 @@ function PyPlot.tripcolor(
 
     varIndex_ = findindex(bd, var)
 
-    X, Y = eachslice(x, dims = 3)
+    X, Y = eachslice(x, dims = ndims(x))
     adjust_plotrange!(plotrange, extrema(X), extrema(Y))
     W = vec(w[:, :, varIndex_])
 
@@ -855,7 +854,7 @@ function _getvector(
     plot_step = isinf(plotinterval) ? (x[end, 1, 1] - x[1, 1, 1]) / size(x, 1) :
         plotinterval
     if bd.head.gencoord # generalized coordinates
-        X, Y = vec(x[:, :, 1]), vec(x[:, :, 2])
+        X, Y = vec(selectdim(x, ndims(x), 1)), vec(selectdim(x, ndims(x), 2))
         adjust_plotrange!(plotrange, extrema(X), extrema(Y))
 
         # Create grid values first.

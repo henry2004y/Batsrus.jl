@@ -53,7 +53,7 @@ function _interp2d_unstructured(
         innermask::Bool, rbody::Union{Nothing, Real}, useMatplotlib::Bool
     ) where {TV, TX, TW}
     x = bd.x
-    X, Y = eachslice(x, dims = 3)
+    X, Y = eachslice(x, dims = ndims(x))
     X, Y = vec(X), vec(Y)
     Ws = [vec(W_raw) for W_raw in Ws_raw]
 
@@ -221,7 +221,7 @@ function meshgrid(
     )
     x = bd.x
 
-    X, Y = eachslice(x, dims = 3)
+    X, Y = eachslice(x, dims = ndims(x))
     X, Y = vec(X), vec(Y)
 
     adjust_plotrange!(plotrange, extrema(X), extrema(Y))
