@@ -569,8 +569,8 @@ function showhead(file::FileList, head::BatsHead, io::IO = stdout)
     if head.neqpar > 0
         print(io, rpad("parameters:", 12))
         if !isempty(head.param) && length(head.param) == length(head.eqpar)
-            for i in eachindex(head.param)
-                print(io, head.param[i], " = ", head.eqpar[i])
+            for (i, (p, v)) in enumerate(zip(head.param, head.eqpar))
+                print(io, p, " = ", v)
                 if i < length(head.param)
                     print(io, ", ")
                 end
@@ -580,7 +580,7 @@ function showhead(file::FileList, head::BatsHead, io::IO = stdout)
                 end
             end
         else
-            print(io, "[ " * join(head.eqpar, ", ") * " ]")
+            print(io, "[ ", join(head.eqpar, ", "), " ]")
         end
         println(io)
     end
