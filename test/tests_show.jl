@@ -1,5 +1,3 @@
-module test_show
-
 using Test
 using Batsrus
 using Suppressor
@@ -24,8 +22,12 @@ using Suppressor
                 @test contains(s, "filesize")
                 @test contains(s, "snapshots")
             end
+
+            @testset "showhead" begin
+                s = @capture_out showhead(bd)
+                @test contains(s, "coordinates")
+                @test contains(s, "variables")
+            end
         end
     end
 end
-
-end # module test_show
