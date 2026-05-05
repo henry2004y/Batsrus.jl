@@ -518,31 +518,34 @@ function getbinary!(x::AbstractArray{T, N}, w, fileID::IOStream) where {T, N}
     return
 end
 
-function format_bytes(bytes::Number)
-    if bytes >= 1e9
-        return @sprintf("%.1f GB", bytes / 1e9)
-    elseif bytes >= 1e6
-        return @sprintf("%.1f MB", bytes / 1e6)
-    elseif bytes >= 1e3
-        return @sprintf("%.1f KB", bytes / 1e3)
+function format_bytes(bytes::Integer)
+    if bytes >= 1.0e9
+        return @sprintf("%.1f GB", bytes * 1.0e-9)
+    elseif bytes >= 1.0e6
+        return @sprintf("%.1f MB", bytes * 1.0e-6)
+    elseif bytes >= 1.0e3
+        return @sprintf("%.1f KB", bytes * 1.0e-3)
     else
         return @sprintf("%d Bytes", bytes)
     end
 end
 
-function print_field(io::IO, label::AbstractString, value; color=:normal)
+function print_field(io::IO, label::AbstractString, value; color = :normal)
     print(io, rpad(label * ":", 12))
-    printstyled(io, value, "\n"; color=color)
+    printstyled(io, value, "\n"; color)
+    return
 end
 
 function Base.show(io::IO, data::BatsrusIDL{Dim, TV}) where {Dim, TV}
     print(io, "BatsrusIDL(", Dim, "D, ", TV, ", ", format_bytes(data.list.bytes), ")")
+    return
 end
 
 function Base.show(io::IO, ::MIME"text/plain", data::BatsrusIDL)
     showhead(io, data)
     print_field(io, "filesize", format_bytes(data.list.bytes))
     print_field(io, "snapshots", data.list.npictinfiles)
+    return
 end
 
 """
@@ -576,7 +579,8 @@ function showhead(file::FileList, head::BatsHead, io::IO = stdout)
             print(io, ", ")
         end
         if i % 8 == 0 && i < length(head.wname)
-            print(io, "\n" * " "^12)
+            println(io)
+            print(io, " "^12)
         end
     end
     println(io)
