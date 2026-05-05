@@ -5,7 +5,7 @@ using FortranFiles
     bd = @suppress_err begin
         load(joinpath(datapath, file), verbose = true)
     end
-    @test startswith(repr(bd), "filename : 1d")
+    @test startswith(repr(bd), "BatsrusIDL")
     @test extrema(bd.x) == (-127.5, 127.5)
     @test extrema(bd.w) == (-0.79960780498, 1.9394335293)
 end

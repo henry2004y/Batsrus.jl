@@ -518,20 +518,33 @@ function getbinary!(x::AbstractArray{T, N}, w, fileID::IOStream) where {T, N}
     return
 end
 
-function Base.show(io::IO, data::BatsrusIDL)
-    showhead(io, data)
-    if data.list.bytes ≥ 1.0e9
-        str = @sprintf "filesize: %.1f GB" data.list.bytes / 1.0e9
-    elseif data.list.bytes ≥ 1.0e6
-        str = @sprintf "filesize: %.1f MB" data.list.bytes / 1.0e6
-    elseif data.list.bytes ≥ 1.0e3
-        str = @sprintf "filesize: %.1f KB" data.list.bytes / 1.0e3
+function format_bytes(bytes::Integer)
+    if bytes >= 1.0e9
+        return @sprintf("%.1f GB", bytes * 1.0e-9)
+    elseif bytes >= 1.0e6
+        return @sprintf("%.1f MB", bytes * 1.0e-6)
+    elseif bytes >= 1.0e3
+        return @sprintf("%.1f KB", bytes * 1.0e-3)
     else
-        str = @sprintf "filesize: %.1f Bytes" data.list.bytes
+        return @sprintf("%d Bytes", bytes)
     end
-    println(io, str)
-    println(io, "snapshots: ", data.list.npictinfiles)
+end
 
+function print_field(io::IO, label::AbstractString, value; color = :normal)
+    print(io, rpad(label * ":", 12))
+    printstyled(io, value, "\n"; color)
+    return
+end
+
+function Base.show(io::IO, data::BatsrusIDL{Dim, TV}) where {Dim, TV}
+    print(io, "BatsrusIDL(", Dim, "D, ", TV, ", ", format_bytes(data.list.bytes), ")")
+    return
+end
+
+function Base.show(io::IO, ::MIME"text/plain", data::BatsrusIDL)
+    showhead(io, data)
+    print_field(io, "filesize", format_bytes(data.list.bytes))
+    print_field(io, "snapshots", data.list.npictinfiles)
     return
 end
 
@@ -543,37 +556,37 @@ end
 Displaying file header information of BATSRUS data.
 """
 function showhead(file::FileList, head::BatsHead, io::IO = stdout)
-    print(io, "filename : ")
-    printstyled(io, file.name, '\n'; color = :cyan, underline = true)
-    println(io, "filetype : ", file.type)
-    println(io, "headline : ", head.headline)
-    print(io, "iteration: ")
-    printstyled(io, head.it, '\n'; color = :cyan)
-    print(io, "time     : ")
-    printstyled(io, head.time, '\n'; color = :cyan)
-    print(io, "gencoord: ")
-    printstyled(io, head.gencoord, '\n'; color = :yellow)
-    print(io, "ndim     : ")
-    printstyled(io, head.ndim, '\n'; color = :yellow)
+    printstyled(io, "Batsrus Data Header\n"; bold = true, color = :blue)
+
+    print_field(io, "filename", file.name; color = :cyan)
+    print_field(io, "filetype", file.type)
+    print_field(io, "headline", head.headline)
+    print_field(io, "iteration", head.it; color = :cyan)
+    print_field(io, "time", head.time; color = :cyan)
+    print_field(io, "ndim", head.ndim; color = :yellow)
+    print_field(io, "gencoord", head.gencoord; color = :yellow)
 
     if head.neqpar > 0
-        print(io, "parameters: [ ")
-        for par in head.eqpar
-            print(io, par, " ")
+        print_field(io, "parameters", "[ " * join(head.eqpar, ", ") * " ]")
+    end
+
+    print_field(io, "coordinates", "[ " * join(head.coord, ", ") * " ]")
+
+    print(io, rpad("variables:", 12))
+    for (i, w) in enumerate(head.wname)
+        printstyled(io, w; color = :green)
+        if i < length(head.wname)
+            print(io, ", ")
         end
-        print(io, "]\ncoordinate names: [ ")
-        for c in head.coord
-            print(io, c, " ")
+        if i % 8 == 0 && i < length(head.wname)
+            println(io)
+            print(io, " "^12)
         end
-        print(io, "]\nvariable   names: [ ")
-        for w in head.wname
-            printstyled(io, w, " "; color = :green)
-        end
-        print(io, "]\nparameter  names: [ ")
-        for p in head.param
-            print(io, p, " ")
-        end
-        println(io, "]")
+    end
+    println(io)
+
+    if !isempty(head.param)
+        print_field(io, "params", "[ " * join(head.param, ", ") * " ]")
     end
 
     return
