@@ -56,9 +56,9 @@ function readlogdata(file::AbstractString)
 
     data = zeros(nw, nLine)
     @inbounds for i in 1:nLine
-        line = split(lines[i + 2])
-        for j in 1:nw
-            data[j, i] = Parsers.parse(Float64, line[j])
+        for (j, val) in enumerate(eachsplit(lines[i + 2]))
+            j > nw && break
+            data[j, i] = Parsers.parse(Float64, val)
         end
     end
 
@@ -232,16 +232,16 @@ function read_tecplot_data_ascii!(f, data, connectivity)
     nc = size(connectivity, 1)
 
     @inbounds for i in 1:nNode
-        line = split(readline(f))
-        for j in 1:nw
-            data[j, i] = Parsers.parse(Float32, line[j])
+        for (j, val) in enumerate(eachsplit(readline(f)))
+            j > nw && break
+            data[j, i] = Parsers.parse(Float32, val)
         end
     end
 
     @inbounds for i in 1:nCell
-        line = split(readline(f))
-        for j in 1:nc
-            connectivity[j, i] = Parsers.parse(Int32, line[j])
+        for (j, val) in enumerate(eachsplit(readline(f)))
+            j > nc && break
+            connectivity[j, i] = Parsers.parse(Int32, val)
         end
     end
 
@@ -483,12 +483,14 @@ function getascii!(x::AbstractArray{T, N}, w, fileID::IOStream) where {T, N}
     nw = size(w, N)
 
     @inbounds for id in CartesianIndices(spatial_dims)
-        line = split(readline(fileID))
-        for k in 1:ndim
-            x[id, k] = Parsers.parse(Float64, line[k])
-        end
-        for k in 1:nw
-            w[id, k] = Parsers.parse(Float64, line[ndim + k])
+        for (k, val) in enumerate(eachsplit(readline(fileID)))
+            if k <= ndim
+                x[id, k] = Parsers.parse(Float64, val)
+            elseif k <= ndim + nw
+                w[id, k - ndim] = Parsers.parse(Float64, val)
+            else
+                break
+            end
         end
     end
 
