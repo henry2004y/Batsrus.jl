@@ -567,7 +567,22 @@ function showhead(file::FileList, head::BatsHead, io::IO = stdout)
     print_field(io, "gencoord", head.gencoord; color = :yellow)
 
     if head.neqpar > 0
-        print_field(io, "parameters", "[ " * join(head.eqpar, ", ") * " ]")
+        print(io, rpad("parameters:", 12))
+        if !isempty(head.param) && length(head.param) == length(head.eqpar)
+            for (i, (p, v)) in enumerate(zip(head.param, head.eqpar))
+                print(io, p, " = ", v)
+                if i < length(head.param)
+                    print(io, ", ")
+                end
+                if i % 4 == 0 && i < length(head.param)
+                    println(io)
+                    print(io, " "^12)
+                end
+            end
+        else
+            print(io, "[ ", join(head.eqpar, ", "), " ]")
+        end
+        println(io)
     end
 
     print_field(io, "coordinates", "[ " * join(head.coord, ", ") * " ]")
@@ -584,10 +599,6 @@ function showhead(file::FileList, head::BatsHead, io::IO = stdout)
         end
     end
     println(io)
-
-    if !isempty(head.param)
-        print_field(io, "params", "[ " * join(head.param, ", ") * " ]")
-    end
 
     return
 end
