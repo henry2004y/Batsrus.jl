@@ -61,6 +61,45 @@ end
     @test size(bd["p"]) == (8, 8, 8)
 end
 
+@testset "Reading Tecplot binary" begin
+    file = "3d_bin.dat"
+    head, data, conn = readtecdata(joinpath(datapath, file))
+    @test head.nNode == 160
+    @test head.nCell == 128
+    @test length(head.variable) == 11
+end
+
+@testset "Reading Tecplot ASCII" begin
+    # Create mock tecplot file
+    mktemp() do path, io
+        write(
+            io, """
+            TITLE = "Mock Data"
+            VARIABLES = "X", "Y", "Rho"
+            ZONE T="Zone 1", N=4, E=1, F=FEPOINT, ET=QUADRILATERAL
+            AUXDATA Dummy="Value"
+            0.0 0.0 1.0
+            1.0 0.0 2.0
+            1.0 1.0 3.0
+            0.0 1.0 4.0
+            1 2 3 4
+            """
+        )
+        close(io)
+
+        head, data, conn = readtecdata(path)
+
+        @test head.title == "Mock Data"
+        @test head.variable == ["X", "Y", "Rho"]
+        @test head.nNode == 4
+        @test head.nCell == 1
+        @test size(data) == (3, 4)
+        @test size(conn) == (4, 1)
+        @test data[3, :] == [1.0f0, 2.0f0, 3.0f0, 4.0f0]
+        @test conn[:, 1] == [1, 2, 3, 4]
+    end
+end
+
 @testset "Log" begin
     logfilename = joinpath(datapath, "log_n000001.log")
     head, bd = readlogdata(logfilename)
