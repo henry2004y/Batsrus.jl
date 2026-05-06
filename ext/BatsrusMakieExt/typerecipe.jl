@@ -13,7 +13,7 @@ function Makie.convert_arguments(
         unitx = getunit(bd, bd.head.coord[1])
         unitw = getunit(bd, var)
         if unitx isa UnitfulBatsrus.Unitlike
-            da = DimArray(parent(da), (dims(da, 1) * unitx,))
+            da = rebuild(da, dims = (rebuild(dims(da, 1), lookup(da, 1) .* unitx),))
         end
         if unitw isa UnitfulBatsrus.Unitlike
             da = da .* unitw
@@ -21,7 +21,7 @@ function Makie.convert_arguments(
     end
 
     da_stripped = ustrip.(da)
-    return (Point2f.(lookup(da_stripped, 1), parent(da_stripped)),)
+    return (Point2f.(ustrip.(lookup(da_stripped, 1)), parent(da_stripped)),)
 end
 
 """
