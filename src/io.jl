@@ -43,31 +43,31 @@ end
 Read information from log file.
 """
 function readlogdata(file::AbstractString)
-    return open(file) do f
-        nLine = countlines(f) - 2
-        seekstart(f)
-        headline = readline(f)
-        variable = split(readline(f))
-        ndim = 1
-        it = 0
-        t = 0.0
-        gencoord = false
-        nx = 1
-        nw = length(variable)
+    lines = readlines(file)
+    headline = lines[1]
+    variable = split(lines[2])
+    ndim = 1
+    it = 0
+    t = 0.0
+    gencoord = false
+    nx = 1
+    nw = length(variable)
+    nLine = length(lines) - 2
 
-        data = zeros(nw, nLine)
-        @inbounds for i in 1:nLine
-            line = split(readline(f))
-            data[:, i] = Parsers.parse.(Float64, line)
+    data = zeros(nw, nLine)
+    @inbounds for i in 1:nLine
+        line = split(lines[i + 2])
+        for j in 1:nw
+            data[j, i] = Parsers.parse(Float64, line[j])
         end
-
-        head = (
-            ndim = ndim, headline = headline, it = it, time = t, gencoord = gencoord,
-            nw = nw, nx = nx, variable = variable,
-        )
-
-        return head, data
     end
+
+    head = (
+        ndim = ndim, headline = headline, it = it, time = t, gencoord = gencoord,
+        nw = nw, nx = nx, variable = variable,
+    )
+
+    return head, data
 end
 
 """
@@ -228,14 +228,21 @@ function read_tecplot_data_ascii!(f, data, connectivity)
     nNode = size(data, 2)
     nCell = size(connectivity, 2)
 
+    nw = size(data, 1)
+    nc = size(connectivity, 1)
+
     @inbounds for i in 1:nNode
-        x = readline(f)
-        data[:, i] .= Parsers.parse.(Float32, split(x))
+        line = split(readline(f))
+        for j in 1:nw
+            data[j, i] = Parsers.parse(Float32, line[j])
+        end
     end
 
     @inbounds for i in 1:nCell
-        x = readline(f)
-        connectivity[:, i] .= Parsers.parse.(Int32, split(x))
+        line = split(readline(f))
+        for j in 1:nc
+            connectivity[j, i] = Parsers.parse(Int32, line[j])
+        end
     end
 
     return
@@ -476,28 +483,12 @@ function getascii!(x::AbstractArray{T, N}, w, fileID::IOStream) where {T, N}
     nw = size(w, N)
 
     @inbounds for id in CartesianIndices(spatial_dims)
-        line = readline(fileID)
-        iter = eachsplit(line)
-        y = iterate(iter)
-
-        # Read coordinates
+        line = split(readline(fileID))
         for k in 1:ndim
-            if y === nothing
-                error("Insufficient data in line for coordinates")
-            end
-            val_str, state = y
-            x[id, k] = Parsers.parse(Float64, val_str)
-            y = iterate(iter, state)
+            x[id, k] = Parsers.parse(Float64, line[k])
         end
-
-        # Read variables
         for k in 1:nw
-            if y === nothing
-                error("Insufficient data in line for variables")
-            end
-            val_str, state = y
-            w[id, k] = Parsers.parse(Float64, val_str)
-            y = iterate(iter, state)
+            w[id, k] = Parsers.parse(Float64, line[ndim + k])
         end
     end
 
@@ -519,11 +510,11 @@ function getbinary!(x::AbstractArray{T, N}, w, fileID::IOStream) where {T, N}
 end
 
 function format_bytes(bytes::Integer)
-    if bytes >= 1.0e9
+    if bytes >= 10^9
         return @sprintf("%.1f GB", bytes * 1.0e-9)
-    elseif bytes >= 1.0e6
+    elseif bytes >= 10^6
         return @sprintf("%.1f MB", bytes * 1.0e-6)
-    elseif bytes >= 1.0e3
+    elseif bytes >= 10^3
         return @sprintf("%.1f KB", bytes * 1.0e-3)
     else
         return @sprintf("%d Bytes", bytes)
@@ -585,7 +576,7 @@ function showhead(file::FileList, head::BatsHead, io::IO = stdout)
         println(io)
     end
 
-    print_field(io, "coordinates", "[ " * join(head.coord, ", ") * " ]")
+    print_field(io, "coordinates", " " * join(head.coord, ", "))
 
     print(io, rpad("variables:", 12))
     for (i, w) in enumerate(head.wname)
@@ -593,7 +584,7 @@ function showhead(file::FileList, head::BatsHead, io::IO = stdout)
         if i < length(head.wname)
             print(io, ", ")
         end
-        if i % 8 == 0 && i < length(head.wname)
+        if i % 10 == 0 && i < length(head.wname)
             println(io)
             print(io, " "^12)
         end
