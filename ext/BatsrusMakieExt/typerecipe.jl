@@ -7,22 +7,21 @@ function Makie.convert_arguments(
         P::Makie.PointBased, bd::BatsrusIDL, var::String;
         use_units = false
     )
-    var_ = findindex(bd, var)
-    x = vec(parent(bd.x))
-    y = vec(parent(bd.w[:, var_]))
+    da = bd[var]
 
     if use_units && hasunit(bd)
         unitx = getunit(bd, bd.head.coord[1])
         unitw = getunit(bd, var)
         if unitx isa UnitfulBatsrus.Unitlike
-            x = x .* unitx
+            da = DimArray(parent(da), (dims(da, 1) * unitx,))
         end
         if unitw isa UnitfulBatsrus.Unitlike
-            y = y .* unitw
+            da = da .* unitw
         end
     end
 
-    return (Makie.Point2f.(ustrip.(x), ustrip.(y)),)
+    da_stripped = ustrip.(da)
+    return (Point2f.(lookup(da_stripped, 1), parent(da_stripped)),)
 end
 
 """
@@ -51,5 +50,6 @@ function Makie.convert_arguments(
         end
     end
 
+    # We still return a Tuple of arrays as expected by GridBased traits
     return (ustrip.(x), ustrip.(y), ustrip.(w)')
 end

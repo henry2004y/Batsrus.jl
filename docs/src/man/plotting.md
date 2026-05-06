@@ -13,6 +13,8 @@ contourf(bd, "Mx", xlabel="x")
 
 See the official documentation for Plots.jl for more information.
 
+For Makie.jl, see the [Makie](#makie) section below.
+
 On the other hand, most common 1D and 2D plotting functions are wrapped over their Matplotlib equivalences through PyPlot.jl.
 To trigger the wrapper, `using PyPlot`.
 Check out the documentation for more details.
@@ -163,6 +165,28 @@ axis("scaled")
 xlabel("x"); ylabel("y"); title("uxS0")
 ```
 
+ 
+## Makie
+ 
+[Makie.jl](https://github.com/MakieOrg/Makie.jl) is a high-performance interactive plotting library for Julia. `Batsrus.jl` provides extensive support for Makie through its internal use of `DimensionalData`.
+ 
+There are two primary ways to plot data with Makie:
+ 
+1. **Plotting the data container directly**:
+   You can pass the `BatsrusIDL` object and the variable name as a string. This is convenient and handles automatic interpolation for unstructured data.
+   ```julia
+   using GLMakie
+   heatmap(bd, "p")
+   ```
+ 
+2. **Plotting variables as `DimArray`s**:
+   Since variables are stored as `DimArray`s, you can extract them and plot them directly. This leverages Makie's native support for `DimensionalData` and automatically provides axis labels.
+   ```julia
+   heatmap(bd["p"])
+   ```
+ 
+The first method is recommended when you need automatic resampling or are working with unstructured/generalized coordinate data. The second method is useful when you want to leverage the full power of `DimensionalData` selectors and metadata.
+ 
 ## Mesh Plotting
 
 For visualizing the grid structure, we provide `plotgrid`.
