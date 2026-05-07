@@ -14,6 +14,7 @@
 *.tec
 *.gz
 *.batl
+3d_particle_region*_amrex
 test/data/
 benchmark/data/
 amrex_mock/

@@ -94,14 +94,45 @@ You can classify particles into Core Maxwellian and Suprathermal populations usi
 ```julia
 # range can be specified by keywords x_range, y_range, z_range locally
 core, halo = classify_particles(data; 
-    x_range=(-1.0, 1.0), 
-    y_range=(-1.0, 1.0), 
-    z_range=(-1.0, 1.0),
+    x_range=(-10000.0, 10000.0), 
+    y_range=(-30.0, 30.0), 
     vdim=3,          # Velocity dimension (1, 2, or 3)
-    vth=1.0,         # Core thermal velocity (required)
-    nsigma=3.0,      # Separation threshold
+    vth=50.0,        # Core thermal velocity (required)
+    nsigma=4.0,      # Separation threshold
     bulk_vel=nothing # Auto-detect if nothing
 )
 ```
 
 The function returns two matrices containing the classified particles. If `bulk_vel` is not provided, it is automatically estimated from the peak of the velocity distribution.
+
+### Visualizing Classification Results
+
+You can visualize the core and suprathermal populations separately using `PyPlot`:
+
+```julia
+using PyPlot
+
+# ... after classification ...
+
+# Indices for velocity (e.g., "velocity_x", "velocity_y")
+names = data.header.real_component_names
+vx_idx = findfirst(==("velocity_x"), names)
+vy_idx = findfirst(==("velocity_y"), names)
+
+fig, ax = plt.subplots(figsize = (8, 5), constrained_layout = true)
+
+# Scatter plot of Core and Halo
+ax.scatter(core[vx_idx, :], core[vy_idx, :], s=4, label="Core (Bulk)", alpha=0.6)
+ax.scatter(halo[vx_idx, :], halo[vy_idx, :], s=4, label="Suprathermal (Beam)", alpha=0.6)
+
+ax.set_title("Particle Classification: Bulk vs Beam")
+ax.set_xlabel(L"v_x \mathrm{~[km/s]}")
+ax.set_ylabel(L"v_y \mathrm{~[km/s]}")
+ax.axhline(0, color="gray", linestyle="--", linewidth=1, alpha=0.5)
+ax.axvline(0, color="gray", linestyle="--", linewidth=1, alpha=0.5)
+
+ax.legend()
+ax.grid(true, linestyle=":", alpha=0.4)
+```
+
+![Particle Classification](../images/particle_classification.png)
