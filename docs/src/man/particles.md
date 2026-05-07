@@ -83,6 +83,8 @@ plot_phase(data, "v_B", "v_BxE";
 )
 ```
 
+Example plot in ExB drift coordinates:
+
 ![ExB Velocity Space](../images/particle_phase_v_B_v_BxE.png)
  
 ## Particle Classification
