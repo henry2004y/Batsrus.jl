@@ -33,11 +33,32 @@ plot_phase(data, &quot;v_B&quot;, &quot;v_BxE&quot;;
    log_scale=true
 )</code></pre><p>Example plot in ExB drift coordinates:</p><p><img src="../../images/particle_phase_v_B_v_BxE.png" alt="ExB Velocity Space"/></p><h2 id="Particle-Classification"><a class="docs-heading-anchor" href="#Particle-Classification">Particle Classification</a><a id="Particle-Classification-1"></a><a class="docs-heading-anchor-permalink" href="#Particle-Classification" title="Permalink"></a></h2><p>You can classify particles into Core Maxwellian and Suprathermal populations using <code>classify_particles</code>. This function allows for specifying a spatial region and handling velocity distributions in 1D, 2D, or 3D.</p><pre><code class="language-julia hljs"># range can be specified by keywords x_range, y_range, z_range locally
 core, halo = classify_particles(data; 
-    x_range=(-1.0, 1.0), 
-    y_range=(-1.0, 1.0), 
-    z_range=(-1.0, 1.0),
+    x_range=(-10000.0, 10000.0), 
+    y_range=(-30.0, 30.0), 
     vdim=3,          # Velocity dimension (1, 2, or 3)
-    vth=1.0,         # Core thermal velocity (required)
-    nsigma=3.0,      # Separation threshold
+    vth=50.0,        # Core thermal velocity (required)
+    nsigma=4.0,      # Separation threshold
     bulk_vel=nothing # Auto-detect if nothing
-)</code></pre><p>The function returns two matrices containing the classified particles. If <code>bulk_vel</code> is not provided, it is automatically estimated from the peak of the velocity distribution.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../plotting/">« Plotting</a><a class="docs-footer-nextpage" href="../conversion/">Conversion »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Thursday 7 May 2026 13:12">Thursday 7 May 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+)</code></pre><p>The function returns two matrices containing the classified particles. If <code>bulk_vel</code> is not provided, it is automatically estimated from the peak of the velocity distribution.</p><h3 id="Visualizing-Classification-Results"><a class="docs-heading-anchor" href="#Visualizing-Classification-Results">Visualizing Classification Results</a><a id="Visualizing-Classification-Results-1"></a><a class="docs-heading-anchor-permalink" href="#Visualizing-Classification-Results" title="Permalink"></a></h3><p>You can visualize the core and suprathermal populations separately using <code>PyPlot</code>:</p><pre><code class="language-julia hljs">using PyPlot
+
+# ... after classification ...
+
+# Indices for velocity (e.g., &quot;velocity_x&quot;, &quot;velocity_y&quot;)
+names = data.header.real_component_names
+vx_idx = findfirst(==(&quot;velocity_x&quot;), names)
+vy_idx = findfirst(==(&quot;velocity_y&quot;), names)
+
+fig, ax = plt.subplots(figsize = (8, 5), constrained_layout = true)
+
+# Scatter plot of Core and Halo
+ax.scatter(core[vx_idx, :], core[vy_idx, :], s=4, label=&quot;Core (Bulk)&quot;, alpha=0.6)
+ax.scatter(halo[vx_idx, :], halo[vy_idx, :], s=4, label=&quot;Suprathermal (Beam)&quot;, alpha=0.6)
+
+ax.set_title(&quot;Particle Classification: Bulk vs Beam&quot;)
+ax.set_xlabel(L&quot;v_x \mathrm{~[km/s]}&quot;)
+ax.set_ylabel(L&quot;v_y \mathrm{~[km/s]}&quot;)
+ax.axhline(0, color=&quot;gray&quot;, linestyle=&quot;--&quot;, linewidth=1, alpha=0.5)
+ax.axvline(0, color=&quot;gray&quot;, linestyle=&quot;--&quot;, linewidth=1, alpha=0.5)
+
+ax.legend()
+ax.grid(true, linestyle=&quot;:&quot;, alpha=0.4)</code></pre><p><img src="../../images/particle_classification.png" alt="Particle Classification"/></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../plotting/">« Plotting</a><a class="docs-footer-nextpage" href="../conversion/">Conversion »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Thursday 7 May 2026 16:08">Thursday 7 May 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
