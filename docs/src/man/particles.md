@@ -67,6 +67,8 @@ plot_phase(data, "v_parallel", "v_perp";
 )
 ```
 
+Example plot in field-aligned coordinates:
+
 ![Field-Aligned Velocity Space](../images/particle_phase_v_para_v_perp.png)
 
 2. Transformation with both B and E fields. This creates an orthonormal basis ($v_B$, $v_E$, $v_{B \times E}$), where $v_B$ is along B, $v_E$ is along the perpendicular component of E, and $v_{B \times E}$ is along the ExB drift direction.
