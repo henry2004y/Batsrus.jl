@@ -107,10 +107,10 @@ The function returns two matrices containing the classified particles. If `bulk_
 
 ### Visualizing Classification Results
 
-You can visualize the core and suprathermal populations separately using `PyPlot` and `FHist`:
+You can visualize the core and suprathermal populations separately using `PyPlot`:
 
 ```julia
-using PyPlot, FHist
+using PyPlot
 
 # ... after classification ...
 
