@@ -31,6 +31,11 @@ plot_phase(data, "x", "vx";
 )
 ```
 
+Example plots generated from AMReX particle data:
+
+![x-vx Phase Space](../images/particle_phase_x_vx.png)
+![vx-vy Velocity Space](../images/particle_phase_vx_vy.png)
+
 We can also calculate the phase space density histogram directly without plotting:
 
 ```julia
@@ -62,6 +67,8 @@ plot_phase(data, "v_parallel", "v_perp";
 )
 ```
 
+![Field-Aligned Velocity Space](../images/particle_phase_v_para_v_perp.png)
+
 2. Transformation with both B and E fields. This creates an orthonormal basis ($v_B$, $v_E$, $v_{B \times E}$), where $v_B$ is along B, $v_E$ is along the perpendicular component of E, and $v_{B \times E}$ is along the ExB drift direction.
 
 ```julia
@@ -73,6 +80,8 @@ plot_phase(data, "v_B", "v_BxE";
    log_scale=true
 )
 ```
+
+![ExB Velocity Space](../images/particle_phase_v_B_v_BxE.png)
  
 ## Particle Classification
 
