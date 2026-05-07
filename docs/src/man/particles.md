@@ -31,7 +31,7 @@ plot_phase(data, "x", "vx";
 )
 ```
 
-Example plots generated from AMReX particle data:
+Example plots for phase space ($x, v_x$) and velocity space ($v_x, v_y$) generated from AMReX particle data:
 
 ![x-vx Phase Space](../images/particle_phase_x_vx.png)
 ![vx-vy Velocity Space](../images/particle_phase_vx_vy.png)
