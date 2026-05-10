@@ -86,9 +86,18 @@ using StaticArrays
                         title = "Custom Title"
                     )
                     @test isfile(joinpath(tmpdir, "z=0_raw_1_t25.60000_n00000258.png"))
-                end
+                    rm(joinpath(tmpdir, "z=0_raw_1_t25.60000_n00000258.png"))
 
-                mktempdir() do tmpdir
+                    # 2D structured binary with plotrange
+                    animate(
+                        [joinpath(datapath, file)],
+                        outdir = tmpdir,
+                        var = "p",
+                        plotrange = [0.0, 10.0, -5.0, 5.0],
+                    )
+                    @test isfile(joinpath(tmpdir, "z=0_raw_1_t25.60000_n00000258.png"))
+                    rm(joinpath(tmpdir, "z=0_raw_1_t25.60000_n00000258.png"))
+
                     # 2D unstructured data with streamlines
                     file_unstructured = "bx0_mhd_6_t00000100_n00000352.out"
                     animate(
@@ -96,6 +105,17 @@ using StaticArrays
                         outdir = tmpdir,
                         var = "P", streamvars = "ux;uy",
                         stream_kwargs = (; color = :white, linewidth = 0.5)
+                    )
+                    @test isfile(joinpath(tmpdir, "bx0_mhd_6_t00000100_n00000352.png"))
+                    rm(joinpath(tmpdir, "bx0_mhd_6_t00000100_n00000352.png"))
+
+                    # 2D unstructured data with plotrange
+                    animate(
+                        [joinpath(datapath, file_unstructured)],
+                        outdir = tmpdir,
+                        var = "P",
+                        plotrange = [-10.0, 10.0, -10.0, 10.0],
+                        plotinterval = 0.5
                     )
                     @test isfile(joinpath(tmpdir, "bx0_mhd_6_t00000100_n00000352.png"))
                 end
@@ -263,6 +283,7 @@ using StaticArrays
 
             mktempdir() do tmpdir
                 # 2D structured binary with streamlines and derived variable
+                file = "z=0_raw_1_t25.60000_n00000258.out"
                 animate(
                     [joinpath(datapath, file)], outdir = tmpdir,
                     var = :b,
@@ -273,15 +294,34 @@ using StaticArrays
                     title = "Custom Title"
                 )
                 @test isfile(joinpath(tmpdir, "z=0_raw_1_t25.60000_n00000258.png"))
-            end
+                rm(joinpath(tmpdir, "z=0_raw_1_t25.60000_n00000258.png"))
 
-            mktempdir() do tmpdir
+                # 2D structured binary with plotrange
+                animate(
+                    [joinpath(datapath, file)], outdir = tmpdir,
+                    var = "p",
+                    plotrange = [0.0, 10.0, -5.0, 5.0],
+                    plot_kwargs = (; cmap = "viridis"),
+                )
+                @test isfile(joinpath(tmpdir, "z=0_raw_1_t25.60000_n00000258.png"))
+                rm(joinpath(tmpdir, "z=0_raw_1_t25.60000_n00000258.png"))
+
                 # 2D unstructured data with streamlines
                 file_unstructured = "bx0_mhd_6_t00000100_n00000352.out"
                 animate(
                     [joinpath(datapath, file_unstructured)], outdir = tmpdir,
                     var = "P", streamvars = "ux;uy",
                     stream_kwargs = (; color = "white", density = 0.5)
+                )
+                @test isfile(joinpath(tmpdir, "bx0_mhd_6_t00000100_n00000352.png"))
+                rm(joinpath(tmpdir, "bx0_mhd_6_t00000100_n00000352.png"))
+
+                # 2D unstructured data with plotrange
+                animate(
+                    [joinpath(datapath, file_unstructured)], outdir = tmpdir,
+                    var = "P",
+                    plotrange = [-10.0, 10.0, -10.0, 10.0],
+                    plotinterval = 0.5
                 )
                 @test isfile(joinpath(tmpdir, "bx0_mhd_6_t00000100_n00000352.png"))
             end
