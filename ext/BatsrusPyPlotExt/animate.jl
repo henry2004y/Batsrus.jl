@@ -69,10 +69,8 @@ function Batsrus.animate(
     else
         data = bd[var]
         if !isnothing(plotrange)
-            data = data[
-                plotrange[1] .. plotrange[2],
-                plotrange[3] .. plotrange[4],
-            ]
+            sel1, sel2 = plotrange[1] .. plotrange[2], plotrange[3] .. plotrange[4]
+            data = data[sel1, sel2]
         end
     end
 
@@ -110,10 +108,8 @@ function Batsrus.animate(
             data = bd[var]
             # Apply plotrange if provided (using DimensionalData selectors)
             if !isnothing(plotrange)
-                data = data[
-                    plotrange[1] .. plotrange[2],
-                    plotrange[3] .. plotrange[4],
-                ]
+                sel1, sel2 = plotrange[1] .. plotrange[2], plotrange[3] .. plotrange[4]
+                data = data[sel1, sel2]
             end
             # Get coordinates
             x_coords = dims(data, 1).val
@@ -189,14 +185,9 @@ function Batsrus.animate(
                     v1 = bd[vars[1]]
                     v2 = bd[vars[2]]
                     if !isnothing(plotrange)
-                        v1 = v1[
-                            plotrange[1] .. plotrange[2],
-                            plotrange[3] .. plotrange[4],
-                        ]
-                        v2 = v2[
-                            plotrange[1] .. plotrange[2],
-                            plotrange[3] .. plotrange[4],
-                        ]
+                        sel1, sel2 = plotrange[1] .. plotrange[2], plotrange[3] .. plotrange[4]
+                        v1 = v1[sel1, sel2]
+                        v2 = v2[sel1, sel2]
                     end
                     v1, v2 = collect(v1'), collect(v2')
                     xi, yi = x_coords, y_coords
