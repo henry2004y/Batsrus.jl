@@ -68,10 +68,8 @@ function Batsrus.animate(
     else
         data = bd[var]
         if !isnothing(plotrange)
-            data = data[
-                dims(data, 1) => plotrange[1] .. plotrange[2],
-                dims(data, 2) => plotrange[3] .. plotrange[4],
-            ]
+            sel1, sel2 = plotrange[1] .. plotrange[2], plotrange[3] .. plotrange[4]
+            data = data[sel1, sel2]
         end
     end
 
@@ -122,10 +120,8 @@ function Batsrus.animate(
         else
             data = bd[var]
             if !isnothing(plotrange)
-                data = data[
-                    dims(data, 1) => plotrange[1] .. plotrange[2],
-                    dims(data, 2) => plotrange[3] .. plotrange[4],
-                ]
+                sel1, sel2 = plotrange[1] .. plotrange[2], plotrange[3] .. plotrange[4]
+                data = data[sel1, sel2]
             end
             x_coords = val(dims(data, 1))
             y_coords = val(dims(data, 2))
@@ -181,14 +177,9 @@ function Batsrus.animate(
                     v1 = bd[vars[1]]
                     v2 = bd[vars[2]]
                     if !isnothing(plotrange)
-                        v1 = v1[
-                            dims(v1, 1) => plotrange[1] .. plotrange[2],
-                            dims(v1, 2) => plotrange[3] .. plotrange[4],
-                        ]
-                        v2 = v2[
-                            dims(v2, 1) => plotrange[1] .. plotrange[2],
-                            dims(v2, 2) => plotrange[3] .. plotrange[4],
-                        ]
+                        sel1, sel2 = plotrange[1] .. plotrange[2], plotrange[3] .. plotrange[4]
+                        v1 = v1[sel1, sel2]
+                        v2 = v2[sel1, sel2]
                     end
                     v1, v2 = parent(v1), parent(v2)
                 end
