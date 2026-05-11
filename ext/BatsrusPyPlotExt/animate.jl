@@ -64,8 +64,8 @@ function Batsrus.animate(
     # First file to setup parameters if vmin/vmax are Inf
     bd = load(files[1])
     if bd.head.gencoord
-        range = isnothing(plotrange) ? [-Inf, Inf, -Inf, Inf] : plotrange
-        _, _, data = interp2d(bd, var, range, plotinterval; innermask, rbody)
+        extents = isnothing(plotrange) ? [-Inf, Inf, -Inf, Inf] : plotrange
+        _, _, data = interp2d(bd, var, extents, plotinterval; innermask, rbody)
     else
         data = bd[var]
         if !isnothing(plotrange)
@@ -101,9 +101,9 @@ function Batsrus.animate(
 
         bd = load(file)
         if bd.head.gencoord
-            range = isnothing(plotrange) ? [-Inf, Inf, -Inf, Inf] : plotrange
+            extents = isnothing(plotrange) ? [-Inf, Inf, -Inf, Inf] : plotrange
             x_coords, y_coords, data =
-                interp2d(bd, var, range, plotinterval; innermask, rbody)
+                interp2d(bd, var, extents, plotinterval; innermask, rbody)
         else
             data = bd[var]
             # Apply plotrange if provided (using DimensionalData selectors)
@@ -114,6 +114,9 @@ function Batsrus.animate(
             # Get coordinates
             x_coords = dims(data, 1).val
             y_coords = dims(data, 2).val
+            # Ensure uniform spacing for Matplotlib with Float64 precision
+            x_coords = range(Float64(x_coords[1]), Float64(x_coords[end]), length(x_coords))
+            y_coords = range(Float64(y_coords[1]), Float64(y_coords[end]), length(y_coords))
             data = data'
         end
 
@@ -176,9 +179,9 @@ function Batsrus.animate(
             vars = split(streamvars, ";")
             if length(vars) == 2
                 if bd.head.gencoord
-                    range = isnothing(plotrange) ? [-Inf, Inf, -Inf, Inf] : plotrange
+                    extents = isnothing(plotrange) ? [-Inf, Inf, -Inf, Inf] : plotrange
                     xi, yi, (v1, v2) = interp2d(
-                        bd, [String(vars[1]), String(vars[2])], range, plotinterval;
+                        bd, [String(vars[1]), String(vars[2])], extents, plotinterval;
                         innermask, rbody
                     )
                 else
