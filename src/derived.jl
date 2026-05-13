@@ -121,6 +121,36 @@ Calculate the pressure anisotropy for `species`. Two methods are supported:
     return _get_anisotropy(bd, species, method)
 end
 
+@inline function _get_B_P(w, i, n, iv, ip)
+    ivx, ivy, ivz = iv
+    ipxx, ipyy, ipzz, ipxy, ipxz, ipyz = ip
+    Bx = w[i + (ivx - 1) * n]
+    By = w[i + (ivy - 1) * n]
+    Bz = w[i + (ivz - 1) * n]
+    pxx = w[i + (ipxx - 1) * n]
+    pyy = w[i + (ipyy - 1) * n]
+    pzz = w[i + (ipzz - 1) * n]
+    pxy = w[i + (ipxy - 1) * n]
+    pxz = w[i + (ipxz - 1) * n]
+    pyz = w[i + (ipyz - 1) * n]
+    return Bx, By, Bz, pxx, pyy, pzz, pxy, pxz, pyz
+end
+
+@inline function _calc_anisotropy(Bx, By, Bz, pxx, pyy, pzz, pxy, pxz, pyz, method)
+    if method === :projection
+        B2 = Bx^2 + By^2 + Bz^2
+        p_parallel = (pxx * Bx^2 + pyy * By^2 + pzz * Bz^2 + 2 * pxy * Bx * By + 2 * pxz * Bx * Bz + 2 * pyz * By * Bz) / B2
+        return (pxx + pyy + pzz - p_parallel) / (2 * p_parallel)
+    elseif method === :rotation
+        P = @SMatrix [pxx pxy pxz; pxy pyy pyz; pxz pyz pzz]
+        v = @SVector [Bx, By, Bz]
+        Pr = rotateTensorToVectorZ(P, v)
+        return (Pr[1, 1] + Pr[2, 2]) / (2 * Pr[3, 3])
+    else
+        error("Unknown method $method")
+    end
+end
+
 @inline function _get_anisotropy(bd::BatsrusIDLStructured{ndim, TV, TX, TW}, species, method) where {ndim, TV, TX, TW}
     iv = get_vectors_indices(bd, :B)
     ip = _get_pressure_tensor_indices(bd, species)
@@ -128,49 +158,15 @@ end
     w = parent(bd.w)
     d = dims(bd.w)
 
-    if ndim == 2
-        nx, ny = size(bd.w, 1), size(bd.w, 2)
-        n_space = nx * ny
-        res = similar(w, nx, ny)
+    sz = ntuple(i -> size(bd.w, i), Val(ndim))
+    n_space = prod(sz)
+    res = similar(w, sz)
 
-        if method === :projection
-            ivx, ivy, ivz = iv
-            ipxx, ipyy, ipzz, ipxy, ipxz, ipyz = ip
-            @inbounds for i in 1:n_space
-                Bx, By, Bz = w[i + (ivx - 1) * n_space], w[i + (ivy - 1) * n_space], w[i + (ivz - 1) * n_space]
-                B2 = Bx^2 + By^2 + Bz^2
-                pxx, pyy, pzz = w[i + (ipxx - 1) * n_space], w[i + (ipyy - 1) * n_space], w[i + (ipzz - 1) * n_space]
-                pxy, pxz, pyz = w[i + (ipxy - 1) * n_space], w[i + (ipxz - 1) * n_space], w[i + (ipyz - 1) * n_space]
-                p_parallel = (pxx * Bx^2 + pyy * By^2 + pzz * Bz^2 + 2 * pxy * Bx * By + 2 * pxz * Bx * Bz + 2 * pyz * By * Bz) / B2
-                res[i] = (pxx + pyy + pzz - p_parallel) / (2 * p_parallel)
-            end
-        elseif method === :rotation
-            ivx, ivy, ivz = iv
-            ipxx, ipyy, ipzz, ipxy, ipxz, ipyz = ip
-            @inbounds for i in 1:n_space
-                Bx, By, Bz = w[i + (ivx - 1) * n_space], w[i + (ivy - 1) * n_space], w[i + (ivz - 1) * n_space]
-                pxx, pyy, pzz = w[i + (ipxx - 1) * n_space], w[i + (ipyy - 1) * n_space], w[i + (ipzz - 1) * n_space]
-                pxy, pxz, pyz = w[i + (ipxy - 1) * n_space], w[i + (ipxz - 1) * n_space], w[i + (ipyz - 1) * n_space]
-                P = @SMatrix [pxx pxy pxz; pxy pyy pyz; pxz pyz pzz]
-                v = @SVector [Bx, By, Bz]
-                Pr = rotateTensorToVectorZ(P, v)
-                res[i] = (Pr[1, 1] + Pr[2, 2]) / (2 * Pr[3, 3])
-            end
-        else
-            error("Unknown method $method")
-        end
-        return rebuild(bd.w, res, (d[1], d[2]))
-    else
-        # Fallback for other dimensions
-        sz = ntuple(i -> size(bd.w, i), Val(ndim))
-        n_space = 1
-        for i in 1:ndim
-            n_space *= sz[i]
-        end
-        res = similar(w, sz)
-        # ...
-        return rebuild(bd.w, res, ntuple(i -> d[i], Val(ndim)))
+    @inbounds for i in 1:n_space
+        vars = _get_B_P(w, i, n_space, iv, ip)
+        res[i] = _calc_anisotropy(vars..., method)
     end
+    return rebuild(bd.w, res, ntuple(i -> d[i], Val(ndim)))
 end
 
 @inline function _get_anisotropy(bd::BatsrusIDLUnstructured{ndim, TV, TX, TW}, species, method) where {ndim, TV, TX, TW}
@@ -182,53 +178,9 @@ end
 
     res = similar(w, n_cells)
 
-    if method === :projection
-        ivx, ivy, ivz = iv
-        ipxx, ipyy, ipzz, ipxy, ipxz, ipyz = ip
-        @inbounds for i in 1:n_cells
-            Bx = w[i + (ivx - 1) * n_cells]
-            By = w[i + (ivy - 1) * n_cells]
-            Bz = w[i + (ivz - 1) * n_cells]
-            B2 = Bx^2 + By^2 + Bz^2
-
-            pxx = w[i + (ipxx - 1) * n_cells]
-            pyy = w[i + (ipyy - 1) * n_cells]
-            pzz = w[i + (ipzz - 1) * n_cells]
-            pxy = w[i + (ipxy - 1) * n_cells]
-            pxz = w[i + (ipxz - 1) * n_cells]
-            pyz = w[i + (ipyz - 1) * n_cells]
-
-            p_parallel = (
-                pxx * Bx^2 + pyy * By^2 + pzz * Bz^2 +
-                    2 * pxy * Bx * By + 2 * pxz * Bx * Bz + 2 * pyz * By * Bz
-            ) / B2
-            p_perp = (pxx + pyy + pzz - p_parallel) / 2
-            res[i] = p_perp / p_parallel
-        end
-    elseif method === :rotation
-        ivx, ivy, ivz = iv
-        ipxx, ipyy, ipzz, ipxy, ipxz, ipyz = ip
-        @inbounds for i in 1:n_cells
-            Bx = w[i + (ivx - 1) * n_cells]
-            By = w[i + (ivy - 1) * n_cells]
-            Bz = w[i + (ivz - 1) * n_cells]
-
-            pxx = w[i + (ipxx - 1) * n_cells]
-            pyy = w[i + (ipyy - 1) * n_cells]
-            pzz = w[i + (ipzz - 1) * n_cells]
-            pxy = w[i + (ipxy - 1) * n_cells]
-            pxz = w[i + (ipxz - 1) * n_cells]
-            pyz = w[i + (ipyz - 1) * n_cells]
-
-            P = @SMatrix [pxx pxy pxz; pxy pyy pyz; pxz pyz pzz]
-            v = @SVector [Bx, By, Bz]
-            Pr = rotateTensorToVectorZ(P, v)
-            p_parallel = Pr[3, 3]
-            p_perp = (Pr[1, 1] + Pr[2, 2]) / 2
-            res[i] = p_perp / p_parallel
-        end
-    else
-        error("Unknown method $method")
+    @inbounds for i in 1:n_cells
+        vars = _get_B_P(w, i, n_cells, iv, ip)
+        res[i] = _calc_anisotropy(vars..., method)
     end
 
     d = dims(bd.w)
@@ -493,14 +445,15 @@ end
 @inline function _compute_jz(bd::BatsrusIDLStructured{2, TV}) where {TV}
     ivx, ivy = findindex(bd, "bx"), findindex(bd, "by")
     w = parent(bd.w)
-    xrange, yrange = get_range(bd)
-    dx, dy = TV(step(xrange)), TV(step(yrange))
+    d = dims(bd.w)
+    dx, dy = TV(step(val(d[1]))), TV(step(val(d[2])))
     nx, ny = size(w, 1), size(w, 2)
     jz = [
         _diff2_x(w, ix, iy, nx, dx, ivy) - _diff2_y(w, ix, iy, ny, dy, ivx)
             for ix in 1:nx, iy in 1:ny
     ]
-    return DimArray(_apply_j_scaling!(jz, bd), dims(bd.w)[1:2])
+    _apply_j_scaling!(jz, bd)
+    return DimArray(jz, (d[1], d[2]))
 end
 
 @inline function _compute_jx(bd::BatsrusIDLStructured{3, TV}) where {TV}

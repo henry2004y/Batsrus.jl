@@ -4,6 +4,7 @@ using Batsrus, Test, SHA, LazyArtifacts
 using Batsrus.UnitfulBatsrus, Unitful
 using Batsrus: At, Near # DimensionalData
 using RecipesBase
+using StaticArrays
 using Suppressor: @capture_out, @capture_err, @suppress_out, @suppress_err, @suppress
 # Check if we should run PyPlot tests (Linux/Windows CI, or default locally)
 const RUN_PYPLOT_TESTS = get(ENV, "TEST_PYPLOT", "true") == "true" &&

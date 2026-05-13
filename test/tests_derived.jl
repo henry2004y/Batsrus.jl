@@ -40,16 +40,140 @@
     end
 
     @testset "Anisotropy" begin
-        a0 = get_anisotropy(bd_aniso, 0)
-        @test a0[1:2, 1] ≈ Float32[1.2630985, 2.4700143]
-        @test bd_aniso[:anisotropy0] == a0
+        @testset "Structured 2D Mock" begin
+            nx, ny = 2, 2
+            names = [
+                SubString("bx"), SubString("by"), SubString("bz"),
+                SubString("pxxs0"), SubString("pyys0"), SubString("pzzs0"),
+                SubString("pxys0"), SubString("pxzs0"), SubString("pyzs0"),
+                SubString("pxxs1"), SubString("pyys1"), SubString("pzzs1"),
+                SubString("pxys1"), SubString("pxzs1"), SubString("pyzs1"),
+            ]
+            w_data = zeros(Float32, nx, ny, length(names))
 
-        # Test rotation method
-        @test get_anisotropy(bd_aniso, 0, method = :rotation)[1:2, 1] ≈ a0[1:2, 1]
+            # Magnetic field along X: B = [1, 0, 0]
+            w_data[:, :, 1] .= 1.0f0
 
-        a1 = get_anisotropy(bd_aniso, 1)
-        @test a1[1:2, 1] ≈ Float32[1.2906302, 2.6070855]
-        @test bd_aniso[:anisotropy1] == a1
+            # Species 0: P = [2 0 0; 0 1 0; 0 0 1] -> p_parallel = 2, p_perp = 1 -> A = 0.5
+            w_data[:, :, 4] .= 2.0f0 # pxx
+            w_data[:, :, 5] .= 1.0f0 # pyy
+            w_data[:, :, 6] .= 1.0f0 # pzz
+
+            # Species 1: P = [1 0 0; 0 2 0; 0 0 2] -> p_parallel = 1, p_perp = 2 -> A = 2.0
+            w_data[:, :, 10] .= 1.0f0 # pxx
+            w_data[:, :, 11] .= 2.0f0 # pyy
+            w_data[:, :, 12] .= 2.0f0 # pzz
+
+            head = Batsrus.BatsHead(
+                2, SubString("Mock"), 0, 0.0f0, false, 0, length(names), [nx, ny], Float32[],
+                [SubString("x"), SubString("y")], names, String[]
+            )
+            x_data = zeros(Float32, nx, ny, 2)
+            bd = BATS(
+                head,
+                Batsrus.FileList("mock_aniso.out", Batsrus.Real4Bat, ".", 0, 1, 0),
+                x_data, w_data
+            )
+
+            # Test Projection Method
+            a0 = get_anisotropy(bd, 0, method = :projection)
+            a1 = get_anisotropy(bd, 1, method = :projection)
+            @test all(a0 .== 0.5f0)
+            @test all(a1 .== 2.0f0)
+
+            # Test Rotation Method
+            ar0 = get_anisotropy(bd, 0, method = :rotation)
+            ar1 = get_anisotropy(bd, 1, method = :rotation)
+            @test all(isapprox.(ar0, 0.5f0, atol = 1.0e-6))
+            @test all(isapprox.(ar1, 2.0f0, atol = 1.0e-6))
+
+            # Test Symbol Access
+            @test all(isapprox.(bd[:anisotropy0], 0.5f0, atol = 1.0e-6))
+            @test all(isapprox.(bd[:anisotropy1], 2.0f0, atol = 1.0e-6))
+        end
+
+        @testset "Structured 3D Rotation Mock" begin
+            # Test rotation with non-trivial B field
+            nx, ny, nz = 2, 2, 2
+            names = [
+                SubString("bx"), SubString("by"), SubString("bz"),
+                SubString("pxxs0"), SubString("pyys0"), SubString("pzzs0"),
+                SubString("pxys0"), SubString("pxzs0"), SubString("pyzs0"),
+            ]
+            w_data = zeros(Float32, nx, ny, nz, length(names))
+
+            # B = [1, 1, 1]
+            w_data[:, :, :, 1] .= 1.0f0
+            w_data[:, :, :, 2] .= 1.0f0
+            w_data[:, :, :, 3] .= 1.0f0
+
+            # P = I (identity) -> A = 1.0
+            w_data[:, :, :, 4] .= 1.0f0 # pxx
+            w_data[:, :, :, 5] .= 1.0f0 # pyy
+            w_data[:, :, :, 6] .= 1.0f0 # pzz
+
+            head = Batsrus.BatsHead(
+                3, SubString("Mock"), 0, 0.0f0, false, 0, length(names), [nx, ny, nz], Float32[],
+                [SubString("x"), SubString("y"), SubString("z")], names, String[]
+            )
+            x_data = zeros(Float32, nx, ny, nz, 3)
+            bd = BATS(
+                head,
+                Batsrus.FileList("mock_aniso3d.out", Batsrus.Real4Bat, ".", 0, 1, 0),
+                x_data, w_data
+            )
+
+            ar = get_anisotropy(bd, 0, method = :rotation)
+            @test all(isapprox.(ar, 1.0f0, atol = 1.0e-6))
+        end
+
+        @testset "Curvilinear Grid Mock" begin
+            # For ndim=1, BATS expects (nx, 1) for x_data
+            nx = 4
+            names = [
+                SubString("bx"), SubString("by"), SubString("bz"),
+                SubString("pxxs0"), SubString("pyys0"), SubString("pzzs0"),
+                SubString("pxys0"), SubString("pxzs0"), SubString("pyzs0"),
+            ]
+            w_data = zeros(Float32, nx, length(names))
+            w_data[:, 1] .= 1.0f0 # bx = 1
+            w_data[:, 4] .= 2.0f0 # pxx = 2
+            w_data[:, 5] .= 1.0f0 # pyy = 1
+            w_data[:, 6] .= 1.0f0 # pzz = 1
+
+            head = Batsrus.BatsHead(
+                1, SubString("Mock"), 0, 0.0f0, true, 0, length(names), [nx], Float32[],
+                [SubString("x")], names, String[]
+            )
+            x_data = zeros(Float32, nx, 2)
+            bd = BATS(
+                head,
+                Batsrus.FileList("mock_aniso_u.out", Batsrus.Real4Bat, ".", 0, 1, 0),
+                x_data, w_data
+            )
+
+            a0 = get_anisotropy(bd, 0, method = :projection)
+            @test all(a0 .== 0.5f0)
+
+            ar0 = get_anisotropy(bd, 0, method = :rotation)
+            @test all(isapprox.(ar0, 0.5f0, atol = 1.0e-6))
+        end
+
+        @testset "Real Data" begin
+            file_aniso = "z=0_fluid_region0_0_t00001640_n00010142.out"
+            bd_aniso = load(joinpath(datapath, file_aniso))
+
+            a0 = get_anisotropy(bd_aniso, 0)
+            @test a0[1:2, 1] ≈ Float32[1.2630985, 2.4700143]
+            @test bd_aniso[:anisotropy0] == a0
+
+            # Test rotation method
+            @test get_anisotropy(bd_aniso, 0, method = :rotation)[1:2, 1] ≈ a0[1:2, 1]
+
+            a1 = get_anisotropy(bd_aniso, 1)
+            @test a1[1:2, 1] ≈ Float32[1.2906302, 2.6070855]
+            @test bd_aniso[:anisotropy1] == a1
+        end
     end
 
     @testset "Extended Electrodynamics" begin
@@ -75,39 +199,6 @@
 
     @testset "Fallback behavior" begin
         @test bd_struct[:rho] == bd_struct["rho"]
-    end
-
-    @testset "Multi-species Anisotropy (>1 species)" begin
-        # Create a mock 2D BATS object with 3 species
-        nx, ny = 2, 2
-        names = [
-            "bx", "by", "bz",
-            "pxxs0", "pyys0", "pzzs0", "pxys0", "pxzs0", "pyzs0",
-            "pxxs1", "pyys1", "pzzs1", "pxys1", "pxzs1", "pyzs1",
-            "pxxs2", "pyys2", "pzzs2", "pxys2", "pxzs2", "pyzs2",
-        ]
-        nw = length(names)
-        w_data = zeros(Float32, nx, ny, nw)
-        # B field: [1, 0, 0]
-        w_data[:, :, 1] .= 1.0f0
-        # Species 2: set pressure such that anisotropy is 2.0
-        # p_parallel = 1.0 (pxxs2), p_perp = (pyys2 + pzzs2)/2 = (2.0 + 2.0)/2 = 2.0
-        # Paniso = p_perp / p_parallel = 2.0 / 1.0 = 2.0
-        w_data[:, :, 16] .= 1.0f0 # pxxs2
-        w_data[:, :, 17] .= 2.0f0 # pyys2
-        w_data[:, :, 18] .= 2.0f0 # pzzs2
-
-        head = Batsrus.BatsHead(
-            2, "Mock", 0, 0.0, false, 0, nw, [nx, ny], Float32[],
-            ["x", "y"], names, String[]
-        )
-        x_data = zeros(Float32, nx, ny, 2)
-        list = Batsrus.FileList("mock.out", Batsrus.Real4Bat, ".", 0, 1, 0)
-        bd_mock = BATS(head, list, x_data, w_data)
-
-        # Test species 2
-        a2 = get_anisotropy(bd_mock, 2)
-        @test all(a2 .== 2.0f0)
     end
 
     @testset "Current Density" begin
