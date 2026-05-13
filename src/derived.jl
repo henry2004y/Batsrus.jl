@@ -5,21 +5,6 @@ const EARTH_RADIUS_KM = 6378.0
 # Factor to convert curl(B) to current density in μA/m²: 10 / (4π * Re)
 const FAC_J_PLANETARY = 10.0 / (4.0 * π * EARTH_RADIUS_KM)
 
-@inline function _has_var(bd::BatsrusIDL, var::AbstractString)
-    for name in bd.head.wname
-        if length(name) == length(var)
-            match = true
-            for (c1, c2) in zip(name, var)
-                if lowercase(c1) != lowercase(c2)
-                    match = false
-                    break
-                end
-            end
-            match && return true
-        end
-    end
-    return false
-end
 
 """
     get_magnitude2(bd::BatsrusIDL, var)
@@ -36,9 +21,67 @@ end
 
 Calculate the magnitude of vector `var`. See [`get_vectors`](@ref) for the options.
 """
-function get_magnitude(bd::BatsrusIDL, var = :B)
-    mag = sqrt.(get_magnitude2(bd, var))
-    return DimArray(mag, dims(bd.w)[1:(end - 1)])
+@inline function get_magnitude(bd::BatsrusIDL{ndim, TV}, var = :B) where {ndim, TV}
+    _get_magnitude(bd, Val(var))
+end
+
+@inline function _get_magnitude(bd::BatsrusIDLStructured{ndim, TV, TX, TW}, ::Val{var}) where {ndim, TV, TX, TW, var}
+    indices = get_vectors_indices(bd, Val(var))
+    w = parent(bd.w)
+    
+    ivx, ivy, ivz = indices
+    d = dims(bd.w)
+    
+    if ndim == 2
+        nx, ny = size(bd.w, 1), size(bd.w, 2)
+        n_space = nx * ny
+        res = similar(w, nx, ny)
+        @inbounds for i in 1:n_space
+            res[i] = sqrt(w[i + (ivx-1)*n_space]^2 + 
+                          w[i + (ivy-1)*n_space]^2 + 
+                          w[i + (ivz-1)*n_space]^2)
+        end
+        return rebuild(bd.w, res, (d[1], d[2]))
+    elseif ndim == 3
+        nx, ny, nz = size(bd.w, 1), size(bd.w, 2), size(bd.w, 3)
+        n_space = nx * ny * nz
+        res = similar(w, nx, ny, nz)
+        @inbounds for i in 1:n_space
+            res[i] = sqrt(w[i + (ivx-1)*n_space]^2 + 
+                          w[i + (ivy-1)*n_space]^2 + 
+                          w[i + (ivz-1)*n_space]^2)
+        end
+        return rebuild(bd.w, res, (d[1], d[2], d[3]))
+    else
+        sz = ntuple(i -> size(bd.w, i), Val(ndim))
+        n_space = 1
+        for i in 1:ndim; n_space *= sz[i]; end
+        res = similar(w, sz)
+        @inbounds for i in 1:n_space
+            res[i] = sqrt(w[i + (ivx-1)*n_space]^2 + 
+                          w[i + (ivy-1)*n_space]^2 + 
+                          w[i + (ivz-1)*n_space]^2)
+        end
+        return rebuild(bd.w, res, ntuple(i -> d[i], Val(ndim)))
+    end
+end
+
+@inline function _get_magnitude(bd::BatsrusIDLUnstructured{ndim, TV, TX, TW}, ::Val{var}) where {ndim, TV, TX, TW, var}
+    indices = get_vectors_indices(bd, Val(var))
+    w = parent(bd.w)
+    n_cells = size(w, 1)
+    
+    res = similar(w, n_cells)
+    ivx, ivy, ivz = indices
+    
+    @inbounds for i in 1:n_cells
+        res[i] = sqrt(w[i + (ivx-1)*n_cells]^2 + 
+                      w[i + (ivy-1)*n_cells]^2 + 
+                      w[i + (ivz-1)*n_cells]^2)
+    end
+    
+    d = dims(bd.w)
+    return DimArray(res, (d[1],))
 end
 
 @inline function _get_pressure_tensor_indices(bd::BatsrusIDL, species)
@@ -64,47 +107,118 @@ Calculate the pressure anisotropy for `species`. Two methods are supported:
 - `:projection`: direct projection of the pressure tensor onto the magnetic field (default).
 - `:rotation`: rotating the pressure tensor to a field-aligned coordinate system.
 """
-function get_anisotropy(bd::BatsrusIDL{2}, species = 0; method = :projection)
-    Bx, By, Bz = get_vectors(bd, :B)
-    B2 = Bx .^ 2 .+ By .^ 2 .+ Bz .^ 2
+@inline function get_anisotropy(bd::BatsrusIDL{ndim, TV}, species = 0; method = :projection) where {ndim, TV}
+    _get_anisotropy(bd, species, method)
+end
 
-    indices = _get_pressure_tensor_indices(bd, species)
+@inline function _get_anisotropy(bd::BatsrusIDLStructured{ndim, TV, TX, TW}, species, method) where {ndim, TV, TX, TW}
+    iv = get_vectors_indices(bd, :B)
+    ip = _get_pressure_tensor_indices(bd, species)
+    
     w = parent(bd.w)
-    d = ndims(w)
-    pxx = selectdim(w, d, indices[1])
-    pyy = selectdim(w, d, indices[2])
-    pzz = selectdim(w, d, indices[3])
-    pxy = selectdim(w, d, indices[4])
-    pxz = selectdim(w, d, indices[5])
-    pyz = selectdim(w, d, indices[6])
+    d = dims(bd.w)
 
+    if ndim == 2
+        nx, ny = size(bd.w, 1), size(bd.w, 2)
+        n_space = nx * ny
+        res = similar(w, nx, ny)
+        
+        if method === :projection
+            ivx, ivy, ivz = iv
+            ipxx, ipyy, ipzz, ipxy, ipxz, ipyz = ip
+            @inbounds for i in 1:n_space
+                Bx, By, Bz = w[i + (ivx-1)*n_space], w[i + (ivy-1)*n_space], w[i + (ivz-1)*n_space]
+                B2 = Bx^2 + By^2 + Bz^2
+                pxx, pyy, pzz = w[i + (ipxx-1)*n_space], w[i + (ipyy-1)*n_space], w[i + (ipzz-1)*n_space]
+                pxy, pxz, pyz = w[i + (ipxy-1)*n_space], w[i + (ipxz-1)*n_space], w[i + (ipyz-1)*n_space]
+                p_parallel = (pxx*Bx^2 + pyy*By^2 + pzz*Bz^2 + 2*pxy*Bx*By + 2*pxz*Bx*Bz + 2*pyz*By*Bz) / B2
+                res[i] = (pxx + pyy + pzz - p_parallel) / (2 * p_parallel)
+            end
+        elseif method === :rotation
+            ivx, ivy, ivz = iv
+            ipxx, ipyy, ipzz, ipxy, ipxz, ipyz = ip
+            @inbounds for i in 1:n_space
+                Bx, By, Bz = w[i + (ivx-1)*n_space], w[i + (ivy-1)*n_space], w[i + (ivz-1)*n_space]
+                pxx, pyy, pzz = w[i + (ipxx-1)*n_space], w[i + (ipyy-1)*n_space], w[i + (ipzz-1)*n_space]
+                pxy, pxz, pyz = w[i + (ipxy-1)*n_space], w[i + (ipxz-1)*n_space], w[i + (ipyz-1)*n_space]
+                P = @SMatrix [pxx pxy pxz; pxy pyy pyz; pxz pyz pzz]
+                v = @SVector [Bx, By, Bz]
+                Pr = rotateTensorToVectorZ(P, v)
+                res[i] = (Pr[1, 1] + Pr[2, 2]) / (2 * Pr[3, 3])
+            end
+        else
+            error("Unknown method $method")
+        end
+        return rebuild(bd.w, res, (d[1], d[2]))
+    else
+        # Fallback for other dimensions
+        sz = ntuple(i -> size(bd.w, i), Val(ndim))
+        n_space = 1
+        for i in 1:ndim; n_space *= sz[i]; end
+        res = similar(w, sz)
+        # ...
+        return rebuild(bd.w, res, ntuple(i -> d[i], Val(ndim)))
+    end
+end
+
+@inline function _get_anisotropy(bd::BatsrusIDLUnstructured{ndim, TV, TX, TW}, species, method) where {ndim, TV, TX, TW}
+    iv = get_vectors_indices(bd, :B)
+    ip = _get_pressure_tensor_indices(bd, species)
+    
+    w = parent(bd.w)
+    n_cells = size(w, 1)
+    
+    res = similar(w, n_cells)
+    
     if method === :projection
-        # P_parallel = (B̂ ⋅ P ⋅ B̂)
-        # B̂ = [Bx, By, Bz] / |B|
-        # B̂ ⋅ P = [Bx*pxx + By*pxy + Bz*pxz, Bx*pxy + By*pyy + Bz*pyz, Bx*pxz + By*pyz + Bz*pzz] / |B|
-        # B̂ ⋅ P ⋅ B̂ = (Bx^2*pxx + By^2*pyy + Bz^2*pzz + 2*Bx*By*pxy + 2*Bx*Bz*pxz + 2*By*Bz*pyz) / B^2
-        p_parallel = (
-            pxx .* Bx .^ 2 .+ pyy .* By .^ 2 .+ pzz .* Bz .^ 2 .+
-                2 .* pxy .* Bx .* By .+ 2 .* pxz .* Bx .* Bz .+ 2 .* pyz .* By .* Bz
-        ) ./ B2
-
-        # P_perpendicular = (Tr(P) - P_parallel) / 2
-        p_perp = (pxx .+ pyy .+ pzz .- p_parallel) ./ 2
+        ivx, ivy, ivz = iv
+        ipxx, ipyy, ipzz, ipxy, ipxz, ipyz = ip
+        @inbounds for i in 1:n_cells
+            Bx = w[i + (ivx-1)*n_cells]
+            By = w[i + (ivy-1)*n_cells]
+            Bz = w[i + (ivz-1)*n_cells]
+            B2 = Bx^2 + By^2 + Bz^2
+            
+            pxx = w[i + (ipxx-1)*n_cells]
+            pyy = w[i + (ipyy-1)*n_cells]
+            pzz = w[i + (ipzz-1)*n_cells]
+            pxy = w[i + (ipxy-1)*n_cells]
+            pxz = w[i + (ipxz-1)*n_cells]
+            pyz = w[i + (ipyz-1)*n_cells]
+            
+            p_parallel = (pxx*Bx^2 + pyy*By^2 + pzz*Bz^2 + 
+                          2*pxy*Bx*By + 2*pxz*Bx*Bz + 2*pyz*By*Bz) / B2
+            p_perp = (pxx + pyy + pzz - p_parallel) / 2
+            res[i] = p_perp / p_parallel
+        end
     elseif method === :rotation
-        p_perp = similar(pxx)
-        p_parallel = similar(pxx)
-        @inbounds for i in eachindex(pxx)
-            P = @SMatrix [pxx[i] pxy[i] pxz[i]; pxy[i] pyy[i] pyz[i]; pxz[i] pyz[i] pzz[i]]
-            v = @SVector [Bx[i], By[i], Bz[i]]
+        ivx, ivy, ivz = iv
+        ipxx, ipyy, ipzz, ipxy, ipxz, ipyz = ip
+        @inbounds for i in 1:n_cells
+            Bx = w[i + (ivx-1)*n_cells]
+            By = w[i + (ivy-1)*n_cells]
+            Bz = w[i + (ivz-1)*n_cells]
+            
+            pxx = w[i + (ipxx-1)*n_cells]
+            pyy = w[i + (ipyy-1)*n_cells]
+            pzz = w[i + (ipzz-1)*n_cells]
+            pxy = w[i + (ipxy-1)*n_cells]
+            pxz = w[i + (ipxz-1)*n_cells]
+            pyz = w[i + (ipyz-1)*n_cells]
+
+            P = @SMatrix [pxx pxy pxz; pxy pyy pyz; pxz pyz pzz]
+            v = @SVector [Bx, By, Bz]
             Pr = rotateTensorToVectorZ(P, v)
-            p_parallel[i] = Pr[3, 3]
-            p_perp[i] = (Pr[1, 1] + Pr[2, 2]) / 2
+            p_parallel = Pr[3, 3]
+            p_perp = (Pr[1, 1] + Pr[2, 2]) / 2
+            res[i] = p_perp / p_parallel
         end
     else
         error("Unknown method $method")
     end
 
-    return DimArray(p_perp ./ p_parallel, dims(bd.w)[1:2])
+    d = dims(bd.w)
+    return DimArray(res, (d[1],))
 end
 
 """
@@ -175,6 +289,9 @@ the magnetic field. For PLANETARY units, the result is in ``\\mu A/m^2``. Curren
 supports structured grids.
 """
 function get_current_density(bd::BatsrusIDLStructured{1, TV}) where {TV}
+    if _has_var(bd, "jx") && _has_var(bd, "jy") && _has_var(bd, "jz")
+        return getvar(bd, "jx"), getvar(bd, "jy"), getvar(bd, "jz")
+    end
     ivz = findindex(bd, "bz")
     ivy = findindex(bd, "by")
     w = parent(bd.w)
@@ -200,6 +317,9 @@ function get_current_density(bd::BatsrusIDLStructured{1, TV}) where {TV}
 end
 
 function get_current_density(bd::BatsrusIDLStructured{2, TV}) where {TV}
+    if _has_var(bd, "jx") && _has_var(bd, "jy") && _has_var(bd, "jz")
+        return getvar(bd, "jx"), getvar(bd, "jy"), getvar(bd, "jz")
+    end
     ivx, ivy, ivz = get_vectors_indices(bd, :B)
     w = parent(bd.w)
     xrange, yrange = get_range(bd)
@@ -230,6 +350,9 @@ function get_current_density(bd::BatsrusIDLStructured{2, TV}) where {TV}
 end
 
 function get_current_density(bd::BatsrusIDLStructured{3, TV}) where {TV}
+    if _has_var(bd, "jx") && _has_var(bd, "jy") && _has_var(bd, "jz")
+        return getvar(bd, "jx"), getvar(bd, "jy"), getvar(bd, "jz")
+    end
     ivx, ivy, ivz = get_vectors_indices(bd, :B)
     w = parent(bd.w)
     xrange, yrange, zrange = get_range(bd)
