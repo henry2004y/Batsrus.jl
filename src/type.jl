@@ -101,6 +101,12 @@ function BATS(head, list, x::Array{TV, Dimp1}, w::Array{TV, Dimp1}) where {TV, D
             xrange = range(x[1, 1], x[end, 1], length = size(x, 1))
             x = DimArray(x, (X(xrange), :dim))
             w = DimArray(w, (X(xrange), Dim{:var}(head.wname)))
+        else
+            # Generic N-D fallback
+            dims_x = ntuple(i -> i <= head.ndim ? Dim{i}(1:size(x, i)) : :dim, Val(Dimp1))
+            dims_w = ntuple(i -> i <= head.ndim ? Dim{i}(1:size(w, i)) : Dim{:var}(head.wname), Val(Dimp1))
+            x = DimArray(x, dims_x)
+            w = DimArray(w, dims_w)
         end
         return BatsrusIDLStructured{head.ndim, TV, typeof(x), typeof(w)}(head, list, x, w)
     end
