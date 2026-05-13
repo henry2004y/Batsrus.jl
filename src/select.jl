@@ -224,21 +224,35 @@ end
 Return indices of vector components for `var`. Supported symbols are `:B`, `:U`, `:E`,
 `:U0`, and `:U1`.
 """
-function get_vectors_indices(bd::BatsrusIDL, var::Symbol)
-    vnames = if var == :B
-        ["bx", "by", "bz"]
-    elseif var == :U
-        ["ux", "uy", "uz"]
-    elseif var == :E
-        ["ex", "ey", "ez"]
-    elseif var == :U0
-        ["uxs0", "uys0", "uzs0"]
-    elseif var == :U1
-        ["uxs1", "uys1", "uzs1"]
-    else
-        error("Unknown vector variable $var")
-    end
-    return ntuple(i -> findindex(bd, vnames[i]), length(vnames))
+@inline get_vectors_indices(bd::BatsrusIDL, var::Symbol) = get_vectors_indices(bd, Val(var))
+
+@inline function get_vectors_indices(bd::BatsrusIDL, ::Val{:B})
+    idx = findindex(bd, "bx")
+    return (idx, idx + 1, idx + 2)
+end
+
+@inline function get_vectors_indices(bd::BatsrusIDL, ::Val{:U})
+    idx = findindex(bd, "ux")
+    return (idx, idx + 1, idx + 2)
+end
+
+@inline function get_vectors_indices(bd::BatsrusIDL, ::Val{:E})
+    idx = findindex(bd, "ex")
+    return (idx, idx + 1, idx + 2)
+end
+
+@inline function get_vectors_indices(bd::BatsrusIDL, ::Val{:U0})
+    idx = findindex(bd, "uxs0")
+    return (idx, idx + 1, idx + 2)
+end
+
+@inline function get_vectors_indices(bd::BatsrusIDL, ::Val{:U1})
+    idx = findindex(bd, "uxs1")
+    return (idx, idx + 1, idx + 2)
+end
+
+function get_vectors_indices(bd::BatsrusIDL, ::Val{V}) where {V}
+    error("Unknown vector variable $V")
 end
 
 """
@@ -246,9 +260,13 @@ end
 
 Return vector components for `var` as a tuple of arrays.
 """
-function get_vectors(bd::BatsrusIDL, var::Symbol)
-    indices = get_vectors_indices(bd, var)
-    return ntuple(i -> selectdim(bd.w, ndims(bd.w), indices[i]), length(indices))
+@inline get_vectors(bd::BatsrusIDL, var::Symbol) = get_vectors(bd, Val(var))
+
+@inline function get_vectors(bd::BatsrusIDL, ::Val{V}) where {V}
+    indices = get_vectors_indices(bd, Val(V))
+    w = parent(bd.w)
+    d = ndims(w)
+    return ntuple(i -> selectdim(w, d, indices[i]), length(indices))
 end
 
 @inline Base.@propagate_inbounds Base.getindex(bd::BatsrusIDL, var) =

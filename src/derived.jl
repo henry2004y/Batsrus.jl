@@ -32,12 +32,29 @@ function get_magnitude2(bd::BatsrusIDL, var = :B)
 end
 
 """
-    get_magnitude(bd::BatsrusIDL, var)
+    get_magnitude(bd::BatsrusIDL, var = :B)
 
 Calculate the magnitude of vector `var`. See [`get_vectors`](@ref) for the options.
 """
 function get_magnitude(bd::BatsrusIDL, var = :B)
-    return sqrt.(get_magnitude2(bd, var))
+    mag = sqrt.(get_magnitude2(bd, var))
+    return DimArray(mag, dims(bd.w)[1:(end - 1)])
+end
+
+@inline function _get_pressure_tensor_indices(bd::BatsrusIDL, species)
+    if species == 0
+        idx = findindex(bd, "pxxs0")
+        return (idx, idx + 1, idx + 2, idx + 3, idx + 4, idx + 5)
+    elseif species == 1
+        idx = findindex(bd, "pxxs1")
+        return (idx, idx + 1, idx + 2, idx + 3, idx + 4, idx + 5)
+    elseif species == 2
+        idx = findindex(bd, "pxxs2")
+        return (idx, idx + 1, idx + 2, idx + 3, idx + 4, idx + 5)
+    else
+        idx = findindex(bd, "pxxs" * string(species))
+        return (idx, idx + 1, idx + 2, idx + 3, idx + 4, idx + 5)
+    end
 end
 
 """
@@ -51,12 +68,15 @@ function get_anisotropy(bd::BatsrusIDL{2}, species = 0; method = :projection)
     Bx, By, Bz = get_vectors(bd, :B)
     B2 = Bx .^ 2 .+ By .^ 2 .+ Bz .^ 2
 
-    pxx = bd[Symbol("pxxs", species)]
-    pyy = bd[Symbol("pyys", species)]
-    pzz = bd[Symbol("pzzs", species)]
-    pxy = bd[Symbol("pxys", species)]
-    pxz = bd[Symbol("pxzs", species)]
-    pyz = bd[Symbol("pyzs", species)]
+    indices = _get_pressure_tensor_indices(bd, species)
+    w = parent(bd.w)
+    d = ndims(w)
+    pxx = selectdim(w, d, indices[1])
+    pyy = selectdim(w, d, indices[2])
+    pzz = selectdim(w, d, indices[3])
+    pxy = selectdim(w, d, indices[4])
+    pxz = selectdim(w, d, indices[5])
+    pyz = selectdim(w, d, indices[6])
 
     if method === :projection
         # P_parallel = (B̂ ⋅ P ⋅ B̂)
@@ -84,7 +104,7 @@ function get_anisotropy(bd::BatsrusIDL{2}, species = 0; method = :projection)
         error("Unknown method $method")
     end
 
-    return p_perp ./ p_parallel
+    return DimArray(p_perp ./ p_parallel, dims(bd.w)[1:2])
 end
 
 """
@@ -246,10 +266,6 @@ function get_current_density(bd::BatsrusIDLUnstructured)
 end
 
 # --- Derived scalar quantities ---
-
-# Helper to check if a variable exists in the raw data
-@inline _has_var(bd::BatsrusIDL, var::AbstractString) =
-    any(x -> lowercase(x) == lowercase(var), bd.head.wname)
 
 @inline function _getvar(bd::BatsrusIDL, ::Val{:jx})
     if _has_var(bd, "jx")
