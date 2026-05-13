@@ -1,6 +1,5 @@
 # Derived quantities from raw output variables.
  
-const FAC_E_PLANETARY = 1.0e-3
 const FAC_J_PLANETARY = 10.0 / (4.0 * π * 6378.0)
 
 """
@@ -122,8 +121,7 @@ end
 """
     get_convection_E(bd::BatsrusIDL)
 
-Return the convection electric field $\mathbf{E} = -\mathbf{u}_i \times \mathbf{B}$.
-For PLANETARY units, the result is in $mV/m$.
+Return the convection electric field ``\\mathbf{E} = -\\mathbf{u}_i \\times \\mathbf{B}``.
 """
 function get_convection_E(bd::BatsrusIDL)
     Bx, By, Bz = get_vectors(bd, :B)
@@ -134,12 +132,10 @@ function get_convection_E(bd::BatsrusIDL)
     Econvy = similar(By)
     Econvz = similar(Bz)
     # -Ui × B
-    TV = eltype(Bx)
-    fac = bd.head.headline == "PLANETARY" ? TV(FAC_E_PLANETARY) : TV(1.0)
     @simd for i in eachindex(Econvx)
-        Econvx[i] = (-uiy[i] * Bz[i] + uiz[i] * By[i]) * fac
-        Econvy[i] = (-uiz[i] * Bx[i] + uix[i] * Bz[i]) * fac
-        Econvz[i] = (-uix[i] * By[i] + uiy[i] * Bx[i]) * fac
+        Econvx[i] = -uiy[i] * Bz[i] + uiz[i] * By[i]
+        Econvy[i] = -uiz[i] * Bx[i] + uix[i] * Bz[i]
+        Econvz[i] = -uix[i] * By[i] + uiy[i] * Bx[i]
     end
 
     return Econvx, Econvy, Econvz
@@ -148,8 +144,7 @@ end
 """
     get_hall_E(bd::BatsrusIDL)
 
-Return the Hall electric field $\mathbf{E}_H = (\mathbf{u}_i - \mathbf{u}_e) \times \mathbf{B}$.
-For PLANETARY units, the result is in $mV/m$.
+Return the Hall electric field ``\\mathbf{E}_H = (\\mathbf{u}_i - \\mathbf{u}_e) \\times \\mathbf{B}``.
 """
 function get_hall_E(bd::BatsrusIDL)
     Bx, By, Bz = get_vectors(bd, :B)
@@ -161,12 +156,10 @@ function get_hall_E(bd::BatsrusIDL)
     Ehally = similar(By)
     Ehallz = similar(Bz)
     # (Ui - Ue) × B
-    TV = eltype(Bx)
-    fac = bd.head.headline == "PLANETARY" ? TV(FAC_E_PLANETARY) : TV(1.0)
     for i in eachindex(Ehallx)
-        Ehallx[i] = ((uiy[i] - uey[i]) * Bz[i] - (uiz[i] - uez[i]) * By[i]) * fac
-        Ehally[i] = ((uiz[i] - uez[i]) * Bx[i] - (uix[i] - uex[i]) * Bz[i]) * fac
-        Ehallz[i] = ((uix[i] - uex[i]) * By[i] - (uiy[i] - uey[i]) * Bx[i]) * fac
+        Ehallx[i] = (uiy[i] - uey[i]) * Bz[i] - (uiz[i] - uez[i]) * By[i]
+        Ehally[i] = (uiz[i] - uez[i]) * Bx[i] - (uix[i] - uex[i]) * Bz[i]
+        Ehallz[i] = (uix[i] - uex[i]) * By[i] - (uiy[i] - uey[i]) * Bx[i]
     end
 
     return Ehallx, Ehally, Ehallz
@@ -187,8 +180,8 @@ end
 """
     get_current_density(bd::BatsrusIDL)
 
-Calculate the current density $\mathbf{J} = \nabla \times \mathbf{B} / \mu_0$ from the curl of
-the magnetic field. For PLANETARY units, the result is in $\mu A/m^2$. Currently only
+Calculate the current density ``\\mathbf{J} = \\nabla \\times \\mathbf{B} / \\mu_0`` from the curl of
+the magnetic field. For PLANETARY units, the result is in ``\\mu A/m^2``. Currently only
 supports structured grids.
 """
 function get_current_density(bd::BatsrusIDLStructured{1, TV}) where {TV}
