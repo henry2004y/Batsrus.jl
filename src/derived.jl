@@ -22,24 +22,26 @@ end
 Calculate the magnitude of vector `var`. See [`get_vectors`](@ref) for the options.
 """
 @inline function get_magnitude(bd::BatsrusIDL{ndim, TV}, var = :B) where {ndim, TV}
-    _get_magnitude(bd, Val(var))
+    return _get_magnitude(bd, Val(var))
 end
 
 @inline function _get_magnitude(bd::BatsrusIDLStructured{ndim, TV, TX, TW}, ::Val{var}) where {ndim, TV, TX, TW, var}
     indices = get_vectors_indices(bd, Val(var))
     w = parent(bd.w)
-    
+
     ivx, ivy, ivz = indices
     d = dims(bd.w)
-    
+
     if ndim == 2
         nx, ny = size(bd.w, 1), size(bd.w, 2)
         n_space = nx * ny
         res = similar(w, nx, ny)
         @inbounds for i in 1:n_space
-            res[i] = sqrt(w[i + (ivx-1)*n_space]^2 + 
-                          w[i + (ivy-1)*n_space]^2 + 
-                          w[i + (ivz-1)*n_space]^2)
+            res[i] = sqrt(
+                w[i + (ivx - 1) * n_space]^2 +
+                    w[i + (ivy - 1) * n_space]^2 +
+                    w[i + (ivz - 1) * n_space]^2
+            )
         end
         return rebuild(bd.w, res, (d[1], d[2]))
     elseif ndim == 3
@@ -47,20 +49,26 @@ end
         n_space = nx * ny * nz
         res = similar(w, nx, ny, nz)
         @inbounds for i in 1:n_space
-            res[i] = sqrt(w[i + (ivx-1)*n_space]^2 + 
-                          w[i + (ivy-1)*n_space]^2 + 
-                          w[i + (ivz-1)*n_space]^2)
+            res[i] = sqrt(
+                w[i + (ivx - 1) * n_space]^2 +
+                    w[i + (ivy - 1) * n_space]^2 +
+                    w[i + (ivz - 1) * n_space]^2
+            )
         end
         return rebuild(bd.w, res, (d[1], d[2], d[3]))
     else
         sz = ntuple(i -> size(bd.w, i), Val(ndim))
         n_space = 1
-        for i in 1:ndim; n_space *= sz[i]; end
+        for i in 1:ndim
+            n_space *= sz[i]
+        end
         res = similar(w, sz)
         @inbounds for i in 1:n_space
-            res[i] = sqrt(w[i + (ivx-1)*n_space]^2 + 
-                          w[i + (ivy-1)*n_space]^2 + 
-                          w[i + (ivz-1)*n_space]^2)
+            res[i] = sqrt(
+                w[i + (ivx - 1) * n_space]^2 +
+                    w[i + (ivy - 1) * n_space]^2 +
+                    w[i + (ivz - 1) * n_space]^2
+            )
         end
         return rebuild(bd.w, res, ntuple(i -> d[i], Val(ndim)))
     end
@@ -70,16 +78,18 @@ end
     indices = get_vectors_indices(bd, Val(var))
     w = parent(bd.w)
     n_cells = size(w, 1)
-    
+
     res = similar(w, n_cells)
     ivx, ivy, ivz = indices
-    
+
     @inbounds for i in 1:n_cells
-        res[i] = sqrt(w[i + (ivx-1)*n_cells]^2 + 
-                      w[i + (ivy-1)*n_cells]^2 + 
-                      w[i + (ivz-1)*n_cells]^2)
+        res[i] = sqrt(
+            w[i + (ivx - 1) * n_cells]^2 +
+                w[i + (ivy - 1) * n_cells]^2 +
+                w[i + (ivz - 1) * n_cells]^2
+        )
     end
-    
+
     d = dims(bd.w)
     return DimArray(res, (d[1],))
 end
@@ -108,13 +118,13 @@ Calculate the pressure anisotropy for `species`. Two methods are supported:
 - `:rotation`: rotating the pressure tensor to a field-aligned coordinate system.
 """
 @inline function get_anisotropy(bd::BatsrusIDL{ndim, TV}, species = 0; method = :projection) where {ndim, TV}
-    _get_anisotropy(bd, species, method)
+    return _get_anisotropy(bd, species, method)
 end
 
 @inline function _get_anisotropy(bd::BatsrusIDLStructured{ndim, TV, TX, TW}, species, method) where {ndim, TV, TX, TW}
     iv = get_vectors_indices(bd, :B)
     ip = _get_pressure_tensor_indices(bd, species)
-    
+
     w = parent(bd.w)
     d = dims(bd.w)
 
@@ -122,25 +132,25 @@ end
         nx, ny = size(bd.w, 1), size(bd.w, 2)
         n_space = nx * ny
         res = similar(w, nx, ny)
-        
+
         if method === :projection
             ivx, ivy, ivz = iv
             ipxx, ipyy, ipzz, ipxy, ipxz, ipyz = ip
             @inbounds for i in 1:n_space
-                Bx, By, Bz = w[i + (ivx-1)*n_space], w[i + (ivy-1)*n_space], w[i + (ivz-1)*n_space]
+                Bx, By, Bz = w[i + (ivx - 1) * n_space], w[i + (ivy - 1) * n_space], w[i + (ivz - 1) * n_space]
                 B2 = Bx^2 + By^2 + Bz^2
-                pxx, pyy, pzz = w[i + (ipxx-1)*n_space], w[i + (ipyy-1)*n_space], w[i + (ipzz-1)*n_space]
-                pxy, pxz, pyz = w[i + (ipxy-1)*n_space], w[i + (ipxz-1)*n_space], w[i + (ipyz-1)*n_space]
-                p_parallel = (pxx*Bx^2 + pyy*By^2 + pzz*Bz^2 + 2*pxy*Bx*By + 2*pxz*Bx*Bz + 2*pyz*By*Bz) / B2
+                pxx, pyy, pzz = w[i + (ipxx - 1) * n_space], w[i + (ipyy - 1) * n_space], w[i + (ipzz - 1) * n_space]
+                pxy, pxz, pyz = w[i + (ipxy - 1) * n_space], w[i + (ipxz - 1) * n_space], w[i + (ipyz - 1) * n_space]
+                p_parallel = (pxx * Bx^2 + pyy * By^2 + pzz * Bz^2 + 2 * pxy * Bx * By + 2 * pxz * Bx * Bz + 2 * pyz * By * Bz) / B2
                 res[i] = (pxx + pyy + pzz - p_parallel) / (2 * p_parallel)
             end
         elseif method === :rotation
             ivx, ivy, ivz = iv
             ipxx, ipyy, ipzz, ipxy, ipxz, ipyz = ip
             @inbounds for i in 1:n_space
-                Bx, By, Bz = w[i + (ivx-1)*n_space], w[i + (ivy-1)*n_space], w[i + (ivz-1)*n_space]
-                pxx, pyy, pzz = w[i + (ipxx-1)*n_space], w[i + (ipyy-1)*n_space], w[i + (ipzz-1)*n_space]
-                pxy, pxz, pyz = w[i + (ipxy-1)*n_space], w[i + (ipxz-1)*n_space], w[i + (ipyz-1)*n_space]
+                Bx, By, Bz = w[i + (ivx - 1) * n_space], w[i + (ivy - 1) * n_space], w[i + (ivz - 1) * n_space]
+                pxx, pyy, pzz = w[i + (ipxx - 1) * n_space], w[i + (ipyy - 1) * n_space], w[i + (ipzz - 1) * n_space]
+                pxy, pxz, pyz = w[i + (ipxy - 1) * n_space], w[i + (ipxz - 1) * n_space], w[i + (ipyz - 1) * n_space]
                 P = @SMatrix [pxx pxy pxz; pxy pyy pyz; pxz pyz pzz]
                 v = @SVector [Bx, By, Bz]
                 Pr = rotateTensorToVectorZ(P, v)
@@ -154,7 +164,9 @@ end
         # Fallback for other dimensions
         sz = ntuple(i -> size(bd.w, i), Val(ndim))
         n_space = 1
-        for i in 1:ndim; n_space *= sz[i]; end
+        for i in 1:ndim
+            n_space *= sz[i]
+        end
         res = similar(w, sz)
         # ...
         return rebuild(bd.w, res, ntuple(i -> d[i], Val(ndim)))
@@ -164,30 +176,32 @@ end
 @inline function _get_anisotropy(bd::BatsrusIDLUnstructured{ndim, TV, TX, TW}, species, method) where {ndim, TV, TX, TW}
     iv = get_vectors_indices(bd, :B)
     ip = _get_pressure_tensor_indices(bd, species)
-    
+
     w = parent(bd.w)
     n_cells = size(w, 1)
-    
+
     res = similar(w, n_cells)
-    
+
     if method === :projection
         ivx, ivy, ivz = iv
         ipxx, ipyy, ipzz, ipxy, ipxz, ipyz = ip
         @inbounds for i in 1:n_cells
-            Bx = w[i + (ivx-1)*n_cells]
-            By = w[i + (ivy-1)*n_cells]
-            Bz = w[i + (ivz-1)*n_cells]
+            Bx = w[i + (ivx - 1) * n_cells]
+            By = w[i + (ivy - 1) * n_cells]
+            Bz = w[i + (ivz - 1) * n_cells]
             B2 = Bx^2 + By^2 + Bz^2
-            
-            pxx = w[i + (ipxx-1)*n_cells]
-            pyy = w[i + (ipyy-1)*n_cells]
-            pzz = w[i + (ipzz-1)*n_cells]
-            pxy = w[i + (ipxy-1)*n_cells]
-            pxz = w[i + (ipxz-1)*n_cells]
-            pyz = w[i + (ipyz-1)*n_cells]
-            
-            p_parallel = (pxx*Bx^2 + pyy*By^2 + pzz*Bz^2 + 
-                          2*pxy*Bx*By + 2*pxz*Bx*Bz + 2*pyz*By*Bz) / B2
+
+            pxx = w[i + (ipxx - 1) * n_cells]
+            pyy = w[i + (ipyy - 1) * n_cells]
+            pzz = w[i + (ipzz - 1) * n_cells]
+            pxy = w[i + (ipxy - 1) * n_cells]
+            pxz = w[i + (ipxz - 1) * n_cells]
+            pyz = w[i + (ipyz - 1) * n_cells]
+
+            p_parallel = (
+                pxx * Bx^2 + pyy * By^2 + pzz * Bz^2 +
+                    2 * pxy * Bx * By + 2 * pxz * Bx * Bz + 2 * pyz * By * Bz
+            ) / B2
             p_perp = (pxx + pyy + pzz - p_parallel) / 2
             res[i] = p_perp / p_parallel
         end
@@ -195,16 +209,16 @@ end
         ivx, ivy, ivz = iv
         ipxx, ipyy, ipzz, ipxy, ipxz, ipyz = ip
         @inbounds for i in 1:n_cells
-            Bx = w[i + (ivx-1)*n_cells]
-            By = w[i + (ivy-1)*n_cells]
-            Bz = w[i + (ivz-1)*n_cells]
-            
-            pxx = w[i + (ipxx-1)*n_cells]
-            pyy = w[i + (ipyy-1)*n_cells]
-            pzz = w[i + (ipzz-1)*n_cells]
-            pxy = w[i + (ipxy-1)*n_cells]
-            pxz = w[i + (ipxz-1)*n_cells]
-            pyz = w[i + (ipyz-1)*n_cells]
+            Bx = w[i + (ivx - 1) * n_cells]
+            By = w[i + (ivy - 1) * n_cells]
+            Bz = w[i + (ivz - 1) * n_cells]
+
+            pxx = w[i + (ipxx - 1) * n_cells]
+            pyy = w[i + (ipyy - 1) * n_cells]
+            pzz = w[i + (ipzz - 1) * n_cells]
+            pxy = w[i + (ipxy - 1) * n_cells]
+            pxz = w[i + (ipxz - 1) * n_cells]
+            pyz = w[i + (ipyz - 1) * n_cells]
 
             P = @SMatrix [pxx pxy pxz; pxy pyy pyz; pxz pyz pzz]
             v = @SVector [Bx, By, Bz]
