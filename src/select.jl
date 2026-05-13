@@ -218,6 +218,39 @@ and returns a concretely typed array with no runtime branching inside the loop.
     return selectdim(bd.w, ndims(bd.w), varIndex_)
 end
 
+"""
+    get_vectors_indices(bd::BatsrusIDL, var::Symbol)
+
+Return indices of vector components for `var`. Supported symbols are `:B`, `:U`, `:E`,
+`:U0`, and `:U1`.
+"""
+function get_vectors_indices(bd::BatsrusIDL, var::Symbol)
+    vnames = if var == :B
+        ["bx", "by", "bz"]
+    elseif var == :U
+        ["ux", "uy", "uz"]
+    elseif var == :E
+        ["ex", "ey", "ez"]
+    elseif var == :U0
+        ["uxs0", "uys0", "uzs0"]
+    elseif var == :U1
+        ["uxs1", "uys1", "uzs1"]
+    else
+        error("Unknown vector variable $var")
+    end
+    return ntuple(i -> findindex(bd, vnames[i]), length(vnames))
+end
+
+"""
+    get_vectors(bd::BatsrusIDL, var::Symbol)
+
+Return vector components for `var` as a tuple of arrays.
+"""
+function get_vectors(bd::BatsrusIDL, var::Symbol)
+    indices = get_vectors_indices(bd, var)
+    return ntuple(i -> selectdim(bd.w, ndims(bd.w), indices[i]), length(indices))
+end
+
 @inline Base.@propagate_inbounds Base.getindex(bd::BatsrusIDL, var) =
     getvar(bd, var)
 
