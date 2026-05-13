@@ -1,6 +1,25 @@
 # Derived quantities from raw output variables.
 
-const FAC_J_PLANETARY = 10.0 / (4.0 * π * 6378.0)
+# Earth radius in km used for current density scaling in PLANETARY units.
+const EARTH_RADIUS_KM = 6378.0
+# Factor to convert curl(B) to current density in μA/m²: 10 / (4π * Re)
+const FAC_J_PLANETARY = 10.0 / (4.0 * π * EARTH_RADIUS_KM)
+
+@inline function _has_var(bd::BatsrusIDL, var::AbstractString)
+    for name in bd.head.wname
+        if length(name) == length(var)
+            match = true
+            for (c1, c2) in zip(name, var)
+                if lowercase(c1) != lowercase(c2)
+                    match = false
+                    break
+                end
+            end
+            match && return true
+        end
+    end
+    return false
+end
 
 """
     get_magnitude2(bd::BatsrusIDL, var)
@@ -22,41 +41,48 @@ function get_magnitude(bd::BatsrusIDL, var = :B)
 end
 
 """
-    get_anisotropy(bd::BatsrusIDL, species=0)
+    get_anisotropy(bd::BatsrusIDL, species=0; method=:projection)
 
-Calculate the pressure anisotropy for `species`.
+Calculate the pressure anisotropy for `species`. Two methods are supported:
+- `:projection`: direct projection of the pressure tensor onto the magnetic field (default).
+- `:rotation`: rotating the pressure tensor to a field-aligned coordinate system.
 """
-function get_anisotropy(bd::BatsrusIDL{2}, species = 0)
+function get_anisotropy(bd::BatsrusIDL{2}, species = 0; method = :projection)
     Bx, By, Bz = get_vectors(bd, :B)
     B2 = Bx .^ 2 .+ By .^ 2 .+ Bz .^ 2
 
-    if species == 0
-        pxx = bd[:pxxs0]
-        pyy = bd[:pyys0]
-        pzz = bd[:pzzs0]
-        pxy = bd[:pxys0]
-        pxz = bd[:pxzs0]
-        pyz = bd[:pyzs0]
+    pxx = bd[Symbol("pxxs", species)]
+    pyy = bd[Symbol("pyys", species)]
+    pzz = bd[Symbol("pzzs", species)]
+    pxy = bd[Symbol("pxys", species)]
+    pxz = bd[Symbol("pxzs", species)]
+    pyz = bd[Symbol("pyzs", species)]
+
+    if method === :projection
+        # P_parallel = (B̂ ⋅ P ⋅ B̂)
+        # B̂ = [Bx, By, Bz] / |B|
+        # B̂ ⋅ P = [Bx*pxx + By*pxy + Bz*pxz, Bx*pxy + By*pyy + Bz*pyz, Bx*pxz + By*pyz + Bz*pzz] / |B|
+        # B̂ ⋅ P ⋅ B̂ = (Bx^2*pxx + By^2*pyy + Bz^2*pzz + 2*Bx*By*pxy + 2*Bx*Bz*pxz + 2*By*Bz*pyz) / B^2
+        p_parallel = (
+            pxx .* Bx .^ 2 .+ pyy .* By .^ 2 .+ pzz .* Bz .^ 2 .+
+                2 .* pxy .* Bx .* By .+ 2 .* pxz .* Bx .* Bz .+ 2 .* pyz .* By .* Bz
+        ) ./ B2
+
+        # P_perpendicular = (Tr(P) - P_parallel) / 2
+        p_perp = (pxx .+ pyy .+ pzz .- p_parallel) ./ 2
+    elseif method === :rotation
+        p_perp = similar(pxx)
+        p_parallel = similar(pxx)
+        @inbounds for i in eachindex(pxx)
+            P = @SMatrix [pxx[i] pxy[i] pxz[i]; pxy[i] pyy[i] pyz[i]; pxz[i] pyz[i] pzz[i]]
+            v = @SVector [Bx[i], By[i], Bz[i]]
+            Pr = rotateTensorToVectorZ(P, v)
+            p_parallel[i] = Pr[3, 3]
+            p_perp[i] = (Pr[1, 1] + Pr[2, 2]) / 2
+        end
     else
-        pxx = bd[:pxxs1]
-        pyy = bd[:pyys1]
-        pzz = bd[:pzzs1]
-        pxy = bd[:pxys1]
-        pxz = bd[:pxzs1]
-        pyz = bd[:pyzs1]
+        error("Unknown method $method")
     end
-
-    # P_parallel = (B̂ ⋅ P ⋅ B̂)
-    # B̂ = [Bx, By, Bz] / |B|
-    # B̂ ⋅ P = [Bx*pxx + By*pxy + Bz*pxz, Bx*pxy + By*pyy + Bz*pyz, Bx*pxz + By*pyz + Bz*pzz] / |B|
-    # B̂ ⋅ P ⋅ B̂ = (Bx^2*pxx + By^2*pyy + Bz^2*pzz + 2*Bx*By*pxy + 2*Bx*Bz*pxz + 2*By*Bz*pyz) / B^2
-    p_parallel = (
-        pxx .* Bx .^ 2 .+ pyy .* By .^ 2 .+ pzz .* Bz .^ 2 .+
-            2 .* pxy .* Bx .* By .+ 2 .* pxz .* Bx .* Bz .+ 2 .* pyz .* By .* Bz
-    ) ./ B2
-
-    # P_perpendicular = (Tr(P) - P_parallel) / 2
-    p_perp = (pxx .+ pyy .+ pzz .- p_parallel) ./ 2
 
     return p_perp ./ p_parallel
 end
@@ -68,7 +94,9 @@ Return the convection electric field ``\\mathbf{E} = -\\mathbf{u}_i \\times \\ma
 """
 function get_convection_E(bd::BatsrusIDL)
     Bx, By, Bz = get_vectors(bd, :B)
-    uix, uiy, uiz = get_vectors(bd, :U)
+    # Fallback to species 1 if 'ux' is not found
+    Utype = _has_var(bd, "ux") ? :U : :U1
+    uix, uiy, uiz = get_vectors(bd, Utype)
 
     Econvx = similar(Bx)
     Econvy = similar(By)
@@ -116,7 +144,7 @@ Construct vector of `var` from its scalar components. Alternatively, check
 function fill_vector_from_scalars(bd::BatsrusIDL, var)
     vt = get_vectors(bd, var)
     Rpost = CartesianIndices(size(bd.x)[1:(end - 1)])
-    return v = @inbounds [vt[iv][i] for iv in 1:3, i in Rpost]
+    return @inbounds [vt[iv][i] for iv in 1:3, i in Rpost]
 end
 
 """

@@ -8,7 +8,7 @@ using Printf, Reexport
 using Parsers
 using FastInterpolations: linear_interp, cubic_interp, Extrap, Series
 import NaturalNeighbours as NN
-using StaticArrays: SVector, @SMatrix, SA, MVector
+using StaticArrays: SVector, @SVector, @SMatrix, SA, MVector
 using DimensionalData
 using ProgressMeter
 
