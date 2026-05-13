@@ -50,7 +50,7 @@ bd["rho"][X=-10 .. 10, Y=-0.5 .. 0.5]
 
 ## Derived variables
 
-We provide utility methods `get_magnitude`, `get_magnitude2`, and `get_anisotropy` for calculating derived quantities. For convenience and performance, these can be accessed directly using symbols as indices:
+We provide utility methods `get_magnitude`, `get_magnitude2`, `get_anisotropy`, and `get_current_density` for calculating derived quantities. For convenience and performance, these can be accessed directly using symbols as indices:
 
 ```julia
 # Magnitude access
@@ -58,13 +58,27 @@ Bmag = bd[:b]   # Equivalent to get_magnitude(bd, :B)
 B2   = bd[:b2]  # Equivalent to get_magnitude2(bd, :B)
 Emag = bd[:e]   # Equivalent to get_magnitude(bd, :E)
 Umag = bd[:u]   # Equivalent to get_magnitude(bd, :U)
+jmag = bd[:j]   # Equivalent to get_current_density magnitude
 
 # Pressure anisotropy access
 paniso0 = bd[:anisotropy0] # Equivalent to get_anisotropy(bd, 0)
 paniso1 = bd[:anisotropy1] # Equivalent to get_anisotropy(bd, 1)
+
+# Current density components
+jx = bd[:jx]
+jy = bd[:jy]
+jz = bd[:jz]
 ```
 
+Note that for PLANETARY units, the electric field is automatically scaled to $mV/m$ and the current density to $\mu A/m^2$.
+
 These symbol-based accesses are optimized to be near zero-allocation and are the recommended way to retrieve diagnostic variables in performance-critical loops.
+
+For structured grids, the current density $\mathbf{J} = \nabla \times \mathbf{B}$ can also be calculated using finite differences with `get_current_density`, which returns a tuple of `(Jx, Jy, Jz)`.
+
+```julia
+Jx, Jy, Jz = get_current_density(bd)
+```
 
 The underlying vector components can be retrieved using `get_vectors` or `get_vectors_indices`. `fill_vector_from_scalars` is also available for constructing a single array containing all three components:
 
@@ -79,14 +93,19 @@ Here is a full list of predefined derived quantities available via symbol indexi
 | Symbol / Derived Var | Meaning                          | Required variables |
 |----------------------|----------------------------------|--------------------|
 | :B                   | Magnetic field vector            | Bx, By, Bz         |
-| :E                   | Electric field vector            | Ex, Ey, Ez         |
+| :E                   | Electric field vector ($mV/m$)*  | Ex, Ey, Ez         |
 | :U                   | Velocity vector                  | Ux, Uy, Uz         |
 | :U0                  | Species 0 velocity vector        | UxS0, UyS0, UzS0   |
 | :U1                  | Species 1 velocity vector        | UxS1, UyS1, UzS1   |
+| :J                   | Current density vector ($\mu A/m^2$)* | Bx, By, Bz         |
 | :b, :b2              | Magnetic field magnitude (sq)    | Bx, By, Bz         |
-| :e                   | Electric field magnitude         | Ex, Ey, Ez         |
+| :e                   | Electric field magnitude ($mV/m$)*| Ex, Ey, Ez         |
 | :u                   | Velocity magnitude               | Ux, Uy, Uz         |
+| :j                   | Current density magnitude ($\mu A/m^2$)* | Bx, By, Bz         |
+| :jx, :jy, :jz        | Current density components ($\mu A/m^2$)* | Bx, By, Bz         |
 | :anisotropy0, 1, ... | Pressure anisotropy              | B and P tensor     |
+
+\* Units are for PLANETARY data. For other systems, the units depend on the simulation normalization.
 
 #### Finding indexes
 

@@ -109,4 +109,38 @@
         a2 = get_anisotropy(bd_mock, 2)
         @test all(a2 .== 2.0f0)
     end
+
+    @testset "Current Density" begin
+        # 2D structured verification
+        nx, ny = 5, 5
+        names = ["bx", "by", "bz"]
+        nw = length(names)
+        w_data = zeros(Float32, nx, ny, nw)
+        # B_y = x, so J_z = dBy/dx = 1
+        x_range = range(0.0f0, 4.0f0, length = nx) # dx = 1.0
+        y_range = range(0.0f0, 4.0f0, length = ny) # dy = 1.0
+        for iy in 1:ny, ix in 1:nx
+            w_data[ix, iy, 2] = x_range[ix]
+        end
+
+        head = Batsrus.BatsHead(
+            2, "Mock", 0, 0.0, false, 0, nw, [nx, ny], Float32[],
+            ["x", "y"], names, String[]
+        )
+        x_data = zeros(Float32, nx, ny, 2)
+        for iy in 1:ny, ix in 1:nx
+            x_data[ix, iy, 1] = x_range[ix]
+            x_data[ix, iy, 2] = y_range[iy]
+        end
+        list = Batsrus.FileList("mock_j.out", Batsrus.Real4Bat, ".", 0, 1, 0)
+        bd_mock = BATS(head, list, x_data, w_data)
+
+        jx, jy, jz = get_current_density(bd_mock)
+        @test all(jx .== 0.0f0)
+        @test all(jy .== 0.0f0)
+        @test all(jz .≈ 1.0f0)
+
+        @test bd_mock[:jz] == jz
+        @test bd_mock[:j] ≈ sqrt.(jx .^ 2 .+ jy .^ 2 .+ jz .^ 2)
+    end
 end
