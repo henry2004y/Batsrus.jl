@@ -1,5 +1,5 @@
 # Derived quantities from raw output variables.
- 
+
 const FAC_J_PLANETARY = 10.0 / (4.0 * π * 6378.0)
 
 """
@@ -403,22 +403,266 @@ end
 @inline _getvar(bd::BatsrusIDL{2}, ::Val{:anisotropy0}) = get_anisotropy(bd, 0)
 @inline _getvar(bd::BatsrusIDL{2}, ::Val{:anisotropy1}) = get_anisotropy(bd, 1)
 
+# Helper to check if a variable exists in the raw data
+@inline _has_var(bd::BatsrusIDL, var::AbstractString) =
+    any(x -> lowercase(x) == lowercase(var), bd.head.wname)
+
 @inline function _getvar(bd::BatsrusIDL, ::Val{:jx})
-    Jx, _, _ = get_current_density(bd)
-    return Jx
+    if _has_var(bd, "jx")
+        return selectdim(bd.w, ndims(bd.w), findindex(bd, "jx"))
+    end
+    return _compute_jx(bd)
 end
 
 @inline function _getvar(bd::BatsrusIDL, ::Val{:jy})
-    _, Jy, _ = get_current_density(bd)
-    return Jy
+    if _has_var(bd, "jy")
+        return selectdim(bd.w, ndims(bd.w), findindex(bd, "jy"))
+    end
+    return _compute_jy(bd)
 end
 
 @inline function _getvar(bd::BatsrusIDL, ::Val{:jz})
-    _, _, Jz = get_current_density(bd)
-    return Jz
+    if _has_var(bd, "jz")
+        return selectdim(bd.w, ndims(bd.w), findindex(bd, "jz"))
+    end
+    return _compute_jz(bd)
 end
 
 @inline function _getvar(bd::BatsrusIDL, ::Val{:j})
+    if _has_var(bd, "jx") && _has_var(bd, "jy") && _has_var(bd, "jz")
+        Jx = selectdim(bd.w, ndims(bd.w), findindex(bd, "jx"))
+        Jy = selectdim(bd.w, ndims(bd.w), findindex(bd, "jy"))
+        Jz = selectdim(bd.w, ndims(bd.w), findindex(bd, "jz"))
+        return sqrt.(Jx .^ 2 .+ Jy .^ 2 .+ Jz .^ 2)
+    end
     Jx, Jy, Jz = get_current_density(bd)
     return sqrt.(Jx .^ 2 .+ Jy .^ 2 .+ Jz .^ 2)
+end
+
+@inline _compute_jx(bd::BatsrusIDL) = error("jx computation not supported for this grid type.")
+@inline _compute_jy(bd::BatsrusIDL) = error("jy computation not supported for this grid type.")
+@inline _compute_jz(bd::BatsrusIDL) = error("jz computation not supported for this grid type.")
+
+@inline function _compute_jx(bd::BatsrusIDLStructured{1, TV}) where {TV}
+    return DimArray(zeros(TV, size(bd.w, 1)), dims(bd.w)[1:1])
+end
+
+@inline function _compute_jy(bd::BatsrusIDLStructured{1, TV}) where {TV}
+    ivz = findindex(bd, "bz")
+    w = parent(bd.w)
+    xrange = get_range(bd)[1]
+    dx = TV(step(xrange))
+    nx = size(w, 1)
+    jy = zeros(TV, nx)
+
+    @inbounds for ix in 1:nx
+        if ix == 1
+            dbz_dx = (w[2, ivz] - w[1, ivz]) / dx
+        elseif ix == nx
+            dbz_dx = (w[nx, ivz] - w[nx - 1, ivz]) / dx
+        else
+            dbz_dx = (w[ix + 1, ivz] - w[ix - 1, ivz]) / (2dx)
+        end
+        jy[ix] = -dbz_dx
+    end
+    if bd.head.headline == "PLANETARY"
+        jy .*= TV(FAC_J_PLANETARY)
+    end
+    return DimArray(jy, dims(bd.w)[1:1])
+end
+
+@inline function _compute_jz(bd::BatsrusIDLStructured{1, TV}) where {TV}
+    ivy = findindex(bd, "by")
+    w = parent(bd.w)
+    xrange = get_range(bd)[1]
+    dx = TV(step(xrange))
+    nx = size(w, 1)
+    jz = zeros(TV, nx)
+
+    @inbounds for ix in 1:nx
+        if ix == 1
+            dby_dx = (w[2, ivy] - w[1, ivy]) / dx
+        elseif ix == nx
+            dby_dx = (w[nx, ivy] - w[nx - 1, ivy]) / dx
+        else
+            dby_dx = (w[ix + 1, ivy] - w[ix - 1, ivy]) / (2dx)
+        end
+        jz[ix] = dby_dx
+    end
+    if bd.head.headline == "PLANETARY"
+        jz .*= TV(FAC_J_PLANETARY)
+    end
+    return DimArray(jz, dims(bd.w)[1:1])
+end
+
+@inline function _compute_jx(bd::BatsrusIDLStructured{2, TV}) where {TV}
+    ivz = findindex(bd, "bz")
+    w = parent(bd.w)
+    yrange = get_range(bd)[2]
+    dy = TV(step(yrange))
+    nx, ny = size(w, 1), size(w, 2)
+    jx = zeros(TV, nx, ny)
+
+    @inbounds for iy in 1:ny, ix in 1:nx
+        if iy == 1
+            dbz_dy = (w[ix, 2, ivz] - w[ix, 1, ivz]) / dy
+        elseif iy == ny
+            dbz_dy = (w[ix, ny, ivz] - w[ix, ny - 1, ivz]) / dy
+        else
+            dbz_dy = (w[ix, iy + 1, ivz] - w[ix, iy - 1, ivz]) / (2dy)
+        end
+        jx[ix, iy] = dbz_dy
+    end
+    if bd.head.headline == "PLANETARY"
+        jx .*= TV(FAC_J_PLANETARY)
+    end
+    return DimArray(jx, dims(bd.w)[1:2])
+end
+
+@inline function _compute_jy(bd::BatsrusIDLStructured{2, TV}) where {TV}
+    ivz = findindex(bd, "bz")
+    w = parent(bd.w)
+    xrange = get_range(bd)[1]
+    dx = TV(step(xrange))
+    nx, ny = size(w, 1), size(w, 2)
+    jy = zeros(TV, nx, ny)
+
+    @inbounds for iy in 1:ny, ix in 1:nx
+        if ix == 1
+            dbz_dx = (w[2, iy, ivz] - w[1, iy, ivz]) / dx
+        elseif ix == nx
+            dbz_dx = (w[nx, iy, ivz] - w[nx - 1, iy, ivz]) / dx
+        else
+            dbz_dx = (w[ix + 1, iy, ivz] - w[ix - 1, iy, ivz]) / (2dx)
+        end
+        jy[ix, iy] = -dbz_dx
+    end
+    if bd.head.headline == "PLANETARY"
+        jy .*= TV(FAC_J_PLANETARY)
+    end
+    return DimArray(jy, dims(bd.w)[1:2])
+end
+
+@inline function _compute_jz(bd::BatsrusIDLStructured{2, TV}) where {TV}
+    ivx, ivy = findindex(bd, "bx"), findindex(bd, "by")
+    w = parent(bd.w)
+    xrange, yrange = get_range(bd)
+    dx, dy = TV(step(xrange)), TV(step(yrange))
+    nx, ny = size(w, 1), size(w, 2)
+    jz = zeros(TV, nx, ny)
+
+    @inbounds for iy in 1:ny, ix in 1:nx
+        if ix == 1
+            dby_dx = (w[2, iy, ivy] - w[1, iy, ivy]) / dx
+        elseif ix == nx
+            dby_dx = (w[nx, iy, ivy] - w[nx - 1, iy, ivy]) / dx
+        else
+            dby_dx = (w[ix + 1, iy, ivy] - w[ix - 1, iy, ivy]) / (2dx)
+        end
+        if iy == 1
+            dbx_dy = (w[ix, 2, ivx] - w[ix, 1, ivx]) / dy
+        elseif iy == ny
+            dbx_dy = (w[ix, ny, ivx] - w[ix, ny - 1, ivx]) / dy
+        else
+            dbx_dy = (w[ix, iy + 1, ivx] - w[ix, iy - 1, ivx]) / (2dy)
+        end
+        jz[ix, iy] = dby_dx - dbx_dy
+    end
+    if bd.head.headline == "PLANETARY"
+        jz .*= TV(FAC_J_PLANETARY)
+    end
+    return DimArray(jz, dims(bd.w)[1:2])
+end
+
+@inline function _compute_jx(bd::BatsrusIDLStructured{3, TV}) where {TV}
+    ivy, ivz = findindex(bd, "by"), findindex(bd, "bz")
+    w = parent(bd.w)
+    _, yrange, zrange = get_range(bd)
+    dy, dz = TV(step(yrange)), TV(step(zrange))
+    nx, ny, nz = size(w, 1), size(w, 2), size(w, 3)
+    jx = zeros(TV, nx, ny, nz)
+
+    @inbounds for iz in 1:nz, iy in 1:ny, ix in 1:nx
+        if iy == 1
+            dbz_dy = (w[ix, 2, iz, ivz] - w[ix, 1, iz, ivz]) / dy
+        elseif iy == ny
+            dbz_dy = (w[ix, ny, iz, ivz] - w[ix, ny - 1, iz, ivz]) / dy
+        else
+            dbz_dy = (w[ix, iy + 1, iz, ivz] - w[ix, iy - 1, iz, ivz]) / (2dy)
+        end
+        if iz == 1
+            dby_dz = (w[ix, iy, 2, ivy] - w[ix, iy, 1, ivy]) / dz
+        elseif iz == nz
+            dby_dz = (w[ix, iy, nz, ivy] - w[ix, iy, nz - 1, ivy]) / dz
+        else
+            dby_dz = (w[ix, iy, iz + 1, ivy] - w[ix, iy, iz - 1, ivy]) / (2dz)
+        end
+        jx[ix, iy, iz] = dbz_dy - dby_dz
+    end
+    if bd.head.headline == "PLANETARY"
+        jx .*= TV(FAC_J_PLANETARY)
+    end
+    return DimArray(jx, dims(bd.w)[1:3])
+end
+
+@inline function _compute_jy(bd::BatsrusIDLStructured{3, TV}) where {TV}
+    ivx, ivz = findindex(bd, "bx"), findindex(bd, "bz")
+    w = parent(bd.w)
+    xrange, _, zrange = get_range(bd)
+    dx, dz = TV(step(xrange)), TV(step(zrange))
+    nx, ny, nz = size(w, 1), size(w, 2), size(w, 3)
+    jy = zeros(TV, nx, ny, nz)
+
+    @inbounds for iz in 1:nz, iy in 1:ny, ix in 1:nx
+        if iz == 1
+            dbx_dz = (w[ix, iy, 2, ivx] - w[ix, iy, 1, ivx]) / dz
+        elseif iz == nz
+            dbx_dz = (w[ix, iy, nz, ivx] - w[ix, iy, nz - 1, ivx]) / dz
+        else
+            dbx_dz = (w[ix, iy, iz + 1, ivx] - w[ix, iy, iz - 1, ivx]) / (2dz)
+        end
+        if ix == 1
+            dbz_dx = (w[2, iy, iz, ivz] - w[1, iy, iz, ivz]) / dx
+        elseif ix == nx
+            dbz_dx = (w[nx, iy, iz, ivz] - w[nx - 1, iy, iz, ivz]) / dx
+        else
+            dbz_dx = (w[ix + 1, iy, iz, ivz] - w[ix - 1, iy, iz, ivz]) / (2dx)
+        end
+        jy[ix, iy, iz] = dbx_dz - dbz_dx
+    end
+    if bd.head.headline == "PLANETARY"
+        jy .*= TV(FAC_J_PLANETARY)
+    end
+    return DimArray(jy, dims(bd.w)[1:3])
+end
+
+@inline function _compute_jz(bd::BatsrusIDLStructured{3, TV}) where {TV}
+    ivx, ivy = findindex(bd, "bx"), findindex(bd, "by")
+    w = parent(bd.w)
+    xrange, yrange, _ = get_range(bd)
+    dx, dy = TV(step(xrange)), TV(step(yrange))
+    nx, ny, nz = size(w, 1), size(w, 2), size(w, 3)
+    jz = zeros(TV, nx, ny, nz)
+
+    @inbounds for iz in 1:nz, iy in 1:ny, ix in 1:nx
+        if ix == 1
+            dby_dx = (w[2, iy, iz, ivy] - w[1, iy, iz, ivy]) / dx
+        elseif ix == nx
+            dby_dx = (w[nx, iy, iz, ivy] - w[nx - 1, iy, iz, ivy]) / dx
+        else
+            dby_dx = (w[ix + 1, iy, iz, ivy] - w[ix - 1, iy, iz, ivy]) / (2dx)
+        end
+        if iy == 1
+            dbx_dy = (w[ix, 2, iz, ivx] - w[ix, 1, iz, ivx]) / dy
+        elseif iy == ny
+            dbx_dy = (w[ix, ny, iz, ivx] - w[ix, ny - 1, iz, ivx]) / dy
+        else
+            dbx_dy = (w[ix, iy + 1, iz, ivx] - w[ix, iy - 1, iz, ivx]) / (2dy)
+        end
+        jz[ix, iy, iz] = dby_dx - dbx_dy
+    end
+    if bd.head.headline == "PLANETARY"
+        jz .*= TV(FAC_J_PLANETARY)
+    end
+    return DimArray(jz, dims(bd.w)[1:3])
 end
