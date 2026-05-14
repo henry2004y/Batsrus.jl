@@ -143,6 +143,24 @@ end
     end
 end
 
+@inline function _get_hall_scaling(bd::BatsrusIDL, hasJ::Bool)
+    if startswith(bd.head.headline, "normalized")
+        return 1.0
+    elseif hasJ || bd.head.headline == "PLANETARY"
+        # Factor to convert (μA/m² * nT) / (amu/cc) to μV/m
+        # E [V/m] = (10⁻⁶ * 10⁻⁹) / (10⁶ * e) * (j*b/n) = 10⁻²¹ / e * (j*b/n)
+        # E [μV/m] = 10⁻¹⁵ / e * (j*b/n)
+        return 1.0e-15 / ELEMENTARY_CHARGE
+    else
+        # Factor to convert (raw_J * nT) / (amu/cc) to μV/m
+        # J_SI = (raw_J * 10⁻⁹ / 10³) / μ₀ = raw_J * 10⁻¹² / (4π*10⁻⁷)
+        # E [V/m] = (raw_J * 10⁻¹² / μ₀ * 10⁻⁹) / (10⁶ * e) = 10⁻²⁷ / (μ₀*e) * (j*b/n)
+        # E [μV/m] = 10⁻²¹ / (μ₀*e) * (j*b/n)
+        return 1.0e-21 / (4.0 * π * 1.0e-7 * ELEMENTARY_CHARGE)
+    end
+end
+
+
 """
     get_anisotropy(bd::BatsrusIDL, species=0; method=:projection)
 
@@ -249,20 +267,42 @@ end
 
 Return the Hall electric field ``\\mathbf{E}_H = (\\mathbf{u}_i - \\mathbf{u}_e) \\times \\mathbf{B}``.
 """
-function get_hall_E(bd::BatsrusIDL)
+function get_hall_E(bd::BatsrusIDL{ndim, TV}) where {ndim, TV}
     Bx, By, Bz = get_vectors(bd, :B)
-    uex, uey, uez = get_vectors(bd, :U0)
-    # Let us use H+ velocities as the ion bulk velocity and ignore heavy ions
-    uix, uiy, uiz = get_vectors(bd, :U1)
 
-    Ehallx = similar(Bx)
-    Ehally = similar(By)
-    Ehallz = similar(Bz)
-    # (Ui - Ue) × B
-    for i in eachindex(Ehallx)
-        Ehallx[i] = (uiy[i] - uey[i]) * Bz[i] - (uiz[i] - uez[i]) * By[i]
-        Ehally[i] = (uiz[i] - uez[i]) * Bx[i] - (uix[i] - uex[i]) * Bz[i]
-        Ehallz[i] = (uix[i] - uex[i]) * By[i] - (uiy[i] - uey[i]) * Bx[i]
+    if _has_var(bd, "uxs0")
+        uex, uey, uez = get_vectors(bd, :U0)
+        # Let us use H+ velocities as the ion bulk velocity and ignore heavy ions
+        uix, uiy, uiz = get_vectors(bd, :U1)
+
+        Ehallx = similar(Bx)
+        Ehally = similar(By)
+        Ehallz = similar(Bz)
+        # (Ui - Ue) × B
+        @inbounds @simd for i in eachindex(Ehallx)
+            Ehallx[i] = (uiy[i] - uey[i]) * Bz[i] - (uiz[i] - uez[i]) * By[i]
+            Ehally[i] = (uiz[i] - uez[i]) * Bx[i] - (uix[i] - uex[i]) * Bz[i]
+            Ehallz[i] = (uix[i] - uex[i]) * By[i] - (uiy[i] - uey[i]) * Bx[i]
+        end
+    else
+        hasJ = _has_var(bd, "jx")
+        Jx, Jy, Jz = get_current_density(bd)
+        rho = _has_var(bd, "rho") ? getvar(bd, "rho") : getvar(bd, "rhos1")
+        # Ions are species 1 by convention
+        m = _get_species_mass(bd, 1)
+        C = TV(_get_hall_scaling(bd, hasJ))
+
+        Ehallx = similar(Bx)
+        Ehally = similar(By)
+        Ehallz = similar(Bz)
+
+        # E = C * J × B / (rho/m)
+        @inbounds @simd for i in eachindex(Ehallx)
+            ne_inv = m / rho[i]
+            Ehallx[i] = C * ne_inv * (Jy[i] * Bz[i] - Jz[i] * By[i])
+            Ehally[i] = C * ne_inv * (Jz[i] * Bx[i] - Jx[i] * Bz[i])
+            Ehallz[i] = C * ne_inv * (Jx[i] * By[i] - Jy[i] * Bx[i])
+        end
     end
 
     return Ehallx, Ehally, Ehallz

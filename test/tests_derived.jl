@@ -250,6 +250,21 @@
 
         w_hall = get_hall_E(bd_aniso)
         @test w_hall[2][2, 1] ≈ -782.2945f0
+
+        # MHD Mock
+        nx, ny = 2, 2
+        names = ["bx", "by", "bz", "rho", "jx", "jy", "jz"]
+        w_data = zeros(Float32, nx, ny, length(names))
+        w_data[:, :, 1] .= 1.0f0 # B = [1, 0, 0]
+        w_data[:, :, 4] .= 1.0f0 # rho = 1
+        w_data[:, :, 6] .= 1.0f0 # J = [0, 1, 0]
+        head = Batsrus.BatsHead(
+            2, "normalized", 0, 0.0f0, false, 0, length(names), [nx, ny], Float32[],
+            ["x", "y"], names, String[]
+        )
+        bd_mhd = BATS(head, Batsrus.FileList("mock_hall_mhd.out", Batsrus.Real4Bat, ".", 0, 1, 0), zeros(Float32, nx, ny, 2), w_data)
+        ehx, ehy, ehz = get_hall_E(bd_mhd)
+        @test all(ehz .== -1.0f0)
     end
 
     @testset "Time Series Analysis" begin
