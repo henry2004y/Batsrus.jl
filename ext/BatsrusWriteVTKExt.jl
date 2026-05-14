@@ -80,7 +80,7 @@ Convert 3D BATSRUS *.out to VTK. If `filename` does not end with "out", it tries
 
 # Keywords
 
-  - `gridType::Symbol`: Type of target VTK grid (vti: image, vtr: rectilinear, vts: structured grid).
+  - `gridType::Symbol`: Type of target VTK grid (:vti: image, :vtr: rectilinear, :vts: structured grid, :vtm: multiblock).
 """
 function Batsrus.convertIDLtoVTK(
         filename::AbstractString;
@@ -168,72 +168,132 @@ function Batsrus.convertIDLtoVTK(
         # info, tree, and out files
         bd = load(filename * ".out")
         batl = Batl(readhead(filename * ".info"), readtree(filename)...)
-        connectivity = getConnectivity(batl)
 
-        outname = filename
+        if outname == "out"
+            outname = filename
+        end
 
         nDim = batl.nDim
         nVar = length(bd.head.wname)
-        nCell = size(connectivity, 2)
-        if nDim == 3
-            if batl.head.dxPlot_D[1] ≥ 0.0
-                @error "Why are there duplicate points?"
-            else
-                points = bd.x[:, 1, 1, :]'
-            end
-        elseif nDim == 2
-            if batl.head.dxPlot_D[1] ≥ 0.0 # points are not sorted in postproc.f90
-                @error "Why are there duplicate points? Ask!"
-                points = bd.x[:, 1, :]'
-            else # points are sorted in postproc.f90!
-                @error "point original order cannot be retrieved!"
-            end
-        end
-        cells = Vector{MeshCell{VTKCellType, Array{Int32, 1}}}(undef, nCell)
+        nI, nJ, nK = batl.head.nI, batl.head.nJ, batl.head.nK
 
-        if nDim == 3
-            @inbounds for i in 1:nCell
-                cells[i] = MeshCell(VTKCellTypes.VTK_HEXAHEDRON, connectivity[:, i])
-            end
-        elseif nDim == 2
-            @inbounds for i in 1:nCell
-                cells[i] = MeshCell(VTKCellTypes.VTK_QUAD, connectivity[:, i])
-            end
-        end
+        if gridType == :vtm
+            vtm = vtk_multiblock(outname)
+            blockSize = nI * nJ * nK
+            leaf_indices = findall(x -> x == Batsrus.used_,
+                @view batl.iTree_IA[Batsrus.status_, :])
 
-        vtkfile = vtk_grid(filename, points, cells)
+            for (ib, node_idx) in enumerate(leaf_indices)
+                cell_range = (ib - 1) * blockSize + 1:ib * blockSize
 
-        for ivar in 1:nVar
-            if endswith(bd.head.wname[ivar], "x") # vector
                 if nDim == 3
-                    var1 = @view bd.w[:, 1, 1, ivar]
-                    var2 = @view bd.w[:, 1, 1, ivar + 1]
-                    var3 = @view bd.w[:, 1, 1, ivar + 2]
-                    var = (var1, var2, var3)
-                    vtkfile[bd.head.wname[ivar][1:(end - 1)], VTKPointData()] = var
-                elseif nDim == 2 # not sure how VTK handles 2D vector!
-                    var1 = @view bd.w[:, 1, ivar]
-                    var2 = @view bd.w[:, 1, ivar + 1]
-                    vtkfile[bd.head.wname[ivar][1:(end - 1)], VTKPointData()] = (var1, var2)
-                end
-            elseif endswith(bd.head.wname[ivar], r"y|z")
-                continue
-            else
-                if nDim == 3
-                    var = @view bd.w[:, 1, 1, ivar]
+                    x_block = reshape(@view(bd.x[cell_range, 1, 1, 1]), nI, nJ, nK)
+                    y_block = reshape(@view(bd.x[cell_range, 1, 1, 2]), nI, nJ, nK)
+                    z_block = reshape(@view(bd.x[cell_range, 1, 1, 3]), nI, nJ, nK)
+
+                    xi, yi, zi = x_block[:, 1, 1], y_block[1, :, 1], z_block[1, 1, :]
+
+                    vtk_grid(vtm, xi, yi, zi) do vtk
+                        for ivar in 1:nVar
+                            if endswith(bd.head.wname[ivar], "x") # vector
+                                var1 = reshape(@view(bd.w[cell_range, 1, 1, ivar]), nI, nJ, nK)
+                                var2 = reshape(@view(bd.w[cell_range, 1, 1, ivar + 1]), nI, nJ, nK)
+                                var3 = reshape(@view(bd.w[cell_range, 1, 1, ivar + 2]), nI, nJ, nK)
+                                vtk_point_data(vtk, (var1, var2, var3), bd.head.wname[ivar][1:(end - 1)])
+                            elseif endswith(bd.head.wname[ivar], r"y|z")
+                                continue
+                            else
+                                var = reshape(@view(bd.w[cell_range, 1, 1, ivar]), nI, nJ, nK)
+                                vtk_point_data(vtk, var, bd.head.wname[ivar])
+                            end
+                        end
+                    end
                 elseif nDim == 2
-                    var = @view bd.w[:, 1, ivar]
-                end
-                vtkfile[bd.head.wname[ivar], VTKPointData()] = var
-            end
-        end
+                    x_block = reshape(@view(bd.x[cell_range, 1, 1]), nI, nJ)
+                    y_block = reshape(@view(bd.x[cell_range, 1, 2]), nI, nJ)
 
-        outfiles = vtk_save(vtkfile)
+                    xi, yi = x_block[:, 1], y_block[1, :]
+
+                    vtk_grid(vtm, xi, yi) do vtk
+                        for ivar in 1:nVar
+                            if endswith(bd.head.wname[ivar], "x") # vector
+                                var1 = reshape(@view(bd.w[cell_range, 1, ivar]), nI, nJ)
+                                var2 = reshape(@view(bd.w[cell_range, 1, ivar + 1]), nI, nJ)
+                                vtk_point_data(vtk, (var1, var2), bd.head.wname[ivar][1:(end - 1)])
+                            elseif endswith(bd.head.wname[ivar], r"y|z")
+                                continue
+                            else
+                                var = reshape(@view(bd.w[cell_range, 1, ivar]), nI, nJ)
+                                vtk_point_data(vtk, var, bd.head.wname[ivar])
+                            end
+                        end
+                    end
+                end
+            end
+            outfiles = vtk_save(vtm)
+        else
+            connectivity = getConnectivity(batl)
+            nCell = size(connectivity, 2)
+            if nDim == 3
+                if batl.head.dxPlot_D[1] ≥ 0.0
+                    @error "Why are there duplicate points?"
+                else
+                    points = bd.x[:, 1, 1, :]'
+                end
+            elseif nDim == 2
+                if batl.head.dxPlot_D[1] ≥ 0.0 # points are not sorted in postproc.f90
+                    @error "Why are there duplicate points? Ask!"
+                    points = bd.x[:, 1, :]'
+                else # points are sorted in postproc.f90!
+                    @error "point original order cannot be retrieved!"
+                end
+            end
+            cells = Vector{MeshCell{VTKCellType, Array{Int32, 1}}}(undef, nCell)
+
+            if nDim == 3
+                @inbounds for i in 1:nCell
+                    cells[i] = MeshCell(VTKCellTypes.VTK_HEXAHEDRON, connectivity[:, i])
+                end
+            elseif nDim == 2
+                @inbounds for i in 1:nCell
+                    cells[i] = MeshCell(VTKCellTypes.VTK_QUAD, connectivity[:, i])
+                end
+            end
+
+            vtkfile = vtk_grid(filename, points, cells)
+
+            for ivar in 1:nVar
+                if endswith(bd.head.wname[ivar], "x") # vector
+                    if nDim == 3
+                        var1 = @view bd.w[:, 1, 1, ivar]
+                        var2 = @view bd.w[:, 1, 1, ivar + 1]
+                        var3 = @view bd.w[:, 1, 1, ivar + 2]
+                        var = (var1, var2, var3)
+                        vtkfile[bd.head.wname[ivar][1:(end - 1)], VTKPointData()] = var
+                    elseif nDim == 2 # not sure how VTK handles 2D vector!
+                        var1 = @view bd.w[:, 1, ivar]
+                        var2 = @view bd.w[:, 1, ivar + 1]
+                        vtkfile[bd.head.wname[ivar][1:(end - 1)], VTKPointData()] = (var1, var2)
+                    end
+                elseif endswith(bd.head.wname[ivar], r"y|z")
+                    continue
+                else
+                    if nDim == 3
+                        var = @view bd.w[:, 1, 1, ivar]
+                    elseif nDim == 2
+                        var = @view bd.w[:, 1, ivar]
+                    end
+                    vtkfile[bd.head.wname[ivar], VTKPointData()] = var
+                end
+            end
+
+            outfiles = vtk_save(vtkfile)
+        end
     end
 
     verbose && @info "$(filename) finished conversion."
 
-    return
+    return outfiles
 end
 
 """

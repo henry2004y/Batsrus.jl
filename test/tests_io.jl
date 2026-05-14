@@ -134,6 +134,14 @@ end
     connectivity = getConnectivity(batl)
     sha_str = bytes2hex(sha256(string(connectivity)))
     @test sha_str == "c6c5a65a46d86a9ba4096228c1516f89275e45e295cd305eb70c281a770ede74"
+
+    # MultiBlock VTM
+    mktempdir() do tmpdir
+        outname = joinpath(tmpdir, "test_vtm")
+        outfiles = convertIDLtoVTK(filetag; gridType = :vtm, outname)
+        @test isfile(outname * ".vtm")
+        @test length(outfiles) > 1
+    end
 end
 
 @testset "HDF5" begin
