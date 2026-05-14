@@ -380,10 +380,12 @@ end
 @inline function _getvar(bd::BatsrusIDL, ::Val{:j})
     if _has_var(bd, "jx") && _has_var(bd, "jy") && _has_var(bd, "jz")
         iv = findindex(bd, "jx")
-        J = selectdim(bd.w, ndims(bd.w), iv:iv+2)
-        return sqrt.(selectdim(J, ndims(J), 1) .^ 2 .+
-                     selectdim(J, ndims(J), 2) .^ 2 .+
-                     selectdim(J, ndims(J), 3) .^ 2)
+        J = selectdim(bd.w, ndims(bd.w), iv:(iv + 2))
+        return sqrt.(
+            selectdim(J, ndims(J), 1) .^ 2 .+
+                selectdim(J, ndims(J), 2) .^ 2 .+
+                selectdim(J, ndims(J), 3) .^ 2
+        )
     end
     Jx, Jy, Jz = get_current_density(bd)
     return sqrt.(Jx .^ 2 .+ Jy .^ 2 .+ Jz .^ 2)

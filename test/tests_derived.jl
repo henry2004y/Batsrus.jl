@@ -24,7 +24,7 @@
         w_data[:, :, :, 3] .= 1.0f0 # bz
         head = Batsrus.BatsHead(
             3, SubString("Mock"), 0, 0.0f0, false, 0, 3, [nx, ny, nz], Float32[],
-            [SubString("x"), SubString("y"), SubString("z")], 
+            [SubString("x"), SubString("y"), SubString("z")],
             [SubString("bx"), SubString("by"), SubString("bz")], String[]
         )
         bd3d = BATS(head, Batsrus.FileList("mock_3d.out", Batsrus.Real4Bat, ".", 0, 1, 0), zeros(Float32, nx, ny, nz, 3), w_data)
@@ -36,7 +36,7 @@
         w_data_nd[:, :, :, :, 1] .= 1.0f0
         head_nd = Batsrus.BatsHead(
             4, SubString("Mock"), 0, 0.0f0, false, 0, 3, sz, Float32[],
-            [SubString("x1"), SubString("x2"), SubString("x3"), SubString("x4")], 
+            [SubString("x1"), SubString("x2"), SubString("x3"), SubString("x4")],
             [SubString("bx"), SubString("by"), SubString("bz")], String[]
         )
         bd_nd = BATS(head_nd, Batsrus.FileList("mock_4d.out", Batsrus.Real4Bat, ".", 0, 1, 0), zeros(Float32, sz..., 4), w_data_nd)
@@ -197,13 +197,13 @@
             w_data_s2[:, 16] .= 3.0f0 # pxxs2=3
             w_data_s2[:, 17] .= 1.0f0 # pyys2=1
             w_data_s2[:, 18] .= 1.0f0 # pzzs2=1
-            
+
             head_s2 = Batsrus.BatsHead(
                 1, "Mock", 0, 0.0, true, 0, length(names_s2), [2], Float32[],
                 ["x"], names_s2, String[]
             )
             bd_s2 = BATS(head_s2, Batsrus.FileList("mock_s2.out", Batsrus.Real4Bat, ".", 0, 1, 0), zeros(Float32, 2, 2), w_data_s2)
-            @test all(get_anisotropy(bd_s2, 2) .≈ 1/3.0f0)
+            @test all(get_anisotropy(bd_s2, 2) .≈ 1 / 3.0f0)
 
             # Test species 3 (tests generic species string branch)
             names_s3 = [
