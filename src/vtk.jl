@@ -84,6 +84,7 @@ end
 function Base.show(io::IO, batl::Batl)
     nLeaf = count(==(used_), @view batl.iTree_IA[status_, :])
     print(io, "Batl($(batl.nDim)D, $(nLeaf) leaves)")
+    return
 end
 
 function Base.show(io::IO, ::MIME"text/plain", batl::Batl)
@@ -99,6 +100,7 @@ function Base.show(io::IO, ::MIME"text/plain", batl::Batl)
         println(io, "  Block size: $(h.nI)x$(h.nJ)")
     end
     println(io, "  Nodes: $(nLeaf) leaves / $(nNode) total")
+    return
 end
 
 function convertTECtoVTU end
