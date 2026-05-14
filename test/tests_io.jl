@@ -142,6 +142,16 @@ end
         @test isfile(outname * ".vtm")
         @test length(outfiles) > 1
     end
+
+    # Native AMR VTHB
+    mktempdir() do tmpdir
+        outname = joinpath(tmpdir, "test_vthb")
+        outfiles = convertIDLtoVTK(filetag; gridType = :vthb, outname)
+        @test isfile(outname * ".vthb")
+        @test length(outfiles) > 1
+        vthb_content = read(outname * ".vthb", String)
+        @test contains(vthb_content, "vtkOverlappingAMR")
+    end
 end
 
 @testset "HDF5" begin
