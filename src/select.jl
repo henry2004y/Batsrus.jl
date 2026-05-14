@@ -252,7 +252,8 @@ end
 end
 
 @inline function get_vectors_indices(bd::BatsrusIDL, ::Val{:J})
-    return (findindex(bd, "jx"), findindex(bd, "jy"), findindex(bd, "jz"))
+    idx = findindex(bd, "jx")
+    return (idx, idx + 1, idx + 2)
 end
 
 function get_vectors_indices(bd::BatsrusIDL, ::Val{V}) where {V}

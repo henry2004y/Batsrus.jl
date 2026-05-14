@@ -245,7 +245,7 @@ function readtree(filetag)
 end
 
 """
-     find_grid_block(batl, xyz_D)
+    find_grid_block(batl, xyz_D)
 
 Return processor local block index that contains a point. Input location should be given in
 Cartesian coordinates.
@@ -279,7 +279,7 @@ function find_grid_block(batl::Batl, xyz_D)
 end
 
 """
-     find_tree_node(batl, Coord_D)
+    find_tree_node(batl, Coord_D)
 
 Find the node that contains a point. The point coordinates should be given in generalized
 coordinates normalized by the domain size.
@@ -347,7 +347,7 @@ function ibits(i, pos, len)
 end
 
 """
-     order_tree(batl)
+    order_tree(batl)
 
 Return maximum AMR level in the used block and the Morton curve order.
 Set iNodeMorton_I indirect index arrays according to
@@ -391,7 +391,7 @@ function order_tree(batl::Batl)
 end
 
 """
-     order_children!(batl::Batl, iNode, iMorton::Int, iNodeMorton_I::Vector{Int32})
+    order_children!(batl::Batl, iNode, iMorton::Int, iNodeMorton_I::Vector{Int32})
 
 Recursively apply Morton ordering for nodes below a root block.
 Store result into iNodeMorton_I and iMortonNode_A using the iMorton index.

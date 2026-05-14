@@ -96,7 +96,7 @@ Epx, Epy, Epz = get_pe_E(bd, species=0)
 
 The `get_pe_E` function calculates the divergence of the electron pressure tensor. For structured grids, it uses central finite differences. The species mass is automatically retrieved from simulation parameters (e.g., `ms0`, `mass0`), but can be overridden with the `mass` keyword argument. Note that for `PLANETARY` or `km` units, the resulting electric field is scaled to $\mu V/m$ for consistency with the convection and Hall terms.
 
-For structured grids, the current density ``\\mathbf{J} = \\nabla \\times \\mathbf{B}`` can also be calculated using finite differences with `get_current_density`, which returns a tuple of `(Jx, Jy, Jz)`.
+For structured grids, the current density $\mathbf{J} = \nabla \times \mathbf{B}$ can also be calculated using finite differences with `get_current_density`, which returns a tuple of `(Jx, Jy, Jz)`.
 
 ```julia
 Jx, Jy, Jz = get_current_density(bd)
@@ -119,12 +119,12 @@ Here is a full list of predefined derived quantities available via symbol indexi
 | :U                   | Velocity vector                  | Ux, Uy, Uz         |
 | :U0                  | Species 0 velocity vector        | UxS0, UyS0, UzS0   |
 | :U1                  | Species 1 velocity vector        | UxS1, UyS1, UzS1   |
-| :J                   | Current density vector (``\\mu A/m^2``)* | Bx, By, Bz         |
+| :J                   | Current density vector ($\mu A/m^2$)* | Bx, By, Bz         |
 | :b, :b2              | Magnetic field magnitude (sq)    | Bx, By, Bz         |
 | :e                   | Electric field magnitude         | Ex, Ey, Ez         |
 | :u                   | Velocity magnitude               | Ux, Uy, Uz         |
-| :j                   | Current density magnitude (``\\mu A/m^2``)* | Bx, By, Bz         |
-| :jx, :jy, :jz        | Current density components (``\\mu A/m^2``)* | Bx, By, Bz         |
+| :j                   | Current density magnitude ($\mu A/m^2$)* | Bx, By, Bz         |
+| :jx, :jy, :jz        | Current density components ($\mu A/m^2$)* | Bx, By, Bz         |
 | :anisotropy0, 1, ... | Pressure anisotropy              | B and P tensor     |
 
 \* Units are for PLANETARY data. For other systems, the units depend on the simulation normalization.
@@ -134,7 +134,17 @@ Here is a full list of predefined derived quantities available via symbol indexi
 To get the index of a certain quantity, e.g. electron number density
 
 ```julia
-ρe_= findfirst(x->x=="rhos0", bd.head.wname)
+id = findindex(bd, "rhos0")
+```
+
+#### Get grid range
+
+To extract the coordinates of the simulation grid:
+
+```julia
+ranges = get_range(bd)
+# For 2D, this is equivalent to:
+xrange, yrange = get_range(bd)
 ```
 
 #### Get variable range
