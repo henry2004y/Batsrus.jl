@@ -50,7 +50,7 @@ bd["rho"][X=-10 .. 10, Y=-0.5 .. 0.5]
 
 ## Derived variables
 
-We provide utility methods `get_magnitude`, `get_magnitude2`, `get_anisotropy`, and `get_current_density` for calculating derived quantities. For convenience and performance, these can be accessed directly using symbols as indices:
+We provide utility methods `get_magnitude`, `get_magnitude2`, `get_anisotropy`, `get_current_density`, `get_convection_E`, `get_hall_E`, and `get_pe_E` for calculating derived quantities. For convenience and performance, these can be accessed directly using symbols as indices:
 
 ```julia
 # Magnitude access
@@ -73,6 +73,28 @@ jz = bd[:jz]
 Note that for PLANETARY units, the computed current density is automatically scaled to ``\\mu A/m^2``.
 
 These symbol-based accesses are optimized to be near zero-allocation and are the recommended way to retrieve diagnostic variables in performance-critical loops.
+
+### Electric fields
+
+Electric field from the plasma simulations can be analyzed using the generalized Ohm's law.
+
+- **Convection electric field**: $\mathbf{E}_{conv} = -\mathbf{u}_i \times \mathbf{B}$
+- **Hall electric field**: $\mathbf{E}_{Hall} = (\mathbf{u}_i - \mathbf{u}_e) \times \mathbf{B}$
+- **Electron pressure gradient electric field**: $\mathbf{E}_{p_e} = -\frac{1}{n_e e} \nabla \cdot \mathbf{P}_e$
+
+```julia
+# Convection E
+Ecx, Ecy, Ecz = get_convection_E(bd)
+
+# Hall E
+Ehx, Ehy, Ehz = get_hall_E(bd)
+
+# Electron pressure gradient E
+# species=0 (default) is for electrons
+Epx, Epy, Epz = get_pe_E(bd, species=0)
+```
+
+The `get_pe_E` function calculates the divergence of the electron pressure tensor. For structured grids, it uses central finite differences. The species mass is automatically retrieved from simulation parameters (e.g., `ms0`, `mass0`), but can be overridden with the `mass` keyword argument. Note that for `PLANETARY` or `km` units, the resulting electric field is scaled to $\mu V/m$ for consistency with the convection and Hall terms.
 
 For structured grids, the current density ``\\mathbf{J} = \\nabla \\times \\mathbf{B}`` can also be calculated using finite differences with `get_current_density`, which returns a tuple of `(Jx, Jy, Jz)`.
 
