@@ -259,7 +259,7 @@
 
     @testset "Unstructured ASCII Derived" begin
         file_ascii = "bx0_mhd_6_t00000100_n00000352.out"
-        bd_ascii = load(joinpath(datapath, file_ascii))
+        bd_ascii = @suppress load(joinpath(datapath, file_ascii))
         @test get_magnitude(bd_ascii, :U)[2] == 71.85452748407637
         @test get_magnitude2(bd_ascii, :U)[2] == 5163.073119959886
         @test bd_ascii[:u] == get_magnitude(bd_ascii, :U)
@@ -451,7 +451,7 @@
         end
         bd = BATS(head, Batsrus.FileList("mock_pe.out", Batsrus.Real4Bat, ".", 0, 1, 0), x_data, w_data)
 
-        Ex, Ey, Ez = get_pe_E(bd)
+        Ex, Ey, Ez = @suppress get_pe_E(bd)
         @test size(Ex) == (nx, ny)
         # C=1, ne=1, dPxx/dx=1, other divP components 0
         @test all(Ex .≈ -1.0f0)
@@ -484,7 +484,7 @@
             x_data3d[ix, iy, iz, 3] = z_range[iz]
         end
         bd3d = BATS(head3d, Batsrus.FileList("mock_pe3d.out", Batsrus.Real4Bat, ".", 0, 1, 0), x_data3d, w_data3d)
-        Ex3d, Ey3d, Ez3d = get_pe_E(bd3d)
+        Ex3d, Ey3d, Ez3d = @suppress get_pe_E(bd3d)
         @test size(Ex3d) == (nx, ny, nz)
         @test all(Ex3d .≈ -1.0f0)
     end

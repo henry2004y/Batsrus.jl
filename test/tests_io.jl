@@ -134,6 +134,34 @@ end
     connectivity = getConnectivity(batl)
     sha_str = bytes2hex(sha256(string(connectivity)))
     @test sha_str == "c6c5a65a46d86a9ba4096228c1516f89275e45e295cd305eb70c281a770ede74"
+
+    # MultiBlock VTM
+    mktempdir() do tmpdir
+        outname = joinpath(tmpdir, "test_vtm")
+        outfiles = convertIDLtoVTK(filetag; gridType = :vtm, outname)
+        @test isfile(outname * ".vtm")
+        @test length(outfiles) > 1
+    end
+
+    # Native AMR VTHB
+    mktempdir() do tmpdir
+        outname = joinpath(tmpdir, "test_vthb")
+        outfiles = convertIDLtoVTK(filetag; gridType = :vthb, outname)
+        @test isfile(outname * ".vthb")
+        @test length(outfiles) > 1
+        vthb_content = read(outname * ".vthb", String)
+        @test contains(vthb_content, "vtkOverlappingAMR")
+    end
+
+    # Native AMR VTHN
+    mktempdir() do tmpdir
+        outname = joinpath(tmpdir, "test_vthn")
+        outfiles = convertIDLtoVTK(filetag; gridType = :vthn, outname)
+        @test isfile(outname * ".vthn")
+        @test length(outfiles) > 1
+        vthn_content = read(outname * ".vthn", String)
+        @test contains(vthn_content, "vtkNonOverlappingAMR")
+    end
 end
 
 @testset "HDF5" begin

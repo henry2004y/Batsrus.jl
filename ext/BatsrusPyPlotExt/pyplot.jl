@@ -244,7 +244,7 @@ end
 
 Plot 2D unstructured Tecplot mesh.
 """
-function plotgrid(head, data, connectivity; ax = nothing, kwargs...)
+function plotgrid(head, data, connectivity; ax = nothing, add_decorations = true, kwargs...)
     if isnothing(ax)
         ax = plt.gca()
     end
@@ -269,8 +269,10 @@ function plotgrid(head, data, connectivity; ax = nothing, kwargs...)
     end
 
     ax.set_aspect("equal")
-    xlabel(head.variable[1])
-    ylabel(head.variable[2])
+    if add_decorations
+        xlabel(head.variable[1])
+        ylabel(head.variable[2])
+    end
 
     return pc
 end
@@ -285,7 +287,7 @@ function cutplot(
         bd::BatsrusIDL{3, TV}, var::AbstractString, ax = nothing;
         plotrange = [-Inf, Inf, -Inf, Inf], dir = "x", sequence = 1,
         vmin = -Inf, vmax = Inf, vcenter = 0.0, colorscale = :linear,
-        add_colorbar = true, kwargs...
+        add_colorbar = true, add_decorations = true, kwargs...
     ) where {TV}
     x, w = bd.x, bd.w
     varIndex_ = findindex(bd, var)
@@ -319,20 +321,22 @@ function cutplot(
     c = ax.pcolormesh(cut1, cut2, W; norm, kwargs...)
     add_colorbar && colorbar(c; ax, fraction = 0.04, pad = 0.02)
 
-    title(bd.head.wname[varIndex_])
+    if add_decorations
+        title(bd.head.wname[varIndex_])
 
-    if dir == "x"
-        xlabel("y")
-        ylabel("z")
-    elseif dir == "y"
-        xlabel("x")
-        ylabel("z")
-    elseif dir == "z"
-        xlabel("x")
-        ylabel("y")
+        if dir == "x"
+            xlabel("y")
+            ylabel("z")
+        elseif dir == "y"
+            xlabel("x")
+            ylabel("z")
+        elseif dir == "z"
+            xlabel("x")
+            ylabel("y")
+        end
+
+        add_time_iteration!(bd, ax)
     end
-
-    add_time_iteration!(bd, ax)
 
     return c
 end
@@ -346,7 +350,8 @@ separated with `;`.
 """
 function streamslice(
         bd::BatsrusIDL{3, TV}, var::AbstractString, ax = nothing;
-        plotrange = [-Inf, Inf, -Inf, Inf], dir = "x", sequence = 1, kwargs...
+        plotrange = [-Inf, Inf, -Inf, Inf], dir = "x", sequence = 1,
+        add_decorations = true, kwargs...
     ) where {TV}
     x, w = bd.x, bd.w
     varstream = split(var, ";")
@@ -393,15 +398,21 @@ function streamslice(
     end
     s = ax.streamplot(xi, yi, v1', v2'; kwargs...)
 
-    if dir == "x"
-        xlabel("y")
-        ylabel("z")
-    elseif dir == "y"
-        xlabel("x")
-        ylabel("z")
-    elseif dir == "z"
-        xlabel("x")
-        ylabel("y")
+    if add_decorations
+        ax.set_title(var)
+
+        if dir == "x"
+            ax.set_xlabel("y")
+            ax.set_ylabel("z")
+        elseif dir == "y"
+            ax.set_xlabel("x")
+            ax.set_ylabel("z")
+        elseif dir == "z"
+            ax.set_xlabel("x")
+            ax.set_ylabel("y")
+        end
+
+        add_time_iteration!(bd, ax)
     end
 
     return s
@@ -416,6 +427,7 @@ function PyPlot.plot(
         bd::BatsrusIDL{1, TV},
         var::AbstractString,
         ax = nothing;
+        add_decorations = true,
         kwargs...
     ) where {TV}
     x, w = bd.x, bd.w
@@ -426,9 +438,11 @@ function PyPlot.plot(
 
     c = ax.plot(x, w[:, varIndex_]; kwargs...)
 
-    xlabel("x")
-    ylabel("$(var)")
-    add_time_iteration!(bd, ax)
+    if add_decorations
+        xlabel("x")
+        ylabel("$(var)")
+        add_time_iteration!(bd, ax)
+    end
 
     return c
 end
@@ -464,7 +478,7 @@ function PyPlot.contour(
         levels = 0, plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1,
         innermask = false, rbody = nothing,
         vmin = -Inf, vmax = Inf, vcenter = 0.0, colorscale = :linear,
-        add_colorbar = false, kwargs...
+        add_colorbar = false, add_decorations = true, kwargs...
     ) where {TV}
     Xi, Yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
     if isnothing(ax)
@@ -479,7 +493,7 @@ function PyPlot.contour(
     end
     add_colorbar && colorbar(c; ax, fraction = 0.04, pad = 0.02)
 
-    add_titles!(bd, var, ax)
+    add_titles!(bd, var, ax; add_decorations)
 
     return c
 end
@@ -497,7 +511,7 @@ function PyPlot.contourf(
         plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1, innermask = false,
         rbody = nothing,
         add_colorbar = true, vmin = -Inf, vmax = Inf, vcenter = 0.0,
-        colorscale = :linear, kwargs...
+        colorscale = :linear, add_decorations = true, kwargs...
     ) where {TV}
     Xi, Yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
     if isnothing(ax)
@@ -511,7 +525,7 @@ function PyPlot.contourf(
         c = ax.contourf(Xi, Yi, Wi; norm, kwargs...)
     end
     add_colorbar && colorbar(c; ax, fraction = 0.04, pad = 0.02)
-    add_titles!(bd, var, ax)
+    add_titles!(bd, var, ax; add_decorations)
 
     return c
 end
@@ -525,7 +539,7 @@ function PyPlot.tricontourf(
         bd::BatsrusIDL{2, TV}, var::AbstractString, ax = nothing;
         plotrange = [-Inf, Inf, -Inf, Inf],
         vmin = -Inf, vmax = Inf, vcenter = 0.0, colorscale = :linear,
-        add_colorbar = true, kwargs...
+        add_colorbar = true, add_decorations = true, kwargs...
     ) where {TV}
     x, w = bd.x, bd.w
     varIndex_ = findindex(bd, var)
@@ -550,7 +564,7 @@ function PyPlot.tricontourf(
     c = ax.tricontourf(X, Y, W; norm, kwargs...)
     add_colorbar && colorbar(c; ax, fraction = 0.04, pad = 0.02)
 
-    add_titles!(bd, var, ax)
+    add_titles!(bd, var, ax; add_decorations)
 
     return c
 end
@@ -564,7 +578,7 @@ function PyPlot.tricontour(
         bd::BatsrusIDL{2, TV}, var::AbstractString, ax = nothing;
         plotrange = [-Inf, Inf, -Inf, Inf],
         vmin = -Inf, vmax = Inf, vcenter = 0.0, colorscale = :linear,
-        add_colorbar = false, kwargs...
+        add_colorbar = false, add_decorations = true, kwargs...
     ) where {TV}
     x, w = bd.x, bd.w
     varIndex_ = findindex(bd, var)
@@ -589,7 +603,7 @@ function PyPlot.tricontour(
     c = ax.tricontour(X, Y, W; norm, kwargs...)
     add_colorbar && colorbar(c; ax, fraction = 0.04, pad = 0.02)
 
-    add_titles!(bd, var, ax)
+    add_titles!(bd, var, ax; add_decorations)
 
     return c
 end
@@ -624,7 +638,7 @@ Wrapper over `plot_trisurf` in matplotlib.
 """
 function PyPlot.plot_trisurf(
         bd::BatsrusIDL{2, TV}, var::AbstractString, ax = nothing;
-        plotrange = [-Inf, Inf, -Inf, Inf], kwargs...
+        plotrange = [-Inf, Inf, -Inf, Inf], add_decorations = true, kwargs...
     ) where {TV}
     x, w = bd.x, bd.w
     varIndex_ = findindex(bd, var)
@@ -647,7 +661,7 @@ function PyPlot.plot_trisurf(
 
     c = ax.plot_trisurf(X, Y, W; kwargs...)
 
-    add_titles!(bd, var, ax)
+    add_titles!(bd, var, ax; add_decorations)
 
     return c
 end
@@ -663,7 +677,7 @@ function PyPlot.plot_surface(
         plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1, innermask = false,
         rbody = nothing,
         vmin = -Inf, vmax = Inf, vcenter = 0.0, colorscale = :linear,
-        add_colorbar = true, kwargs...
+        add_colorbar = true, add_decorations = true, kwargs...
     ) where {TV}
     if isnothing(ax)
         ax = plt.gca()
@@ -675,7 +689,7 @@ function PyPlot.plot_surface(
     c = plot_surface(Xi, Yi, Wi; norm, kwargs...)
     add_colorbar && colorbar(c; ax, fraction = 0.04, pad = 0.02)
 
-    add_titles!(bd, var, ax)
+    add_titles!(bd, var, ax; add_decorations)
 
     return c
 end
@@ -701,7 +715,7 @@ function PyPlot.pcolormesh(
         plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1, innermask = false,
         rbody = nothing,
         vmin = -Inf, vmax = Inf, vcenter = 0.0, colorscale = :linear,
-        add_colorbar = true, kwargs...
+        add_colorbar = true, add_decorations = true, kwargs...
     ) where {TV}
     xi, yi, Wi = interp2d(bd, var, plotrange, plotinterval; innermask, rbody)
 
@@ -714,7 +728,7 @@ function PyPlot.pcolormesh(
 
     add_colorbar && colorbar(c; ax, fraction = 0.04, pad = 0.02)
 
-    add_titles!(bd, var, ax)
+    add_titles!(bd, var, ax; add_decorations)
 
     return c
 end
@@ -729,7 +743,7 @@ function PyPlot.tripcolor(
         bd::BatsrusIDL{2, TV}, var::AbstractString, ax = nothing;
         plotrange = [-Inf, Inf, -Inf, Inf], innermask = false, rbody = nothing,
         vmin = -Inf, vmax = Inf, vcenter = 0.0, colorscale = :linear,
-        add_colorbar = true, kwargs...
+        add_colorbar = true, add_decorations = true, kwargs...
     ) where {TV}
     x, w = bd.x, bd.w
 
@@ -775,7 +789,7 @@ function PyPlot.tripcolor(
     ax.set_xlim(plotrange[1], plotrange[2])
     ax.set_ylim(plotrange[3], plotrange[4])
 
-    add_titles!(bd, var, ax)
+    add_titles!(bd, var, ax; add_decorations)
 
     return c
 end
@@ -800,7 +814,7 @@ function PyPlot.imshow(
         plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = 0.1, innermask = false,
         rbody = nothing,
         add_colorbar = true, vmin = -Inf, vmax = Inf, vcenter = 0.0,
-        colorscale = :linear, kwargs...
+        colorscale = :linear, add_decorations = true, kwargs...
     ) where {
         TV,
     }
@@ -818,7 +832,7 @@ function PyPlot.imshow(
 
     add_colorbar && colorbar(c; ax, fraction = 0.04, pad = 0.02)
 
-    add_titles!(bd, var, ax)
+    add_titles!(bd, var, ax; add_decorations)
 
     return c
 end
@@ -831,7 +845,8 @@ Wrapper over `streamplot` in matplotlib.
 """
 function PyPlot.streamplot(
         bd::BatsrusIDL{2, TV}, var::AbstractString, ax = nothing;
-        plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = Inf, kwargs...
+        plotrange = [-Inf, Inf, -Inf, Inf], plotinterval = Inf,
+        add_decorations = true, kwargs...
     ) where {TV}
     xi, yi, v1, v2 = _getvector(bd, var; plotrange, plotinterval)
 
@@ -839,7 +854,11 @@ function PyPlot.streamplot(
         ax = plt.gca()
     end
 
-    return ax.streamplot(xi, yi, v1, v2; kwargs...)
+    s = ax.streamplot(xi, yi, v1, v2; kwargs...)
+
+    add_titles!(bd, var, ax; add_decorations)
+
+    return s
 end
 
 function _getvector(
@@ -947,7 +966,7 @@ Wrapper over `quiver` in matplotlib. Only supports Cartesian grid for now.
 """
 function PyPlot.quiver(
         bd::BatsrusIDL{2, TV}, var::AbstractString, ax = nothing;
-        stride::Integer = 10, kwargs...
+        stride::Integer = 10, add_decorations = true, kwargs...
     ) where {TV}
     x, w = bd.x, bd.w
     VarQuiver = split(var, ";")
@@ -965,7 +984,11 @@ function PyPlot.quiver(
         ax = plt.gca()
     end
 
-    return ax.quiver(Xq, Yq, v1q, v2q; kwargs...)
+    q = ax.quiver(Xq, Yq, v1q, v2q; kwargs...)
+
+    add_titles!(bd, var, ax; add_decorations)
+
+    return q
 end
 
 """
@@ -1019,13 +1042,24 @@ function set_colorbar(colorscale::Symbol, vmin, vmax, data = [1.0]; vcenter = 0.
     return cnorm
 end
 
-function add_titles!(bd::BatsrusIDL, var, ax)
-    varIndex_ = findindex(bd, var)
-    title(bd.head.wname[varIndex_])
+function add_titles!(bd::BatsrusIDL, var, ax; add_decorations = true)
+    add_decorations || return
 
-    xlabel(bd.head.coord[1])
-    ylabel(bd.head.coord[2])
-    return add_time_iteration!(bd, ax)
+    varstr = string(var)
+    vars = split(varstr, ";")
+    varIndex_ = findindex(bd, vars[1])
+
+    if length(vars) > 1
+        ax.set_title(varstr)
+    else
+        ax.set_title(bd.head.wname[varIndex_])
+    end
+
+    ax.set_xlabel(bd.head.coord[1])
+    ax.set_ylabel(bd.head.coord[2])
+    add_time_iteration!(bd, ax)
+
+    return
 end
 
 function add_time_iteration!(bd::BatsrusIDL, ax)

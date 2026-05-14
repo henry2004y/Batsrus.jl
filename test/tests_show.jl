@@ -28,6 +28,18 @@ using Suppressor
                 @test contains(s, "coordinates")
                 @test contains(s, "variables")
             end
+
+            @testset "Batl show" begin
+                filetag = joinpath(datapath, "3d_mhd_amr/3d__mhd_1_t00000000_n00000000")
+                if isfile(filetag * ".tree")
+                    batl = Batl(readhead(filetag * ".info"), readtree(filetag)...)
+                    s = repr(batl)
+                    @test contains(s, "Batl(3D,")
+                    s_plain = repr("text/plain", batl)
+                    @test contains(s_plain, "BATL 3D AMR grid")
+                    @test contains(s_plain, "Nodes:")
+                end
+            end
         end
     end
 end

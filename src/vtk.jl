@@ -81,6 +81,28 @@ struct Batl
     nDim::Int8
 end
 
+function Base.show(io::IO, batl::Batl)
+    nLeaf = count(==(used_), @view batl.iTree_IA[status_, :])
+    print(io, "Batl($(batl.nDim)D, $(nLeaf) leaves)")
+    return
+end
+
+function Base.show(io::IO, ::MIME"text/plain", batl::Batl)
+    nLeaf = count(==(used_), @view batl.iTree_IA[status_, :])
+    nNode = size(batl.iTree_IA, 2)
+    h = batl.head
+    println(io, "BATL $(batl.nDim)D AMR grid:")
+    if batl.nDim == 3
+        println(io, "  Domain: [$(h.CoordMin_D[1]), $(h.CoordMin_D[2]), $(h.CoordMin_D[3])] to [$(h.CoordMax_D[1]), $(h.CoordMax_D[2]), $(h.CoordMax_D[3])]")
+        println(io, "  Block size: $(h.nI)x$(h.nJ)x$(h.nK)")
+    else
+        println(io, "  Domain: [$(h.CoordMin_D[1]), $(h.CoordMin_D[2])] to [$(h.CoordMax_D[1]), $(h.CoordMax_D[2])]")
+        println(io, "  Block size: $(h.nI)x$(h.nJ)")
+    end
+    println(io, "  Nodes: $(nLeaf) leaves / $(nNode) total")
+    return
+end
+
 function convertTECtoVTU end
 
 function convertIDLtoVTK end
