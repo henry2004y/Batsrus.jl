@@ -26,6 +26,16 @@ convertIDLtoVTK(filetag)
 !!! note
     The file suffix should not be provided for this to work correctly!
 
+- 3D native AMR IDL file (`gridType=:vthb` for overlapping AMR, `gridType=:vthn` for non-overlapping AMR, `gridType=:vtm` for multiblock):
+
+```julia
+filetag = "3d_var_1_n00002500"
+convertIDLtoVTK(filetag, gridType=:vthb)
+```
+
+!!! warning
+    Native AMR conversion features are experimental.
+
 - Multiple files:
 
 ```julia

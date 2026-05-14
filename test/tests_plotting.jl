@@ -54,7 +54,7 @@ using StaticArrays
                     Float32[], ["x", "y"], ["rho"], String[]
                 )
                 bd_no_rbody = Batsrus.BATS(head_no_rbody, list, x, w)
-                xi, yi, Wi = interp2d(bd_no_rbody, "rho"; innermask = true)
+                xi, yi, Wi = @suppress interp2d(bd_no_rbody, "rho"; innermask = true)
                 @test isnan(Wi[5, 5])
                 @test !isnan(Wi[7, 7])
             end

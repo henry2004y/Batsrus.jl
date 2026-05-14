@@ -110,8 +110,8 @@ function Batsrus.plot_phase!(
     end
 
     if add_decorations
-        xlabel(_get_axis_label(_resolve_alias(x_variable)))
-        ylabel(_get_axis_label(_resolve_alias(y_variable)))
+        ax.set_xlabel(_get_axis_label(_resolve_alias(x_variable)))
+        ax.set_ylabel(_get_axis_label(_resolve_alias(y_variable)))
     end
 
     return im

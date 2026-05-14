@@ -399,16 +399,20 @@ function streamslice(
     s = ax.streamplot(xi, yi, v1', v2'; kwargs...)
 
     if add_decorations
+        ax.set_title(var)
+
         if dir == "x"
-            xlabel("y")
-            ylabel("z")
+            ax.set_xlabel("y")
+            ax.set_ylabel("z")
         elseif dir == "y"
-            xlabel("x")
-            ylabel("z")
+            ax.set_xlabel("x")
+            ax.set_ylabel("z")
         elseif dir == "z"
-            xlabel("x")
-            ylabel("y")
+            ax.set_xlabel("x")
+            ax.set_ylabel("y")
         end
+
+        add_time_iteration!(bd, ax)
     end
 
     return s
@@ -1041,11 +1045,18 @@ end
 function add_titles!(bd::BatsrusIDL, var, ax; add_decorations = true)
     add_decorations || return
 
-    varIndex_ = findindex(bd, var)
-    title(bd.head.wname[varIndex_])
+    varstr = string(var)
+    vars = split(varstr, ";")
+    varIndex_ = findindex(bd, vars[1])
 
-    xlabel(bd.head.coord[1])
-    ylabel(bd.head.coord[2])
+    if length(vars) > 1
+        ax.set_title(varstr)
+    else
+        ax.set_title(bd.head.wname[varIndex_])
+    end
+
+    ax.set_xlabel(bd.head.coord[1])
+    ax.set_ylabel(bd.head.coord[2])
     add_time_iteration!(bd, ax)
 
     return
