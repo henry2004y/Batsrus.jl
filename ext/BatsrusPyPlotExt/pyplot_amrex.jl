@@ -31,6 +31,7 @@ Plots the 2D phase space density for selected variables using PyPlot.
   - `x_range=nothing`, `y_range=nothing`, `z_range=nothing`: **Spatial selection ranges**. Only particles within these ranges in configuration space are included.
   - `log_scale=true`: Whether to use a logarithmic color scale.
   - `add_colorbar=true`: Whether to add a colorbar to the plot.
+  - `add_decorations=true`: Whether to add labels to the plot.
   - `transform=nothing`: Optional function to transform the data before binning.
   - `plot_zero_lines=false`: Whether to draw dashed lines at x=0 and y=0.
   - `normalize=false`: Whether to normalize the histogram to a probability density.
@@ -49,6 +50,7 @@ function Batsrus.plot_phase!(
         z_range = nothing,
         log_scale::Bool = true,
         add_colorbar::Bool = true,
+        add_decorations::Bool = true,
         transform::Union{Function, Nothing} = nothing,
         plot_zero_lines::Bool = false,
         normalize::Bool = false,
@@ -107,8 +109,10 @@ function Batsrus.plot_phase!(
         plt.colorbar(im; ax, label = cbar_label, pad = 0.02)
     end
 
-    xlabel(_get_axis_label(_resolve_alias(x_variable)))
-    ylabel(_get_axis_label(_resolve_alias(y_variable)))
+    if add_decorations
+        xlabel(_get_axis_label(_resolve_alias(x_variable)))
+        ylabel(_get_axis_label(_resolve_alias(y_variable)))
+    end
 
     return im
 end
