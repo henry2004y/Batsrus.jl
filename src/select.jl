@@ -210,14 +210,6 @@ and returns a concretely typed array with no runtime branching inside the loop.
 """
 @inline getvar(bd::BatsrusIDL, var::Symbol) = _getvar(bd, Val(var))
 
-# --- Derived scalar quantities ---
-@inline _getvar(bd::BatsrusIDL, ::Val{:b}) = get_magnitude(bd, :B)
-@inline _getvar(bd::BatsrusIDL, ::Val{:b2}) = get_magnitude2(bd, :B)
-@inline _getvar(bd::BatsrusIDL, ::Val{:e}) = get_magnitude(bd, :E)
-@inline _getvar(bd::BatsrusIDL, ::Val{:u}) = get_magnitude(bd, :U)
-@inline _getvar(bd::BatsrusIDL{2}, ::Val{:anisotropy0}) = get_anisotropy(bd, 0)
-@inline _getvar(bd::BatsrusIDL{2}, ::Val{:anisotropy1}) = get_anisotropy(bd, 1)
-
 # Fallback: treat the symbol as a lowercase string variable name
 @inline function _getvar(
         bd::BatsrusIDL{ndim, TV}, ::Val{V}
@@ -226,175 +218,63 @@ and returns a concretely typed array with no runtime branching inside the loop.
     return selectdim(bd.w, ndims(bd.w), varIndex_)
 end
 
+"""
+    get_vectors_indices(bd::BatsrusIDL, var::Symbol)
+
+Return indices of vector components for `var`. Supported symbols are `:B`, `:U`, `:E`,
+`:U0`, and `:U1`.
+"""
+@inline get_vectors_indices(bd::BatsrusIDL, var::Symbol) = get_vectors_indices(bd, Val(var))
+
+@inline function get_vectors_indices(bd::BatsrusIDL, ::Val{:B})
+    idx = findindex(bd, "bx")
+    return (idx, idx + 1, idx + 2)
+end
+
+@inline function get_vectors_indices(bd::BatsrusIDL, ::Val{:U})
+    idx = findindex(bd, "ux")
+    return (idx, idx + 1, idx + 2)
+end
+
+@inline function get_vectors_indices(bd::BatsrusIDL, ::Val{:E})
+    idx = findindex(bd, "ex")
+    return (idx, idx + 1, idx + 2)
+end
+
+@inline function get_vectors_indices(bd::BatsrusIDL, ::Val{:U0})
+    idx = findindex(bd, "uxs0")
+    return (idx, idx + 1, idx + 2)
+end
+
+@inline function get_vectors_indices(bd::BatsrusIDL, ::Val{:U1})
+    idx = findindex(bd, "uxs1")
+    return (idx, idx + 1, idx + 2)
+end
+
+@inline function get_vectors_indices(bd::BatsrusIDL, ::Val{:J})
+    return (findindex(bd, "jx"), findindex(bd, "jy"), findindex(bd, "jz"))
+end
+
+function get_vectors_indices(bd::BatsrusIDL, ::Val{V}) where {V}
+    error("Unknown vector variable $V")
+end
+
+"""
+    get_vectors(bd::BatsrusIDL, var::Symbol)
+
+Return vector components for `var` as a tuple of arrays.
+"""
+@inline get_vectors(bd::BatsrusIDL, var::Symbol) = get_vectors(bd, Val(var))
+
+@inline function get_vectors(bd::BatsrusIDL, ::Val{V}) where {V}
+    indices = get_vectors_indices(bd, Val(V))
+    w = parent(bd.w)
+    d = ndims(w)
+    return ntuple(i -> selectdim(w, d, indices[i]), length(indices))
+end
+
 @inline Base.@propagate_inbounds Base.getindex(bd::BatsrusIDL, var) =
     getvar(bd, var)
-
-"""
-    fill_vector_from_scalars(bd::BatsrusIDL, var)
-
-Construct vector of `var` from its scalar components. Alternatively, check
-[`get_vectors`](@ref) for returning vector components as separate arrays.
-"""
-function fill_vector_from_scalars(bd::BatsrusIDL, var)
-    vt = get_vectors(bd, var)
-    Rpost = CartesianIndices(size(bd.x)[1:(end - 1)])
-    return v = @inbounds [vt[iv][i] for iv in 1:3, i in Rpost]
-end
-
-"""
-    get_magnitude2(bd::BatsrusIDL, var)
-
-Calculate the magnitude square of vector `var`. See [`get_vectors`](@ref) for the options.
-"""
-function get_magnitude2(bd::BatsrusIDL{ndim}, var = :B) where {ndim}
-    ivx, ivy, ivz = get_vectors_indices(bd, var)
-    v = similar(bd.w, dims(bd.w)[1:ndim])
-    w, v_raw = parent(bd.w), parent(v)
-
-    @inbounds @simd for i in CartesianIndices(v_raw)
-        v_raw[i] = w[i, ivx]^2 + w[i, ivy]^2 + w[i, ivz]^2
-    end
-
-    return v
-end
-
-"""
-    get_magnitude(bd::BatsrusIDL, var)
-
-Calculate the magnitude of vector `var`. See [`get_vectors`](@ref) for the options.
-"""
-function get_magnitude(bd::BatsrusIDL{ndim}, var = :B) where {ndim}
-    ivx, ivy, ivz = get_vectors_indices(bd, var)
-    v = similar(bd.w, dims(bd.w)[1:ndim])
-    w, v_raw = parent(bd.w), parent(v)
-
-    @inbounds @simd for i in CartesianIndices(v_raw)
-        v_raw[i] = √(w[i, ivx]^2 + w[i, ivy]^2 + w[i, ivz]^2)
-    end
-
-    return v
-end
-
-"""
-Return a tuple of indices for the vector of `var`. `var` can be `:B`, `:E`, `:U`, or any `:U` followed by an index (e.g. `:U0` for species 0, `:U1` for species 1, etc.).
-"""
-function get_vectors_indices(bd::BatsrusIDL, var)
-    if var === :B
-        idx = findindex(bd, "bx")
-    elseif var === :E
-        idx = findindex(bd, "ex")
-    elseif var === :U
-        idx = findindex(bd, "ux")
-    else
-        str = string(var)
-        m = match(r"^U(\d+)$", str)
-        if !isnothing(m)
-            idx = findindex(bd, "uxs" * m[1])
-        else
-            throw(ArgumentError("Vector variable $var not supported"))
-        end
-    end
-    return idx, idx + 1, idx + 2
-end
-
-"""
-    get_vectors(bd::BatsrusIDL, var)
-
-Return a tuple of vectors of `var`. `var` can be `:B`, `:E`, `:U`, or any `:U` followed by an index (e.g. `:U0` for species 0, `:U1` for species 1, etc.).
-"""
-function get_vectors(bd::BatsrusIDL, var)
-    ivx, ivy, ivz = get_vectors_indices(bd, var)
-    return selectdim(bd.w, ndims(bd.w), ivx), selectdim(bd.w, ndims(bd.w), ivy),
-        selectdim(bd.w, ndims(bd.w), ivz)
-end
-
-"""
-    get_anisotropy(bd::BatsrusIDL, species=0)
-
-Calculate the pressure anisotropy for `species`, indexing from 0. The default `method` is
-based on the fact that the trace of the pressure tensor is a constant. The `rotation`
-method is based on rotating the tensor.
-"""
-function get_anisotropy(bd::BatsrusIDL{2, TV}, species = 0; method = :simple) where {TV}
-    ibx, iby, ibz = findindex(bd, "bx"), findindex(bd, "by"), findindex(bd, "bz")
-    if species == 0
-        ipxx = findindex(bd, "pxxs0")
-    elseif species == 1
-        ipxx = findindex(bd, "pxxs1")
-    else
-        ipxx = findindex(bd, "pxxs" * string(species))
-    end
-    ipyy, ipzz = ipxx + 1, ipxx + 2
-    ipxy, ipxz, ipyz = ipxx + 3, ipxx + 4, ipxx + 5
-
-    Paniso = similar(bd.w, dims(bd.w)[1:2])
-    w, Paniso_raw = parent(bd.w), parent(Paniso)
-
-    @inbounds for j in axes(w, 2), i in axes(w, 1)
-        b̂ = normalize(SA[w[i, j, ibx], w[i, j, iby], w[i, j, ibz]])
-        P = @SMatrix [
-            w[i, j, ipxx] w[i, j, ipxy] w[i, j, ipxz];
-            w[i, j, ipxy] w[i, j, ipyy] w[i, j, ipyz];
-            w[i, j, ipxz] w[i, j, ipyz] w[i, j, ipzz]
-        ]
-
-        if method == :simple
-            p_parallel = b̂' * P * b̂
-            p_perp = (tr(P) - p_parallel) / 2
-            Paniso_raw[i, j] = p_perp / p_parallel
-        elseif method == :rotation
-            Prot = rotateTensorToVectorZ(P, b̂)
-            Paniso_raw[i, j] = (Prot[1, 1] + Prot[2, 2]) / (2 * Prot[3, 3])
-        else
-            error("Unknown method for get_anisotropy: $method. Use :simple or :rotation.")
-        end
-    end
-
-    return Paniso
-end
-
-"""
-Return the convection electric field from PIC outputs.
-"""
-function get_convection_E(bd::BatsrusIDL)
-    Bx, By, Bz = get_vectors(bd, :B)
-    # Let us use H+ velocities as the ion bulk velocity and ignore heavy ions
-    uix, uiy, uiz = get_vectors(bd, :U1)
-
-    Econvx = similar(Bx)
-    Econvy = similar(By)
-    Econvz = similar(Bz)
-    # -Ui × B
-    @simd for i in eachindex(Econvx)
-        Econvx[i] = -uiy[i] * Bz[i] + uiz[i] * By[i]
-        Econvy[i] = -uiz[i] * Bx[i] + uix[i] * Bz[i]
-        Econvz[i] = -uix[i] * By[i] + uiy[i] * Bx[i]
-    end
-
-    return Econvx, Econvy, Econvz
-end
-
-"""
-Return the Hall electric field from PIC outputs.
-"""
-function get_hall_E(bd::BatsrusIDL)
-    Bx, By, Bz = get_vectors(bd, :B)
-    uex, uey, uez = get_vectors(bd, :U0)
-    # Let us use H+ velocities as the ion bulk velocity and ignore heavy ions
-    uix, uiy, uiz = get_vectors(bd, :U1)
-
-    Ehallx = similar(Bx)
-    Ehally = similar(By)
-    Ehallz = similar(Bz)
-    # (Ui - Ue) × B
-    for i in eachindex(Ehallx)
-        Ehallx[i] = (uiy[i] - uey[i]) * Bz[i] - (uiz[i] - uez[i]) * By[i]
-        Ehally[i] = (uiz[i] - uez[i]) * Bx[i] - (uix[i] - uex[i]) * Bz[i]
-        Ehallz[i] = (uix[i] - uex[i]) * By[i] - (uiy[i] - uey[i]) * Bx[i]
-    end
-
-    return Ehallx, Ehally, Ehallz
-end
 
 """
     get_timeseries(files::AbstractArray, loc; tstep = 1.0)

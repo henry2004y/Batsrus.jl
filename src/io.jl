@@ -285,7 +285,15 @@ function getfiletype(file::AbstractString)
         end
         # Obtain file size & number of snapshots
         seekstart(fileID)
-        pictsize = getfilesize(fileID, lenhead, Val(type))::Int
+        if type == Real4Bat
+            pictsize = getfilesize(fileID, Int32(lenhead), Val(Real4Bat))
+        elseif type == Real8Bat
+            pictsize = getfilesize(fileID, Int32(lenhead), Val(Real8Bat))
+        elseif type == AsciiBat
+            pictsize = getfilesize(fileID, Int32(lenhead), Val(AsciiBat))
+        else
+            error("Unsupported file type $type")
+        end
         npictinfiles = bytes ÷ pictsize
     end
 
@@ -345,7 +353,7 @@ end
 
 function _read_head_binary(fileID::IOStream, lenstr::Integer)
     skip(fileID, TAG)
-    headline = rstrip(String(read(fileID, lenstr)))
+    headline = String(rstrip(String(read(fileID, lenstr))))
     skip(fileID, 2 * TAG)
 
     it = read(fileID, Int32)
@@ -375,12 +383,12 @@ function _read_head_binary(fileID::IOStream, lenstr::Integer)
     return _create_batshead(ndim, headline, it, t, gencoord, neqpar, nw, nx, eqpar, varname)
 end
 
-function _create_batshead(ndim, headline, it, t, gencoord, neqpar, nw, nx, eqpar, varname)
+function _create_batshead(ndim, headline::AbstractString, it, t, gencoord, neqpar, nw, nx, eqpar, varname)
     # Obtain output variable names
-    variable = lowercase.(split(varname))
-    coord = @view variable[1:ndim]
-    wname = @view variable[(ndim + 1):(ndim + nw)]
-    param = @view variable[(ndim + nw + 1):end]
+    variable = split(lowercase(varname))
+    coord = variable[1:ndim]
+    wname = variable[(ndim + 1):(ndim + nw)]
+    param = variable[(ndim + nw + 1):end]
 
     return BatsHead(ndim, headline, it, t, gencoord, neqpar, nw, nx, eqpar, coord, wname, param)
 end
@@ -463,7 +471,18 @@ getfilesize(fileID::IOStream, lenstr::Int32, ::Val{LogBat}) = 1
 """
 Create buffer for x and w.
 """
-allocateBuffer(head::BatsHead, ::Type{T}) where {T} = _allocateBuffer(Val(head.ndim), head, T)
+function allocateBuffer(head::BatsHead, ::Type{T}) where {T}
+    ndim = head.ndim
+    if ndim == 1
+        return _allocateBuffer(Val(1), head, T)
+    elseif ndim == 2
+        return _allocateBuffer(Val(2), head, T)
+    elseif ndim == 3
+        return _allocateBuffer(Val(3), head, T)
+    else
+        error("Unsupported dimension $ndim")
+    end
+end
 
 function _allocateBuffer(::Val{N}, head::BatsHead, ::Type{T}) where {N, T}
     dims = ntuple(i -> head.nx[i], Val(N))

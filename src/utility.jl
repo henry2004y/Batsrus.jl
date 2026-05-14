@@ -259,15 +259,41 @@ function meshgrid(
     return xi, yi
 end
 
+@inline function _has_var(bd::BatsrusIDL, var::AbstractString)
+    wname = bd.head.wname
+    n = length(var)
+    @inbounds for i in eachindex(wname)
+        name = wname[i]
+        if length(name) == n
+            match = true
+            for j in 1:n
+                c1 = name[j]
+                c2 = var[j]
+                if c1 != c2 && lowercase(c1) != lowercase(c2)
+                    match = false
+                    break
+                end
+            end
+            match && return true
+        end
+    end
+    return false
+end
+
 """
 Find variable index in the BATSRUS data.
 """
-function findindex(bd::BatsrusIDL, var::AbstractString)
-    for (i, name) in enumerate(bd.head.wname)
-        if length(name) == length(var)
+@inline function findindex(bd::BatsrusIDL, var::AbstractString)
+    wname = bd.head.wname
+    n = length(var)
+    @inbounds for i in eachindex(wname)
+        name = wname[i]
+        if length(name) == n
             match = true
-            for (c1, c2) in zip(name, var)
-                if lowercase(c1) != lowercase(c2)
+            for j in 1:n
+                c1 = name[j]
+                c2 = var[j]
+                if c1 != c2 && lowercase(c1) != lowercase(c2)
                     match = false
                     break
                 end

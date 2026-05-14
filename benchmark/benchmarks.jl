@@ -40,15 +40,18 @@ file = joinpath(directory, files[2])
 bd = load(file)
 SUITE["read"]["Load binary structured"] = @benchmarkable load($file)
 SUITE["read"]["Extract Bmag"] = @benchmarkable get_magnitude($bd, :B)
+SUITE["read"]["Current density"] = @benchmarkable get_current_density($bd)
+SUITE["read"]["Current density Jz"] = @benchmarkable $bd[:jz]
 SUITE["read"]["Interp2d"] = @benchmarkable Batsrus.interp2d($bd, "rho")
 
 file = joinpath(directory, files[3])
 bd = load(file)
-SUITE["read"]["Anisotropy"] = @benchmarkable get_anisotropy($bd, 1)
-SUITE["read"]["Anisotropy Symbol"] = @benchmarkable $bd[:anisotropy1]
+SUITE["read"]["Anisotropy"] = @benchmarkable $bd[:anisotropy1]
 
 file = joinpath(directory, files[4])
 bd = load(file)
+SUITE["read"]["Current density 3D"] = @benchmarkable get_current_density($bd)
+SUITE["read"]["Current density 3D Jx"] = @benchmarkable $bd[:jx]
 SUITE["read"]["Cutdir"] = @benchmarkable cutdata($bd, "p", dir = "y", sequence = 1)
 SUITE["read"]["Cutdir subset"] = @benchmarkable cutdata(
     $bd, "p", dir = "y", sequence = 1, plotrange = [-50.0, 50.0, -0.5, 0.5]
