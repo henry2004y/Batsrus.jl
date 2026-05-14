@@ -274,6 +274,7 @@ end
 Return the electric field ``\\mathbf{E}_{p_e} = -\\frac{1}{n_e e} \\nabla \\cdot \\mathbf{P}_e``
 derived from the divergence of the electron pressure tensor. Units are in μV/m if
 PLANETARY or km units are used, otherwise 1.0.
+Note that species 0 is by convention electrons, but it is not guaranteed.
 """
 @inline function get_pe_E(bd::BatsrusIDL, species = 0; mass = nothing)
     return _get_pe_E(bd, species, mass)
