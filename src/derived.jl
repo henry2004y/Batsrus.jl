@@ -289,19 +289,20 @@ function get_hall_E(bd::BatsrusIDL{ndim, TV}) where {ndim, TV}
         Jx, Jy, Jz = get_current_density(bd)
         rho = _has_var(bd, "rho") ? getvar(bd, "rho") : getvar(bd, "rhos1")
         # Ions are species 1 by convention
-        m = _get_species_mass(bd, 1)
+        m = TV(_get_species_mass(bd, 1))
         C = TV(_get_hall_scaling(bd, hasJ))
+        Cm = C * m
 
         Ehallx = similar(Bx)
         Ehally = similar(By)
         Ehallz = similar(Bz)
 
-        # E = C * J × B / (rho/m)
+        # E = C * J × B / (rho/m) = (C * m / rho) * (J × B)
         @inbounds @simd for i in eachindex(Ehallx)
-            ne_inv = m / rho[i]
-            Ehallx[i] = C * ne_inv * (Jy[i] * Bz[i] - Jz[i] * By[i])
-            Ehally[i] = C * ne_inv * (Jz[i] * Bx[i] - Jx[i] * Bz[i])
-            Ehallz[i] = C * ne_inv * (Jx[i] * By[i] - Jy[i] * Bx[i])
+            inv_ne_e = Cm / rho[i]
+            Ehallx[i] = inv_ne_e * (Jy[i] * Bz[i] - Jz[i] * By[i])
+            Ehally[i] = inv_ne_e * (Jz[i] * Bx[i] - Jx[i] * Bz[i])
+            Ehallz[i] = inv_ne_e * (Jx[i] * By[i] - Jy[i] * Bx[i])
         end
     end
 
