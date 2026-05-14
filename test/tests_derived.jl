@@ -426,4 +426,65 @@
             @test all(bd[:j] .≈ √3.0f0)
         end
     end
+
+    @testset "Electron Pressure Gradient E-field" begin
+        # 2D structured mock data
+        nx, ny = 5, 5
+        x_range = range(0.0f0, 1.0f0, length = nx)
+        y_range = range(0.0f0, 1.0f0, length = ny)
+        # rhos0, pxxs0, pyys0, pzzs0, pxys0, pxzs0, pyzs0
+        w_data = zeros(Float32, nx, ny, 7)
+        w_data[:, :, 1] .= 1.0f0 # rhos0
+        for ix in 1:nx, iy in 1:ny
+            w_data[ix, iy, 2] = x_range[ix] # pxxs0 = x -> dPxx/dx = 1
+        end
+        head = Batsrus.BatsHead(
+            2, "normalized", 0, 0.0f0, false, 0, 7, [nx, ny], Float32[],
+            ["x", "y"],
+            ["rhos0", "pxxs0", "pyys0", "pzzs0", "pxys0", "pxzs0", "pyzs0"], String[]
+        )
+        x_data = zeros(Float32, nx, ny, 2)
+        for ix in 1:nx, iy in 1:ny
+            x_data[ix, iy, 1] = x_range[ix]
+            x_data[ix, iy, 2] = y_range[iy]
+        end
+        bd = BATS(head, Batsrus.FileList("mock_pe.out", Batsrus.Real4Bat, ".", 0, 1, 0), x_data, w_data)
+        
+        Ex, Ey, Ez = get_pe_E(bd)
+        @test size(Ex) == (nx, ny)
+        # C=1, ne=1, dPxx/dx=1, other divP components 0
+        @test all(Ex .≈ -1.0f0)
+        @test all(Ey .≈ 0.0f0)
+        @test all(Ez .≈ 0.0f0)
+
+        # Test manual mass override: ne = rho / m. If m=2, ne=0.5, Ex=-2
+        Ex_m, _, _ = get_pe_E(bd, mass = 2.0)
+        @test all(Ex_m .≈ -2.0f0)
+
+        # 3D structured mock data
+        nx, ny, nz = 4, 4, 4
+        x_range = range(0.0f0, 1.0f0, length = nx)
+        y_range = range(0.0f0, 1.0f0, length = ny)
+        z_range = range(0.0f0, 1.0f0, length = nz)
+        w_data3d = zeros(Float32, nx, ny, nz, 7)
+        w_data3d[:, :, :, 1] .= 1.0f0 # rhos0
+        for ix in 1:nx, iy in 1:ny, iz in 1:nz
+            w_data3d[ix, iy, iz, 2] = x_range[ix] # pxxs0 = x
+        end
+        head3d = Batsrus.BatsHead(
+            3, "normalized", 0, 0.0f0, false, 0, 7, [nx, ny, nz], Float32[],
+            ["x", "y", "z"],
+            ["rhos0", "pxxs0", "pyys0", "pzzs0", "pxys0", "pxzs0", "pyzs0"], String[]
+        )
+        x_data3d = zeros(Float32, nx, ny, nz, 3)
+        for ix in 1:nx, iy in 1:ny, iz in 1:nz
+            x_data3d[ix, iy, iz, 1] = x_range[ix]
+            x_data3d[ix, iy, iz, 2] = y_range[iy]
+            x_data3d[ix, iy, iz, 3] = z_range[iz]
+        end
+        bd3d = BATS(head3d, Batsrus.FileList("mock_pe3d.out", Batsrus.Real4Bat, ".", 0, 1, 0), x_data3d, w_data3d)
+        Ex3d, Ey3d, Ez3d = get_pe_E(bd3d)
+        @test size(Ex3d) == (nx, ny, nz)
+        @test all(Ex3d .≈ -1.0f0)
+    end
 end

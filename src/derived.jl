@@ -2,6 +2,8 @@
 
 # Earth radius in km used for current density scaling in PLANETARY units.
 const EARTH_RADIUS_KM = 6378.0
+# Elementary charge in C
+const ELEMENTARY_CHARGE = 1.602176634e-19
 # Factor to convert curl(B) to current density in μA/m²: 10 / (4π * Re)
 const FAC_J_PLANETARY = 10.0 / (4.0 * π * EARTH_RADIUS_KM)
 
@@ -107,6 +109,37 @@ end
     else
         idx = findindex(bd, "pxxs" * string(species))
         return (idx, idx + 1, idx + 2, idx + 3, idx + 4, idx + 5)
+    end
+end
+
+@inline function _get_density_index(bd::BatsrusIDL, species)
+    return findindex(bd, "rhos" * string(species))
+end
+
+@inline function _get_species_mass(bd::BatsrusIDL, species)
+    # Check for species mass in parameters
+    for prefix in ("ms", "mass")
+        idx = findlast(x -> x == prefix * string(species), bd.head.param)
+        if !isnothing(idx)
+            return bd.head.eqpar[idx]
+        end
+    end
+    # Fallback to 1.0 and warn if it's electrons (species 0)
+    if species == 0
+        @warn "Species 0 mass not found in parameters; using 1.0"
+    end
+    return 1.0
+end
+
+@inline function _get_pe_scaling(bd::BatsrusIDL)
+    if startswith(bd.head.headline, "normalized")
+        return 1.0
+    elseif bd.head.headline == "PLANETARY" || occursin(" nT ", bd.head.headline)
+        # Factor to convert (nPa / Re) / (amu/cc * e) to μV/m
+        return 1e-12 / (EARTH_RADIUS_KM * ELEMENTARY_CHARGE)
+    else
+        # Factor to convert (nPa / km) / (amu/cc * e) to μV/m
+        return 1e-12 / ELEMENTARY_CHARGE
     end
 end
 
@@ -233,6 +266,134 @@ function get_hall_E(bd::BatsrusIDL)
     end
 
     return Ehallx, Ehally, Ehallz
+end
+
+"""
+    get_pe_E(bd::BatsrusIDL, species=0; mass=nothing)
+
+Return the electric field ``\\mathbf{E}_{p_e} = -\\frac{1}{n_e e} \\nabla \\cdot \\mathbf{P}_e``
+derived from the divergence of the electron pressure tensor. Units are in μV/m if
+PLANETARY or km units are used, otherwise 1.0.
+"""
+@inline function get_pe_E(bd::BatsrusIDL, species = 0; mass = nothing)
+    return _get_pe_E(bd, species, mass)
+end
+
+function _get_pe_E(bd::BatsrusIDLStructured{1, TV}, species, mass) where {TV}
+    irho = _get_density_index(bd, species)
+    ip = _get_pressure_tensor_indices(bd, species)
+    ipxx, ipyy, ipzz, ipxy, ipxz, ipyz = ip
+
+    m = isnothing(mass) ? _get_species_mass(bd, species) : TV(mass)
+    C = TV(_get_pe_scaling(bd))
+
+    w = parent(bd.w)
+    xrange = get_range(bd)[1]
+    dx, nx = TV(step(xrange)), size(w, 1)
+
+    ex = zeros(TV, nx)
+    ey = zeros(TV, nx)
+    ez = zeros(TV, nx)
+
+    for i in 1:nx
+        rho = w[i, irho]
+        ne = rho / m
+        # Div P = [d_x Pxx, d_x Pxy, d_x Pxz]
+        ex[i] = -C / ne * _diff1(w, i, nx, dx, ipxx)
+        ey[i] = -C / ne * _diff1(w, i, nx, dx, ipxy)
+        ez[i] = -C / ne * _diff1(w, i, nx, dx, ipxz)
+    end
+
+    dims_ = dims(bd.w)[1:1]
+    return DimArray(ex, dims_), DimArray(ey, dims_), DimArray(ez, dims_)
+end
+
+function _get_pe_E(bd::BatsrusIDLStructured{2, TV}, species, mass) where {TV}
+    irho = _get_density_index(bd, species)
+    ip = _get_pressure_tensor_indices(bd, species)
+    ipxx, ipyy, ipzz, ipxy, ipxz, ipyz = ip
+
+    m = isnothing(mass) ? _get_species_mass(bd, species) : TV(mass)
+    C = TV(_get_pe_scaling(bd))
+
+    w = parent(bd.w)
+    xrange, yrange = get_range(bd)
+    dx, dy = TV(step(xrange)), TV(step(yrange))
+    nx, ny = size(w, 1), size(w, 2)
+
+    ex = zeros(TV, nx, ny)
+    ey = zeros(TV, nx, ny)
+    ez = zeros(TV, nx, ny)
+
+    for iy in 1:ny, ix in 1:nx
+        rho = w[ix, iy, irho]
+        ne = rho / m
+        # (Div P)_x = d_x Pxx + d_y Pxy
+        dpxx_dx = _diff2_x(w, ix, iy, nx, dx, ipxx)
+        dpxy_dy = _diff2_y(w, ix, iy, ny, dy, ipxy)
+        ex[ix, iy] = -C / ne * (dpxx_dx + dpxy_dy)
+
+        # (Div P)_y = d_x Pxy + d_y Pyy
+        dpxy_dx = _diff2_x(w, ix, iy, nx, dx, ipxy)
+        dpyy_dy = _diff2_y(w, ix, iy, ny, dy, ipyy)
+        ey[ix, iy] = -C / ne * (dpxy_dx + dpyy_dy)
+
+        # (Div P)_z = d_x Pxz + d_y Pyz
+        dpxz_dx = _diff2_x(w, ix, iy, nx, dx, ipxz)
+        dpyz_dy = _diff2_y(w, ix, iy, ny, dy, ipyz)
+        ez[ix, iy] = -C / ne * (dpxz_dx + dpyz_dy)
+    end
+
+    dims_ = dims(bd.w)[1:2]
+    return DimArray(ex, dims_), DimArray(ey, dims_), DimArray(ez, dims_)
+end
+
+function _get_pe_E(bd::BatsrusIDLStructured{3, TV}, species, mass) where {TV}
+    irho = _get_density_index(bd, species)
+    ip = _get_pressure_tensor_indices(bd, species)
+    ipxx, ipyy, ipzz, ipxy, ipxz, ipyz = ip
+
+    m = isnothing(mass) ? _get_species_mass(bd, species) : TV(mass)
+    C = TV(_get_pe_scaling(bd))
+
+    w = parent(bd.w)
+    xrange, yrange, zrange = get_range(bd)
+    dx, dy, dz = TV(step(xrange)), TV(step(yrange)), TV(step(zrange))
+    nx, ny, nz = size(w, 1), size(w, 2), size(w, 3)
+
+    ex = zeros(TV, nx, ny, nz)
+    ey = zeros(TV, nx, ny, nz)
+    ez = zeros(TV, nx, ny, nz)
+
+    for iz in 1:nz, iy in 1:ny, ix in 1:nx
+        rho = w[ix, iy, iz, irho]
+        ne = rho / m
+
+        # (Div P)_x = d_x Pxx + d_y Pxy + d_z Pxz
+        dpxx_dx = _diff3_x(w, ix, iy, iz, nx, dx, ipxx)
+        dpxy_dy = _diff3_y(w, ix, iy, iz, ny, dy, ipxy)
+        dpxz_dz = _diff3_z(w, ix, iy, iz, nz, dz, ipxz)
+        ex[ix, iy, iz] = -C / ne * (dpxx_dx + dpxy_dy + dpxz_dz)
+
+        # (Div P)_y = d_x Pxy + d_y Pyy + d_z Pyz
+        dpxy_dx = _diff3_x(w, ix, iy, iz, nx, dx, ipxy)
+        dpyy_dy = _diff3_y(w, ix, iy, iz, ny, dy, ipyy)
+        dpyz_dz = _diff3_z(w, ix, iy, iz, nz, dz, ipyz)
+        ey[ix, iy, iz] = -C / ne * (dpxy_dx + dpyy_dy + dpyz_dz)
+
+        # (Div P)_z = d_x Pxz + d_y Pyz + d_z Pzz
+        dpxz_dx = _diff3_x(w, ix, iy, iz, nx, dx, ipxz)
+        dpyz_dy = _diff3_y(w, ix, iy, iz, ny, dy, ipyz)
+        dpzz_dz = _diff3_z(w, ix, iy, iz, nz, dz, ipzz)
+        ez[ix, iy, iz] = -C / ne * (dpxz_dx + dpyz_dy + dpzz_dz)
+    end
+
+    dims_ = dims(bd.w)[1:3]
+    return DimArray(ex, dims_), DimArray(ey, dims_), DimArray(ez, dims_)
+end
+
+function _get_pe_E(bd::BatsrusIDLUnstructured, species, mass)
+    error("get_pe_E is not yet supported for unstructured grids.")
 end
 
 """

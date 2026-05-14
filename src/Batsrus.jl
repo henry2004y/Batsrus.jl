@@ -14,8 +14,8 @@ using ProgressMeter
 
 export BATS, BatsrusIDL, BatsrusIDLStructured, BatsrusIDLUnstructured,
     load, readlogdata, readtecdata, showhead, # io
-    getvar, cutdata, subvolume, subsurface, get_convection_E, get_hall_E, get_timeseries,
-    get_anisotropy, get_vectors, get_magnitude, get_magnitude2,
+    getvar, cutdata, subvolume, subsurface, get_convection_E, get_hall_E, get_pe_E,
+    get_timeseries, get_anisotropy, get_vectors, get_magnitude, get_magnitude2,
     fill_vector_from_scalars, get_current_density, # select
     Batl, convertTECtoVTU, convertIDLtoVTK, create_pvd, readhead, readtree, getConnectivity, # vtk
     plotgrid, interp1d, interp2d, slice1d, get_range, get_var_range, squeeze,
