@@ -556,8 +556,8 @@ end
 @inline _getvar(bd::BatsrusIDL, ::Val{:b2}) = get_magnitude2(bd, :B)
 @inline _getvar(bd::BatsrusIDL, ::Val{:e}) = get_magnitude(bd, :E)
 @inline _getvar(bd::BatsrusIDL, ::Val{:u}) = get_magnitude(bd, :U)
-@inline _getvar(bd::BatsrusIDL{2}, ::Val{:anisotropy0}) = get_anisotropy(bd, 0)
-@inline _getvar(bd::BatsrusIDL{2}, ::Val{:anisotropy1}) = get_anisotropy(bd, 1)
+@inline _getvar(bd::BatsrusIDL, ::Val{:anisotropy0}) = get_anisotropy(bd, 0)
+@inline _getvar(bd::BatsrusIDL, ::Val{:anisotropy1}) = get_anisotropy(bd, 1)
 
 # --- Internal computation helpers ---
 
@@ -574,8 +574,7 @@ end
     w = parent(bd.w)
     xrange = get_range(bd)[1]
     dx, nx = TV(step(xrange)), size(w, 1)
-    jy = [_diff1(w, ix, nx, dx, ivz) for ix in 1:nx]
-    jy .*= -1 # Jy = -∂Bz/∂x
+    jy = [-_diff1(w, ix, nx, dx, ivz) for ix in 1:nx]
     return DimArray(_apply_j_scaling!(jy, bd), dims(bd.w)[1:1])
 end
 

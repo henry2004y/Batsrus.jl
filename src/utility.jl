@@ -261,15 +261,15 @@ end
 
 @inline function _has_var(bd::BatsrusIDL, var::AbstractString)
     wname = bd.head.wname
-    n = length(var)
+    var_low = lowercase(var)
+    n = length(var_low)
     @inbounds for i in eachindex(wname)
         name = wname[i]
         if length(name) == n
             match = true
             for j in 1:n
                 c1 = name[j]
-                c2 = var[j]
-                if c1 != c2 && lowercase(c1) != lowercase(c2)
+                if c1 != var[j] && lowercase(c1) != var_low[j]
                     match = false
                     break
                 end
@@ -285,15 +285,15 @@ Find variable index in the BATSRUS data.
 """
 @inline function findindex(bd::BatsrusIDL, var::AbstractString)
     wname = bd.head.wname
-    n = length(var)
+    var_low = lowercase(var)
+    n = length(var_low)
     @inbounds for i in eachindex(wname)
         name = wname[i]
         if length(name) == n
             match = true
             for j in 1:n
                 c1 = name[j]
-                c2 = var[j]
-                if c1 != c2 && lowercase(c1) != lowercase(c2)
+                if c1 != var[j] && lowercase(c1) != var_low[j]
                     match = false
                     break
                 end

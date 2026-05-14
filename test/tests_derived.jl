@@ -151,6 +151,7 @@
 
             ar = get_anisotropy(bd, 0, method = :rotation)
             @test all(isapprox.(ar, 1.0f0, atol = 1.0e-6))
+            @test all(isapprox.(bd[:anisotropy0], 1.0f0, atol = 1.0e-6))
         end
 
         @testset "Curvilinear Grid Mock" begin
