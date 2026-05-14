@@ -251,6 +251,10 @@ end
     return (idx, idx + 1, idx + 2)
 end
 
+@inline function get_vectors_indices(bd::BatsrusIDL, ::Val{:J})
+    return (findindex(bd, "jx"), findindex(bd, "jy"), findindex(bd, "jz"))
+end
+
 function get_vectors_indices(bd::BatsrusIDL, ::Val{V}) where {V}
     error("Unknown vector variable $V")
 end

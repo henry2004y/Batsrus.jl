@@ -518,44 +518,47 @@ end
 # --- Derived scalar quantities ---
 
 @inline function _getvar(bd::BatsrusIDL, ::Val{:jx})
-    if _has_var(bd, "jx")
-        return selectdim(bd.w, ndims(bd.w), findindex(bd, "jx"))
-    end
+    _has_var(bd, "jx") && return getvar(bd, "jx")
     return _compute_jx(bd)
 end
 
 @inline function _getvar(bd::BatsrusIDL, ::Val{:jy})
-    if _has_var(bd, "jy")
-        return selectdim(bd.w, ndims(bd.w), findindex(bd, "jy"))
-    end
+    _has_var(bd, "jy") && return getvar(bd, "jy")
     return _compute_jy(bd)
 end
 
 @inline function _getvar(bd::BatsrusIDL, ::Val{:jz})
-    if _has_var(bd, "jz")
-        return selectdim(bd.w, ndims(bd.w), findindex(bd, "jz"))
-    end
+    _has_var(bd, "jz") && return getvar(bd, "jz")
     return _compute_jz(bd)
 end
 
 @inline function _getvar(bd::BatsrusIDL, ::Val{:j})
-    if _has_var(bd, "jx") && _has_var(bd, "jy") && _has_var(bd, "jz")
-        iv = findindex(bd, "jx")
-        J = selectdim(bd.w, ndims(bd.w), iv:(iv + 2))
-        return sqrt.(
-            selectdim(J, ndims(J), 1) .^ 2 .+
-                selectdim(J, ndims(J), 2) .^ 2 .+
-                selectdim(J, ndims(J), 3) .^ 2
-        )
+    if _has_var(bd, "j")
+        return getvar(bd, "j")
+    elseif _has_var(bd, "jx") && _has_var(bd, "jy") && _has_var(bd, "jz")
+        # Reuse get_magnitude if indices can be found
+        return get_magnitude(bd, :J)
     end
     Jx, Jy, Jz = get_current_density(bd)
     return sqrt.(Jx .^ 2 .+ Jy .^ 2 .+ Jz .^ 2)
 end
 
-@inline _getvar(bd::BatsrusIDL, ::Val{:b}) = get_magnitude(bd, :B)
-@inline _getvar(bd::BatsrusIDL, ::Val{:b2}) = get_magnitude2(bd, :B)
-@inline _getvar(bd::BatsrusIDL, ::Val{:e}) = get_magnitude(bd, :E)
-@inline _getvar(bd::BatsrusIDL, ::Val{:u}) = get_magnitude(bd, :U)
+@inline function _getvar(bd::BatsrusIDL, ::Val{:b})
+    _has_var(bd, "b") && return getvar(bd, "b")
+    return get_magnitude(bd, :B)
+end
+@inline function _getvar(bd::BatsrusIDL, ::Val{:b2})
+    _has_var(bd, "b2") && return getvar(bd, "b2")
+    return get_magnitude2(bd, :B)
+end
+@inline function _getvar(bd::BatsrusIDL, ::Val{:e})
+    _has_var(bd, "e") && return getvar(bd, "e")
+    return get_magnitude(bd, :E)
+end
+@inline function _getvar(bd::BatsrusIDL, ::Val{:u})
+    _has_var(bd, "u") && return getvar(bd, "u")
+    return get_magnitude(bd, :U)
+end
 @inline _getvar(bd::BatsrusIDL, ::Val{:anisotropy0}) = get_anisotropy(bd, 0)
 @inline _getvar(bd::BatsrusIDL, ::Val{:anisotropy1}) = get_anisotropy(bd, 1)
 
