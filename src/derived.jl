@@ -136,10 +136,10 @@ end
         return 1.0
     elseif bd.head.headline == "PLANETARY" || occursin(" nT ", bd.head.headline)
         # Factor to convert (nPa / Re) / (amu/cc * e) to μV/m
-        return 1e-12 / (EARTH_RADIUS_KM * ELEMENTARY_CHARGE)
+        return 1.0e-12 / (EARTH_RADIUS_KM * ELEMENTARY_CHARGE)
     else
         # Factor to convert (nPa / km) / (amu/cc * e) to μV/m
-        return 1e-12 / ELEMENTARY_CHARGE
+        return 1.0e-12 / ELEMENTARY_CHARGE
     end
 end
 

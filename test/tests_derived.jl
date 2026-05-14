@@ -449,7 +449,7 @@
             x_data[ix, iy, 2] = y_range[iy]
         end
         bd = BATS(head, Batsrus.FileList("mock_pe.out", Batsrus.Real4Bat, ".", 0, 1, 0), x_data, w_data)
-        
+
         Ex, Ey, Ez = get_pe_E(bd)
         @test size(Ex) == (nx, ny)
         # C=1, ne=1, dPxx/dx=1, other divP components 0
