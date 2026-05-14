@@ -27,7 +27,7 @@ Batsrus file head information.
 """
 struct BatsHead
     ndim::Int
-    headline::SubString{String}
+    headline::String
     it::Int
     time::Float32
     gencoord::Bool
@@ -103,8 +103,12 @@ function BATS(head, list, x::Array{TV, Dimp1}, w::Array{TV, Dimp1}) where {TV, D
             w = DimArray(w, (X(xrange), Dim{:var}(head.wname)))
         else
             # Generic N-D fallback
-            dims_x = ntuple(i -> i <= head.ndim ? Dim{i}(1:size(x, i)) : :dim, Val(Dimp1))
-            dims_w = ntuple(i -> i <= head.ndim ? Dim{i}(1:size(w, i)) : Dim{:var}(head.wname), Val(Dimp1))
+            ndim = Dimp1 - 1
+            dims_x = ntuple(i -> i <= ndim ? Dim{i}(1:size(x, i)) : :dim, Val(Dimp1))
+            dims_w = ntuple(
+                i -> i <= ndim ?
+                    Dim{i}(1:size(w, i)) : Dim{:var}(head.wname), Val(Dimp1)
+            )
             x = DimArray(x, dims_x)
             w = DimArray(w, dims_w)
         end
