@@ -1,7 +1,7 @@
+"""
+BATSRUS data reader and analyzer.
+"""
 module Batsrus
-# BATSRUS data reader and analyzer.
-#
-# Hongyang Zhou, hyzhou@umich.edu
 
 using LinearAlgebra: normalize, ×, ⋅, Adjoint, norm, diag, diagm, tr, dot
 using Printf, Reexport
@@ -11,6 +11,7 @@ import NaturalNeighbours as NN
 using StaticArrays: SVector, @SVector, @SMatrix, SA, MVector
 using DimensionalData
 using ProgressMeter
+using Unitful
 
 export BATS, BatsrusIDL, BatsrusIDLStructured, BatsrusIDLUnstructured,
     load, readlogdata, readtecdata, showhead, # io

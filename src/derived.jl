@@ -1,13 +1,5 @@
 # Derived quantities from raw output variables.
 
-# Earth radius in km used for current density scaling in PLANETARY units.
-const EARTH_RADIUS_KM = 6378.0
-# Elementary charge in C
-const ELEMENTARY_CHARGE = 1.602176634e-19
-# Factor to convert curl(B) to current density in μA/m²: 10 / (4π * Re)
-const FAC_J_PLANETARY = 10.0 / (4.0 * π * EARTH_RADIUS_KM)
-
-
 """
     get_magnitude2(bd::BatsrusIDL, var)
 
@@ -136,10 +128,10 @@ end
         return 1.0
     elseif bd.head.headline == "PLANETARY" || occursin(" nT ", bd.head.headline)
         # Factor to convert (nPa / Re) / (amu/cc * e) to μV/m
-        return 1.0e-12 / (EARTH_RADIUS_KM * ELEMENTARY_CHARGE)
+        return ustrip(u"μV/m", 1u"nPa" / (1Re * (1amucc / 1u"u") * q))
     else
         # Factor to convert (nPa / km) / (amu/cc * e) to μV/m
-        return 1.0e-12 / ELEMENTARY_CHARGE
+        return ustrip(u"μV/m", 1u"nPa" / (1u"km" * (1amucc / 1u"u") * q))
     end
 end
 
@@ -148,15 +140,10 @@ end
         return 1.0
     elseif hasJ || bd.head.headline == "PLANETARY"
         # Factor to convert (μA/m² * nT) / (amu/cc) to μV/m
-        # E [V/m] = (10⁻⁶ * 10⁻⁹) / (10⁶ * e) * (j*b/n) = 10⁻²¹ / e * (j*b/n)
-        # E [μV/m] = 10⁻¹⁵ / e * (j*b/n)
-        return 1.0e-15 / ELEMENTARY_CHARGE
+        return ustrip(u"μV/m", (1ampm2 * 1u"nT") / ((1amucc / 1u"u") * q))
     else
         # Factor to convert (raw_J * nT) / (amu/cc) to μV/m
-        # J_SI = (raw_J * 10⁻⁹ / 10³) / μ₀ = raw_J * 10⁻¹² / (4π*10⁻⁷)
-        # E [V/m] = (raw_J * 10⁻¹² / μ₀ * 10⁻⁹) / (10⁶ * e) = 10⁻²⁷ / (μ₀*e) * (j*b/n)
-        # E [μV/m] = 10⁻²¹ / (μ₀*e) * (j*b/n)
-        return 1.0e-21 / (4.0 * π * 1.0e-7 * ELEMENTARY_CHARGE)
+        return ustrip(u"μV/m", (1u"nT" / (1u"km" * μ0) * 1u"nT") / ((1amucc / 1u"u") * q))
     end
 end
 
@@ -190,7 +177,10 @@ end
 @inline function _calc_anisotropy(Bx, By, Bz, pxx, pyy, pzz, pxy, pxz, pyz, method)
     if method === :projection
         B2 = Bx^2 + By^2 + Bz^2
-        p_parallel = (pxx * Bx^2 + pyy * By^2 + pzz * Bz^2 + 2 * pxy * Bx * By + 2 * pxz * Bx * Bz + 2 * pyz * By * Bz) / B2
+        p_parallel = (
+            pxx * Bx^2 + pyy * By^2 + pzz * Bz^2 +
+                2 * pxy * Bx * By + 2 * pxz * Bx * Bz + 2 * pyz * By * Bz
+        ) / B2
         return (pxx + pyy + pzz - p_parallel) / (2 * p_parallel)
     elseif method === :rotation
         P = @SMatrix [pxx pxy pxz; pxy pyy pyz; pxz pyz pzz]
