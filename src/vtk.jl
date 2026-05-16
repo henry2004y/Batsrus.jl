@@ -360,7 +360,7 @@ end
 Logical bit extraction. Note: for `Int32`, this implementation is valid for `len < 32`.
 """
 function ibits(i::Integer, pos::Integer, len::Integer)
-    (i >> pos) & ((Int32(1) << len) - 1)
+    return (i >> pos) & ((Int32(1) << len) - 1)
 end
 
 """
@@ -617,7 +617,8 @@ function getConnectivity(batl::Batl)
 
     # Count accumulated number of blocks for MPI ranks in ascending order
     # Local block indexes may have gaps in between!
-    nProc = maximum(iTree_IA[proc_, :]) + 1
+    maxProc = maximum(@view iTree_IA[proc_, :])
+    nProc = max(0, Int(maxProc)) + 1
     nBlock_P = fill(Int32(0), nProc)
     for iProc in 1:(nProc - 1)
         nBlock_P[iProc + 1] = nBlock_P[iProc] + count(==(iProc - 1), iTree_IA[proc_, :])
@@ -627,7 +628,10 @@ function getConnectivity(batl::Batl)
     nodeToGlobalBlock_I = fill(Int32(0), nNode)
     nodesPerProc = [Int32[] for _ in 1:nProc]
     for iNode in 1:nNode
-        push!(nodesPerProc[iTree_IA[proc_, iNode] + 1], iNode)
+        p = Int(iTree_IA[proc_, iNode])
+        if 0 <= p < nProc
+            push!(nodesPerProc[p + 1], iNode)
+        end
     end
     for iProc in 0:(nProc - 1)
         localNodes = nodesPerProc[iProc + 1]
