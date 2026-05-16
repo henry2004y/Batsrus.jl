@@ -1,4 +1,4 @@
-using BenchmarkTools, Downloads, Tar, CodecZlib, HDF5
+using BenchmarkTools, Downloads, Tar, CodecZlib, HDF5, LazyArtifacts
 
 t = @elapsed using Batsrus
 println("Julia version is $VERSION")
@@ -93,6 +93,11 @@ SUITE["amrex"]["phase_space_3d"] = @benchmarkable get_phase_space_density(
 
 # Helper for file-based selection benchmark (lazy load)
 amrex_data_unloaded = AMReXParticle(amrex_dir)
-SUITE["amrex"]["select_region_from_files"] = @benchmarkable select_particles_in_region(
-    $amrex_data_unloaded, x_range = (2.5, 4.5)
-)
+
+SUITE["vtk"] = BenchmarkGroup()
+datapath_vtk = artifact"testdata"
+filetag_vtk = joinpath(datapath_vtk, "3d_mhd_amr/3d__mhd_1_t00000000_n00000000")
+batl_vtk = Batl(readhead(filetag_vtk * ".info"), readtree(filetag_vtk)...)
+
+SUITE["vtk"]["getConnectivity"] = @benchmarkable getConnectivity($batl_vtk)
+SUITE["vtk"]["find_grid_block"] = @benchmarkable Batsrus.find_grid_block($batl_vtk, [0.0, 0.0, 0.0])

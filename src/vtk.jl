@@ -355,7 +355,9 @@ function find_tree_node(batl::Batl, Coord_D)
 end
 
 """
-Logical shifts as the Fortran instrinsic function.
+    ibits(i::Integer, pos::Integer, len::Integer)
+
+Logical bit extraction. Note: for `Int32`, this implementation is valid for `len < 32`.
 """
 function ibits(i::Integer, pos::Integer, len::Integer)
     (i >> pos) & ((Int32(1) << len) - 1)
@@ -623,11 +625,15 @@ function getConnectivity(batl::Batl)
 
     nNode = size(iTree_IA, 2)
     nodeToGlobalBlock_I = fill(Int32(0), nNode)
+    nodesPerProc = [Int32[] for _ in 1:nProc]
+    for iNode in 1:nNode
+        push!(nodesPerProc[iTree_IA[proc_, iNode] + 1], iNode)
+    end
     for iProc in 0:(nProc - 1)
-        localNodes = findall(==(iProc), @view iTree_IA[proc_, :])
-        localBlocks = @view iTree_IA[block_, localNodes]
-        seq = sortperm(localBlocks)
-        for (i, idx) in enumerate(localNodes[seq])
+        localNodes = nodesPerProc[iProc + 1]
+        seq = sortperm(@view iTree_IA[block_, localNodes])
+        nodesPerProc[iProc + 1] = localNodes[seq]
+        for (i, idx) in enumerate(nodesPerProc[iProc + 1])
             nodeToGlobalBlock_I[idx] = i + nBlock_P[iProc + 1]
         end
     end
@@ -642,11 +648,7 @@ function getConnectivity(batl::Batl)
             nBlockBefore = 0 # Reset
         end
         for iProc in 0:(nProc - 1)
-            localNodes_B = findall(x -> x == iProc, iTree_IA[proc_, :])
-            # It needs to be sorted for filling the correct iCell_G indexes!
-            localBlocks_B = iTree_IA[block_, localNodes_B]
-            seq = sortperm(localBlocks_B)
-            localNodes_B = localNodes_B[seq] # sorted according to local block index
+            localNodes_B = nodesPerProc[iProc + 1]
 
             nBlock = length(localNodes_B) # number of blocks on this processor
 
