@@ -127,11 +127,9 @@ end
     if startswith(bd.head.headline, "normalized")
         return 1.0
     elseif bd.head.headline == "PLANETARY" || occursin(" nT ", bd.head.headline)
-        # Factor to convert (nPa / Re) / (amu/cc * e) to μV/m
-        return ustrip(u"μV/m", 1u"nPa" / (1Re * (1amucc / 1u"u") * q))
+        return FAC_PE_PLANETARY
     else
-        # Factor to convert (nPa / km) / (amu/cc * e) to μV/m
-        return ustrip(u"μV/m", 1u"nPa" / (1u"km" * (1amucc / 1u"u") * q))
+        return FAC_PE_DEFAULT
     end
 end
 
@@ -139,11 +137,9 @@ end
     if startswith(bd.head.headline, "normalized")
         return 1.0
     elseif hasJ || bd.head.headline == "PLANETARY"
-        # Factor to convert (μA/m² * nT) / (amu/cc) to μV/m
-        return ustrip(u"μV/m", (1ampm2 * 1u"nT") / ((1amucc / 1u"u") * q))
+        return FAC_HALL_PLANETARY
     else
-        # Factor to convert (raw_J * nT) / (amu/cc) to μV/m
-        return ustrip(u"μV/m", (1u"nT" / (1u"km" * μ0) * 1u"nT") / ((1amucc / 1u"u") * q))
+        return FAC_HALL_DEFAULT
     end
 end
 
