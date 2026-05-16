@@ -1,9 +1,13 @@
 module UnitfulBatsrus
 
 using Unitful: Unitful
-import Unitful: q, c, μ0, ϵ0, k, me, mp
+import Unitful: q, c, μ0, ϵ0, k, me, mp, ustrip
 using Unitful: @unit, Unitlike
 export getunit, getunits
+export q, c, μ0, ϵ0, k, me, mp
+export Re, Rg, RMercury, RSun, AU, amucc, kms, ampm2, tm2, vm2
+export EARTH_RADIUS_KM, ELEMENTARY_CHARGE, FAC_J_PLANETARY,
+    FAC_PE_PLANETARY, FAC_PE_DEFAULT, FAC_HALL_PLANETARY, FAC_HALL_DEFAULT
 
 # lengths
 @unit Re "Re" EarthRadii (6378) * Unitful.km false
@@ -33,6 +37,21 @@ export getunit, getunits
 # Others
 @unit tm2 "nT/m²" MagneticFieldDivergence 1 * Unitful.nT / Unitful.m^2 false
 @unit vm2 "V/m²" ElectricFieldDivergence 1 * Unitful.V / Unitful.m^2 false
+
+# Earth radius in km used for current density scaling in PLANETARY units.
+const EARTH_RADIUS_KM = ustrip(Unitful.km, 1Re)
+# Elementary charge in C
+const ELEMENTARY_CHARGE = ustrip(Unitful.C, 1q)
+# Factor to convert curl(B) to current density in μA/m²: 10 / (4π * Re)
+const FAC_J_PLANETARY = ustrip(ampm2, 1Unitful.nT / (1Re * μ0))
+# Factor to convert (nPa / Re) / (amu/cc * e) to μV/m
+const FAC_PE_PLANETARY = ustrip(Unitful.μV / Unitful.m, 1Unitful.nPa / (1Re * 1Unitful.cm^-3 * q))
+# Factor to convert (nPa / km) / (amu/cc * e) to μV/m
+const FAC_PE_DEFAULT = ustrip(Unitful.μV / Unitful.m, 1Unitful.nPa / (1Unitful.km * 1Unitful.cm^-3 * q))
+# Factor to convert (μA/m² * nT) / (amu/cc) to μV/m
+const FAC_HALL_PLANETARY = ustrip(Unitful.μV / Unitful.m, (1ampm2 * 1Unitful.nT) / (1Unitful.cm^-3 * q))
+# Factor to convert (raw_J * nT) / (amu/cc) to μV/m
+const FAC_HALL_DEFAULT = ustrip(Unitful.μV / Unitful.m, (1Unitful.nT / (1Unitful.km * μ0) * 1Unitful.nT) / (1Unitful.cm^-3 * q))
 
 const _UNIT_MAP = Dict(
     "R" => Re,
