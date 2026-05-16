@@ -434,7 +434,7 @@ end
 """
 Find neighbors for any node in the tree. Only for Cartesian now.
 """
-function find_neighbor_for_anynode(batl::Batl, iNode::Int)
+function find_neighbor_for_anynode(batl::Batl, iNode::Integer)
     nDim = batl.nDim
     nRoot_D = batl.head.nRoot_D
     iTree_IA = batl.iTree_IA
@@ -630,7 +630,7 @@ function getConnectivity(batl::Batl)
     for iNode in 1:nNode
         p = Int(iTree_IA[proc_, iNode])
         if 0 <= p < nProc
-            push!(nodesPerProc[p + 1], iNode)
+            push!(nodesPerProc[p + 1], Int32(iNode))
         end
     end
     for iProc in 0:(nProc - 1)
