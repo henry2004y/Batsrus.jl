@@ -131,13 +131,13 @@ function Batsrus.animate(
             unitx = getunit(bd, bd.head.coord[1])
             unity = getunit(bd, bd.head.coord[2])
             unitw = getunit(bd, var)
-            if unitx isa UnitfulBatsrus.Unitlike
+            if !isnothing(unitx)
                 x_coords = x_coords .* unitx
             end
-            if unity isa UnitfulBatsrus.Unitlike
+            if !isnothing(unity)
                 y_coords = y_coords .* unity
             end
-            if unitw isa UnitfulBatsrus.Unitlike
+            if !isnothing(unitw)
                 data = data .* unitw
             end
         end

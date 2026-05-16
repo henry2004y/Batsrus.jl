@@ -10,14 +10,14 @@ CurrentModule = Batsrus
 Modules = [Batsrus]
 ```
 
-## UnitfulBatsrus
+## FlexUnitsBatsrus
 
 ```@meta
-CurrentModule = Batsrus.UnitfulBatsrus
+CurrentModule = Batsrus.FlexUnitsBatsrus
 ```
 
 ```@autodocs
-Modules = [UnitfulBatsrus]
+Modules = [FlexUnitsBatsrus]
 ```
 
 ## HDF5 Extension

@@ -12,10 +12,10 @@ function Makie.convert_arguments(
     if use_units && hasunit(bd)
         unitx = getunit(bd, bd.head.coord[1])
         unitw = getunit(bd, var)
-        if unitx isa UnitfulBatsrus.Unitlike
+        if !isnothing(unitx)
             da = rebuild(da, dims = (rebuild(dims(da, 1), lookup(da, 1) .* unitx),))
         end
-        if unitw isa UnitfulBatsrus.Unitlike
+        if !isnothing(unitw)
             da = da .* unitw
         end
     end
@@ -39,13 +39,13 @@ function Makie.convert_arguments(
         unity = getunit(bd, bd.head.coord[2])
         unitw = getunit(bd, var)
 
-        if unitx isa UnitfulBatsrus.Unitlike
+        if !isnothing(unitx)
             x *= unitx
         end
-        if unity isa UnitfulBatsrus.Unitlike
+        if !isnothing(unity)
             y *= unity
         end
-        if unitw isa UnitfulBatsrus.Unitlike
+        if !isnothing(unitw)
             w *= unitw
         end
     end

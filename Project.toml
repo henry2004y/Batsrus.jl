@@ -18,7 +18,7 @@ RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
-Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
+FlexUnits = "76e01b6b-c995-4ce6-8559-91e72a3d4e95"
 
 [weakdeps]
 GaussianMixtures = "cc18c42c-b769-54ff-9e2a-b28141a64aae"
@@ -60,7 +60,7 @@ Reexport = "1.2"
 StaticArrays = "1.2"
 Suppressor = "0.2.8"
 UniformStreamlines = "0.2"
-Unitful = "1.7"
+FlexUnits = "0.5"
 WriteVTK = "1.9"
 julia = "1.10"
 

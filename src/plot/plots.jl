@@ -35,7 +35,7 @@ end
         unity = getunit(bd, bd.head.coord[2])
         unitw = getunit(bd, var)
 
-        if unitx isa UnitfulBatsrus.Unitlike
+        if !isnothing(unitx)
             x *= unitx
             y *= unity
             w *= unitw

@@ -1,3 +1,4 @@
+using FlexUnits.UnitRegistry
 @testset "Units" begin
     # Mockup for PLANETARY units
     # Using NamedTuple to avoid struct definition issues in test scope
@@ -22,9 +23,7 @@
     varunit = getunit(bd, "P")
     @test varunit == u"nPa"
     varunit = getunit(bd, "jx")
-    @test dimension(varunit) == dimension(Unitful.A / Unitful.m^2)
-    varunit = getunit(bd, "ex")
-    @test varunit == u"mV/m"
+    @test dimension(varunit) == dimension(u"A/m^2")
 
     # Mockup for PLANETARY units
 

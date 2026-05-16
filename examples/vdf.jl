@@ -11,7 +11,7 @@ inset_locator = pyimport("mpl_toolkits.axes_grid1.inset_locator")
 inset_axes = inset_locator.inset_axes
 
 ## Parameters
-using Batsrus.UnitfulBatsrus: me, mp
+using Batsrus.FlexUnitsBatsrus: me, mp
 const cAlfven = 253       # average Alfven speed in G8, [km/s]
 const mi = 14             # average ion mass [amu]
 
