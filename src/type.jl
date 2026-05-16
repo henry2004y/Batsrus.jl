@@ -1,4 +1,4 @@
-abstract type AbstractBatsrusData{Dim, TV} end
+abstract type AbstractBatsrusData{Dim, TV <: Number} end
 
 abstract type BatsrusHDF5File end
 
@@ -40,12 +40,12 @@ struct BatsHead
     param::Vector{SubString{String}}
 end
 
-abstract type BatsrusIDL{Dim, TV} <: AbstractBatsrusData{Dim, TV} end
+abstract type BatsrusIDL{Dim, TV <: Number} <: AbstractBatsrusData{Dim, TV} end
 
 """
 Batsrus structured data container, with `Dim` being the dimension of output.
 """
-struct BatsrusIDLStructured{Dim, TV <: AbstractFloat, TX, TW} <: BatsrusIDL{Dim, TV}
+struct BatsrusIDLStructured{Dim, TV <: Number, TX, TW} <: BatsrusIDL{Dim, TV}
     head::BatsHead
     list::FileList
     "Grid"
@@ -57,7 +57,7 @@ end
 """
 Batsrus unstructured data container, with `Dim` being the dimension of output.
 """
-struct BatsrusIDLUnstructured{Dim, TV <: AbstractFloat, TX, TW} <: BatsrusIDL{Dim, TV}
+struct BatsrusIDLUnstructured{Dim, TV <: Number, TX, TW} <: BatsrusIDL{Dim, TV}
     head::BatsHead
     list::FileList
     "Grid"

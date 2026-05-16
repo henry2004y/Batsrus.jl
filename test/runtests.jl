@@ -1,7 +1,7 @@
 # Tests of BATSRUS.jl
 
 using Batsrus, Test, SHA, LazyArtifacts
-using Batsrus.UnitfulBatsrus, Unitful
+using Batsrus.FlexUnitsBatsrus, FlexUnits, FlexUnits.UnitRegistry
 using Batsrus: At, Near # DimensionalData
 using RecipesBase
 using StaticArrays

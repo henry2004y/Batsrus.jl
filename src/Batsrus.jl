@@ -27,8 +27,8 @@ export BATS, BatsrusIDL, BatsrusIDLStructured, BatsrusIDLUnstructured,
     BatsrusHDF5File, BatsrusHDF5Uniform, extract_var # hdf5
 
 include("type.jl")
-include("unit/UnitfulBatsrus.jl")
-using .UnitfulBatsrus
+include("unit/FlexUnitsBatsrus.jl")
+using .FlexUnitsBatsrus
 
 include("io.jl")
 include("select.jl")
