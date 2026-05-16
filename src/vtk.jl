@@ -357,15 +357,8 @@ end
 """
 Logical shifts as the Fortran instrinsic function.
 """
-function ibits(i, pos, len)
-    # Treat it as 32 bits integer as in BATL.
-    ds = digits(i, base = 2, pad = 32)[(pos + 1):(pos + len)]
-    s = zero(eltype(i))
-    for val in ds
-        s = s * 2 + val
-    end
-
-    return s
+function ibits(i::Integer, pos::Integer, len::Integer)
+    (i >> pos) & ((Int32(1) << len) - 1)
 end
 
 """
@@ -624,9 +617,18 @@ function getConnectivity(batl::Batl)
     # Local block indexes may have gaps in between!
     nProc = maximum(iTree_IA[proc_, :]) + 1
     nBlock_P = fill(Int32(0), nProc)
-    if nProc > 1
-        for iProc in 1:(nProc - 1)
-            nBlock_P[iProc + 1] = nBlock_P[iProc] + count(==(iProc - 1), iTree_IA[proc_, :])
+    for iProc in 1:(nProc - 1)
+        nBlock_P[iProc + 1] = nBlock_P[iProc] + count(==(iProc - 1), iTree_IA[proc_, :])
+    end
+
+    nNode = size(iTree_IA, 2)
+    nodeToGlobalBlock_I = fill(Int32(0), nNode)
+    for iProc in 0:(nProc - 1)
+        localNodes = findall(==(iProc), @view iTree_IA[proc_, :])
+        localBlocks = @view iTree_IA[block_, localNodes]
+        seq = sortperm(localBlocks)
+        for (i, idx) in enumerate(localNodes[seq])
+            nodeToGlobalBlock_I[idx] = i + nBlock_P[iProc + 1]
         end
     end
 
@@ -660,7 +662,7 @@ function getConnectivity(batl::Batl)
                 iNodeNei_III,
                     DiLevelNei_III = find_neighbor_for_anynode(batl, localNodes_B[iBlock]) # rename!
 
-                fillCellNeighbors!(batl, iCell_G, DiLevelNei_III, iNodeNei_III, nBlock_P)
+                fillCellNeighbors!(batl, iCell_G, DiLevelNei_III, iNodeNei_III, nodeToGlobalBlock_I)
 
                 # Check who is in charge of writing following the prescribed rules.
                 if DiLevelNei_III[3, 3, 2] < 0
@@ -762,7 +764,7 @@ Vertices:        Edges: (10,11 ignored)
 
 Only tested for 3D.
 """
-function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, nBlock_P)
+function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, nodeToGlobalBlock_I)
     iTree_IA = batl.iTree_IA
     nI, nJ, nK = batl.head.nI, batl.head.nJ, batl.head.nK
 
@@ -774,7 +776,7 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     # -x face
     if DiLevelNei_III[1, 2, 2] == 1
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[1, 2, 2], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 2, 2]]
 
         @inbounds for k in krange, j in jrange
 
@@ -808,14 +810,14 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     # +x face
     if DiLevelNei_III[3, 2, 2] == 0
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[4, 3, 3], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 3, 3]]
 
         @inbounds for k in krange, j in jrange
 
             iCell_G[end, j + 1, k + 1] = nIJK * (neiBlock - 1) + 1 + nI * (j - 1) + nIJ * (k - 1)
         end
     elseif DiLevelNei_III[3, 2, 2] == 1
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[4, 3, 3], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 3, 3]]
 
         @inbounds for k in krange, j in jrange
 
@@ -851,7 +853,7 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     # -y face
     if DiLevelNei_III[2, 1, 2] == 1
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[2, 1, 2], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[2, 1, 2]]
 
         @inbounds for k in krange, i in irange
 
@@ -889,14 +891,14 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     # +y face
     if DiLevelNei_III[2, 3, 2] == 0
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[3, 4, 3], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[3, 4, 3]]
 
         @inbounds for k in krange, i in irange
 
             iCell_G[i + 1, end, k + 1] = nIJK * (neiBlock - 1) + i + nIJ * (k - 1)
         end
     elseif DiLevelNei_III[2, 3, 2] == 1
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[3, 4, 3], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[3, 4, 3]]
 
         @inbounds for k in krange, i in irange
 
@@ -927,7 +929,7 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     # -z face
     if DiLevelNei_III[2, 2, 1] == 1
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[2, 2, 1], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[2, 2, 1]]
 
         @inbounds for j in jrange, i in irange
 
@@ -955,14 +957,14 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     # +z face
     if DiLevelNei_III[2, 2, 3] == 0
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[3, 3, 4], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[3, 3, 4]]
 
         @inbounds for j in jrange, i in irange
 
             iCell_G[i + 1, j + 1, end] = nIJK * (neiBlock - 1) + i + nI * (j - 1)
         end
     elseif DiLevelNei_III[2, 2, 3] == 1
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[3, 3, 4], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[3, 3, 4]]
 
         @inbounds for j in jrange, i in irange
 
@@ -995,13 +997,13 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     # edge 1
     if DiLevelNei_III[2, 1, 1] == 0
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[2, 1, 1], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[2, 1, 1]]
 
         @inbounds for i in irange
             iCell_G[i + 1, 1, 1] = nIJK * neiBlock - nI + i
         end
     elseif DiLevelNei_III[2, 1, 1] in (1, 2)
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[2, 1, 1], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[2, 1, 1]]
 
         iSibling = getSibling(iNodeNei_III, iTree_IA)
 
@@ -1049,13 +1051,13 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     # edge 2
     if DiLevelNei_III[2, 3, 1] == 0
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[2, 4, 1], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[2, 4, 1]]
 
         @inbounds for i in 1:nI
             iCell_G[i + 1, end, 1] = nIJK * neiBlock - nIJ + i
         end
     elseif DiLevelNei_III[2, 3, 1] in (1, 2)
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[2, 4, 1], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[2, 4, 1]]
 
         iSibling = getSibling(iNodeNei_III, iTree_IA)
 
@@ -1098,13 +1100,13 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     # edge 3
     if DiLevelNei_III[2, 1, 3] == 0
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[2, 1, 4], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[2, 1, 4]]
 
         @inbounds for i in irange
             iCell_G[i + 1, 1, end] = nIJK * (neiBlock - 1) + nI * (nJ - 1) + i
         end
     elseif DiLevelNei_III[2, 1, 3] in (1, 2)
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[2, 1, 4], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[2, 1, 4]]
 
         iSibling = getSibling(iNodeNei_III, iTree_IA)
 
@@ -1154,12 +1156,12 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     # edge 4
     if DiLevelNei_III[2, 3, 3] == 0
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[2, 4, 4], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[2, 4, 4]]
         @inbounds for i in irange
             iCell_G[i + 1, end, end] = nIJK * (neiBlock - 1) + i
         end
     elseif DiLevelNei_III[2, 3, 3] in (1, 2)
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[2, 4, 4], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[2, 4, 4]]
 
         iSibling = getSibling(iNodeNei_III, iTree_IA)
 
@@ -1202,13 +1204,13 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     # edge 5
     if DiLevelNei_III[1, 2, 1] == 0
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[1, 2, 1], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 2, 1]]
 
         @inbounds for j in jrange
             iCell_G[1, j + 1, 1] = nIJK * neiBlock - nIJ + nI * j
         end
     elseif DiLevelNei_III[1, 2, 1] in (1, 2)
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[1, 2, 1], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 2, 1]]
 
         iSibling = getSibling(iNodeNei_III, iTree_IA)
 
@@ -1251,13 +1253,13 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     # edge 6
     if DiLevelNei_III[3, 2, 1] == 0
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[4, 2, 1], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 2, 1]]
 
         @inbounds for j in jrange
             iCell_G[end, j + 1, 1] = nIJK * neiBlock - nIJ + 1 + nI * (j - 1)
         end
     elseif DiLevelNei_III[3, 2, 1] in (1, 2)
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[4, 2, 1], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 2, 1]]
 
         iSibling = getSibling(iNodeNei_III, iTree_IA)
 
@@ -1303,13 +1305,13 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     # edge 7
     if DiLevelNei_III[1, 2, 3] == 0
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[1, 2, 4], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 2, 4]]
 
         @inbounds for j in jrange
             iCell_G[1, j + 1, end] = nIJK * (neiBlock - 1) + nI * j
         end
     elseif DiLevelNei_III[1, 2, 3] in (1, 2)
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[1, 2, 4], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 2, 4]]
 
         iSibling = getSibling(iNodeNei_III, iTree_IA)
 
@@ -1352,12 +1354,12 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     # edge 8
     if DiLevelNei_III[3, 2, 3] == 0
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[4, 2, 4], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 2, 4]]
         @inbounds for j in jrange
             iCell_G[end, j + 1, end] = nIJK * (neiBlock - 1) + 1 + nI * (j - 1)
         end
     elseif DiLevelNei_III[3, 2, 3] in (1, 2)
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[4, 2, 4], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 2, 4]]
 
         iSibling = getSibling(iNodeNei_III, iTree_IA)
 
@@ -1402,13 +1404,13 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     # edge 9
     if DiLevelNei_III[1, 1, 2] == 0
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[1, 1, 2], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 1, 2]]
 
         @inbounds for k in krange
             iCell_G[1, 1, k + 1] = nIJK * (neiBlock - 1) + nIJ * k
         end
     elseif DiLevelNei_III[1, 1, 2] in (1, 2)
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[1, 1, 2], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 1, 2]]
 
         iAMR = 2^DiLevelNei_III[1, 1, 2]
 
@@ -1451,13 +1453,13 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     # edge 10
     if DiLevelNei_III[3, 1, 2] == 0
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[4, 1, 2], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 1, 2]]
 
         @inbounds for k in krange
             iCell_G[end, 1, k + 1] = nIJK * (neiBlock - 1) + nI * (nJ - 1) + 1 + nIJ * (k - 1)
         end
     elseif DiLevelNei_III[3, 1, 2] in (1, 2)
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[4, 1, 2], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 1, 2]]
 
         iSibling = getSibling(iNodeNei_III, iTree_IA)
 
@@ -1513,13 +1515,13 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     # edge 11
     if DiLevelNei_III[1, 3, 2] == 0
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[1, 4, 2], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 4, 2]]
 
         @inbounds for k in krange
             iCell_G[1, end, k + 1] = nIJK * (neiBlock - 1) + nI + nIJ * (k - 1)
         end
     elseif DiLevelNei_III[1, 3, 2] in (1, 2)
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[1, 4, 2], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 4, 2]]
 
         iSibling = getSibling(iNodeNei_III, iTree_IA)
 
@@ -1562,12 +1564,12 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     # edge 12
     if DiLevelNei_III[3, 3, 2] == 0
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[4, 4, 2], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 4, 2]]
         @inbounds for k in krange
             iCell_G[end, end, k + 1] = nIJK * (neiBlock - 1) + 1 + nIJ * (k - 1)
         end
     elseif DiLevelNei_III[3, 3, 2] in (1, 2)
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[4, 4, 2], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 4, 2]]
 
         iSibling = getSibling(iNodeNei_III, iTree_IA)
 
@@ -1615,12 +1617,12 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     # node 1
     if DiLevelNei_III[1, 1, 1] in (0, 2, 3)
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[1, 1, 1], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 1, 1]]
 
         iCell_G[1, 1, 1] = nIJK * neiBlock
 
     elseif DiLevelNei_III[1, 1, 1] == 1
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[1, 1, 1], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 1, 1]]
 
         iSibling = getSibling(iNodeNei_III, iTree_IA)
 
@@ -1643,12 +1645,12 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     # node 2
     if DiLevelNei_III[3, 1, 1] in (0, 2, 3)
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[4, 1, 1], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 1, 1]]
 
         iCell_G[end, 1, 1] = nIJK * neiBlock - nI + 1
 
     elseif DiLevelNei_III[3, 1, 1] == 1
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[4, 1, 1], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 1, 1]]
 
         iSibling = getSibling(iNodeNei_III, iTree_IA)
 
@@ -1671,12 +1673,12 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     # node 3
     if DiLevelNei_III[1, 3, 1] in (0, 2, 3)
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[1, 4, 1], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 4, 1]]
 
         iCell_G[1, end, 1] = nIJK * neiBlock - nIJ + nI
 
     elseif DiLevelNei_III[1, 3, 1] == 1
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[1, 4, 1], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 4, 1]]
 
         iSibling = getSibling(iNodeNei_III, iTree_IA)
 
@@ -1699,12 +1701,12 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     # node 4
     if DiLevelNei_III[3, 3, 1] in (0, 2, 3)
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[4, 4, 1], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 4, 1]]
 
         iCell_G[end, end, 1] = nIJK * neiBlock - nIJ + 1
 
     elseif DiLevelNei_III[3, 3, 1] == 1
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[4, 4, 1], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 4, 1]]
 
         iSibling = getSibling(iNodeNei_III, iTree_IA)
 
@@ -1727,12 +1729,12 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     # node 5
     if DiLevelNei_III[1, 1, 3] in (0, 2, 3)
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[1, 1, 4], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 1, 4]]
 
         iCell_G[1, 1, end] = nIJK * (neiBlock - 1) + nIJ
 
     elseif DiLevelNei_III[1, 1, 3] == 1
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[1, 1, 4], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 1, 4]]
 
         iSibling = getSibling(iNodeNei_III, iTree_IA)
 
@@ -1755,12 +1757,12 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     # node 6
     if DiLevelNei_III[3, 1, 3] in (0, 2, 3)
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[4, 1, 4], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 1, 4]]
 
         iCell_G[end, 1, end] = nIJK * (neiBlock - 1) + nI * (nJ - 1) + 1
 
     elseif DiLevelNei_III[3, 1, 3] == 1
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[4, 1, 4], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 1, 4]]
 
         iSibling = getSibling(iNodeNei_III, iTree_IA)
 
@@ -1783,12 +1785,12 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     # node 7
     if DiLevelNei_III[1, 3, 3] in (0, 2, 3)
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[1, 4, 4], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 4, 4]]
 
         iCell_G[1, end, end] = nIJK * (neiBlock - 1) + nI
 
     elseif DiLevelNei_III[1, 3, 3] == 1
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[1, 4, 4], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 4, 4]]
 
         iSibling = getSibling(iNodeNei_III, iTree_IA)
 
@@ -1811,12 +1813,12 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     # node 8
     if DiLevelNei_III[3, 3, 3] in (0, 2, 3)
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[4, 4, 4], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 4, 4]]
 
         iCell_G[end, end, end] = nIJK * (neiBlock - 1) + 1
 
     elseif DiLevelNei_III[3, 3, 3] == 1
-        neiBlock = nodeToGlobalBlock(batl, iNodeNei_III[4, 4, 4], nBlock_P)
+        neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 4, 4]]
 
         iSibling = getSibling(iNodeNei_III, iTree_IA)
 
