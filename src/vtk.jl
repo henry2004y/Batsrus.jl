@@ -620,12 +620,12 @@ function getConnectivity(batl::Batl)
     # Local block indexes may have gaps in between!
     maxProc = maximum(@view iTree_IA[proc_, :])
     nProc = max(0, Int(maxProc)) + 1
-    
+
     counts = zeros(Int, nProc)
     for p in @view iTree_IA[proc_, :]
         0 <= p < nProc && (counts[p + 1] += 1)
     end
-    
+
     nBlock_P = fill(Int32(0), nProc)
     for iProc in 1:(nProc - 1)
         nBlock_P[iProc + 1] = nBlock_P[iProc] + counts[iProc]
