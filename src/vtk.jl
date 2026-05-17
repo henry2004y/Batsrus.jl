@@ -357,10 +357,11 @@ end
 """
     ibits(i::Integer, pos::Integer, len::Integer)
 
-Logical bit extraction. Note: for `Int32`, this implementation is valid for `len < 32`.
+Logical bit extraction.
 """
 function ibits(i::Integer, pos::Integer, len::Integer)
-    return (i >> pos) & ((Int32(1) << len) - 1)
+    mask = (one(i) << len) - one(i)
+    return (i >> pos) & mask
 end
 
 """
@@ -619,14 +620,20 @@ function getConnectivity(batl::Batl)
     # Local block indexes may have gaps in between!
     maxProc = maximum(@view iTree_IA[proc_, :])
     nProc = max(0, Int(maxProc)) + 1
+    
+    counts = zeros(Int, nProc)
+    for p in @view iTree_IA[proc_, :]
+        0 <= p < nProc && (counts[p + 1] += 1)
+    end
+    
     nBlock_P = fill(Int32(0), nProc)
     for iProc in 1:(nProc - 1)
-        nBlock_P[iProc + 1] = nBlock_P[iProc] + count(==(iProc - 1), iTree_IA[proc_, :])
+        nBlock_P[iProc + 1] = nBlock_P[iProc] + counts[iProc]
     end
 
     nNode = size(iTree_IA, 2)
     nodeToGlobalBlock_I = fill(Int32(0), nNode)
-    nodesPerProc = [Int32[] for _ in 1:nProc]
+    nodesPerProc = [sizehint!(Int32[], counts[i]) for i in 1:nProc]
     for iNode in 1:nNode
         p = Int(iTree_IA[proc_, iNode])
         if 0 <= p < nProc
@@ -635,9 +642,8 @@ function getConnectivity(batl::Batl)
     end
     for iProc in 0:(nProc - 1)
         localNodes = nodesPerProc[iProc + 1]
-        seq = sortperm(@view iTree_IA[block_, localNodes])
-        nodesPerProc[iProc + 1] = localNodes[seq]
-        for (i, idx) in enumerate(nodesPerProc[iProc + 1])
+        sort!(localNodes, by = idx -> iTree_IA[block_, idx])
+        for (i, idx) in enumerate(localNodes)
             nodeToGlobalBlock_I[idx] = i + nBlock_P[iProc + 1]
         end
     end
