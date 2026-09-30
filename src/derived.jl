@@ -6,8 +6,63 @@
 Calculate the magnitude square of vector `var`. See [`get_vectors`](@ref) for the options.
 """
 function get_magnitude2(bd::BatsrusIDL, var = :B)
-    vx, vy, vz = get_vectors(bd, var)
-    return vx .^ 2 .+ vy .^ 2 .+ vz .^ 2
+    return _get_magnitude2(bd, Val(var))
+end
+
+@inline function _get_magnitude2(bd::BatsrusIDLStructured{ndim, TV, TX, TW}, ::Val{var}) where {ndim, TV, TX, TW, var}
+    indices = get_vectors_indices(bd, Val(var))
+    w = parent(bd.w)
+    ivx, ivy, ivz = indices
+    d = dims(bd.w)
+    if ndim == 2
+        nx, ny = size(bd.w, 1), size(bd.w, 2)
+        n_space = nx * ny
+        res = similar(w, nx, ny)
+        @inbounds for i in 1:n_space
+            res[i] = w[i + (ivx - 1) * n_space]^2 +
+                w[i + (ivy - 1) * n_space]^2 +
+                w[i + (ivz - 1) * n_space]^2
+        end
+        return rebuild(bd.w, res, (d[1], d[2]))
+    elseif ndim == 3
+        nx, ny, nz = size(bd.w, 1), size(bd.w, 2), size(bd.w, 3)
+        n_space = nx * ny * nz
+        res = similar(w, nx, ny, nz)
+        @inbounds for i in 1:n_space
+            res[i] = w[i + (ivx - 1) * n_space]^2 +
+                w[i + (ivy - 1) * n_space]^2 +
+                w[i + (ivz - 1) * n_space]^2
+        end
+        return rebuild(bd.w, res, (d[1], d[2], d[3]))
+    else
+        sz = ntuple(i -> size(bd.w, i), Val(ndim))
+        n_space = 1
+        for i in 1:ndim
+            n_space *= sz[i]
+        end
+        res = similar(w, sz)
+        @inbounds for i in 1:n_space
+            res[i] = w[i + (ivx - 1) * n_space]^2 +
+                w[i + (ivy - 1) * n_space]^2 +
+                w[i + (ivz - 1) * n_space]^2
+        end
+        return rebuild(bd.w, res, ntuple(i -> d[i], Val(ndim)))
+    end
+end
+
+@inline function _get_magnitude2(bd::BatsrusIDLUnstructured{ndim, TV, TX, TW}, ::Val{var}) where {ndim, TV, TX, TW, var}
+    indices = get_vectors_indices(bd, Val(var))
+    w = parent(bd.w)
+    n_cells = size(w, 1)
+    res = similar(w, n_cells)
+    ivx, ivy, ivz = indices
+    @inbounds for i in 1:n_cells
+        res[i] = w[i + (ivx - 1) * n_cells]^2 +
+            w[i + (ivy - 1) * n_cells]^2 +
+            w[i + (ivz - 1) * n_cells]^2
+    end
+    d = dims(bd.w)
+    return DimArray(res, (d[1],))
 end
 
 """
@@ -605,7 +660,10 @@ end
     w = parent(bd.w)
     xrange = get_range(bd)[1]
     dx, nx = TV(step(xrange)), size(w, 1)
-    jy = [-_diff1(w, ix, nx, dx, ivz) for ix in 1:nx]
+    jy = similar(w, nx)
+    @inbounds for ix in 1:nx
+        jy[ix] = -_diff1(w, ix, nx, dx, ivz)
+    end
     return DimArray(_apply_j_scaling!(jy, bd), dims(bd.w)[1:1])
 end
 
@@ -614,7 +672,10 @@ end
     w = parent(bd.w)
     xrange = get_range(bd)[1]
     dx, nx = TV(step(xrange)), size(w, 1)
-    jz = [_diff1(w, ix, nx, dx, ivy) for ix in 1:nx]
+    jz = similar(w, nx)
+    @inbounds for ix in 1:nx
+        jz[ix] = _diff1(w, ix, nx, dx, ivy)
+    end
     return DimArray(_apply_j_scaling!(jz, bd), dims(bd.w)[1:1])
 end
 
@@ -623,7 +684,10 @@ end
     w = parent(bd.w)
     yrange = get_range(bd)[2]
     dy, nx, ny = TV(step(yrange)), size(w, 1), size(w, 2)
-    jx = [ _diff2_y(w, ix, iy, ny, dy, ivz) for ix in 1:nx, iy in 1:ny ]
+    jx = similar(w, nx, ny)
+    @inbounds for iy in 1:ny, ix in 1:nx
+        jx[ix, iy] = _diff2_y(w, ix, iy, ny, dy, ivz)
+    end
     return DimArray(_apply_j_scaling!(jx, bd), dims(bd.w)[1:2])
 end
 
@@ -632,7 +696,10 @@ end
     w = parent(bd.w)
     xrange = get_range(bd)[1]
     dx, nx, ny = TV(step(xrange)), size(w, 1), size(w, 2)
-    jy = [ -_diff2_x(w, ix, iy, nx, dx, ivz) for ix in 1:nx, iy in 1:ny ]
+    jy = similar(w, nx, ny)
+    @inbounds for iy in 1:ny, ix in 1:nx
+        jy[ix, iy] = -_diff2_x(w, ix, iy, nx, dx, ivz)
+    end
     return DimArray(_apply_j_scaling!(jy, bd), dims(bd.w)[1:2])
 end
 
@@ -642,12 +709,11 @@ end
     d = dims(bd.w)
     dx, dy = TV(step(val(d[1]))), TV(step(val(d[2])))
     nx, ny = size(w, 1), size(w, 2)
-    jz = [
-        _diff2_x(w, ix, iy, nx, dx, ivy) - _diff2_y(w, ix, iy, ny, dy, ivx)
-            for ix in 1:nx, iy in 1:ny
-    ]
-    _apply_j_scaling!(jz, bd)
-    return DimArray(jz, (d[1], d[2]))
+    jz = similar(w, nx, ny)
+    @inbounds for iy in 1:ny, ix in 1:nx
+        jz[ix, iy] = _diff2_x(w, ix, iy, nx, dx, ivy) - _diff2_y(w, ix, iy, ny, dy, ivx)
+    end
+    return DimArray(_apply_j_scaling!(jz, bd), (d[1], d[2]))
 end
 
 @inline function _compute_jx(bd::BatsrusIDLStructured{3, TV}) where {TV}
@@ -656,10 +722,10 @@ end
     _, yrange, zrange = get_range(bd)
     dy, dz = TV(step(yrange)), TV(step(zrange))
     nx, ny, nz = size(w, 1), size(w, 2), size(w, 3)
-    jx = [
-        _diff3_y(w, ix, iy, iz, ny, dy, ivz) - _diff3_z(w, ix, iy, iz, nz, dz, ivy)
-            for ix in 1:nx, iy in 1:ny, iz in 1:nz
-    ]
+    jx = similar(w, nx, ny, nz)
+    @inbounds for iz in 1:nz, iy in 1:ny, ix in 1:nx
+        jx[ix, iy, iz] = _diff3_y(w, ix, iy, iz, ny, dy, ivz) - _diff3_z(w, ix, iy, iz, nz, dz, ivy)
+    end
     return DimArray(_apply_j_scaling!(jx, bd), dims(bd.w)[1:3])
 end
 
@@ -669,10 +735,10 @@ end
     xrange, _, zrange = get_range(bd)
     dx, dz = TV(step(xrange)), TV(step(zrange))
     nx, ny, nz = size(w, 1), size(w, 2), size(w, 3)
-    jy = [
-        _diff3_z(w, ix, iy, iz, nz, dz, ivx) - _diff3_x(w, ix, iy, iz, nx, dx, ivz)
-            for ix in 1:nx, iy in 1:ny, iz in 1:nz
-    ]
+    jy = similar(w, nx, ny, nz)
+    @inbounds for iz in 1:nz, iy in 1:ny, ix in 1:nx
+        jy[ix, iy, iz] = _diff3_z(w, ix, iy, iz, nz, dz, ivx) - _diff3_x(w, ix, iy, iz, nx, dx, ivz)
+    end
     return DimArray(_apply_j_scaling!(jy, bd), dims(bd.w)[1:3])
 end
 
@@ -682,10 +748,10 @@ end
     xrange, yrange = get_range(bd)
     dx, dy = TV(step(xrange)), TV(step(yrange))
     nx, ny, nz = size(w, 1), size(w, 2), size(w, 3)
-    jz = [
-        _diff3_x(w, ix, iy, iz, nx, dx, ivy) - _diff3_y(w, ix, iy, iz, ny, dy, ivx)
-            for ix in 1:nx, iy in 1:ny, iz in 1:nz
-    ]
+    jz = similar(w, nx, ny, nz)
+    @inbounds for iz in 1:nz, iy in 1:ny, ix in 1:nx
+        jz[ix, iy, iz] = _diff3_x(w, ix, iy, iz, nx, dx, ivy) - _diff3_y(w, ix, iy, iz, ny, dy, ivx)
+    end
     return DimArray(_apply_j_scaling!(jz, bd), dims(bd.w)[1:3])
 end
 
