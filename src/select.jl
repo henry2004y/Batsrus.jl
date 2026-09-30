@@ -8,12 +8,31 @@ using LinearAlgebra: tr
 Get 2D plane cut in orientation `dir` for `var` out of 3D box `data` within `plotrange`.
 The returned 2D data lies in the `sequence` plane from - to + in `dir`.
 """
+@inline function _check_rectilinear(x, ndim::Int)
+    for d in 1:ndim
+        DimensionalData.lookup(x, d) isa DimensionalData.NoLookup &&
+            error("Selectors are only supported for rectilinear grids (gencoord=false)!")
+    end
+    return
+end
+
+# Convert [lo1 hi1 lo2 hi2 ...] into Between selectors, replacing infinite
+# bounds with the endpoints of the corresponding dimension of `data`.
+@inline function _resolve_limits(limits, data, ::Val{N}) where {N}
+    return ntuple(N) do d
+        lo = limits[2d - 1]
+        hi = limits[2d]
+        lo = isinf(lo) ? first(dims(data, d)) : lo
+        hi = isinf(hi) ? last(dims(data, d)) : hi
+        return Between(lo, hi)
+    end
+end
+
 function cutdata(
         bd::BatsrusIDL, var::AbstractString;
         plotrange = [-Inf, Inf, -Inf, Inf], dir::String = "x", sequence::Int = 1
     )
-    var_ = findfirst(x -> lowercase(x) == lowercase(var), bd.head.wname)
-    isempty(var_) && error("$(var) not found in header variables!")
+    var_ = findindex(bd, var)
 
     if dir == "x"
         dim, d1, d2 = 1, 2, 3
@@ -27,7 +46,7 @@ function cutdata(
     cut2 = selectdim(view(bd.x, :, :, :, d2), dim, sequence)
     W = selectdim(view(bd.w, :, :, :, var_), dim, sequence)
 
-    if !all(isinf.(plotrange))
+    if !all(isinf, plotrange)
         cut1, cut2, W = subsurface(cut1, cut2, W, plotrange)
     end
 
@@ -66,22 +85,11 @@ Extract subset of 2D surface dataset in ndgrid format. See also: [`subvolume`](@
 """
 function subsurface(x, y, data, limits)
     checkvalidlimits(limits)
+    _check_rectilinear(x, 2)
+    selectors = _resolve_limits(limits, data, Val(2))
 
-    if DimensionalData.lookup(x, 1) isa DimensionalData.NoLookup ||
-            DimensionalData.lookup(x, 2) isa DimensionalData.NoLookup
-        error("Selectors are only supported for rectilinear grids (gencoord=false)!")
-    end
-
-    xmin, xmax, ymin, ymax = limits
-    xmin = isinf(xmin) ? first(dims(data, 1)) : xmin
-    xmax = isinf(xmax) ? last(dims(data, 1)) : xmax
-    ymin = isinf(ymin) ? first(dims(data, 2)) : ymin
-    ymax = isinf(ymax) ? last(dims(data, 2)) : ymax
-
-    selectors = (Between(xmin, xmax), Between(ymin, ymax))
     # This assumes x and y are the dimensions of data, which they should be for cutdata results
     subdata = data[selectors...]
-    # subx and suby should also be sliced if they are DimArrays, or we can just return the dims from subdata
     # In cutdata, cut1 (x) and cut2 (y) are DimArrays.
     subx = x[selectors...]
     suby = y[selectors...]
@@ -91,26 +99,10 @@ end
 
 function subsurface(x, y, u, v, limits)
     checkvalidlimits(limits)
+    _check_rectilinear(x, 2)
+    selectors = _resolve_limits(limits, u, Val(2))
 
-    if DimensionalData.lookup(x, 1) isa DimensionalData.NoLookup ||
-            DimensionalData.lookup(x, 2) isa DimensionalData.NoLookup
-        error("Selectors are only supported for rectilinear grids (gencoord=false)!")
-    end
-
-    xmin, xmax, ymin, ymax = limits
-    xmin = isinf(xmin) ? first(dims(u, 1)) : xmin
-    xmax = isinf(xmax) ? last(dims(u, 1)) : xmax
-    ymin = isinf(ymin) ? first(dims(u, 2)) : ymin
-    ymax = isinf(ymax) ? last(dims(u, 2)) : ymax
-
-    selectors = (Between(xmin, xmax), Between(ymin, ymax))
-    newu = u[selectors...]
-    newv = v[selectors...]
-
-    subx = x[selectors...]
-    suby = y[selectors...]
-
-    return subx, suby, newu, newv
+    return x[selectors...], y[selectors...], u[selectors...], v[selectors...]
 end
 
 """
@@ -121,57 +113,19 @@ Extract subset of 3D dataset in ndgrid format. See also: [`subsurface`](@ref).
 """
 function subvolume(x, y, z, data, limits)
     checkvalidlimits(limits, 3)
+    _check_rectilinear(x, 3)
+    selectors = _resolve_limits(limits, data, Val(3))
 
-    if DimensionalData.lookup(x, 1) isa DimensionalData.NoLookup ||
-            DimensionalData.lookup(x, 2) isa DimensionalData.NoLookup ||
-            DimensionalData.lookup(x, 3) isa DimensionalData.NoLookup
-        error("Selectors are only supported for rectilinear grids (gencoord=false)!")
-    end
-
-    xmin, xmax, ymin, ymax, zmin, zmax = limits
-    xmin = isinf(xmin) ? first(dims(data, 1)) : xmin
-    xmax = isinf(xmax) ? last(dims(data, 1)) : xmax
-    ymin = isinf(ymin) ? first(dims(data, 2)) : ymin
-    ymax = isinf(ymax) ? last(dims(data, 2)) : ymax
-    zmin = isinf(zmin) ? first(dims(data, 3)) : zmin
-    zmax = isinf(zmax) ? last(dims(data, 3)) : zmax
-
-    selectors = (Between(xmin, xmax), Between(ymin, ymax), Between(zmin, zmax))
-    subdata = data[selectors...]
-    subx = x[selectors...]
-    suby = y[selectors...]
-    subz = z[selectors...]
-
-    return subx, suby, subz, subdata
+    return x[selectors...], y[selectors...], z[selectors...], data[selectors...]
 end
 
 function subvolume(x, y, z, u, v, w, limits)
     checkvalidlimits(limits, 3)
+    _check_rectilinear(x, 3)
+    selectors = _resolve_limits(limits, u, Val(3))
 
-    if DimensionalData.lookup(x, 1) isa DimensionalData.NoLookup ||
-            DimensionalData.lookup(x, 2) isa DimensionalData.NoLookup ||
-            DimensionalData.lookup(x, 3) isa DimensionalData.NoLookup
-        error("Selectors are only supported for rectilinear grids (gencoord=false)!")
-    end
-
-    xmin, xmax, ymin, ymax, zmin, zmax = limits
-    xmin = isinf(xmin) ? first(dims(u, 1)) : xmin
-    xmax = isinf(xmax) ? last(dims(u, 1)) : xmax
-    ymin = isinf(ymin) ? first(dims(u, 2)) : ymin
-    ymax = isinf(ymax) ? last(dims(u, 2)) : ymax
-    zmin = isinf(zmin) ? first(dims(u, 3)) : zmin
-    zmax = isinf(zmax) ? last(dims(u, 3)) : zmax
-
-    selectors = (Between(xmin, xmax), Between(ymin, ymax), Between(zmin, zmax))
-    newu = u[selectors...]
-    newv = v[selectors...]
-    neww = w[selectors...]
-
-    subx = x[selectors...]
-    suby = y[selectors...]
-    subz = z[selectors...]
-
-    return subx, suby, subz, newu, newv, neww
+    return x[selectors...], y[selectors...], z[selectors...],
+        u[selectors...], v[selectors...], w[selectors...]
 end
 
 """
@@ -283,6 +237,13 @@ end
 Extract plasma moments and EM field from PIC output `files` at `loc` with nearest neighbor.
 Currently only works for 2D outputs. If a single point variable is needed, see [`interp1d`](@ref).
 """
+# Variables extracted by get_timeseries, in output row order.
+const _TIMESERIES_VARS = (
+    :rhos0, :rhos1, :uxs0, :uys0, :uzs0, :uxs1, :uys1, :uzs1,
+    :pxxs0, :pyys0, :pzzs0, :pxxs1, :pyys1, :pzzs1,
+    :bx, :by, :bz, :ex, :ey, :ez,
+)
+
 function get_timeseries(files::AbstractArray, loc; tstep = 1.0)
     nfiles = length(files)
     bd = files[1] |> Batsrus.load
@@ -292,30 +253,13 @@ function get_timeseries(files::AbstractArray, loc; tstep = 1.0)
     @assert yrange[1] ≤ loc[2] ≤ yrange[end] "y location out of range!"
     x_ = searchsortedfirst(xrange, loc[1])
     y_ = searchsortedfirst(yrange, loc[2])
-    v = zeros(Float32, 20, nfiles)
+    v = zeros(Float32, length(_TIMESERIES_VARS), nfiles)
 
     @showprogress dt = 1 desc = "Extracting..." for it in eachindex(files)
         bd = files[it] |> Batsrus.load
-        v[1, it] = bd[:rhos0][x_, y_]
-        v[2, it] = bd[:rhos1][x_, y_]
-        v[3, it] = bd[:uxs0][x_, y_]
-        v[4, it] = bd[:uys0][x_, y_]
-        v[5, it] = bd[:uzs0][x_, y_]
-        v[6, it] = bd[:uxs1][x_, y_]
-        v[7, it] = bd[:uys1][x_, y_]
-        v[8, it] = bd[:uzs1][x_, y_]
-        v[9, it] = bd[:pxxs0][x_, y_]
-        v[10, it] = bd[:pyys0][x_, y_]
-        v[11, it] = bd[:pzzs0][x_, y_]
-        v[12, it] = bd[:pxxs1][x_, y_]
-        v[13, it] = bd[:pyys1][x_, y_]
-        v[14, it] = bd[:pzzs1][x_, y_]
-        v[15, it] = bd[:bx][x_, y_]
-        v[16, it] = bd[:by][x_, y_]
-        v[17, it] = bd[:bz][x_, y_]
-        v[18, it] = bd[:ex][x_, y_]
-        v[19, it] = bd[:ey][x_, y_]
-        v[20, it] = bd[:ez][x_, y_]
+        for (i, var) in pairs(_TIMESERIES_VARS)
+            v[i, it] = bd[var][x_, y_]
+        end
     end
 
     return trange, v

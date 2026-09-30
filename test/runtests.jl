@@ -52,7 +52,7 @@ end
 datapath = artifact"testdata"
 
 @testset "Batsrus.jl" begin
-    tests = isempty(ARGS) ? ["unit", "io", "show", "plotting", "analysis", "select", "derived"] : ARGS
+    tests = isempty(ARGS) ? ["unit", "io", "show", "plotting", "analysis", "select", "derived", "vtk"] : ARGS
     for t in tests
         @testset "$t" begin
             file = joinpath(@__DIR__, "tests_$(t).jl")

@@ -52,6 +52,8 @@ struct BatsrusIDLStructured{Dim, TV <: AbstractFloat, TX, TW} <: BatsrusIDL{Dim,
     x::TX
     "Variables"
     w::TW
+    "Lowercased variable name to index"
+    varindex::Dict{String, Int}
 end
 
 """
@@ -64,6 +66,8 @@ struct BatsrusIDLUnstructured{Dim, TV <: AbstractFloat, TX, TW} <: BatsrusIDL{Di
     x::TX
     "Variables"
     w::TW
+    "Lowercased variable name to index"
+    varindex::Dict{String, Int}
 end
 
 """
@@ -73,6 +77,12 @@ const BATS = BatsrusIDL
 
 function BATS(head, list, x::Array{TV, Dimp1}, w::Array{TV, Dimp1}) where {TV, Dimp1}
     @assert head.ndim + 1 == Dimp1 "Dimension mismatch!"
+    # Lowercased variable name -> index, built once and reused by findindex/_has_var.
+    varindex = Dict{String, Int}()
+    for (i, name) in enumerate(head.wname)
+        key = lowercase(String(name))
+        haskey(varindex, key) || (varindex[key] = i)
+    end
     if head.gencoord
         if head.ndim == 2
             x = DimArray(x, (X, Y, :dim))
@@ -84,7 +94,9 @@ function BATS(head, list, x::Array{TV, Dimp1}, w::Array{TV, Dimp1}) where {TV, D
             x = DimArray(x, (X, :dim))
             w = DimArray(w, (X, Dim{:var}(head.wname)))
         end
-        return BatsrusIDLUnstructured{head.ndim, TV, typeof(x), typeof(w)}(head, list, x, w)
+        return BatsrusIDLUnstructured{head.ndim, TV, typeof(x), typeof(w)}(
+            head, list, x, w, varindex
+        )
     else
         if head.ndim == 2
             xrange = range(x[1, 1, 1], x[end, 1, 1], length = size(x, 1))
@@ -112,6 +124,8 @@ function BATS(head, list, x::Array{TV, Dimp1}, w::Array{TV, Dimp1}) where {TV, D
             x = DimArray(x, dims_x)
             w = DimArray(w, dims_w)
         end
-        return BatsrusIDLStructured{head.ndim, TV, typeof(x), typeof(w)}(head, list, x, w)
+        return BatsrusIDLStructured{head.ndim, TV, typeof(x), typeof(w)}(
+            head, list, x, w, varindex
+        )
     end
 end

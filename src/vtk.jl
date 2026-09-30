@@ -276,28 +276,20 @@ function find_grid_block(batl::Batl, xyz_D)
     CoordMin_D = batl.head.CoordMin_D
     CoordMax_D = batl.head.CoordMax_D
 
-    Coord_D = xyz_D
-
     # Calculate normalized coordinates for tree search
-    CoordTree_D = (Coord_D - CoordMin_D) ./ (CoordMax_D - CoordMin_D)
+    c1 = (xyz_D[1] - CoordMin_D[1]) / (CoordMax_D[1] - CoordMin_D[1])
+    c2 = (xyz_D[2] - CoordMin_D[2]) / (CoordMax_D[2] - CoordMin_D[2])
+    c3 = (xyz_D[3] - CoordMin_D[3]) / (CoordMax_D[3] - CoordMin_D[3])
 
-    if any(CoordTree_D .< 0.0) || any(CoordTree_D .> 1.0)
-        iBlock = unset_
-        return iBlock
+    if c1 < 0.0 || c1 > 1.0 || c2 < 0.0 || c2 > 1.0 || c3 < 0.0 || c3 > 1.0
+        return unset_
     end
 
     # Find node containing the point
-    iNode = find_tree_node(batl, CoordTree_D)
+    iNode = find_tree_node(batl, MVector{3, Float64}(c1, c2, c3))
 
-    # Check if point was found
-    if iNode > 0
-        # Convert to block and processor indexes
-        iBlock = batl.iTree_IA[block_, iNode]
-    else
-        iBlock = unset_
-    end
-
-    return iBlock
+    # Convert to block index if the point was found
+    return iNode > 0 ? batl.iTree_IA[block_, iNode] : unset_
 end
 
 """
@@ -313,34 +305,58 @@ function find_tree_node(batl::Batl, Coord_D)
     iTree_IA = batl.iTree_IA
 
     # Scale coordinates so that 1 ≤ Coord_D ≤ nRoot_D+1
-    Coord_D = @. 1.0 + nRoot_D * max(0.0, min(1.0, Coord_D))
+    c1 = 1.0 + nRoot_D[1] * clamp(Coord_D[1], 0.0, 1.0)
+    c2 = 1.0 + nRoot_D[2] * clamp(Coord_D[2], 0.0, 1.0)
+    c3 = 1.0 + nRoot_D[3] * clamp(Coord_D[3], 0.0, 1.0)
 
-    # Get root node index
-    iRoot_D = min.(floor.(Int32, Coord_D), nRoot_D)
-
-    # Root node indexes are ordered
-    iNode = iRoot_D[1] + nRoot_D[1] * ((iRoot_D[2] - 1) + nRoot_D[2] * (iRoot_D[3] - 1))
+    # Get root node index; root node indexes are ordered
+    iRoot1 = min(floor(Int32, c1), nRoot_D[1])
+    iRoot2 = min(floor(Int32, c2), nRoot_D[2])
+    iRoot3 = min(floor(Int32, c3), nRoot_D[3])
+    iNode = iRoot1 + nRoot_D[1] * ((iRoot2 - 1) + nRoot_D[2] * (iRoot3 - 1))
 
     if iTree_IA[status_, iNode] == used_
         return iNode
     end
 
-    nLevelMax, iNodeMorton_I = order_tree(batl)
+    # Maximum level over the used nodes: allocation-free equivalent of the
+    # nLevelMax returned by order_tree, whose Morton ordering is not needed
+    # for the point search.
+    nLevelMax = Int32(0)
+    for iN in 1:size(iTree_IA, 2)
+        if iTree_IA[status_, iN] == used_ && iTree_IA[level_, iN] > nLevelMax
+            nLevelMax = iTree_IA[level_, iN]
+        end
+    end
 
-    # Get normalized coordinates within root node and scale it up
-    # to the largest resolution: 0 <= iCoord_D <= maxCoord_I(nLevelMax)-1
-    iCoord_D = min.(
-        maxCoord_I[nLevelMax + 1] - 1,
-        floor.(Int32, (Coord_D[iDimAmr_D] - iRoot_D[iDimAmr_D]) * maxCoord_I[nLevelMax + 1])
-    )
+    maxC = maxCoord_I[nLevelMax + 1]
 
-    # Go down the tree using bit information
+    # Get normalized coordinates within the root node and scale them up to the
+    # largest resolution: 0 <= iCoord_d <= maxC-1 (AMR dimensions only)
+    iC1 = iC2 = iC3 = Int32(0)
+    for d in 1:nDimAmr
+        idim = iDimAmr_D[d]
+        c = idim == 1 ? c1 : idim == 2 ? c2 : c3
+        iRoot = idim == 1 ? iRoot1 : idim == 2 ? iRoot2 : iRoot3
+        iC = min(maxC - Int32(1), floor(Int32, (c - iRoot) * maxC))
+        if idim == 1
+            iC1 = iC
+        elseif idim == 2
+            iC2 = iC
+        else
+            iC3 = iC
+        end
+    end
+
+    # Go down the tree using bit information; the child index is
+    # iChild = child1_ + Sum_d Bit_d * 2^(d-1) over the AMR dimensions
     for iLevel in (nLevelMax - 1):-1:0
-        # Get the binary bits based on the coordinates
-        iBit_D = ibits.(iCoord_D, iLevel, 1)
-
-        # Construct child index as iChild = Sum Bit_i*2^i
-        iChild = sum(iBit_D .* maxCoord_I[1:nDimAmr]) + child1_
+        iChild = child1_
+        for d in 1:nDimAmr
+            idim = iDimAmr_D[d]
+            iC = idim == 1 ? iC1 : idim == 2 ? iC2 : iC3
+            iChild += ((iC >> iLevel) & 1) * maxCoord_I[d]
+        end
         iNode = iTree_IA[iChild, iNode]
 
         if iTree_IA[status_, iNode] == used_
@@ -349,19 +365,7 @@ function find_tree_node(batl::Batl, Coord_D)
     end
 
     # Did not find the point so set iNode as unset
-    iNode = unset_
-
-    return iNode
-end
-
-"""
-    ibits(i::Integer, pos::Integer, len::Integer)
-
-Logical bit extraction.
-"""
-function ibits(i::Integer, pos::Integer, len::Integer)
-    mask = (one(i) << len) - one(i)
-    return (i >> pos) & mask
+    return unset_
 end
 
 """
@@ -561,7 +565,7 @@ function find_neighbor_for_anynode(batl::Batl, iNode::Integer)
                     end
                 end
 
-                jNode = find_tree_node(batl, [x, y, z])
+                jNode = find_tree_node(batl, MVector{3, Float64}(x, y, z))
 
                 iNodeNei_III[i + 1, j + 1, k + 1] = jNode
                 DiLevelNei_III[Di + 2, Dj + 2, Dk + 2] = iLevel - iTree_IA[level_, jNode]
@@ -573,48 +577,12 @@ function find_neighbor_for_anynode(batl::Batl, iNode::Integer)
 end
 
 """
-Return global block index for the node.
+Build the global block enumeration shared by the connectivity and VTK writers:
+per-processor node lists sorted by local block index, and the node -> global
+block index mapping (blocks are numbered over processors in ascending order).
 """
-function nodeToGlobalBlock(batl::Batl, iNode::Int32, nBlock_P)
+function _build_block_layout(batl::Batl)
     iTree_IA = batl.iTree_IA
-
-    iProc = iTree_IA[proc_, iNode]
-
-    localNodes_B = findall(x -> x == iProc, iTree_IA[proc_, :])
-    localBlocks_B = iTree_IA[block_, localNodes_B]
-    myRank = findfirst(x -> x == iNode, localNodes_B)
-
-    localBlocksSorted_B = sort(localBlocks_B)
-    localOrder = findfirst(x -> x == localBlocks_B[myRank], localBlocksSorted_B)
-
-    globalBlock = localOrder + nBlock_P[iProc + 1]
-
-    return globalBlock
-end
-
-"""
-Get cell connectivity list.
-"""
-function getConnectivity(batl::Batl)
-    iTree_IA = batl.iTree_IA
-    nI, nJ, nK = batl.head.nI, batl.head.nJ, batl.head.nK
-    nDim = batl.nDim
-    if nDim == 3
-        nConn = 8
-    elseif nDim == 2
-        nConn = 4
-        @error "2D not working currently!"
-    elseif nDim == 1
-        @error "Detected 1D data, connectivity not implemented!"
-    end
-
-    iCell_G = Array{Int32, 3}(undef, nI + 2, nJ + 2, nK + 2)
-
-    # It would be difficult to calculate this beforehand.
-    # The current implementation is to compute this in two rounds, where the
-    # first round only do the counting.
-    nElem = 0
-    nBlockBefore = 0
 
     # Count accumulated number of blocks for MPI ranks in ascending order
     # Local block indexes may have gaps in between!
@@ -647,6 +615,46 @@ function getConnectivity(batl::Batl)
             nodeToGlobalBlock_I[idx] = i + nBlock_P[iProc + 1]
         end
     end
+
+    return nodeToGlobalBlock_I, nodesPerProc
+end
+
+# VTK hexahedron (3D) and quad (2D) corner offsets in file order:
+# counter-clockwise in x-y, then the same ring repeated at k+1 in 3D.
+const _CORNERS_3D = (
+    (0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0),
+    (0, 0, 1), (1, 0, 1), (1, 1, 1), (0, 1, 1),
+)
+const _CORNERS_2D = ((0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0))
+
+"""
+Get cell connectivity list.
+"""
+function getConnectivity(batl::Batl)
+    iTree_IA = batl.iTree_IA
+    nI, nJ, nK = batl.head.nI, batl.head.nJ, batl.head.nK
+    nDim = batl.nDim
+    if nDim == 3
+        nConn = 8
+    elseif nDim == 2
+        nConn = 4
+        @error "2D not working currently!"
+    elseif nDim == 1
+        @error "Detected 1D data, connectivity not implemented!"
+    end
+
+    iCell_G = Array{Int32, 3}(undef, nI + 2, nJ + 2, nK + 2)
+
+    # It would be difficult to calculate this beforehand.
+    # The current implementation is to compute this in two rounds, where the
+    # first round only do the counting.
+    nElem = 0
+    nBlockBefore = 0
+
+    nodeToGlobalBlock_I, nodesPerProc = _build_block_layout(batl)
+    nProc = length(nodesPerProc)
+
+    corners = nDim == 3 ? _CORNERS_3D : _CORNERS_2D
 
     # Pre-allocate just to let Julia know this variable.
     connectivity = Array{Int32, 2}(undef, nConn, nElem)
@@ -698,41 +706,21 @@ function getConnectivity(batl::Batl)
                 jMax = DiLevelNei_III[2, 3, 2] < 0 ? nJ - 1 : nJ
                 kMax = DiLevelNei_III[2, 2, 3] < 0 ? nK - 1 : nK
 
-                if nDim == 3
-                    for k in kMin:kMax, j in jMin:jMax, i in iMin:iMax
-                        # Skip bricks that are not fully inside/usable
-                        if any(iCell_G[(i + 1):(i + 2), (j + 1):(j + 2), (k + 1):(k + 2)] .== 0)
-                            continue
-                        end
-                        iRound == 1 ? nElem += 1 : iElem += 1
-                        if iRound == 2
-                            connectivity[
-                                :,
-                                iElem,
-                            ] = [
-                                iCell_G[i + 1, j + 1, k + 1],
-                                iCell_G[i + 2, j + 1, k + 1],
-                                iCell_G[i + 2, j + 2, k + 1],
-                                iCell_G[i + 1, j + 2, k + 1],
-                                iCell_G[i + 1, j + 1, k + 2],
-                                iCell_G[i + 2, j + 1, k + 2],
-                                iCell_G[i + 2, j + 2, k + 2],
-                                iCell_G[i + 1, j + 2, k + 2],
-                            ]
-                        end
-                    end
-                elseif nDim == 2
-                    for j in jMin:jMax, i in iMin:iMax
-
-                        connectivity = hcat(
-                            connectivity,
-                            [
-                                iCell_G[i + 1, j + 1, 2],
-                                iCell_G[i + 2, j + 1, 2],
-                                iCell_G[i + 2, j + 2, 2],
-                                iCell_G[i + 1, j + 2, 2],
-                            ]
+                for k in kMin:kMax, j in jMin:jMax, i in iMin:iMax
+                    # Skip bricks that are not fully inside/usable (3D only)
+                    if nDim == 3 && any(
+                            ==(0),
+                            @view(iCell_G[(i + 1):(i + 2), (j + 1):(j + 2), (k + 1):(k + 2)])
                         )
+                        continue
+                    end
+                    iRound == 1 ? nElem += 1 : iElem += 1
+                    if iRound == 2
+                        for c in eachindex(corners)
+                            di, dj, dk = corners[c]
+                            connectivity[c, iElem] =
+                                iCell_G[i + di + 1, j + dj + 1, k + dk + 1]
+                        end
                     end
                 end
             end
@@ -758,7 +746,7 @@ function getSibling(iNodeNei_III, iTree_IA)
 end
 
 """
-     fillCellNeighbors!(batl, iCell_G, DiLevelNei_III, iNodeNei_III, nBlock_P)
+     fillCellNeighbors!(batl, iCell_G, DiLevelNei_III, iNodeNei_III, nodeToGlobalBlock_I)
 
 Fill neighbor cell indexes for the given block. The faces, edges, and vertices
 are ordered from left (-) to right (+) in x-y-z sequentially.
@@ -784,38 +772,29 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
     nIJK = nI * nJ * nK
     irange, jrange, krange = 1:nI, 1:nJ, 1:nK
 
+    # Sibling index of this block within its mother node: constant for the whole block,
+    # so compute it once instead of re-deriving it inside every face/edge/node loop.
+    # Root blocks have no mother (parent entry is unset_), and iSibling is only
+    # consulted when a coarser neighbor exists, which implies a refined child block.
+    iSibling = iTree_IA[parent_, iNodeNei_III[2, 2, 2]] > 0 ?
+        getSibling(iNodeNei_III, iTree_IA) : 0
+
     ## Faces
+    # For a coarser neighbor, all sibling branches share the same expression except
+    # for an additive offset determined by which child of its mother this block is:
+    # the sibling bits select the coarse quadrant the block occupies.
 
     # -x face
     if DiLevelNei_III[1, 2, 2] == 1
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 2, 2]]
-
-        @inbounds for k in krange, j in jrange
-
-            iSibling = getSibling(iNodeNei_III, iTree_IA)
-
-            if iSibling == 1
-                iCell_G[1, j + 1, k + 1] = nIJK * (neiBlock - 1) +
+        offset = iSibling == 1 ? 0 :
+            iSibling == 3 ? nIJ / 2 :
+            iSibling == 5 ? nIJK / 2 :
+            iSibling == 7 ? nIJK / 2 + nIJ / 2 : nothing
+        if !isnothing(offset)
+            @inbounds for k in krange, j in jrange
+                iCell_G[1, j + 1, k + 1] = nIJK * (neiBlock - 1) + offset +
                     nI * (1 + (j - 1) ÷ 2) + nIJ * ((k - 1) ÷ 2)
-            elseif iSibling == 3
-                iCell_G[
-                    1, j + 1,
-                    k + 1,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJ / 2 + nI * (1 + (j - 1) ÷ 2) + nIJ * ((k - 1) ÷ 2)
-            elseif iSibling == 5
-                iCell_G[
-                    1, j + 1,
-                    k + 1,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJK / 2 + nI * (1 + (j - 1) ÷ 2) + nIJ * ((k - 1) ÷ 2)
-            elseif iSibling == 7
-                iCell_G[
-                    1,
-                    j + 1,
-                    k + 1,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJK / 2 + nIJ / 2 + nI * (1 + (j - 1) ÷ 2) + nIJ * ((k - 1) ÷ 2)
             end
         end
     end
@@ -825,40 +804,18 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 3, 3]]
 
         @inbounds for k in krange, j in jrange
-
             iCell_G[end, j + 1, k + 1] = nIJK * (neiBlock - 1) + 1 + nI * (j - 1) + nIJ * (k - 1)
         end
     elseif DiLevelNei_III[3, 2, 2] == 1
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 3, 3]]
-
-        @inbounds for k in krange, j in jrange
-
-            iSibling = getSibling(iNodeNei_III, iTree_IA)
-
-            if iSibling == 2
-                iCell_G[
-                    end, j + 1, k + 1,
-                ] = nIJK * (neiBlock - 1) +
-                    1 + nI * ((j - 1) ÷ 2) + nIJ * ((k - 1) ÷ 2)
-            elseif iSibling == 4
-                iCell_G[
-                    end, j + 1,
-                    k + 1,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJ / 2 + 1 + nI * ((j - 1) ÷ 2) + nIJ * ((k - 1) ÷ 2)
-            elseif iSibling == 6
-                iCell_G[
-                    end, j + 1,
-                    k + 1,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJK / 2 + 1 + nI * ((j - 1) ÷ 2) + nIJ * ((k - 1) ÷ 2)
-            elseif iSibling == 8
-                iCell_G[
-                    end,
-                    j + 1,
-                    k + 1,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJK / 2 + nIJ / 2 + 1 + nI * ((j - 1) ÷ 2) + nIJ * ((k - 1) ÷ 2)
+        offset = iSibling == 2 ? 0 :
+            iSibling == 4 ? nIJ / 2 :
+            iSibling == 6 ? nIJK / 2 :
+            iSibling == 8 ? nIJK / 2 + nIJ / 2 : nothing
+        if !isnothing(offset)
+            @inbounds for k in krange, j in jrange
+                iCell_G[end, j + 1, k + 1] = nIJK * (neiBlock - 1) + offset + 1 +
+                    nI * ((j - 1) ÷ 2) + nIJ * ((k - 1) ÷ 2)
             end
         end
     end
@@ -866,37 +823,14 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
     # -y face
     if DiLevelNei_III[2, 1, 2] == 1
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[2, 1, 2]]
-
-        @inbounds for k in krange, i in irange
-
-            iSibling = getSibling(iNodeNei_III, iTree_IA)
-
-            if iSibling == 1
-                iCell_G[
-                    i + 1, 1,
-                    k + 1,
-                ] = nIJK * (neiBlock - 1) +
+        offset = iSibling == 1 ? 0 :
+            iSibling == 2 ? nI / 2 :
+            iSibling == 5 ? nIJK / 2 :
+            iSibling == 6 ? nIJK / 2 + nI / 2 : nothing
+        if !isnothing(offset)
+            @inbounds for k in krange, i in irange
+                iCell_G[i + 1, 1, k + 1] = nIJK * (neiBlock - 1) + offset +
                     nI * (nJ - 1) + 1 + (i - 1) ÷ 2 + nIJ * ((k - 1) ÷ 2)
-            elseif iSibling == 2
-                iCell_G[
-                    i + 1, 1,
-                    k + 1,
-                ] = nIJK * (neiBlock - 1) +
-                    nI * (nJ - 1) + nI / 2 + 1 + (i - 1) ÷ 2 + nIJ * ((k - 1) ÷ 2)
-            elseif iSibling == 5
-                iCell_G[
-                    i + 1,
-                    1,
-                    k + 1,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJK / 2 + nI * (nJ - 1) + 1 + (i - 1) ÷ 2 + nIJ * ((k - 1) ÷ 2)
-            elseif iSibling == 6
-                iCell_G[
-                    i + 1,
-                    1,
-                    k + 1,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJK / 2 + nI * (nJ - 1) + nI / 2 + 1 + (i - 1) ÷ 2 + nIJ * ((k - 1) ÷ 2)
             end
         end
     end
@@ -906,35 +840,18 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[3, 4, 3]]
 
         @inbounds for k in krange, i in irange
-
             iCell_G[i + 1, end, k + 1] = nIJK * (neiBlock - 1) + i + nIJ * (k - 1)
         end
     elseif DiLevelNei_III[2, 3, 2] == 1
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[3, 4, 3]]
-
-        @inbounds for k in krange, i in irange
-
-            iSibling = getSibling(iNodeNei_III, iTree_IA)
-
-            if iSibling == 3
-                iCell_G[i + 1, end, k + 1] = nIJK * (neiBlock - 1) +
+        offset = iSibling == 3 ? 0 :
+            iSibling == 4 ? nI / 2 :
+            iSibling == 7 ? nIJK / 2 :
+            iSibling == 8 ? nIJK / 2 + nI / 2 : nothing
+        if !isnothing(offset)
+            @inbounds for k in krange, i in irange
+                iCell_G[i + 1, end, k + 1] = nIJK * (neiBlock - 1) + offset +
                     1 + (i - 1) ÷ 2 + nIJ * ((k - 1) ÷ 2)
-            elseif iSibling == 4
-                iCell_G[
-                    i + 1, end, k + 1,
-                ] = nIJK * (neiBlock - 1) +
-                    nI / 2 + 1 + (i - 1) ÷ 2 + nIJ * ((k - 1) ÷ 2)
-            elseif iSibling == 7
-                iCell_G[
-                    i + 1, end, k + 1,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJK / 2 + 1 + (i - 1) ÷ 2 + nIJ * ((k - 1) ÷ 2)
-            elseif iSibling == 8
-                iCell_G[
-                    i + 1, end,
-                    k + 1,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJK / 2 + nI / 2 + 1 + (i - 1) ÷ 2 + nIJ * ((k - 1) ÷ 2)
             end
         end
     end
@@ -942,27 +859,14 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
     # -z face
     if DiLevelNei_III[2, 2, 1] == 1
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[2, 2, 1]]
-
-        @inbounds for j in jrange, i in irange
-
-            iSibling = getSibling(iNodeNei_III, iTree_IA)
-
-            if iSibling == 1
-                iCell_G[i + 1, j + 1, 1] = nIJK * neiBlock -
-                    nIJ + 1 + (i - 1) ÷ 2 + nI * ((j - 1) ÷ 2)
-            elseif iSibling == 2
-                iCell_G[
-                    i + 1, j + 1, 1,
-                ] = nIJK * neiBlock -
-                    nIJ + nI / 2 + 1 + (i - 1) ÷ 2 + nI * ((j - 1) ÷ 2)
-            elseif iSibling == 3
-                iCell_G[i + 1, j + 1, 1] = nIJK * neiBlock -
-                    nIJ / 2 + 1 + (i - 1) ÷ 2 + nI * ((j - 1) ÷ 2)
-            elseif iSibling == 4
-                iCell_G[
-                    i + 1, j + 1, 1,
-                ] = nIJK * neiBlock -
-                    nIJ / 2 + nI / 2 + 1 + (i - 1) ÷ 2 + nI * ((j - 1) ÷ 2)
+        offset = iSibling == 1 ? 0 :
+            iSibling == 2 ? nI / 2 :
+            iSibling == 3 ? nIJ / 2 :
+            iSibling == 4 ? nIJ / 2 + nI / 2 : nothing
+        if !isnothing(offset)
+            @inbounds for j in jrange, i in irange
+                iCell_G[i + 1, j + 1, 1] = nIJK * neiBlock - nIJ + offset +
+                    1 + (i - 1) ÷ 2 + nI * ((j - 1) ÷ 2)
             end
         end
     end
@@ -972,42 +876,27 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[3, 3, 4]]
 
         @inbounds for j in jrange, i in irange
-
             iCell_G[i + 1, j + 1, end] = nIJK * (neiBlock - 1) + i + nI * (j - 1)
         end
     elseif DiLevelNei_III[2, 2, 3] == 1
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[3, 3, 4]]
-
-        @inbounds for j in jrange, i in irange
-
-            iSibling = getSibling(iNodeNei_III, iTree_IA)
-
-            if iSibling == 5
-                iCell_G[i + 1, j + 1, end] = nIJK * (neiBlock - 1) +
+        offset = iSibling == 5 ? 0 :
+            iSibling == 6 ? nI / 2 :
+            iSibling == 7 ? nIJ / 2 :
+            iSibling == 8 ? nIJ / 2 + nI / 2 : nothing
+        if !isnothing(offset)
+            @inbounds for j in jrange, i in irange
+                iCell_G[i + 1, j + 1, end] = nIJK * (neiBlock - 1) + offset +
                     1 + (i - 1) ÷ 2 + nI * ((j - 1) ÷ 2)
-            elseif iSibling == 6
-                iCell_G[
-                    i + 1, j + 1, end,
-                ] = nIJK * (neiBlock - 1) +
-                    nI / 2 + 1 + (i - 1) ÷ 2 + nI * ((j - 1) ÷ 2)
-            elseif iSibling == 7
-                iCell_G[
-                    i + 1, j + 1, end,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJ / 2 + 1 + (i - 1) ÷ 2 + nI * ((j - 1) ÷ 2)
-            elseif iSibling == 8
-                iCell_G[
-                    i + 1, j + 1,
-                    end,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJ / 2 + nI / 2 + 1 + (i - 1) ÷ 2 + nI * ((j - 1) ÷ 2)
             end
         end
     end
 
     ## Edges, in total 12
+    # For a coarser neighbor (DiLevel 1 or 2), the tangential coordinate maps as
+    # fld(fine - 1, iAMR) with iAMR = 2^DiLevel, plus a sibling-dependent offset.
 
-    # edge 1
+    # edge 1: -y, -z, tangential x
     if DiLevelNei_III[2, 1, 1] == 0
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[2, 1, 1]]
 
@@ -1016,101 +905,44 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
         end
     elseif DiLevelNei_III[2, 1, 1] in (1, 2)
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[2, 1, 1]]
-
-        iSibling = getSibling(iNodeNei_III, iTree_IA)
-
-        iAMR = 2 * DiLevelNei_III[2, 1, 1]
-
-        if iSibling == 1
+        iAMR = 2^DiLevelNei_III[2, 1, 1]
+        offset = iSibling == 1 ? nIJK - nI + 1 :
+            iSibling == 2 ? nIJK - nI / 2 + 1 :
+            iSibling == 3 ? nIJK - nIJ / 2 - nI + 1 :
+            iSibling == 4 ? nIJK - nIJ / 2 - nI / 2 + 1 :
+            iSibling == 5 ? nIJ * (nK / 2 - 1) + nI * (nJ - 1) + 1 :
+            iSibling == 6 ? nIJ * (nK / 2 - 1) + nI * (nJ - 1) + nI / 2 + 1 : nothing
+        if !isnothing(offset)
             @inbounds for i in irange
-                iCell_G[i + 1, 1, 1] = nIJK * neiBlock -
-                    nI + 1 + fld(i - 1, iAMR)
-            end
-        elseif iSibling == 2
-            @inbounds for i in irange
-                iCell_G[i + 1, 1, 1] = nIJK * neiBlock -
-                    nI / 2 + 1 + fld(i - 1, iAMR)
-            end
-        elseif iSibling == 3
-            @inbounds for i in irange
-                iCell_G[i + 1, 1, 1] = nIJK * neiBlock -
-                    nIJ / 2 - nI + 1 + fld(i - 1, iAMR)
-            end
-        elseif iSibling == 4
-            @inbounds for i in irange
-                iCell_G[i + 1, 1, 1] = nIJK * neiBlock -
-                    nIJ / 2 - nI / 2 + 1 + fld(i - 1, iAMR)
-            end
-        elseif iSibling == 5
-            @inbounds for i in irange
-                iCell_G[
-                    i + 1, 1,
-                    1,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJ * (nK / 2 - 1) + nI * (nJ - 1) + 1 + fld(i - 1, iAMR)
-            end
-        elseif iSibling == 6
-            @inbounds for i in irange
-                iCell_G[
-                    i + 1,
-                    1,
-                    1,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJ * (nK / 2 - 1) + nI * (nJ - 1) + nI / 2 + 1 + fld(i - 1, iAMR)
+                iCell_G[i + 1, 1, 1] = nIJK * (neiBlock - 1) + offset + fld(i - 1, iAMR)
             end
         end
     end
 
-    # edge 2
+    # edge 2: +y, -z, tangential x
     if DiLevelNei_III[2, 3, 1] == 0
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[2, 4, 1]]
 
-        @inbounds for i in 1:nI
+        @inbounds for i in irange
             iCell_G[i + 1, end, 1] = nIJK * neiBlock - nIJ + i
         end
     elseif DiLevelNei_III[2, 3, 1] in (1, 2)
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[2, 4, 1]]
-
-        iSibling = getSibling(iNodeNei_III, iTree_IA)
-
-        iAMR = 2 * DiLevelNei_III[2, 3, 1]
-
-        if iSibling == 1
+        iAMR = 2^DiLevelNei_III[2, 3, 1]
+        offset = iSibling == 1 ? nIJK - nIJ / 2 + 1 :
+            iSibling == 2 ? nIJK - nIJ / 2 + nI / 2 + 1 :
+            iSibling == 3 ? nIJK - nIJ + 1 :
+            iSibling == 4 ? nIJK - nIJ + nI / 2 + 1 :
+            iSibling == 7 ? nIJ * (nK / 2 - 1) + 1 :
+            iSibling == 8 ? nIJ * (nK / 2 - 1) + nI / 2 + 1 : nothing
+        if !isnothing(offset)
             @inbounds for i in irange
-                iCell_G[i + 1, end, 1] = nIJK * neiBlock -
-                    nIJ / 2 + 1 + fld(i - 1, iAMR)
-            end
-        elseif iSibling == 2
-            @inbounds for i in irange
-                iCell_G[i + 1, end, 1] = nIJK * neiBlock -
-                    nIJ / 2 + nI / 2 + 1 + fld(i - 1, iAMR)
-            end
-        elseif iSibling == 3
-            @inbounds for i in irange
-                iCell_G[i + 1, end, 1] = nIJK * neiBlock -
-                    nIJ + 1 + fld(i - 1, iAMR)
-            end
-        elseif iSibling == 4
-            @inbounds for i in irange
-                iCell_G[i + 1, end, 1] = nIJK * neiBlock -
-                    nIJ + nI / 2 + 1 + fld(i - 1, iAMR)
-            end
-        elseif iSibling == 7
-            @inbounds for i in irange
-                iCell_G[i + 1, end, 1] = nIJK * (neiBlock - 1) +
-                    nIJ * (nK / 2 - 1) + 1 + fld(i - 1, iAMR)
-            end
-        elseif iSibling == 8
-            @inbounds for i in irange
-                iCell_G[
-                    i + 1, end, 1,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJ * (nK / 2 - 1) + nI / 2 + 1 + fld(i - 1, iAMR)
+                iCell_G[i + 1, end, 1] = nIJK * (neiBlock - 1) + offset + fld(i - 1, iAMR)
             end
         end
     end
 
-    # edge 3
+    # edge 3: -y, +z, tangential x
     if DiLevelNei_III[2, 1, 3] == 0
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[2, 1, 4]]
 
@@ -1119,102 +951,44 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
         end
     elseif DiLevelNei_III[2, 1, 3] in (1, 2)
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[2, 1, 4]]
-
-        iSibling = getSibling(iNodeNei_III, iTree_IA)
-
-        iAMR = 2 * DiLevelNei_III[2, 1, 3]
-
-        if iSibling == 1
+        iAMR = 2^DiLevelNei_III[2, 1, 3]
+        offset = iSibling == 1 ? nIJK / 2 + nI * (nJ - 1) + 1 :
+            iSibling == 2 ? nIJK / 2 + nI * (nJ - 1) + nI / 2 + 1 :
+            iSibling == 5 ? nI * (nJ - 1) + 1 :
+            iSibling == 6 ? nI * (nJ - 1) + nI / 2 + 1 :
+            iSibling == 7 ? nI * (nJ / 2 - 1) + 1 :
+            iSibling == 8 ? nI * (nJ / 2 - 1) + nI / 2 + 1 : nothing
+        if !isnothing(offset)
             @inbounds for i in irange
-                iCell_G[
-                    i + 1, 1, end,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJK / 2 + nI * (nJ - 1) + 1 + fld(i - 1, iAMR)
-            end
-        elseif iSibling == 2
-            @inbounds for i in irange
-                iCell_G[
-                    i + 1, 1,
-                    end,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJK / 2 + nI * (nJ - 1) + nI / 2 + 1 + fld(i - 1, iAMR)
-            end
-        elseif iSibling == 5
-            @inbounds for i in irange
-                iCell_G[i + 1, 1, end] = nIJK * (neiBlock - 1) +
-                    nI * (nJ - 1) + 1 + fld(i - 1, iAMR)
-            end
-        elseif iSibling == 6
-            @inbounds for i in irange
-                iCell_G[
-                    i + 1, 1, end,
-                ] = nIJK * (neiBlock - 1) +
-                    nI * (nJ - 1) + nI / 2 + 1 + fld(i - 1, iAMR)
-            end
-        elseif iSibling == 7
-            @inbounds for i in irange
-                iCell_G[i + 1, 1, end] = nIJK * (neiBlock - 1) +
-                    nI * (nJ / 2 - 1) + 1 + fld(i - 1, iAMR)
-            end
-        elseif iSibling == 8
-            @inbounds for i in irange
-                iCell_G[
-                    i + 1, 1, end,
-                ] = nIJK * (neiBlock - 1) +
-                    nI * (nJ / 2 - 1) + nI / 2 + 1 + fld(i - 1, iAMR)
+                iCell_G[i + 1, 1, end] = nIJK * (neiBlock - 1) + offset + fld(i - 1, iAMR)
             end
         end
     end
 
-    # edge 4
+    # edge 4: +y, +z, tangential x
     if DiLevelNei_III[2, 3, 3] == 0
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[2, 4, 4]]
+
         @inbounds for i in irange
             iCell_G[i + 1, end, end] = nIJK * (neiBlock - 1) + i
         end
     elseif DiLevelNei_III[2, 3, 3] in (1, 2)
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[2, 4, 4]]
-
-        iSibling = getSibling(iNodeNei_III, iTree_IA)
-
         iAMR = 2^DiLevelNei_III[2, 3, 3]
-
-        if iSibling == 3
+        offset = iSibling == 3 ? nIJK / 2 + 1 :
+            iSibling == 4 ? nIJK / 2 + nI / 2 + 1 :
+            iSibling == 5 ? nIJ / 2 + 1 :
+            iSibling == 6 ? nIJ / 2 + nI / 2 + 1 :
+            iSibling == 7 ? 1 :
+            iSibling == 8 ? nI / 2 + 1 : nothing
+        if !isnothing(offset)
             @inbounds for i in irange
-                iCell_G[i + 1, end, end] = nIJK * (neiBlock - 1) +
-                    nIJK / 2 + 1 + fld(i - 1, iAMR)
-            end
-        elseif iSibling == 4
-            @inbounds for i in irange
-                iCell_G[
-                    i + 1, end, end,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJK / 2 + nI / 2 + 1 + fld(i - 1, iAMR)
-            end
-        elseif iSibling == 5
-            @inbounds for i in irange
-                iCell_G[i + 1, end, end] = nIJK * (neiBlock - 1) +
-                    nIJ / 2 + 1 + fld(i - 1, iAMR)
-            end
-        elseif iSibling == 6
-            @inbounds for i in irange
-                iCell_G[i + 1, end, end] = nIJK * (neiBlock - 1) +
-                    nIJ / 2 + nI / 2 + 1 + fld(i - 1, iAMR)
-            end
-        elseif iSibling == 7
-            @inbounds for i in irange
-                iCell_G[i + 1, end, end] = nIJK * (neiBlock - 1) +
-                    1 + fld(i - 1, iAMR)
-            end
-        elseif iSibling == 8
-            @inbounds for i in irange
-                iCell_G[i + 1, end, end] = nIJK * (neiBlock - 1) +
-                    nI / 2 + 1 + fld(i - 1, iAMR)
+                iCell_G[i + 1, end, end] = nIJK * (neiBlock - 1) + offset + fld(i - 1, iAMR)
             end
         end
     end
 
-    # edge 5
+    # edge 5: -x, -z, tangential y
     if DiLevelNei_III[1, 2, 1] == 0
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 2, 1]]
 
@@ -1223,47 +997,22 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
         end
     elseif DiLevelNei_III[1, 2, 1] in (1, 2)
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 2, 1]]
-
-        iSibling = getSibling(iNodeNei_III, iTree_IA)
-
         iAMR = 2^DiLevelNei_III[1, 2, 1]
-
-        if iSibling == 1
+        offset = iSibling == 1 ? nIJK - nIJ + nI :
+            iSibling == 2 ? nIJK - nIJ + nI / 2 :
+            iSibling == 3 ? nIJK - nIJ / 2 + nI :
+            iSibling == 4 ? nIJK - nIJ / 2 + nI / 2 :
+            iSibling == 5 ? nIJK - nIJ * (nK / 2 + 1) + nI :
+            iSibling == 7 ? nIJK - nIJ * (nK / 2 + 1) + nIJ / 2 + nI : nothing
+        if !isnothing(offset)
             @inbounds for j in jrange
-                iCell_G[1, j + 1, 1] = nIJK * neiBlock -
-                    nIJ + nI * (1 + fld(j - 1, iAMR))
-            end
-        elseif iSibling == 2
-            @inbounds for j in jrange
-                iCell_G[1, j + 1, 1] = nIJK * neiBlock -
-                    nIJ + nI / 2 + nI * fld(j - 1, iAMR)
-            end
-        elseif iSibling == 3
-            @inbounds for j in jrange
-                iCell_G[1, j + 1, 1] = nIJK * neiBlock -
-                    nIJ / 2 + nI * (1 + fld(j - 1, iAMR))
-            end
-        elseif iSibling == 4
-            @inbounds for j in jrange
-                iCell_G[1, j + 1, 1] = nIJK * neiBlock -
-                    nIJ / 2 + nI / 2 + nI * fld(j - 1, iAMR)
-            end
-        elseif iSibling == 5
-            @inbounds for j in jrange
-                iCell_G[1, j + 1, 1] = nIJK * neiBlock -
-                    nIJ * (nK / 2 + 1) + nI * (1 + fld(j - 1, iAMR))
-            end
-        elseif iSibling == 7
-            @inbounds for j in jrange
-                iCell_G[
-                    1, j + 1, 1,
-                ] = nIJK * neiBlock -
-                    nIJ * (nK / 2 + 1) + nIJ / 2 + nI * (1 + fld(j - 1, iAMR))
+                iCell_G[1, j + 1, 1] = nIJK * (neiBlock - 1) + offset +
+                    nI * fld(j - 1, iAMR)
             end
         end
     end
 
-    # edge 6
+    # edge 6: +x, -z, tangential y
     if DiLevelNei_III[3, 2, 1] == 0
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 2, 1]]
 
@@ -1272,50 +1021,22 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
         end
     elseif DiLevelNei_III[3, 2, 1] in (1, 2)
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 2, 1]]
-
-        iSibling = getSibling(iNodeNei_III, iTree_IA)
-
         iAMR = 2^DiLevelNei_III[3, 2, 1]
-
-        if iSibling == 1
+        offset = iSibling == 1 ? nIJK - nIJ + nI / 2 + 1 :
+            iSibling == 2 ? nIJK - nIJ + 1 :
+            iSibling == 3 ? nIJK - nIJ / 2 + nI / 2 + 1 :
+            iSibling == 4 ? nIJK - nIJ / 2 + 1 :
+            iSibling == 6 ? nIJ * (nK / 2 - 1) + 1 :
+            iSibling == 8 ? nIJ * (nK / 2 - 1) + nIJ / 2 + 1 : nothing
+        if !isnothing(offset)
             @inbounds for j in jrange
-                iCell_G[end, j + 1, 1] = nIJK * neiBlock -
-                    nIJ + nI / 2 + 1 + nI * fld(j - 1, iAMR)
-            end
-        elseif iSibling == 2
-            @inbounds for j in jrange
-                iCell_G[end, j + 1, 1] = nIJK * neiBlock -
-                    nIJ + 1 + nI * fld(j - 1, iAMR)
-            end
-        elseif iSibling == 3
-            @inbounds for j in jrange
-                iCell_G[end, j + 1, 1] = nIJK * neiBlock -
-                    nIJ / 2 + nI / 2 + 1 + nI * fld(j - 1, iAMR)
-            end
-        elseif iSibling == 4
-            @inbounds for j in jrange
-                iCell_G[end, j + 1, 1] = nIJK * neiBlock -
-                    nIJ / 2 + 1 + nI * fld(j - 1, iAMR)
-            end
-        elseif iSibling == 6
-            @inbounds for j in jrange
-                iCell_G[
-                    end, j + 1, 1,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJ * (nK / 2 - 1) + 1 + nI * fld(j - 1, iAMR)
-            end
-        elseif iSibling == 8
-            @inbounds for j in jrange
-                iCell_G[
-                    end, j + 1,
-                    1,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJ * (nK / 2 - 1) + nIJ / 2 + 1 + nI * fld(j - 1, iAMR)
+                iCell_G[end, j + 1, 1] = nIJK * (neiBlock - 1) + offset +
+                    nI * fld(j - 1, iAMR)
             end
         end
     end
 
-    # edge 7
+    # edge 7: -x, +z, tangential y
     if DiLevelNei_III[1, 2, 3] == 0
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 2, 4]]
 
@@ -1324,97 +1045,46 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
         end
     elseif DiLevelNei_III[1, 2, 3] in (1, 2)
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 2, 4]]
-
-        iSibling = getSibling(iNodeNei_III, iTree_IA)
-
         iAMR = 2^DiLevelNei_III[1, 2, 3]
-
-        if iSibling == 1
+        offset = iSibling == 1 ? nIJK / 2 + nI :
+            iSibling == 3 ? nIJK / 2 + nIJ / 2 + nI :
+            iSibling == 5 ? nI :
+            iSibling == 6 ? nI / 2 :
+            iSibling == 7 ? nIJ / 2 + nI :
+            iSibling == 8 ? nIJ / 2 + nI / 2 : nothing
+        if !isnothing(offset)
             @inbounds for j in jrange
-                iCell_G[1, j + 1, end] = nIJK * (neiBlock - 1) +
-                    nIJK / 2 + nI * (1 + fld(j - 1, iAMR))
-            end
-        elseif iSibling == 3
-            @inbounds for j in jrange
-                iCell_G[
-                    1, j + 1, end,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJK / 2 + nIJ / 2 + nI * (1 + fld(j - 1, iAMR))
-            end
-        elseif iSibling == 5
-            @inbounds for j in jrange
-                iCell_G[1, j + 1, end] = nIJK * (neiBlock - 1) +
-                    nI * (1 + fld(j - 1, iAMR))
-            end
-        elseif iSibling == 6
-            @inbounds for j in jrange
-                iCell_G[1, j + 1, end] = nIJK * (neiBlock - 1) +
-                    nI * (0.5 + fld(j - 1, iAMR))
-            end
-        elseif iSibling == 7
-            @inbounds for j in jrange
-                iCell_G[1, j + 1, end] = nIJK * (neiBlock - 1) +
-                    nIJ / 2 + nI * (1 + fld(j - 1, iAMR))
-            end
-        elseif iSibling == 8
-            @inbounds for j in jrange
-                iCell_G[1, j + 1, end] = nIJK * (neiBlock - 1) +
-                    nIJ / 2 + nI * (0.5 + fld(j - 1, iAMR))
+                iCell_G[1, j + 1, end] = nIJK * (neiBlock - 1) + offset +
+                    nI * fld(j - 1, iAMR)
             end
         end
     end
 
-    # edge 8
+    # edge 8: +x, +z, tangential y
     if DiLevelNei_III[3, 2, 3] == 0
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 2, 4]]
+
         @inbounds for j in jrange
             iCell_G[end, j + 1, end] = nIJK * (neiBlock - 1) + 1 + nI * (j - 1)
         end
     elseif DiLevelNei_III[3, 2, 3] in (1, 2)
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 2, 4]]
-
-        iSibling = getSibling(iNodeNei_III, iTree_IA)
-
         iAMR = 2^DiLevelNei_III[3, 2, 3]
-
-        if iSibling == 2
+        offset = iSibling == 2 ? nIJK / 2 + 1 :
+            iSibling == 4 ? nIJK / 2 + nIJ / 2 + 1 :
+            iSibling == 5 ? nI / 2 + 1 :
+            iSibling == 6 ? 1 :
+            iSibling == 7 ? nIJ / 2 + nI / 2 + 1 :
+            iSibling == 8 ? nIJ / 2 + 1 : nothing
+        if !isnothing(offset)
             @inbounds for j in jrange
-                iCell_G[end, j + 1, end] = nIJK * (neiBlock - 1) +
-                    nIJK / 2 + 1 + nI * fld(j - 1, iAMR)
-            end
-        elseif iSibling == 4
-            @inbounds for j in jrange
-                iCell_G[
-                    end, j + 1, end,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJK / 2 + nIJ / 2 + 1 + nI * fld(j - 1, iAMR)
-            end
-        elseif iSibling == 5
-            @inbounds for j in jrange
-                iCell_G[end, j + 1, end] = nIJK * (neiBlock - 1) +
-                    nI / 2 + 1 + nI * fld(j - 1, iAMR)
-            end
-        elseif iSibling == 6
-            @inbounds for j in jrange
-                iCell_G[end, j + 1, end] = nIJK * (neiBlock - 1) +
-                    1 + nI * fld(j - 1, iAMR)
-            end
-        elseif iSibling == 7
-            @inbounds for j in jrange
-                iCell_G[
-                    end, j + 1, end,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJ / 2 + nI / 2 + 1 + nI * fld(j - 1, iAMR)
-            end
-        elseif iSibling == 8
-            @inbounds for j in jrange
-                iCell_G[end, j + 1, end] = nIJK * (neiBlock - 1) +
-                    nIJ / 2 + 1 + nI * fld(j - 1, iAMR)
+                iCell_G[end, j + 1, end] = nIJK * (neiBlock - 1) + offset +
+                    nI * fld(j - 1, iAMR)
             end
         end
     end
 
-    # edge 9
+    # edge 9: -x, -y, tangential z
     if DiLevelNei_III[1, 1, 2] == 0
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 1, 2]]
 
@@ -1423,47 +1093,22 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
         end
     elseif DiLevelNei_III[1, 1, 2] in (1, 2)
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 1, 2]]
-
         iAMR = 2^DiLevelNei_III[1, 1, 2]
-
-        iSibling = getSibling(iNodeNei_III, iTree_IA)
-        if iSibling == 1
+        offset = iSibling == 1 ? nIJ :
+            iSibling == 2 ? nI * (nJ - 1) + nI / 2 :
+            iSibling == 3 ? nIJ / 2 + nIJ :
+            iSibling == 5 ? nIJK / 2 + nIJ :
+            iSibling == 6 ? nIJK / 2 + nI * (nJ - 1) + nI / 2 :
+            iSibling == 7 ? nIJ * nJ / 2 + nIJ / 2 : nothing
+        if !isnothing(offset)
             @inbounds for k in krange
-                iCell_G[1, 1, k + 1] = nIJK * (neiBlock - 1) +
-                    nIJ * (1 + fld(k - 1, iAMR))
-            end
-        elseif iSibling == 2
-            @inbounds for k in krange
-                iCell_G[1, 1, k + 1] = nIJK * (neiBlock - 1) +
-                    nI * (nJ - 1) + nI / 2 + nIJ * fld(k - 1, iAMR)
-            end
-        elseif iSibling == 3
-            @inbounds for k in krange
-                iCell_G[1, 1, k + 1] = nIJK * (neiBlock - 1) +
-                    nIJ / 2 + nIJ * (1 + fld(k - 1, iAMR))
-            end
-        elseif iSibling == 5
-            @inbounds for k in krange
-                iCell_G[1, 1, k + 1] = nIJK * (neiBlock - 1) +
-                    nIJK / 2 + nIJ * (1 + fld(k - 1, iAMR))
-            end
-        elseif iSibling == 6
-            @inbounds for k in krange
-                iCell_G[
-                    1, 1,
-                    k + 1,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJK / 2 + nI * (nJ - 1) + nI / 2 + nIJ * fld(k - 1, iAMR)
-            end
-        elseif iSibling == 7
-            @inbounds for k in krange
-                iCell_G[1, 1, k + 1] = nIJK * (neiBlock - 1) +
-                    nIJ * nJ / 2 + nIJ / 2 + nIJ * fld(k - 1, iAMR)
+                iCell_G[1, 1, k + 1] = nIJK * (neiBlock - 1) + offset +
+                    nIJ * fld(k - 1, iAMR)
             end
         end
     end
 
-    # edge 10
+    # edge 10: +x, -y, tangential z
     if DiLevelNei_III[3, 1, 2] == 0
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 1, 2]]
 
@@ -1472,60 +1117,22 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
         end
     elseif DiLevelNei_III[3, 1, 2] in (1, 2)
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 1, 2]]
-
-        iSibling = getSibling(iNodeNei_III, iTree_IA)
-
         iAMR = 2^DiLevelNei_III[3, 1, 2]
-
-        if iSibling == 1
+        offset = iSibling == 1 ? nI * (nJ - 1) + nI / 2 + 1 :
+            iSibling == 2 ? nI * (nJ - 1) + 1 :
+            iSibling == 4 ? nI * (nJ / 2 - 1) + 1 :
+            iSibling == 5 ? nIJK / 2 + nI * (nJ - 1) + nI / 2 + 1 :
+            iSibling == 6 ? nIJK / 2 + nI * (nJ - 1) + 1 :
+            iSibling == 8 ? nIJK / 2 + nI * (nJ / 2 - 1) + 1 : nothing
+        if !isnothing(offset)
             @inbounds for k in krange
-                iCell_G[
-                    end, 1,
-                    k + 1,
-                ] = nIJK * (neiBlock - 1) +
-                    nI * (nJ - 1) + nI / 2 + 1 + nIJ * fld(k - 1, iAMR)
-            end
-        elseif iSibling == 2
-            @inbounds for k in krange
-                iCell_G[end, 1, k + 1] = nIJK * (neiBlock - 1) +
-                    nI * (nJ - 1) + 1 + nIJ * fld(k - 1, iAMR)
-            end
-        elseif iSibling == 4
-            @inbounds for k in krange
-                iCell_G[
-                    end, 1, k + 1,
-                ] = nIJK * (neiBlock - 1) +
-                    nI * (nJ / 2 - 1) + 1 + nIJ * fld(k - 1, iAMR)
-            end
-        elseif iSibling == 5
-            @inbounds for k in krange
-                iCell_G[
-                    end,
-                    1,
-                    k + 1,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJK / 2 + nI * (nJ - 1) + nI / 2 + 1 + nIJ * fld(k - 1, iAMR)
-            end
-        elseif iSibling == 6
-            @inbounds for k in krange
-                iCell_G[
-                    end, 1,
-                    k + 1,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJK / 2 + nI * (nJ - 1) + 1 + nIJ * fld(k - 1, iAMR)
-            end
-        elseif iSibling == 8
-            @inbounds for k in krange
-                iCell_G[
-                    end, 1,
-                    k + 1,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJK / 2 + nI * (nJ / 2 - 1) + 1 + nIJ * fld(k - 1, iAMR)
+                iCell_G[end, 1, k + 1] = nIJK * (neiBlock - 1) + offset +
+                    nIJ * fld(k - 1, iAMR)
             end
         end
     end
 
-    # edge 11
+    # edge 11: -x, +y, tangential z
     if DiLevelNei_III[1, 3, 2] == 0
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 4, 2]]
 
@@ -1534,100 +1141,50 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
         end
     elseif DiLevelNei_III[1, 3, 2] in (1, 2)
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 4, 2]]
-
-        iSibling = getSibling(iNodeNei_III, iTree_IA)
-
         iAMR = 2^DiLevelNei_III[1, 3, 2]
-
-        if iSibling == 1
+        offset = iSibling == 1 ? nIJ / 2 + nI :
+            iSibling == 3 ? nI :
+            iSibling == 4 ? nI / 2 :
+            iSibling == 5 ? nIJK / 2 + nIJ / 2 + nI :
+            iSibling == 7 ? nIJK / 2 + nI :
+            iSibling == 8 ? nIJK / 2 + nI / 2 : nothing
+        if !isnothing(offset)
             @inbounds for k in krange
-                iCell_G[1, end, k + 1] = nIJK * (neiBlock - 1) +
-                    nIJ / 2 + nI + nIJ * fld(k - 1, iAMR)
-            end
-        elseif iSibling == 3
-            @inbounds for k in krange
-                iCell_G[1, end, k + 1] = nIJK * (neiBlock - 1) +
-                    nI + nIJ * fld(k - 1, iAMR)
-            end
-        elseif iSibling == 4
-            @inbounds for k in krange
-                iCell_G[1, end, k + 1] = nIJK * (neiBlock - 1) +
-                    nI / 2 + nIJ * fld(k - 1, iAMR)
-            end
-        elseif iSibling == 5
-            @inbounds for k in krange
-                iCell_G[
-                    1, end, k + 1,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJK / 2 + nIJ / 2 + nI + nIJ * fld(k - 1, iAMR)
-            end
-        elseif iSibling == 7
-            @inbounds for k in krange
-                iCell_G[1, end, k + 1] = nIJK * (neiBlock - 1) +
-                    nIJK / 2 + nI + nIJ * fld(k - 1, iAMR)
-            end
-        elseif iSibling == 8
-            @inbounds for k in krange
-                iCell_G[1, end, k + 1] = nIJK * (neiBlock - 1) +
-                    nIJK / 2 + nI / 2 + nIJ * fld(k - 1, iAMR)
+                iCell_G[1, end, k + 1] = nIJK * (neiBlock - 1) + offset +
+                    nIJ * fld(k - 1, iAMR)
             end
         end
     end
 
-    # edge 12
+    # edge 12: +x, +y, tangential z
     if DiLevelNei_III[3, 3, 2] == 0
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 4, 2]]
+
         @inbounds for k in krange
             iCell_G[end, end, k + 1] = nIJK * (neiBlock - 1) + 1 + nIJ * (k - 1)
         end
     elseif DiLevelNei_III[3, 3, 2] in (1, 2)
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 4, 2]]
-
-        iSibling = getSibling(iNodeNei_III, iTree_IA)
-
         iAMR = 2^DiLevelNei_III[3, 3, 2]
-
-        if iSibling == 2
+        offset = iSibling == 2 ? nIJ / 2 + 1 :
+            iSibling == 3 ? nI / 2 + 1 :
+            iSibling == 4 ? 1 :
+            iSibling == 6 ? nIJK / 2 + nIJ / 2 + 1 :
+            iSibling == 7 ? nIJK / 2 + nI / 2 + 1 :
+            iSibling == 8 ? nIJK / 2 + 1 : nothing
+        if !isnothing(offset)
             @inbounds for k in krange
-                iCell_G[end, end, k + 1] = nIJK * (neiBlock - 1) +
-                    nIJ / 2 + 1 + nIJ * fld(k - 1, iAMR)
-            end
-        elseif iSibling == 3
-            @inbounds for k in krange
-                iCell_G[end, end, k + 1] = nIJK * (neiBlock - 1) +
-                    nI / 2 + 1 + nIJ * fld(k - 1, iAMR)
-            end
-        elseif iSibling == 4
-            @inbounds for k in krange
-                iCell_G[end, end, k + 1] = nIJK * (neiBlock - 1) +
-                    1 + nIJ * fld(k - 1, iAMR)
-            end
-        elseif iSibling == 6
-            @inbounds for k in krange
-                iCell_G[
-                    end, end,
-                    k + 1,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJK / 2 + nIJ / 2 + 1 + nIJ * fld(k - 1, iAMR)
-            end
-        elseif iSibling == 7
-            @inbounds for k in krange
-                iCell_G[
-                    end, end, k + 1,
-                ] = nIJK * (neiBlock - 1) +
-                    nIJK / 2 + nI / 2 + 1 + nIJ * fld(k - 1, iAMR)
-            end
-        elseif iSibling == 8
-            @inbounds for k in krange
-                iCell_G[end, end, k + 1] = nIJK * (neiBlock - 1) +
-                    nIJK / 2 + 1 + nIJ * fld(k - 1, iAMR)
+                iCell_G[end, end, k + 1] = nIJK * (neiBlock - 1) + offset +
+                    nIJ * fld(k - 1, iAMR)
             end
         end
     end
 
-    ## Node, in total 8
+    ## Nodes, in total 8
+    # For a coarser corner neighbor (DiLevel 1), each sibling maps to the coarse
+    # corner cell of the quadrant this block occupies within its mother.
 
-    # node 1
+    # node 1: -x, -y, -z
     if DiLevelNei_III[1, 1, 1] in (0, 2, 3)
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 1, 1]]
 
@@ -1635,27 +1192,19 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     elseif DiLevelNei_III[1, 1, 1] == 1
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 1, 1]]
-
-        iSibling = getSibling(iNodeNei_III, iTree_IA)
-
-        if iSibling == 1
-            iCell_G[1, 1, 1] = nIJK * neiBlock
-        elseif iSibling == 2
-            iCell_G[1, 1, 1] = nIJK * neiBlock - nI / 2
-        elseif iSibling == 3
-            iCell_G[1, 1, 1] = nIJK * neiBlock - nIJ / 2
-        elseif iSibling == 4
-            iCell_G[1, 1, 1] = nIJK * neiBlock - nIJ / 2 - nI / 2
-        elseif iSibling == 5
-            iCell_G[1, 1, 1] = nIJK * neiBlock - nIJK / 2
-        elseif iSibling == 6
-            iCell_G[1, 1, 1] = nIJK * neiBlock - nIJK / 2 - nI / 2
-        elseif iSibling == 7
-            iCell_G[1, 1, 1] = nIJK * neiBlock - nIJK / 2 - nIJ / 2
+        offset = iSibling == 1 ? 0 :
+            iSibling == 2 ? -nI / 2 :
+            iSibling == 3 ? -nIJ / 2 :
+            iSibling == 4 ? -nIJ / 2 - nI / 2 :
+            iSibling == 5 ? -nIJK / 2 :
+            iSibling == 6 ? -nIJK / 2 - nI / 2 :
+            iSibling == 7 ? -nIJK / 2 - nIJ / 2 : nothing
+        if !isnothing(offset)
+            iCell_G[1, 1, 1] = nIJK * neiBlock + offset
         end
     end
 
-    # node 2
+    # node 2: +x, -y, -z
     if DiLevelNei_III[3, 1, 1] in (0, 2, 3)
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 1, 1]]
 
@@ -1663,27 +1212,19 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     elseif DiLevelNei_III[3, 1, 1] == 1
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 1, 1]]
-
-        iSibling = getSibling(iNodeNei_III, iTree_IA)
-
-        if iSibling == 1
-            iCell_G[end, 1, 1] = nIJK * neiBlock - nI / 2 + 1
-        elseif iSibling == 2
-            iCell_G[end, 1, 1] = nIJK * neiBlock - nI + 1
-        elseif iSibling == 3
-            iCell_G[end, 1, 1] = nIJK * neiBlock - nIJ / 2 - nI / 2 + 1
-        elseif iSibling == 4
-            iCell_G[end, 1, 1] = nIJK * neiBlock - nIJ / 2 - nI + 1
-        elseif iSibling == 5
-            iCell_G[end, 1, 1] = nIJK * neiBlock - nIJK / 2 - nI / 2 + 1
-        elseif iSibling == 6
-            iCell_G[end, 1, 1] = nIJK * neiBlock - nIJK / 2 - nI + 1
-        elseif iSibling == 8
-            iCell_G[end, 1, 1] = nIJK * neiBlock - nIJK / 2 - nIJ / 2 - nI + 1
+        offset = iSibling == 1 ? -nI / 2 + 1 :
+            iSibling == 2 ? -nI + 1 :
+            iSibling == 3 ? -nIJ / 2 - nI / 2 + 1 :
+            iSibling == 4 ? -nIJ / 2 - nI + 1 :
+            iSibling == 5 ? -nIJK / 2 - nI / 2 + 1 :
+            iSibling == 6 ? -nIJK / 2 - nI + 1 :
+            iSibling == 8 ? -nIJK / 2 - nIJ / 2 - nI + 1 : nothing
+        if !isnothing(offset)
+            iCell_G[end, 1, 1] = nIJK * neiBlock + offset
         end
     end
 
-    # node 3
+    # node 3: -x, +y, -z
     if DiLevelNei_III[1, 3, 1] in (0, 2, 3)
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 4, 1]]
 
@@ -1691,27 +1232,19 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     elseif DiLevelNei_III[1, 3, 1] == 1
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 4, 1]]
-
-        iSibling = getSibling(iNodeNei_III, iTree_IA)
-
-        if iSibling == 1
-            iCell_G[1, end, 1] = nIJK * neiBlock - nIJ / 2 + nI
-        elseif iSibling == 2
-            iCell_G[1, end, 1] = nIJK * neiBlock - nIJ / 2 + nI / 2
-        elseif iSibling == 3
-            iCell_G[1, end, 1] = nIJK * neiBlock - nIJ + nI
-        elseif iSibling == 4
-            iCell_G[1, end, 1] = nIJK * neiBlock - nIJ + nI / 2
-        elseif iSibling == 5
-            iCell_G[1, end, 1] = nIJK * neiBlock - nIJK / 2 - nIJ / 2 + nI
-        elseif iSibling == 7
-            iCell_G[1, end, 1] = nIJK * neiBlock - nIJK / 2 - nIJ + nI
-        elseif iSibling == 8
-            iCell_G[1, end, 1] = nIJK * neiBlock - nIJK / 2 - nIJ + nI / 2
+        offset = iSibling == 1 ? -nIJ / 2 + nI :
+            iSibling == 2 ? -nIJ / 2 + nI / 2 :
+            iSibling == 3 ? -nIJ + nI :
+            iSibling == 4 ? -nIJ + nI / 2 :
+            iSibling == 5 ? -nIJK / 2 - nIJ / 2 + nI :
+            iSibling == 7 ? -nIJK / 2 - nIJ + nI :
+            iSibling == 8 ? -nIJK / 2 - nIJ + nI / 2 : nothing
+        if !isnothing(offset)
+            iCell_G[1, end, 1] = nIJK * neiBlock + offset
         end
     end
 
-    # node 4
+    # node 4: +x, +y, -z
     if DiLevelNei_III[3, 3, 1] in (0, 2, 3)
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 4, 1]]
 
@@ -1719,27 +1252,19 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     elseif DiLevelNei_III[3, 3, 1] == 1
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 4, 1]]
-
-        iSibling = getSibling(iNodeNei_III, iTree_IA)
-
-        if iSibling == 1
-            iCell_G[end, end, 1] = nIJK * neiBlock - nIJ / 2 + nI / 2 + 1
-        elseif iSibling == 2
-            iCell_G[end, end, 1] = nIJK * neiBlock - nIJ / 2 + 1
-        elseif iSibling == 3
-            iCell_G[end, end, 1] = nIJK * neiBlock - nIJ + nI / 2 + 1
-        elseif iSibling == 4
-            iCell_G[end, end, 1] = nIJK * neiBlock - nIJ + 1
-        elseif iSibling == 6
-            iCell_G[end, end, 1] = nIJK * neiBlock - nIJK / 2 - nIJ / 2 + 1
-        elseif iSibling == 7
-            iCell_G[end, end, 1] = nIJK * neiBlock - nIJK / 2 - nIJ + nI / 2 + 1
-        elseif iSibling == 8
-            iCell_G[end, end, 1] = nIJK * neiBlock - nIJK / 2 - nIJ + 1
+        offset = iSibling == 1 ? -nIJ / 2 + nI / 2 + 1 :
+            iSibling == 2 ? -nIJ / 2 + 1 :
+            iSibling == 3 ? -nIJ + nI / 2 + 1 :
+            iSibling == 4 ? -nIJ + 1 :
+            iSibling == 6 ? -nIJK / 2 - nIJ / 2 + 1 :
+            iSibling == 7 ? -nIJK / 2 - nIJ + nI / 2 + 1 :
+            iSibling == 8 ? -nIJK / 2 - nIJ + 1 : nothing
+        if !isnothing(offset)
+            iCell_G[end, end, 1] = nIJK * neiBlock + offset
         end
     end
 
-    # node 5
+    # node 5: -x, -y, +z
     if DiLevelNei_III[1, 1, 3] in (0, 2, 3)
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 1, 4]]
 
@@ -1747,27 +1272,19 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     elseif DiLevelNei_III[1, 1, 3] == 1
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 1, 4]]
-
-        iSibling = getSibling(iNodeNei_III, iTree_IA)
-
-        if iSibling == 1
-            iCell_G[1, 1, end] = nIJK * (neiBlock - 1) + nIJK / 2 + nIJ
-        elseif iSibling == 2
-            iCell_G[1, 1, end] = nIJK * (neiBlock - 1) + nIJK / 2 + nI * (nJ - 1) + nI / 2
-        elseif iSibling == 3
-            iCell_G[1, 1, end] = nIJK * (neiBlock - 1) + nIJK / 2 + nIJ / 2
-        elseif iSibling == 5
-            iCell_G[1, 1, end] = nIJK * (neiBlock - 1) + nIJ
-        elseif iSibling == 6
-            iCell_G[1, 1, end] = nIJK * (neiBlock - 1) + nI * (nJ - 1) + nI / 2
-        elseif iSibling == 7
-            iCell_G[1, 1, end] = nIJK * (neiBlock - 1) + nIJ / 2
-        elseif iSibling == 8
-            iCell_G[1, 1, end] = nIJK * (neiBlock - 1) + nI * (nJ / 2 - 1) + nI / 2
+        offset = iSibling == 1 ? nIJK / 2 + nIJ :
+            iSibling == 2 ? nIJK / 2 + nI * (nJ - 1) + nI / 2 :
+            iSibling == 3 ? nIJK / 2 + nIJ / 2 :
+            iSibling == 5 ? nIJ :
+            iSibling == 6 ? nI * (nJ - 1) + nI / 2 :
+            iSibling == 7 ? nIJ / 2 :
+            iSibling == 8 ? nI * (nJ / 2 - 1) + nI / 2 : nothing
+        if !isnothing(offset)
+            iCell_G[1, 1, end] = nIJK * (neiBlock - 1) + offset
         end
     end
 
-    # node 6
+    # node 6: +x, -y, +z
     if DiLevelNei_III[3, 1, 3] in (0, 2, 3)
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 1, 4]]
 
@@ -1775,27 +1292,19 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     elseif DiLevelNei_III[3, 1, 3] == 1
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 1, 4]]
-
-        iSibling = getSibling(iNodeNei_III, iTree_IA)
-
-        if iSibling == 1
-            iCell_G[end, 1, end] = nIJK * (neiBlock - 1) + nIJK / 2 + nI * (nJ - 1) + nI / 2 + 1
-        elseif iSibling == 2
-            iCell_G[end, 1, end] = nIJK * (neiBlock - 1) + nIJK / 2 + nI * (nJ - 1) + 1
-        elseif iSibling == 4
-            iCell_G[end, 1, end] = nIJK * (neiBlock - 1) + nIJK / 2 + nI * (nJ / 2 - 1) + 1
-        elseif iSibling == 5
-            iCell_G[end, 1, end] = nIJK * (neiBlock - 1) + nI * (nJ - 1) + nI / 2 + 1
-        elseif iSibling == 6
-            iCell_G[end, 1, end] = nIJK * (neiBlock - 1) + nI * (nJ - 1) + 1
-        elseif iSibling == 7
-            iCell_G[end, 1, end] = nIJK * (neiBlock - 1) + nI * (nJ / 2 - 1) + nI / 2 + 1
-        elseif iSibling == 8
-            iCell_G[end, 1, end] = nIJK * (neiBlock - 1) + nI * (nJ / 2 - 1) + 1
+        offset = iSibling == 1 ? nIJK / 2 + nI * (nJ - 1) + nI / 2 + 1 :
+            iSibling == 2 ? nIJK / 2 + nI * (nJ - 1) + 1 :
+            iSibling == 4 ? nIJK / 2 + nI * (nJ / 2 - 1) + 1 :
+            iSibling == 5 ? nI * (nJ - 1) + nI / 2 + 1 :
+            iSibling == 6 ? nI * (nJ - 1) + 1 :
+            iSibling == 7 ? nI * (nJ / 2 - 1) + nI / 2 + 1 :
+            iSibling == 8 ? nI * (nJ / 2 - 1) + 1 : nothing
+        if !isnothing(offset)
+            iCell_G[end, 1, end] = nIJK * (neiBlock - 1) + offset
         end
     end
 
-    # node 7
+    # node 7: -x, +y, +z
     if DiLevelNei_III[1, 3, 3] in (0, 2, 3)
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 4, 4]]
 
@@ -1803,27 +1312,19 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     elseif DiLevelNei_III[1, 3, 3] == 1
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[1, 4, 4]]
-
-        iSibling = getSibling(iNodeNei_III, iTree_IA)
-
-        if iSibling == 1
-            iCell_G[1, end, end] = nIJK * (neiBlock - 1) + nIJK / 2 + nIJ / 2 + nI
-        elseif iSibling == 3
-            iCell_G[1, end, end] = nIJK * (neiBlock - 1) + nIJK / 2 + nI
-        elseif iSibling == 4
-            iCell_G[1, end, end] = nIJK * (neiBlock - 1) + nIJK / 2 + nI / 2
-        elseif iSibling == 5
-            iCell_G[1, end, end] = nIJK * (neiBlock - 1) + nIJ / 2 + nI
-        elseif iSibling == 6
-            iCell_G[1, end, end] = nIJK * (neiBlock - 1) + nIJ / 2 + nI / 2
-        elseif iSibling == 7
-            iCell_G[1, end, end] = nIJK * (neiBlock - 1) + nI
-        elseif iSibling == 8
-            iCell_G[1, end, end] = nIJK * (neiBlock - 1) + nI / 2
+        offset = iSibling == 1 ? nIJK / 2 + nIJ / 2 + nI :
+            iSibling == 3 ? nIJK / 2 + nI :
+            iSibling == 4 ? nIJK / 2 + nI / 2 :
+            iSibling == 5 ? nIJ / 2 + nI :
+            iSibling == 6 ? nIJ / 2 + nI / 2 :
+            iSibling == 7 ? nI :
+            iSibling == 8 ? nI / 2 : nothing
+        if !isnothing(offset)
+            iCell_G[1, end, end] = nIJK * (neiBlock - 1) + offset
         end
     end
 
-    # node 8
+    # node 8: +x, +y, +z
     if DiLevelNei_III[3, 3, 3] in (0, 2, 3)
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 4, 4]]
 
@@ -1831,24 +1332,16 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     elseif DiLevelNei_III[3, 3, 3] == 1
         neiBlock = nodeToGlobalBlock_I[iNodeNei_III[4, 4, 4]]
-
-        iSibling = getSibling(iNodeNei_III, iTree_IA)
-
-        # Sibling 1 does not have to compute.
-        if iSibling == 2
-            iCell_G[end, end, end] = nIJK * (neiBlock - 1) + nIJK / 2 + nIJ / 2 + 1
-        elseif iSibling == 3
-            iCell_G[end, end, end] = nIJK * (neiBlock - 1) + nIJK / 2 + nI / 2 + 1
-        elseif iSibling == 4
-            iCell_G[end, end, end] = nIJK * (neiBlock - 1) + nIJK / 2 + 1
-        elseif iSibling == 5
-            iCell_G[end, end, end] = nIJK * (neiBlock - 1) + nIJ / 2 + nI / 2 + 1
-        elseif iSibling == 6
-            iCell_G[end, end, end] = nIJK * (neiBlock - 1) + nIJ / 2 + 1
-        elseif iSibling == 7
-            iCell_G[end, end, end] = nIJK * (neiBlock - 1) + nI / 2 + 1
-        elseif iSibling == 8
-            iCell_G[end, end, end] = nIJK * (neiBlock - 1) + 1
+        # Sibling 1 does not have to be computed.
+        offset = iSibling == 2 ? nIJK / 2 + nIJ / 2 + 1 :
+            iSibling == 3 ? nIJK / 2 + nI / 2 + 1 :
+            iSibling == 4 ? nIJK / 2 + 1 :
+            iSibling == 5 ? nIJ / 2 + nI / 2 + 1 :
+            iSibling == 6 ? nIJ / 2 + 1 :
+            iSibling == 7 ? nI / 2 + 1 :
+            iSibling == 8 ? 1 : nothing
+        if !isnothing(offset)
+            iCell_G[end, end, end] = nIJK * (neiBlock - 1) + offset
         end
     end
     return
