@@ -350,6 +350,29 @@ function select_particles_in_region(
     return _select_particles_from_files(data, x_range, y_range, z_range)
 end
 
+"""
+    _keep_particle(val, check_x, xlo, xhi, check_y, ylo, yhi, check_z, zlo, zhi)
+
+Return whether `val` (indexable by `1:3` for x/y/z) falls within all active range
+filters. Shared by the in-memory and per-grid selection paths so the two passes
+cannot diverge.
+"""
+@inline function _keep_particle(val, check_x, xlo, xhi, check_y, ylo, yhi, check_z, zlo, zhi)
+    if check_x
+        v = val[1]
+        (v < xlo || v > xhi) && return false
+    end
+    if check_y
+        v = val[2]
+        (v < ylo || v > yhi) && return false
+    end
+    if check_z
+        v = val[3]
+        (v < zlo || v > zhi) && return false
+    end
+    return true
+end
+
 function _select_particles_in_memory(
         rdata::Matrix{T}, x_range, y_range, z_range, dim
     ) where {T}
@@ -367,26 +390,7 @@ function _select_particles_in_memory(
     # Pass 1: Count valid particles to avoid vector allocation
     count = 0
     @inbounds for i in 1:n_particles
-        keep = true
-        if check_x
-            val = rdata[1, i]
-            if val < xlo || val > xhi
-                keep = false
-            end
-        end
-        if keep && check_y
-            val = rdata[2, i]
-            if val < ylo || val > yhi
-                keep = false
-            end
-        end
-        if keep && check_z
-            val = rdata[3, i]
-            if val < zlo || val > zhi
-                keep = false
-            end
-        end
-        if keep
+        if _keep_particle(@view(rdata[:, i]), check_x, xlo, xhi, check_y, ylo, yhi, check_z, zlo, zhi)
             count += 1
         end
     end
@@ -397,27 +401,7 @@ function _select_particles_in_memory(
     # Pass 2: Fill data
     current_idx = 0
     @inbounds for i in 1:n_particles
-        keep = true
-        if check_x
-            val = rdata[1, i]
-            if val < xlo || val > xhi
-                keep = false
-            end
-        end
-        if keep && check_y
-            val = rdata[2, i]
-            if val < ylo || val > yhi
-                keep = false
-            end
-        end
-        if keep && check_z
-            val = rdata[3, i]
-            if val < zlo || val > zhi
-                keep = false
-            end
-        end
-
-        if keep
+        if _keep_particle(@view(rdata[:, i]), check_x, xlo, xhi, check_y, ylo, yhi, check_z, zlo, zhi)
             current_idx += 1
             for k in 1:n_vars
                 new_data[k, current_idx] = rdata[k, i]
@@ -550,27 +534,7 @@ function _process_grids!(
             # Pass 1: Count valid
             valid_count = 0
             @inbounds for k in 1:count
-                val = vectors[k]
-                keep = true
-                if check_x
-                    v = val[1]
-                    if v < xlo || v > xhi
-                        keep = false
-                    end
-                end
-                if keep && check_y
-                    v = val[2]
-                    if v < ylo || v > yhi
-                        keep = false
-                    end
-                end
-                if keep && check_z
-                    v = val[3]
-                    if v < zlo || v > zhi
-                        keep = false
-                    end
-                end
-                if keep
+                if _keep_particle(vectors[k], check_x, xlo, xhi, check_y, ylo, yhi, check_z, zlo, zhi)
                     valid_count += 1
                 end
             end
@@ -582,30 +546,9 @@ function _process_grids!(
 
                 curr = 0
                 @inbounds for k in 1:count
-                    val = vectors[k]
-                    keep = true
-                    if check_x
-                        v = val[1]
-                        if v < xlo || v > xhi
-                            keep = false
-                        end
-                    end
-                    if keep && check_y
-                        v = val[2]
-                        if v < ylo || v > yhi
-                            keep = false
-                        end
-                    end
-                    if keep && check_z
-                        v = val[3]
-                        if v < zlo || v > zhi
-                            keep = false
-                        end
-                    end
-
-                    if keep
+                    if _keep_particle(vectors[k], check_x, xlo, xhi, check_y, ylo, yhi, check_z, zlo, zhi)
                         curr += 1
-                        res[:, curr] = val
+                        res[:, curr] = vectors[k]
                     end
                 end
 
