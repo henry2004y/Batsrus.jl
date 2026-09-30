@@ -66,10 +66,10 @@ function _interp2d_unstructured(
 
     Wis = [
         if useMatplotlib
-                _triangulate_matplotlib(X, Y, W, xi, yi)
+            _triangulate_matplotlib(X, Y, W, xi, yi)
         else
-                _, _, Wi_ = interpolate2d_generalized_coords(X, Y, W, plotrange, plotinterval)
-                Wi_
+            _, _, Wi_ = interpolate2d_generalized_coords(X, Y, W, plotrange, plotinterval)
+            Wi_
         end for W in Ws
     ]
 
@@ -131,11 +131,11 @@ function _interp2d_structured(
         Yf = repeat(TV.(yi_), outer = length(xi_))
         Wis_ = [
             begin
-                    itp = cubic_interp((xrange, yrange), parent(W))
-                    Wif = Vector{TV}(undef, length(Xf))
-                    itp(Wif, (Xf, Yf))
-                    reshape(Wif, length(yi_), length(xi_))
-                end for W in Ws_raw
+                itp = cubic_interp((xrange, yrange), parent(W))
+                Wif = Vector{TV}(undef, length(Xf))
+                itp(Wif, (Xf, Yf))
+                reshape(Wif, length(yi_), length(xi_))
+            end for W in Ws_raw
         ]
         xi_, yi_, Wis_
     end
