@@ -723,16 +723,15 @@ function getConnectivity(batl::Batl)
                     end
                 elseif nDim == 2
                     for j in jMin:jMax, i in iMin:iMax
-
-                        connectivity = hcat(
-                            connectivity,
-                            [
+                        iRound == 1 ? nElem += 1 : iElem += 1
+                        if iRound == 2
+                            connectivity[:, iElem] = [
                                 iCell_G[i + 1, j + 1, 2],
                                 iCell_G[i + 2, j + 1, 2],
                                 iCell_G[i + 2, j + 2, 2],
                                 iCell_G[i + 1, j + 2, 2],
                             ]
-                        )
+                        end
                     end
                 end
             end

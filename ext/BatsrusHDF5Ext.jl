@@ -118,9 +118,10 @@ function Base.show(io::IO, file::BatsrusHDF5Uniform)
     println(io, "Grid resolution          : ", file.dcoord)
     println(io, "Time                     : ", file.common.time)
     vars = HDF5.keys(file.common.fid)
-    idBegin_ = findfirst(x -> x == "bounding box", vars) + 1
-    idEnd_ = findfirst(x -> endswith(x, "Ext"), vars) - 1
-    return println(io, "Variables                : ", vars[idBegin_:idEnd_])
+    idBegin_ = something(findfirst(==("bounding box"), vars), 0) + 1
+    idEnd_ = something(findfirst(x -> endswith(x, "Ext"), vars), length(vars) + 1) - 1
+    varlist = idBegin_ <= idEnd_ ? vars[idBegin_:idEnd_] : String[]
+    return println(io, "Variables                : ", varlist)
 end
 
 """

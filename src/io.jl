@@ -151,7 +151,6 @@ function read_tecplot_header(f)
             zoneline = split(ln, ", ", keepempty = false)
         else # if the ZONE line has nothing, this won't work!
             zoneline = split(ln[6:end], ", ", keepempty = false)
-            replace(zoneline[1], '"' => "") # Remove the quotes in T
         end
         for zline in zoneline
             name, value = split(zline, '=', keepempty = false)
@@ -258,10 +257,10 @@ function getfiletype(file::AbstractString)
     pictsize = 0
 
     # Check the appendix of file names
-    if occursin(r"^.*\.(log)$", file)
+    if endswith(file, ".log")
         type = LogBat
         npictinfiles = 1
-    elseif occursin(r"^.*\.(dat)$", file) # Tecplot ascii format
+    elseif endswith(file, ".dat") # Tecplot ascii format
         type = TecBat
         npictinfiles = 1
     else
