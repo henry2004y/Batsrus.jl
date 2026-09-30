@@ -87,10 +87,8 @@ function interp2d(
         innermask::Bool = false, rbody::Union{Nothing, Real} = nothing,
         useMatplotlib::Bool = true
     ) where {TV, TX, TW}
-    W_raw = getvar(bd, var)
-    return _interp2d_structured(
-        bd, W_raw, plotrangeIn, plotinterval; innermask, rbody
-    )
+    xi, yi, Wis = interp2d(bd, [var], plotrangeIn, plotinterval; innermask, rbody)
+    return xi, yi, Wis[1]
 end
 
 function interp2d(
@@ -147,44 +145,6 @@ function _interp2d_structured(
     end
 
     return xi, yi, Wis
-end
-
-function _interp2d_structured(
-        bd::BatsrusIDLStructured{2, TV, TX, TW}, W_raw,
-        plotrange::Vector, plotinterval::Real;
-        innermask::Bool, rbody::Union{Nothing, Real}
-    ) where {TV, TX, TW}
-    xrange, yrange = get_range(bd)
-    xi, yi, Wi = if all(isinf.(plotrange))
-        xi_ = xrange
-        yi_ = yrange
-        Wi_ = collect(W_raw)'
-        xi_, yi_, Wi_
-    else
-        adjust_plotrange!(plotrange, (xrange[1], xrange[end]), (yrange[1], yrange[end]))
-
-        xi_ = if isinf(plotinterval)
-            range(plotrange[1], stop = plotrange[2], length = length(xrange))
-        else
-            range(plotrange[1], stop = plotrange[2], step = plotinterval)
-        end
-        yi_ = if isinf(plotinterval)
-            range(plotrange[3], stop = plotrange[4], length = length(yrange))
-        else
-            range(plotrange[3], stop = plotrange[4], step = plotinterval)
-        end
-        itp = cubic_interp((xrange, yrange), parent(W_raw))
-        Xf = repeat(TV.(xi_), inner = length(yi_))
-        Yf = repeat(TV.(yi_), outer = length(xi_))
-        Wif = Vector{TV}(undef, length(Xf))
-        itp(Wif, (Xf, Yf))
-        Wi_ = reshape(Wif, length(yi_), length(xi_))
-        xi_, yi_, Wi_
-    end
-
-    _mask_inner_boundary!(Wi, xi, yi, bd, innermask, rbody)
-
-    return xi, yi, Wi
 end
 
 function _mask_inner_boundary!(
