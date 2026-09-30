@@ -79,7 +79,7 @@ using StaticArrays
                 Float32[], ["x", "y"], ["rho"], String[]
             )
             list = Batsrus.FileList("test", Batsrus.Real4Bat, ".", 0, 1, 0)
-            xs = Float32[collect(0.0:1.0:9.0); collect(10.0:0.25:12.0); 0.0 + 1e-7]
+            xs = Float32[collect(0.0:1.0:9.0); collect(10.0:0.25:12.0); 0.0 + 1.0e-7]
             n = length(xs) * 3
             x = zeros(Float32, n, 1, 2)
             w = ones(Float32, n, 1, 1)
