@@ -785,7 +785,10 @@ function fillCellNeighbors!(batl::Batl, iCell_G, DiLevelNei_III, iNodeNei_III, n
 
     # Sibling index of this block within its mother node: constant for the whole block,
     # so compute it once instead of re-deriving it inside every face/edge/node loop.
-    iSibling = getSibling(iNodeNei_III, iTree_IA)
+    # Root blocks have no mother (parent entry is unset_), and iSibling is only
+    # consulted when a coarser neighbor exists, which implies a refined child block.
+    iSibling = iTree_IA[parent_, iNodeNei_III[2, 2, 2]] > 0 ?
+        getSibling(iNodeNei_III, iTree_IA) : 0
 
     ## Faces
 
