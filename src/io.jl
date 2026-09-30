@@ -322,17 +322,12 @@ end
 function _read_head_ascii(fileID::IOStream)
     headline = readline(fileID)
 
-    line_iter = eachsplit(readline(fileID))
-    next = iterate(line_iter)
-    it = Parsers.parse(Int32, next[1])
-    next = iterate(line_iter, next[2])
-    t = Parsers.parse(Float32, next[1])
-    next = iterate(line_iter, next[2])
-    ndim = Parsers.parse(Int32, next[1])
-    next = iterate(line_iter, next[2])
-    neqpar = Parsers.parse(Int32, next[1])
-    next = iterate(line_iter, next[2])
-    nw = Parsers.parse(Int32, next[1])
+    line = split(readline(fileID))
+    it = Parsers.parse(Int32, line[1])
+    t = Parsers.parse(Float32, line[2])
+    ndim = Parsers.parse(Int32, line[3])
+    neqpar = Parsers.parse(Int32, line[4])
+    nw = Parsers.parse(Int32, line[5])
 
     gencoord = ndim < 0
     ndim = abs(ndim)
@@ -438,12 +433,10 @@ function _getfilesize_binary(fileID::IOStream, lenstr::Integer, ::Val{T}) where 
     return pictsize = headlen + 8 * (1 + nw) + type_size * (ndim + nw) * prod_nx
 end
 
-function getfilesize(fileID::IOStream, lenstr::Int32, v::Val{Real4Bat})
-    return _getfilesize_binary(fileID, lenstr, v)
-end
-function getfilesize(fileID::IOStream, lenstr::Int32, v::Val{Real8Bat})
-    return _getfilesize_binary(fileID, lenstr, v)
-end
+getfilesize(fileID::IOStream, lenstr::Int32, v::Val{Real4Bat}) =
+    _getfilesize_binary(fileID, lenstr, v)
+getfilesize(fileID::IOStream, lenstr::Int32, v::Val{Real8Bat}) =
+    _getfilesize_binary(fileID, lenstr, v)
 
 function getfilesize(fileID::IOStream, lenstr::Int32, ::Val{AsciiBat})
     pointer0 = position(fileID) # Record header start location
