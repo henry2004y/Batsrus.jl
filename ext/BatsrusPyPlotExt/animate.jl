@@ -154,7 +154,7 @@ function Batsrus.animate(
         end
 
         if isinf(vmin)
-            vmin = isinf(global_min) ? (colorscale == :log ? 1e-6 : 0.0) : global_min
+            vmin = isinf(global_min) ? (colorscale == :log ? 1.0e-6 : 0.0) : global_min
         end
         if isinf(vmax)
             vmax = isinf(global_max) ? 1.0 : global_max
@@ -162,8 +162,8 @@ function Batsrus.animate(
     end
 
     if vmin == vmax
-        vmin -= 0.1 * abs(vmin) + 1e-4
-        vmax += 0.1 * abs(vmax) + 1e-4
+        vmin -= 0.1 * abs(vmin) + 1.0e-4
+        vmax += 0.1 * abs(vmax) + 1.0e-4
     end
 
     # Auto-select colormap and optionally symmetrize limits (if not overridden by caller)
