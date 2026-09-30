@@ -276,28 +276,20 @@ function find_grid_block(batl::Batl, xyz_D)
     CoordMin_D = batl.head.CoordMin_D
     CoordMax_D = batl.head.CoordMax_D
 
-    Coord_D = xyz_D
-
     # Calculate normalized coordinates for tree search
-    CoordTree_D = (Coord_D - CoordMin_D) ./ (CoordMax_D - CoordMin_D)
+    c1 = (xyz_D[1] - CoordMin_D[1]) / (CoordMax_D[1] - CoordMin_D[1])
+    c2 = (xyz_D[2] - CoordMin_D[2]) / (CoordMax_D[2] - CoordMin_D[2])
+    c3 = (xyz_D[3] - CoordMin_D[3]) / (CoordMax_D[3] - CoordMin_D[3])
 
-    if any(CoordTree_D .< 0.0) || any(CoordTree_D .> 1.0)
-        iBlock = unset_
-        return iBlock
+    if c1 < 0.0 || c1 > 1.0 || c2 < 0.0 || c2 > 1.0 || c3 < 0.0 || c3 > 1.0
+        return unset_
     end
 
     # Find node containing the point
-    iNode = find_tree_node(batl, CoordTree_D)
+    iNode = find_tree_node(batl, MVector{3, Float64}(c1, c2, c3))
 
-    # Check if point was found
-    if iNode > 0
-        # Convert to block and processor indexes
-        iBlock = batl.iTree_IA[block_, iNode]
-    else
-        iBlock = unset_
-    end
-
-    return iBlock
+    # Convert to block index if the point was found
+    return iNode > 0 ? batl.iTree_IA[block_, iNode] : unset_
 end
 
 """
@@ -313,34 +305,58 @@ function find_tree_node(batl::Batl, Coord_D)
     iTree_IA = batl.iTree_IA
 
     # Scale coordinates so that 1 ≤ Coord_D ≤ nRoot_D+1
-    Coord_D = @. 1.0 + nRoot_D * max(0.0, min(1.0, Coord_D))
+    c1 = 1.0 + nRoot_D[1] * clamp(Coord_D[1], 0.0, 1.0)
+    c2 = 1.0 + nRoot_D[2] * clamp(Coord_D[2], 0.0, 1.0)
+    c3 = 1.0 + nRoot_D[3] * clamp(Coord_D[3], 0.0, 1.0)
 
-    # Get root node index
-    iRoot_D = min.(floor.(Int32, Coord_D), nRoot_D)
-
-    # Root node indexes are ordered
-    iNode = iRoot_D[1] + nRoot_D[1] * ((iRoot_D[2] - 1) + nRoot_D[2] * (iRoot_D[3] - 1))
+    # Get root node index; root node indexes are ordered
+    iRoot1 = min(floor(Int32, c1), nRoot_D[1])
+    iRoot2 = min(floor(Int32, c2), nRoot_D[2])
+    iRoot3 = min(floor(Int32, c3), nRoot_D[3])
+    iNode = iRoot1 + nRoot_D[1] * ((iRoot2 - 1) + nRoot_D[2] * (iRoot3 - 1))
 
     if iTree_IA[status_, iNode] == used_
         return iNode
     end
 
-    nLevelMax, iNodeMorton_I = order_tree(batl)
+    # Maximum level over the used nodes: allocation-free equivalent of the
+    # nLevelMax returned by order_tree, whose Morton ordering is not needed
+    # for the point search.
+    nLevelMax = Int32(0)
+    for iN in 1:size(iTree_IA, 2)
+        if iTree_IA[status_, iN] == used_ && iTree_IA[level_, iN] > nLevelMax
+            nLevelMax = iTree_IA[level_, iN]
+        end
+    end
 
-    # Get normalized coordinates within root node and scale it up
-    # to the largest resolution: 0 <= iCoord_D <= maxCoord_I(nLevelMax)-1
-    iCoord_D = min.(
-        maxCoord_I[nLevelMax + 1] - 1,
-        floor.(Int32, (Coord_D[iDimAmr_D] - iRoot_D[iDimAmr_D]) * maxCoord_I[nLevelMax + 1])
-    )
+    maxC = maxCoord_I[nLevelMax + 1]
 
-    # Go down the tree using bit information
+    # Get normalized coordinates within the root node and scale them up to the
+    # largest resolution: 0 <= iCoord_d <= maxC-1 (AMR dimensions only)
+    iC1 = iC2 = iC3 = Int32(0)
+    for d in 1:nDimAmr
+        idim = iDimAmr_D[d]
+        c = idim == 1 ? c1 : idim == 2 ? c2 : c3
+        iRoot = idim == 1 ? iRoot1 : idim == 2 ? iRoot2 : iRoot3
+        iC = min(maxC - Int32(1), floor(Int32, (c - iRoot) * maxC))
+        if idim == 1
+            iC1 = iC
+        elseif idim == 2
+            iC2 = iC
+        else
+            iC3 = iC
+        end
+    end
+
+    # Go down the tree using bit information; the child index is
+    # iChild = child1_ + Sum_d Bit_d * 2^(d-1) over the AMR dimensions
     for iLevel in (nLevelMax - 1):-1:0
-        # Get the binary bits based on the coordinates
-        iBit_D = ibits.(iCoord_D, iLevel, 1)
-
-        # Construct child index as iChild = Sum Bit_i*2^i
-        iChild = sum(iBit_D .* maxCoord_I[1:nDimAmr]) + child1_
+        iChild = child1_
+        for d in 1:nDimAmr
+            idim = iDimAmr_D[d]
+            iC = idim == 1 ? iC1 : idim == 2 ? iC2 : iC3
+            iChild += ((iC >> iLevel) & 1) * maxCoord_I[d]
+        end
         iNode = iTree_IA[iChild, iNode]
 
         if iTree_IA[status_, iNode] == used_
@@ -349,19 +365,7 @@ function find_tree_node(batl::Batl, Coord_D)
     end
 
     # Did not find the point so set iNode as unset
-    iNode = unset_
-
-    return iNode
-end
-
-"""
-    ibits(i::Integer, pos::Integer, len::Integer)
-
-Logical bit extraction.
-"""
-function ibits(i::Integer, pos::Integer, len::Integer)
-    mask = (one(i) << len) - one(i)
-    return (i >> pos) & mask
+    return unset_
 end
 
 """
@@ -561,7 +565,7 @@ function find_neighbor_for_anynode(batl::Batl, iNode::Integer)
                     end
                 end
 
-                jNode = find_tree_node(batl, [x, y, z])
+                jNode = find_tree_node(batl, MVector{3, Float64}(x, y, z))
 
                 iNodeNei_III[i + 1, j + 1, k + 1] = jNode
                 DiLevelNei_III[Di + 2, Dj + 2, Dk + 2] = iLevel - iTree_IA[level_, jNode]
