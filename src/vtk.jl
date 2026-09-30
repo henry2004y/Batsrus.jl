@@ -573,48 +573,12 @@ function find_neighbor_for_anynode(batl::Batl, iNode::Integer)
 end
 
 """
-Return global block index for the node.
+Build the global block enumeration shared by the connectivity and VTK writers:
+per-processor node lists sorted by local block index, and the node -> global
+block index mapping (blocks are numbered over processors in ascending order).
 """
-function nodeToGlobalBlock(batl::Batl, iNode::Int32, nBlock_P)
+function _build_block_layout(batl::Batl)
     iTree_IA = batl.iTree_IA
-
-    iProc = iTree_IA[proc_, iNode]
-
-    localNodes_B = findall(x -> x == iProc, iTree_IA[proc_, :])
-    localBlocks_B = iTree_IA[block_, localNodes_B]
-    myRank = findfirst(x -> x == iNode, localNodes_B)
-
-    localBlocksSorted_B = sort(localBlocks_B)
-    localOrder = findfirst(x -> x == localBlocks_B[myRank], localBlocksSorted_B)
-
-    globalBlock = localOrder + nBlock_P[iProc + 1]
-
-    return globalBlock
-end
-
-"""
-Get cell connectivity list.
-"""
-function getConnectivity(batl::Batl)
-    iTree_IA = batl.iTree_IA
-    nI, nJ, nK = batl.head.nI, batl.head.nJ, batl.head.nK
-    nDim = batl.nDim
-    if nDim == 3
-        nConn = 8
-    elseif nDim == 2
-        nConn = 4
-        @error "2D not working currently!"
-    elseif nDim == 1
-        @error "Detected 1D data, connectivity not implemented!"
-    end
-
-    iCell_G = Array{Int32, 3}(undef, nI + 2, nJ + 2, nK + 2)
-
-    # It would be difficult to calculate this beforehand.
-    # The current implementation is to compute this in two rounds, where the
-    # first round only do the counting.
-    nElem = 0
-    nBlockBefore = 0
 
     # Count accumulated number of blocks for MPI ranks in ascending order
     # Local block indexes may have gaps in between!
@@ -647,6 +611,46 @@ function getConnectivity(batl::Batl)
             nodeToGlobalBlock_I[idx] = i + nBlock_P[iProc + 1]
         end
     end
+
+    return nodeToGlobalBlock_I, nodesPerProc
+end
+
+# VTK hexahedron (3D) and quad (2D) corner offsets in file order:
+# counter-clockwise in x-y, then the same ring repeated at k+1 in 3D.
+const _CORNERS_3D = (
+    (0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0),
+    (0, 0, 1), (1, 0, 1), (1, 1, 1), (0, 1, 1),
+)
+const _CORNERS_2D = ((0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0))
+
+"""
+Get cell connectivity list.
+"""
+function getConnectivity(batl::Batl)
+    iTree_IA = batl.iTree_IA
+    nI, nJ, nK = batl.head.nI, batl.head.nJ, batl.head.nK
+    nDim = batl.nDim
+    if nDim == 3
+        nConn = 8
+    elseif nDim == 2
+        nConn = 4
+        @error "2D not working currently!"
+    elseif nDim == 1
+        @error "Detected 1D data, connectivity not implemented!"
+    end
+
+    iCell_G = Array{Int32, 3}(undef, nI + 2, nJ + 2, nK + 2)
+
+    # It would be difficult to calculate this beforehand.
+    # The current implementation is to compute this in two rounds, where the
+    # first round only do the counting.
+    nElem = 0
+    nBlockBefore = 0
+
+    nodeToGlobalBlock_I, nodesPerProc = _build_block_layout(batl)
+    nProc = length(nodesPerProc)
+
+    corners = nDim == 3 ? _CORNERS_3D : _CORNERS_2D
 
     # Pre-allocate just to let Julia know this variable.
     connectivity = Array{Int32, 2}(undef, nConn, nElem)
@@ -698,39 +702,20 @@ function getConnectivity(batl::Batl)
                 jMax = DiLevelNei_III[2, 3, 2] < 0 ? nJ - 1 : nJ
                 kMax = DiLevelNei_III[2, 2, 3] < 0 ? nK - 1 : nK
 
-                if nDim == 3
-                    for k in kMin:kMax, j in jMin:jMax, i in iMin:iMax
-                        # Skip bricks that are not fully inside/usable
-                        if any(iCell_G[(i + 1):(i + 2), (j + 1):(j + 2), (k + 1):(k + 2)] .== 0)
-                            continue
-                        end
-                        iRound == 1 ? nElem += 1 : iElem += 1
-                        if iRound == 2
-                            connectivity[
-                                :,
-                                iElem,
-                            ] = [
-                                iCell_G[i + 1, j + 1, k + 1],
-                                iCell_G[i + 2, j + 1, k + 1],
-                                iCell_G[i + 2, j + 2, k + 1],
-                                iCell_G[i + 1, j + 2, k + 1],
-                                iCell_G[i + 1, j + 1, k + 2],
-                                iCell_G[i + 2, j + 1, k + 2],
-                                iCell_G[i + 2, j + 2, k + 2],
-                                iCell_G[i + 1, j + 2, k + 2],
-                            ]
-                        end
+                for k in kMin:kMax, j in jMin:jMax, i in iMin:iMax
+                    # Skip bricks that are not fully inside/usable (3D only)
+                    if nDim == 3 && any(
+                            ==(0),
+                            @view(iCell_G[(i + 1):(i + 2), (j + 1):(j + 2), (k + 1):(k + 2)])
+                        )
+                        continue
                     end
-                elseif nDim == 2
-                    for j in jMin:jMax, i in iMin:iMax
-                        iRound == 1 ? nElem += 1 : iElem += 1
-                        if iRound == 2
-                            connectivity[:, iElem] = [
-                                iCell_G[i + 1, j + 1, 2],
-                                iCell_G[i + 2, j + 1, 2],
-                                iCell_G[i + 2, j + 2, 2],
-                                iCell_G[i + 1, j + 2, 2],
-                            ]
+                    iRound == 1 ? nElem += 1 : iElem += 1
+                    if iRound == 2
+                        for c in eachindex(corners)
+                            di, dj, dk = corners[c]
+                            connectivity[c, iElem] =
+                                iCell_G[i + di + 1, j + dj + 1, k + dk + 1]
                         end
                     end
                 end
@@ -757,7 +742,7 @@ function getSibling(iNodeNei_III, iTree_IA)
 end
 
 """
-     fillCellNeighbors!(batl, iCell_G, DiLevelNei_III, iNodeNei_III, nBlock_P)
+     fillCellNeighbors!(batl, iCell_G, DiLevelNei_III, iNodeNei_III, nodeToGlobalBlock_I)
 
 Fill neighbor cell indexes for the given block. The faces, edges, and vertices
 are ordered from left (-) to right (+) in x-y-z sequentially.
