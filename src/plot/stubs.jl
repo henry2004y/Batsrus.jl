@@ -43,6 +43,14 @@ function plot_phase! end
 
 Save figures or create an animation from a sequence of SWMF output files.
 Stub to be implemented by plotting extensions.
+
+Notable behaviors:
+* `vmin`/`vmax` set to `Inf` are determined by scanning **all** snapshots, so the
+  color scale stays consistent across the animation.
+* `plotinterval = nothing` auto-detects the finest grid resolution (see
+  [`finest_resolution`](@ref)), which is essential for AMR/unstructured output.
+* If `plot_kwargs` is not provided, the colormap is selected automatically:
+  `RdBu_r` with symmetric limits for bipolar data, `turbo` otherwise.
 """
 function animate end
 

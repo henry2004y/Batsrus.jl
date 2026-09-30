@@ -20,7 +20,7 @@ export BATS, BatsrusIDL, BatsrusIDLStructured, BatsrusIDLUnstructured,
     fill_vector_from_scalars, get_current_density, # select
     Batl, convertTECtoVTU, convertIDLtoVTK, create_pvd, readhead, readtree, getConnectivity, # vtk
     plotgrid, interp1d, interp2d, slice1d, get_range, get_var_range, squeeze,
-    generate_mock_amrex_data, # plot/utility,
+    finest_resolution, generate_mock_amrex_data, # plot/utility,
     AMReXParticle, AMReXParticleHeader, read_amrex_binary_particle_file,
     select_particles_in_region, get_phase_space_density, classify_particles,
     fit_particle_velocity_gmm, get_particle_field_aligned_transform,
