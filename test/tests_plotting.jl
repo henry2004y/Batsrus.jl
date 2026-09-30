@@ -59,6 +59,39 @@ using StaticArrays
                 @test !isnan(Wi[7, 7])
             end
         end
+
+        @testset "finest resolution" begin
+            # Structured file with uniform 1.0 spacing
+            file = "z=0_raw_1_t25.60000_n00000258.out"
+            bd = load(joinpath(datapath, file))
+            @test finest_resolution(bd) == 1.0
+
+            # Unstructured file with uniform spacing
+            file = "bx0_mhd_6_t00000100_n00000352.out"
+            bd = load(joinpath(datapath, file))
+            @test finest_resolution(bd) == 1.0
+
+            # Mock 2D generalized-coordinate data with two-level refinement:
+            # coarse spacing 1.0 for x in [0, 9], fine spacing 0.25 for x in [10, 12],
+            # and a jittered duplicate node that must be filtered out.
+            head = Batsrus.BatsHead(
+                2, "amr", 0, 0.0f0, true, 0, 1, [57, 1],
+                Float32[], ["x", "y"], ["rho"], String[]
+            )
+            list = Batsrus.FileList("test", Batsrus.Real4Bat, ".", 0, 1, 0)
+            xs = Float32[collect(0.0:1.0:9.0); collect(10.0:0.25:12.0); 0.0 + 1.0e-7]
+            n = length(xs) * 3
+            x = zeros(Float32, n, 1, 2)
+            w = ones(Float32, n, 1, 1)
+            i = 0
+            for y in (0.0, 0.5, 1.0), x0 in xs
+                i += 1
+                x[i, 1, 1] = x0
+                x[i, 1, 2] = y
+            end
+            bda = Batsrus.BATS(head, list, x, w)
+            @test finest_resolution(bda) == 0.25
+        end
     end
 
     if RUN_MAKIE_TESTS

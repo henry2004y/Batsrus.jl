@@ -1,6 +1,49 @@
 # Utility functions for plotting and analyzing.
 
 """
+    finest_resolution(bd::BatsrusIDL)
+
+Return the finest grid spacing `min(dx, dy)` of a 2D dataset `bd`.
+
+For generalized coordinates (AMR/unstructured output), this is the minimum
+spacing between unique cell centers along each axis; small spacings relative to
+the axis span (below `1e-5` of the span) are filtered out to ignore duplicated
+nodes. For structured output, the coordinate steps are used directly.
+
+This is useful to select an appropriate sampling interval when interpolating
+AMR data onto a uniform mesh, e.g. for `interp2d` or `animate`.
+"""
+function finest_resolution(bd::BatsrusIDL)
+    if bd.head.gencoord
+        x_all = bd.x
+        X = @view x_all[:, 1, 1]
+        Y = @view x_all[:, 1, 2]
+
+        x_span = maximum(X) - minimum(X)
+        y_span = maximum(Y) - minimum(Y)
+
+        uX = sort!(unique(round.(X, digits = 7)))
+        uY = sort!(unique(round.(Y, digits = 7)))
+
+        diffs_x = filter(>(1.0e-5 * x_span), diff(uX))
+        diffs_y = filter(>(1.0e-5 * y_span), diff(uY))
+
+        dx = isempty(diffs_x) ? 0.2 : minimum(diffs_x)
+        dy = isempty(diffs_y) ? 0.2 : minimum(diffs_y)
+        return min(dx, dy)
+    else
+        x = bd.x
+        xc = dims(x, 1).val
+        yc = dims(x, 2).val
+        dx = xc isa AbstractRange ? abs(Float64(step(xc))) :
+            minimum(abs.(diff(Float64.(collect(xc)))))
+        dy = yc isa AbstractRange ? abs(Float64(step(yc))) :
+            minimum(abs.(diff(Float64.(collect(yc)))))
+        return min(dx, dy)
+    end
+end
+
+"""
     interp2d(bd::BatsrusIDL, var, plotrange=[-Inf, Inf, -Inf, Inf],
      	plotinterval=Inf; kwargs...)
 
