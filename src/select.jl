@@ -46,7 +46,7 @@ function cutdata(
     cut2 = selectdim(view(bd.x, :, :, :, d2), dim, sequence)
     W = selectdim(view(bd.w, :, :, :, var_), dim, sequence)
 
-    if !all(isinf.(plotrange))
+    if !all(isinf, plotrange)
         cut1, cut2, W = subsurface(cut1, cut2, W, plotrange)
     end
 

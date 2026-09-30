@@ -87,7 +87,11 @@ function interp2d(
         innermask::Bool = false, rbody::Union{Nothing, Real} = nothing,
         useMatplotlib::Bool = true
     ) where {TV, TX, TW}
-    xi, yi, Wis = interp2d(bd, [var], plotrangeIn, plotinterval; innermask, rbody)
+    # The single-variable view is isbits, so a 1-tuple avoids the wrapper
+    # Vector that the multi-variable path needs.
+    xi, yi, Wis = _interp2d_structured(
+        bd, (getvar(bd, var),), plotrangeIn, plotinterval; innermask, rbody
+    )
     return xi, yi, Wis[1]
 end
 
@@ -104,15 +108,15 @@ function interp2d(
 end
 
 function _interp2d_structured(
-        bd::BatsrusIDLStructured{2, TV, TX, TW}, Ws_raw::AbstractVector,
+        bd::BatsrusIDLStructured{2, TV, TX, TW}, Ws_raw,
         plotrange::Vector, plotinterval::Real;
         innermask::Bool, rbody::Union{Nothing, Real}
     ) where {TV, TX, TW}
     xrange, yrange = get_range(bd)
-    xi, yi, Wis = if all(isinf.(plotrange))
+    xi, yi, Wis = if all(isinf, plotrange)
         xi_ = xrange
         yi_ = yrange
-        Wis_ = [collect(W_raw)' for W_raw in Ws_raw]
+        Wis_ = map(W -> collect(W)', Ws_raw)
         xi_, yi_, Wis_
     else
         adjust_plotrange!(plotrange, (xrange[1], xrange[end]), (yrange[1], yrange[end]))
@@ -129,14 +133,12 @@ function _interp2d_structured(
         end
         Xf = repeat(TV.(xi_), inner = length(yi_))
         Yf = repeat(TV.(yi_), outer = length(xi_))
-        Wis_ = [
-            begin
-                itp = cubic_interp((xrange, yrange), parent(W))
-                Wif = Vector{TV}(undef, length(Xf))
-                itp(Wif, (Xf, Yf))
-                reshape(Wif, length(yi_), length(xi_))
-            end for W in Ws_raw
-        ]
+        Wis_ = map(Ws_raw) do W
+            itp = cubic_interp((xrange, yrange), parent(W))
+            Wif = Vector{TV}(undef, length(Xf))
+            itp(Wif, (Xf, Yf))
+            reshape(Wif, length(yi_), length(xi_))
+        end
         xi_, yi_, Wis_
     end
 
@@ -202,7 +204,7 @@ function meshgrid(
     x = bd.x
 
     xrange, yrange = get_range(bd)
-    if all(isinf.(plotrange))
+    if all(isinf, plotrange)
         xi, yi = xrange, yrange
     else
         adjust_plotrange!(plotrange, (xrange[1], xrange[end]), (yrange[1], yrange[end]))
@@ -219,16 +221,26 @@ function meshgrid(
     return xi, yi
 end
 
+# varindex keys are lowercase (see _create_batshead), so a query without
+# uppercase characters is already the key: avoid the allocating lowercase.
+function _lowercase_key(s::String)
+    @inbounds for c in s
+        isuppercase(c) && return lowercase(s)
+    end
+    return s
+end
+@inline _lowercase_key(var::AbstractString) = _lowercase_key(String(var))
+
 @inline function _has_var(bd::BatsrusIDL, var::AbstractString)
-    return haskey(bd.varindex, lowercase(var))
+    return haskey(bd.varindex, _lowercase_key(var))
 end
 
 """
 Find variable index in the BATSRUS data.
 """
 @inline function findindex(bd::BatsrusIDL, var::AbstractString)
-    index_ = get(bd.varindex, lowercase(var), nothing)
-    index_ === nothing && error("$(var) not found in file header variables!")
+    index_ = get(bd.varindex, _lowercase_key(var), Int(0))
+    index_ == 0 && error("$(var) not found in file header variables!")
     return index_
 end
 
