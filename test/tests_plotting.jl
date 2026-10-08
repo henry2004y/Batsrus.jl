@@ -233,8 +233,10 @@ using StaticArrays
             @test c.get_array()[end] == 0.9750000000000002
             c = PyPlot.tricontour(bd, "rho")
             @test c isa PyPlot.PyObject
-            PyPlot.triplot(bd)
-            @test isa(gca(), PyPlot.PyObject)
+            c = PyPlot.triplot(bd)
+            @test c isa PyPlot.PyObject || isa(gca(), PyPlot.PyObject)
+            c = PyPlot.triplot(bd; plotrange = [-100.0, 100.0, -100.0, 100.0])
+            @test c isa PyPlot.PyObject || isa(gca(), PyPlot.PyObject)
             PyPlot.tripcolor(bd, "rho")
             @test isa(gca(), PyPlot.PyObject)
             p = PyPlot.pcolormesh(bd, "p").get_array()

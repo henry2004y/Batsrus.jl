@@ -530,6 +530,17 @@ function PyPlot.contourf(
     return c
 end
 
+function _filter_plotrange(plotrange, X, Y, data...)
+    if !all(isinf, plotrange)
+        xyIndex = (X .> plotrange[1]) .& (X .< plotrange[2]) .&
+            (Y .> plotrange[3]) .& (Y .< plotrange[4])
+        X = X[xyIndex]
+        Y = Y[xyIndex]
+        data = map(d -> d[xyIndex], data)
+    end
+    return (X, Y, data...)
+end
+
 """
      tricontourf(data, var, ax=nothing; plotrange=[-Inf,Inf,-Inf,Inf], kwargs...)
 
@@ -548,14 +559,7 @@ function PyPlot.tricontourf(
     Y = vec(selectdim(x, ndims(x), 2))
     W = vec(selectdim(w, ndims(w), varIndex_))
 
-    #TODO This needs improvement.
-    if !all(isinf.(plotrange))
-        xyIndex = X .> plotrange[1] .& X .< plotrange[2] .&
-            Y .> plotrange[3] .& Y .< plotrange[4]
-        X = X[xyIndex]
-        Y = Y[xyIndex]
-        W = W[xyIndex]
-    end
+    X, Y, W = _filter_plotrange(plotrange, X, Y, W)
     if isnothing(ax)
         ax = plt.gca()
     end
@@ -587,14 +591,7 @@ function PyPlot.tricontour(
     Y = vec(selectdim(x, ndims(x), 2))
     W = vec(selectdim(w, ndims(w), varIndex_))
 
-    #TODO This needs improvement.
-    if !all(isinf.(plotrange))
-        xyIndex = X .> plotrange[1] .& X .< plotrange[2] .&
-            Y .> plotrange[3] .& Y .< plotrange[4]
-        X = X[xyIndex]
-        Y = Y[xyIndex]
-        W = W[xyIndex]
-    end
+    X, Y, W = _filter_plotrange(plotrange, X, Y, W)
     if isnothing(ax)
         ax = plt.gca()
     end
@@ -615,14 +612,8 @@ function PyPlot.triplot(
     ) where {TV}
     X = vec(selectdim(bd.x, ndims(bd.x), 1))
     Y = vec(selectdim(bd.x, ndims(bd.x), 2))
+    X, Y = _filter_plotrange(plotrange, X, Y)
     triang = PyPlot.matplotlib.tri.Triangulation(X, Y)
-    #TODO This needs improvement.
-    if !all(isinf.(plotrange))
-        xyIndex = X .> plotrange[1] .& X .< plotrange[2] .&
-            Y .> plotrange[3] .& Y .< plotrange[4]
-        X = X[xyIndex]
-        Y = Y[xyIndex]
-    end
     if isnothing(ax)
         ax = plt.gca()
     end
@@ -647,14 +638,7 @@ function PyPlot.plot_trisurf(
     Y = vec(selectdim(x, ndims(x), 2))
     W = vec(selectdim(w, ndims(w), varIndex_))
 
-    #TODO This needs improvement.
-    if !all(isinf.(plotrange))
-        xyIndex = X .> plotrange[1] .& X .< plotrange[2] .&
-            Y .> plotrange[3] .& Y .< plotrange[4]
-        X = X[xyIndex]
-        Y = Y[xyIndex]
-        W = W[xyIndex]
-    end
+    X, Y, W = _filter_plotrange(plotrange, X, Y, W)
     if isnothing(ax)
         ax = plt.figure().add_subplot(projection = "3d")
     end
